@@ -85,7 +85,7 @@ st.markdown(f"""
 .active {{
     color: white;
     font-weight: bold;
-    text-decoration: none;
+    text-decoration: none ;
 }}
 </style>
 
