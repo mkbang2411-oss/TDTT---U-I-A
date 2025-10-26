@@ -2,6 +2,109 @@ import streamlit as st
 from PIL import Image
 import base64
 from io import BytesIO
+import locale 
+import json
+from streamlit_cookies_manager import EncryptedCookieManager
+
+#---TRANSLATION-----Start--------------------------------------------------------
+cookies = EncryptedCookieManager(prefix="multilang_", password="secret_key_123")
+
+if not cookies.ready():
+    st.warning("🔄 Đang tải cookies... vui lòng refresh trang sau vài giây.")
+    st.stop()
+
+def load_translations(file_path="languages.json"):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+translations = load_translations()
+
+browser_lang = locale.getdefaultlocale()[0] 
+if "lang" not in cookies:
+    if browser_lang and "vi" in browser_lang.lower():
+        cookies["lang"] = "vi"
+    else:
+        cookies["lang"] = "en"
+
+current_lang = cookies["lang"]
+
+st.markdown("""
+<style>
+.lang-button {
+    position: fixed;
+    top: 480px;
+    right: 15px;
+    z-index: 9999;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s ease;
+}
+.lang-button:hover {
+    background-color: #f5f5f5;
+    transform: scale(1.05);
+}
+
+/* Ẩn menu thừa của streamlit */
+div[data-testid="stSelectbox"] > label {
+    display: none !important;
+}
+
+/* Dropdown nhỏ gọn */
+div[data-testid="stSelectbox"] {
+    position: fixed !important;
+    top: 480px !important;
+    right: 60px !important;
+    width: 120px !important;
+    z-index: 10000 !important;
+    background-color: white !important;
+    border-radius: 8px !important;
+    font-size: 10px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+lang_icon = st.empty()
+with lang_icon.container():
+    st.markdown('<div class="lang-button" id="langBtn">🌐</div>', unsafe_allow_html=True)
+
+selected_lang = st.selectbox(
+    "🌐",
+    ["en", "vi"],
+    index=0 if current_lang == "en" else 1,
+    format_func=lambda x: "en English" if x == "en" else "🇻🇳 Vietnamese",
+    label_visibility="collapsed",
+    key="lang_selector"
+)
+
+st.markdown("</div></div>", unsafe_allow_html=True)
+
+# Nếu đổi → lưu lại cookie và reload
+if selected_lang != current_lang:
+    cookies["lang"] = selected_lang
+    cookies.save()
+    st.rerun()
+
+
+lang_data = translations[selected_lang]
+#----------
+
+# HÀM HỖ TRỢ DỊCH
+def t(key):
+    """Hàm trả về bản dịch tương ứng"""
+    return translations[current_lang].get(key, key)
+#----------END-------------------------------------------------------------------
+
+
 # Mở ảnh
 img = Image.open(r"Picture\Food\UIA.png")
 buffer = BytesIO()
