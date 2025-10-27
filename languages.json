@@ -1,8 +1,42 @@
 {
   "vi": {
-    "subheader": "🍜 Đây là trang Home"
+    "title": "🔥 Tài khoản UIA 🔥",
+    "SI": "Đăng nhập",
+    "SU": "Đăng kí",
+    "MN": "Danh mục",
+    "CNA": "Tạo tài khoản mới",
+    "Pass": "Mật khẩu",
+    "ConP": "Xác nhận Mật khẩu",
+    "NotM": "❌ Mật khẩu hem có khớp. Làm lợi i mom",
+    "RuleP": "⚠️ Mật khẩu phải có tối thiểu 6 kí tự nke pà",
+    "SucA": "Tạo tài khoản thành công nè <3",
+    "GoSI": "Đăng nhập được roài đó. Đuy đuy",
+    "error_invalid_email": "Địa chỉ mail hong có hợp lệ mom oi",
+    "error_email_exists": "Địa chỉ mail này đăng kí rồi",
+    "error_wrong_password": "Mật khẩu hong đúng. Nhớ lại đi",
+    "error_generic": "Lỗi hong xác định",
+    "LI": "Đăng nhập",
+    "logged_in_as": "Pà là ",
+    "U": "Người dùng"
   },
   "en": {
-    "subheader": "🍜 This is Home page"
+    "title": "🔥 UIA Account Access 🔥",
+    "SI": "Sign In",
+    "SU": "Sign Up",
+    "MN": "Menu",
+    "CNA": "Create New Account",
+    "Pass": "Password",
+    "ConP": "Confirm Password",
+    "NotM": "❌ Password do not match. Please try again",
+    "RuleP": "⚠️ Password should be at least 6 characters long",
+    "SucA": "Account created successfully!",
+    "GoSI": "Go to Sign In Menu to login",
+    "error_invalid_email": "Invalid email address.",
+    "error_email_exists": "This email is already registered.",
+    "error_wrong_password": "Incorrect password.",
+    "error_generic": "An unknown error occurred.",
+    "LI": "Sign In",
+    "logged_in_as": "Logged in as",
+    "U": "User"
   }
 }
