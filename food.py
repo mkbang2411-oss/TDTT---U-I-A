@@ -7,6 +7,36 @@ from pages.Map import show_map
 # from pages.Account import show_account
 # from pages.Language import show_language
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
+# Ẩn sidebar hoàn toàn bằng CSS
+st.markdown("""
+    <style>
+    /* Ẩn toàn bộ sidebar và vùng chứa của nó */
+    [data-testid="stSidebar"], 
+    [data-testid="stSidebarNav"], 
+    section[data-testid="stSidebar"] > div:first-child {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    /* Ẩn luôn nút thu gọn/mở rộng sidebar */
+    [data-testid="collapsedControl"] {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    /* Mở rộng phần nội dung chính ra toàn màn hình */
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        margin: 0 auto !important;
+        max-width: 100% !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- HÀM ĐỌC ẢNH ---
 def img_to_base64(image_path):
@@ -69,13 +99,14 @@ st.markdown(f"""
 
 .nav-link {{
     font-family: 'Cinzel', serif;
-    font-size: 1.1em;
+    font-size: 1.3em;
     color: #BC2A15 !important ;
     margin: 0 40px;
     font-weight: bold;
     cursor: pointer;
     transition: color 0.3s ease;
     letter-spacing: 2px;
+    text-decoration: none !important;
 }}
 
 .nav-link:hover {{
@@ -99,7 +130,7 @@ st.markdown(f"""
 # --- THANH NAV HTML ---
 current_page = st.session_state.page
 
-nav_items = ["Home", "Map", "Favorite", "Best Food", "Account", "Language"]
+nav_items = ["Home", "Map","Account", "Language"]
 nav_html = '<div class="nav-bar">'
 for item in nav_items:
     active_class = "active" if current_page == item else ""
