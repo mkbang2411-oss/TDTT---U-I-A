@@ -1,88 +1,131 @@
+# map_view.py
 import streamlit as st
 from streamlit_folium import st_folium
 from streamlit_geolocation import streamlit_geolocation
 import folium
 import pandas as pd
-import unicodedata
+import os
 
-def remove_accents(text):
-    """Bỏ dấu tiếng Việt để tìm kiếm không dấu."""
-    if not isinstance(text, str):
-        return ""
-    text = unicodedata.normalize("NFD", text)
-    return "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+# Nếu bạn có file crawl_places.py
+try:
+    from crawl_places import get_places, save_places_to_csv
+except Exception:
+    def get_places(query, lat, lon):
+        st.warning("Không thể gọi get_places(): chưa import được crawl_places.py")
+        return []
+    def save_places_to_csv(places):
+        return pd.DataFrame()
 
-def show_map():
-    st.subheader("🗺️ Bản đồ định vị & tìm kiếm quán ăn (offline từ Data.csv)")
+# --- Cấu hình ---
+CSV_FILE = "Data.csv"
+DEFAULT_CENTER = (10.762622, 106.660172)
 
-    # 🛰️ Lấy vị trí hiện tại
-    st.info("📍 Cho phép trình duyệt truy cập vị trí để định vị chính xác.")
+st.set_page_config(page_title="Bản đồ quán ăn", layout="wide")
+st.title("🗺️ Bản đồ quán ăn — Xem & Thu thập dữ liệu")
+
+# --- Sidebar ---
+with st.sidebar:
+    st.header("🔎 Tìm quán")
+    query = st.text_input("Nhập từ khóa (ví dụ: phở, trà sữa...)", "quán cà phê")
+    st.write("📡 Lấy vị trí (HTML5 Geolocation)")
     location = streamlit_geolocation()
 
-    if location and location["latitude"] and location["longitude"]:
+    if location and location.get("latitude") and location.get("longitude"):
         lat = location["latitude"]
         lon = location["longitude"]
-        st.success(f"✅ Vị trí hiện tại: {lat:.6f}, {lon:.6f}")
+        st.success(f"Vị trí hiện tại: {lat:.6f}, {lon:.6f}")
     else:
-        st.warning("⚠️ Không lấy được vị trí, mặc định TP.HCM.")
-        lat, lon = 10.762622, 106.660172
+        st.warning("Không lấy được GPS — dùng vị trí mặc định (TP.HCM).")
+        lat, lon = DEFAULT_CENTER
 
-    # 📂 Đọc dữ liệu từ file CSV
+    if st.button("🔎 Tìm quanh đây và lưu vào Data.csv"):
+        with st.spinner(f"Đang tìm '{query}' quanh {lat:.6f}, {lon:.6f} ..."):
+            places = get_places(query, lat, lon)
+            new_df = save_places_to_csv(places)
+        if isinstance(new_df, pd.DataFrame) and not new_df.empty:
+            st.success(f"Đã lưu {len(new_df)} quán mới vào {CSV_FILE}")
+        else:
+            st.info("Không có dữ liệu mới hoặc chưa import được crawl_places.py.")
+
+# --- Đọc dữ liệu ---
+if os.path.exists(CSV_FILE):
     try:
-        df = pd.read_csv("Data.csv")
-        st.success(f"✅ Đã tải {len(df)} địa điểm từ Data.csv")
+        df = pd.read_csv(CSV_FILE)
     except Exception as e:
-        st.error(f"🚨 Lỗi đọc file Data.csv: {e}")
-        return
+        st.error(f"Lỗi đọc {CSV_FILE}: {e}")
+        df = pd.DataFrame(columns=["ten_quan", "dia_chi", "so_dien_thoai", "rating", "gio_mo_cua", "lat", "lon"])
+else:
+    df = pd.DataFrame(columns=["ten_quan", "dia_chi", "so_dien_thoai", "rating", "gio_mo_cua", "lat", "lon"])
 
-    # 🔍 Tìm kiếm địa điểm
-    st.divider()
-    st.markdown("### 🔍 Tìm kiếm hoặc lọc địa điểm")
-    categories = ["Tất cả"] + sorted(df["category"].dropna().unique().tolist())
-    selected_cat = st.selectbox("Chọn loại quán:", categories)
-    query = st.text_input("Nhập tên hoặc địa chỉ:")
+# --- Tạo bản đồ ---
+map_center = [lat, lon]
+m = folium.Map(location=map_center, zoom_start=15, tiles="OpenStreetMap", control_scale=True)
 
-    # 🔧 Lọc dữ liệu (bỏ dấu, không phân biệt hoa thường)
-    filtered_df = df.copy()
-    if selected_cat != "Tất cả":
-        filtered_df = filtered_df[filtered_df["category"] == selected_cat]
+# Marker vị trí người dùng
+folium.Marker(
+    location=map_center,
+    popup="📍 Bạn đang ở đây",
+    tooltip="Bạn đang ở đây",
+    icon=folium.Icon(color="blue", icon="user", prefix="fa")
+).add_to(m)
 
-    if query:
-        q = remove_accents(query.lower().strip())
-        mask = filtered_df.apply(
-            lambda row: (
-                q in remove_accents(str(row["name"]).lower())
-                or q in remove_accents(str(row["address"]).lower())
-                or q in remove_accents(str(row["category"]).lower())
-            ),
-            axis=1
-        )
-        filtered_df = filtered_df[mask]
+# Thêm markers cho từng quán
+for _, row in df.iterrows():
+    try:
+        rlat, rlon = float(row["lat"]), float(row["lon"])
+    except Exception:
+        continue
 
-    st.write(f"📍 Có {len(filtered_df)} địa điểm được hiển thị.")
+    popup_html = f"""
+    <div>
+        <b>{row.get('ten_quan', '')}</b><br>
+        {row.get('dia_chi', '')}<br>
+        ⭐ {row.get('rating', '')}
+    </div>
+    """
 
-    # 🗺️ Hiển thị bản đồ Folium
-    m = folium.Map(location=[lat, lon], zoom_start=14)
-
-    # 📌 Marker vị trí người dùng
+    # Dùng popup để lưu ID của quán (truy xuất lại sau)
     folium.Marker(
-        [lat, lon],
-        popup="📍 Vị trí của bạn",
-        icon=folium.Icon(color="blue", icon="user")
+        [rlat, rlon],
+        popup=popup_html,
+        tooltip=row.get("ten_quan", ""),
+        icon=folium.Icon(color="red", icon="cutlery", prefix="fa")
     ).add_to(m)
 
-    # 📌 Marker quán ăn từ Data.csv
-    for _, row in filtered_df.iterrows():
-        folium.Marker(
-            [row["latitude"], row["longitude"]],
-            popup=f"<b>{row['name']}</b><br>{row['address']}<br><i>{row['category']}</i>",
-            tooltip=row["name"],
-            icon=folium.Icon(color="red", icon="cutlery")
-        ).add_to(m)
+# --- Chia layout ---
+col1, col2 = st.columns([1.2, 2.8])
 
-    st_folium(m, width=700, height=500)
+with col2:
+    map_data = st_folium(m, width=1100, height=750)
 
+with col1:
+    st.subheader("📋 Thông tin quán ăn")
+    selected_row = None
 
-# ✅ Chạy khi mở file
-if __name__ == "__main__":
-    show_map()
+    # Nếu người dùng bấm vào marker
+    if map_data and map_data.get("last_object_clicked"):
+        click = map_data["last_object_clicked"]
+        click_lat, click_lon = click["lat"], click["lng"]
+
+        # Tìm quán gần nhất so với tọa độ click
+        df["distance"] = ((df["lat"] - click_lat)**2 + (df["lon"] - click_lon)**2)
+        selected_row = df.loc[df["distance"].idxmin()]
+    else:
+        st.info("👉 Bấm vào một quán trên bản đồ để xem chi tiết.")
+
+    if selected_row is not None:
+        st.image("https://upload.wikimedia.org/wikipedia/commons/6/6b/Food_placeholder.png", use_container_width=True)
+        st.markdown(f"**🏠 Địa chỉ:** {selected_row.get('dia_chi', 'Không rõ')}")
+        st.markdown(f"**📞 SĐT:** {selected_row.get('so_dien_thoai', 'Không có')}")
+        st.markdown(f"**⭐ Đánh giá:** {selected_row.get('rating', 'Chưa có')}")
+        st.markdown(f"**⏰ Giờ mở cửa:** {selected_row.get('gio_mo_cua', 'Không rõ')}")
+
+# --- Dưới cùng: bảng dữ liệu ---
+with st.expander("📑 Danh sách quán trong Data.csv"):
+    st.write(f"Tổng số quán: {len(df)}")
+    if not df.empty:
+        st.dataframe(
+            df[["ten_quan", "dia_chi", "so_dien_thoai", "rating", "gio_mo_cua"]].fillna(""),
+            width="stretch",
+            hide_index=True
+        )
