@@ -161,6 +161,7 @@ firebase_config = {
 firebase = pyrebase.initialize_app(firebase_config)
 auth = firebase.auth()
 
+
 #---------SIGN IN/ SIGN UP------
 # --- TITLE ---
 st.markdown(
@@ -251,7 +252,13 @@ with form_container:
                 else:
                     try:
                         user = auth.create_user_with_email_and_password(email, password)
+                        auth.send_email_verification(user['idToken'])
                         st.success(t("SucA"))
+                        st.info("✅ Đã gửi email xác minh, vui lòng kiểm tra hộp thư của bạn!")
+                        # 🔁 Nút gửi lại email xác minh
+                        if st.button("🔁 Gửi lại email xác minh"):
+                            auth.send_email_verification(user['idToken'])
+                            st.success("📧 Email xác minh đã được gửi lại thành công!")
                         st.session_state[t("U")] = email 
                         st.switch_page("web.py")
                         st.info(t("GoSI"))
