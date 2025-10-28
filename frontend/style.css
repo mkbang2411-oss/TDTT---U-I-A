@@ -1,0 +1,135 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+#map {
+  height: 100vh;
+  width: 100%;
+}
+
+/* ===========================
+   📍 NÚT ĐỊNH VỊ GPS
+=========================== */
+#locate-btn {
+  position: absolute;
+  bottom: 5px;
+  right: -30px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  z-index: 1000;
+  transition: all 0.2s ease;
+}
+
+#locate-btn:hover {
+  transform: scale(1.1);
+  background: #f0f8ff;
+}
+
+/* ===========================
+   🎨 THANH TÌM KIẾM 
+=========================== */
+
+#controls {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+  align-items: center;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 16px;
+  color: #888;
+  pointer-events: none;
+}
+
+#query {
+  padding: 8px 10px 8px 30px; /* chừa chỗ cho icon */
+  width: 260px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+#query:focus {
+  border-color: #0078ff;
+  box-shadow: 0 0 3px rgba(0, 120, 255, 0.6);
+}
+
+#btnSearch {
+  padding: 8px 14px;
+  border: none;
+  background: #0078ff;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+#btnSearch:hover {
+  background: #005fd1;
+  transform: translateY(-1px);
+}
+
+/* ===========================
+   💡 GỢI Ý (AUTOCOMPLETE)
+=========================== */
+.suggestions {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  display: none;
+  z-index: 2000;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.suggestions.show {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.suggestions div {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.suggestions div:hover {
+  background-color: #f0f0f0;
+}
