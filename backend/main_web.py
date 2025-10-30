@@ -1,8 +1,14 @@
 from flask import Flask, jsonify, request, send_from_directory
+from chatbot_component_v2 import get_chatbot_html
 import pandas as pd
 import os, json
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/")
+
+# ============================
+# 🔑 GEMINI API KEY
+# ============================
+GEMINI_API_KEY = "AIzaSyApgc9Zzduf1d7LdXUvsZriymK4RvBHOjc"
 
 # ============================
 # 📁 FILE PATH
@@ -71,7 +77,7 @@ def get_reviews(place_id):
 
 
 # ============================
-# ✍️ API: THÊM REVIEW NGƯỜI DÙNG
+# ✏️ API: THÊM REVIEW NGƯỜI DÙNG
 # ============================
 @app.route("/api/reviews/<place_id>", methods=["POST"])
 def add_review(place_id):
@@ -98,7 +104,18 @@ def add_review(place_id):
 # ============================
 @app.route("/")
 def serve_index():
-    return send_from_directory("../frontend", "index.html")
+    """Serve trang chính với chatbot tích hợp"""
+    # Đọc file HTML gốc
+    with open("../frontend/index.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    
+    # Lấy chatbot HTML
+    chatbot_html = get_chatbot_html(GEMINI_API_KEY)
+    
+    # Inject chatbot vào trước thẻ </body>
+    html_content = html_content.replace("</body>", f"{chatbot_html}</body>")
+    
+    return html_content
 
 @app.route("/<path:path>")
 def serve_static_files(path):
@@ -108,6 +125,7 @@ def serve_static_files(path):
 # 🚀 CHẠY SERVER
 # ============================
 if __name__ == "__main__":
-    print(f"📁 Đang chạy Flask tại: {os.path.abspath(BASE_DIR)}")
+    print(f"📂 Đang chạy Flask tại: {os.path.abspath(BASE_DIR)}")
     print(f"📄 File reviews.json: {os.path.exists(REVIEWS_FILE)}")
+    print(f"🤖 Chatbot đã được tích hợp!")
     app.run(debug=True)
