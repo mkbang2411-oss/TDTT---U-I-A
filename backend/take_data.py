@@ -4,7 +4,7 @@ import os
 import time
 
 # ⚙️ Cấu hình
-SERP_API_KEY = "94605f0ff0080702a523fc8065a1e348af088289a63febf6aa93b5cc9f375d75"  # Nhớ điền key thật của bạn
+SERP_API_KEY = ""  # Nhớ điền key thật của bạn
 CSV_FILE = "Data.csv"
 
 
