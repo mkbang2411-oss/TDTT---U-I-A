@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, send_from_directory, Response
+from chatbot_component_v2 import render_food_chatbot
 import pandas as pd
 import os
 import json
@@ -41,3 +42,7 @@ def serve_index():
 
 if __name__ == "__main__":
     app.run(debug=True)
+    
+#---CHATBOT-----Start--------------------------------------------------------
+GEMINI_API_KEY = "AIzaSyApgc9Zzduf1d7LdXUvsZriymK4RvBHOjc"
+render_food_chatbot(gemini_api_key=GEMINI_API_KEY)
