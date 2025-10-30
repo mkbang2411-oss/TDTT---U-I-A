@@ -67,7 +67,7 @@ const icons = {
 };
 
 // =========================
-// 🧠 XÁC ĐỊNH LOẠI QUÁN (đồng bộ với icons)
+// 🧠 XÁC ĐỊNH LOẠI QUÁN
 // =========================
 function detectCategory(name = "") {
   name = name.toLowerCase();
@@ -149,15 +149,12 @@ function renderReviews(googleReviews, userReviews) {
             </div>
           </div>
           <div class="review-text">${r.comment || ""}</div>
-        </div>`
-              )
+        </div>`)
               .join("")
       }
     </div>
   `;
 }
-
-
 
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
@@ -219,15 +216,11 @@ function displayPlaces(places) {
     p.thuc_don
       ? p.thuc_don
           .split(/[;,]+/)
-          .map(
-            (img) =>
-              `<img src="${img.trim()}" class="menu-img" alt="Thực đơn">`
-          )
+          .map((img) => `<img src="${img.trim()}" class="menu-img" alt="Thực đơn">`)
           .join("")
       : "<p>Không có hình thực đơn.</p>"
   }
 `;
-
 
       const danhgiaHTML = `
   <div class="review-section">
@@ -251,7 +244,6 @@ function displayPlaces(places) {
   </div>
 `;
 
-
       const contentHTML = `
         <div class="tab-bar">
           <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
@@ -267,55 +259,50 @@ function displayPlaces(places) {
       sidebarContent.innerHTML = contentHTML;
       sidebar.classList.add("show");
 
-      // 🎯 Xử lý chuyển tab
+      // 🎯 Chuyển tab
       const tabs = sidebarContent.querySelectorAll(".tab-btn");
       const tabContents = sidebarContent.querySelectorAll(".tab-content");
-
       tabs.forEach((btn) => {
         btn.addEventListener("click", () => {
           tabs.forEach((b) => b.classList.remove("active"));
           tabContents.forEach((c) => c.classList.remove("active"));
           btn.classList.add("active");
-          document
-            .getElementById(`tab-${btn.dataset.tab}`)
-            .classList.add("active");
+          document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
         });
       });
 
-      // 🎯 Xử lý gửi đánh giá
-      // ⭐ Xử lý chọn sao + gửi đánh giá
-let selectedRating = 0;
+      // ⭐ Gửi đánh giá
+      let selectedRating = 0;
+      document.querySelectorAll("#starRating .star").forEach((star) => {
+        star.addEventListener("click", () => {
+          selectedRating = parseInt(star.dataset.value);
+          document.querySelectorAll("#starRating .star").forEach((s, i) => {
+            s.classList.toggle("active", i < selectedRating);
+          });
+        });
+      });
 
-document.querySelectorAll("#starRating .star").forEach((star) => {
-  star.addEventListener("click", () => {
-    selectedRating = parseInt(star.dataset.value);
-    document.querySelectorAll("#starRating .star").forEach((s, i) => {
-      s.classList.toggle("active", i < selectedRating);
-    });
-  });
-});
+      document.getElementById("submitReview").addEventListener("click", async () => {
+        const review = {
+          ten: document.getElementById("reviewName").value.trim(),
+          rating: selectedRating,
+          comment: document.getElementById("reviewComment").value.trim(),
+        };
 
-document.getElementById("submitReview").addEventListener("click", async () => {
-  const review = {
-    ten: document.getElementById("reviewName").value.trim(),
-    rating: selectedRating,
-    comment: document.getElementById("reviewComment").value.trim(),
-  };
+        if (!review.ten || !review.comment || review.rating === 0) {
+          alert("Vui lòng nhập tên, nội dung và chọn số sao!");
+          return;
+        }
 
-  if (!review.ten || !review.comment || review.rating === 0) {
-    alert("Vui lòng nhập tên, nội dung và chọn số sao!");
-    return;
-  }
+        await fetch(`/api/reviews/${place_id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(review),
+        });
 
-  await fetch(`/api/reviews/${place_id}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(review),
-  });
-
-  alert("✅ Cảm ơn bạn đã gửi đánh giá!");
-  marker.fire("click");
-});
+        alert("✅ Cảm ơn bạn đã gửi đánh giá!");
+        marker.fire("click");
+      });
     });
 
     markers.push(marker);
@@ -325,11 +312,8 @@ document.getElementById("submitReview").addEventListener("click", async () => {
   map.fitBounds(group.getBounds().pad(0.2));
 }
 
-
-
-
 // =========================
-// 📡 GỌI API LẤY DỮ LIỆU CSV
+// 📡 LẤY DỮ LIỆU CSV
 // =========================
 async function fetchPlaces(query = "") {
   try {
@@ -337,11 +321,7 @@ async function fetchPlaces(query = "") {
     const data = await res.json();
 
     const filtered = query
-      ? data.filter(
-          (p) =>
-            p.ten_quan &&
-            p.ten_quan.toLowerCase().includes(query.toLowerCase())
-        )
+      ? data.filter((p) => p.ten_quan && p.ten_quan.toLowerCase().includes(query.toLowerCase()))
       : data;
 
     displayPlaces(filtered);
@@ -362,85 +342,71 @@ document.getElementById("btnSearch").addEventListener("click", () => {
 fetchPlaces();
 
 // =========================
-// 📍 GPS NGƯỜI DÙNG
+// 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
 // =========================
-const locateBtn = document.getElementById("locate-btn");
-let userMarker = null;
-let accuracyCircle = null;
+const input = document.getElementById("query");
+const suggestionsEl = document.getElementById("suggestions");
+let allPlacesCache = [];
 
-locateBtn.addEventListener("click", () => {
-  if (!navigator.geolocation) {
-    alert("Trình duyệt của bạn không hỗ trợ định vị GPS!");
+// Tải toàn bộ danh sách quán (1 lần)
+(async () => {
+  try {
+    const res = await fetch("/api/places");
+    allPlacesCache = await res.json();
+  } catch (err) {
+    console.error("❌ Lỗi tải dữ liệu gợi ý:", err);
+  }
+})();
+
+input.addEventListener("input", () => {
+  const text = input.value.trim().toLowerCase();
+  suggestionsEl.innerHTML = ""; // clear
+
+  if (text.length === 0) {
+    suggestionsEl.classList.remove("show");
     return;
   }
 
-  locateBtn.innerHTML = "⏳";
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const accuracy = pos.coords.accuracy;
+  // lọc, giới hạn 8 kết quả
+  const filtered = allPlacesCache
+    .filter((p) => p.ten_quan && p.ten_quan.toLowerCase().includes(text))
+    .slice(0, 8);
 
-      if (userMarker) map.removeLayer(userMarker);
-      if (accuracyCircle) map.removeLayer(accuracyCircle);
+  if (filtered.length === 0) {
+    suggestionsEl.classList.remove("show");
+    return;
+  }
 
-      userMarker = L.marker([lat, lon], {
-        icon: L.divIcon({
-          className: "user-marker",
-          html: '<div style="width:14px;height:14px;background:#0078ff;border-radius:50%;border:3px solid white;"></div>',
-        }),
-      }).addTo(map);
+  // tạo các div gợi ý (tương thích với CSS .suggestions)
+  filtered.forEach((p) => {
+    const div = document.createElement("div");
+    const cat = detectCategory(p.ten_quan);
+    const iconUrl = icons[cat] ? icons[cat].options.iconUrl : icons.default.options.iconUrl;
 
-      accuracyCircle = L.circle([lat, lon], {
-        radius: accuracy,
-        color: "#0078ff",
-        fillColor: "#0078ff",
-        fillOpacity: 0.1,
-      }).addTo(map);
+    // highlight từ khóa trong tên (ví dụ: "phở" -> <b>phở</b>)
+    const name = p.ten_quan;
+    const idx = name.toLowerCase().indexOf(text);
+    let displayName = name;
+    if (idx >= 0) {
+      displayName = `${name.slice(0, idx)}<strong>${name.slice(idx, idx + text.length)}</strong>${name.slice(idx + text.length)}`;
+    }
 
-      map.setView([lat, lon], 16, { animate: true });
-      locateBtn.innerHTML = "📍";
-    },
-    (err) => {
-      console.error("Lỗi GPS:", err);
-      alert("Không thể lấy vị trí hiện tại!");
-      locateBtn.innerHTML = "📍";
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
-});
-
-// =========================
-// 🔒 ĐÓNG SIDEBAR
-// =========================
-document
-  .getElementById("closeSidebar")
-  .addEventListener("click", () => {
-    document.getElementById("sidebar").classList.remove("show");
+    div.innerHTML = `<img src="${iconUrl}" style="width:20px;height:20px;margin-right:8px;object-fit:contain;"> <div style="flex:1">${displayName}</div>`;
+    div.addEventListener("click", () => {
+      input.value = p.ten_quan;
+      suggestionsEl.classList.remove("show");
+      fetchPlaces(p.ten_quan);
+    });
+    suggestionsEl.appendChild(div);
   });
 
-// =====================
-// 📸 Zoom ảnh thực đơn
-// =====================
-document.addEventListener("click", function (e) {
-  if (e.target.classList.contains("menu-img")) {
-    const imgSrc = e.target.getAttribute("src");
+  suggestionsEl.classList.add("show");
+});
 
-    // Tạo overlay
-    const overlay = document.createElement("div");
-    overlay.classList.add("img-overlay");
-
-    // Tạo ảnh phóng to
-    const zoomedImg = document.createElement("img");
-    zoomedImg.src = imgSrc;
-    zoomedImg.classList.add("zoomed-img");
-
-    // Đóng khi click ra ngoài ảnh
-    overlay.addEventListener("click", () => {
-      overlay.remove();
-    });
-
-    overlay.appendChild(zoomedImg);
-    document.body.appendChild(overlay);
+// ẩn gợi ý khi click ra ngoài hộp tìm kiếm
+document.addEventListener("click", (e) => {
+  const searchBox = document.querySelector(".search-box");
+  if (!searchBox.contains(e.target)) {
+    suggestionsEl.classList.remove("show");
   }
 });
