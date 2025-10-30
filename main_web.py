@@ -3,6 +3,7 @@ from chatbot_component_v2 import render_food_chatbot
 import pandas as pd
 import os
 import json
+import streamlit.components.v1 as components
 
 app = Flask(__name__)
 CSV_FILE = "Data.csv"
