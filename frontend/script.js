@@ -247,17 +247,21 @@ function displayPlaces(places) {
 `;
 
       const contentHTML = `
-        <div class="tab-bar">
-          <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
-          <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
-          <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
-        </div>
+  <div class="sidebar-header">
+    <h2>Thông tin chi tiết</h2>
+    <button id="closeSidebar" class="close-btn">×</button>
+  </div>
 
-        <div id="tab-tongquan" class="tab-content active">${tongquanHTML}</div>
-        <div id="tab-thucdon" class="tab-content">${thucdonHTML}</div>
-        <div id="tab-danhgia" class="tab-content">${danhgiaHTML}</div>
-      `;
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
+    <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
+    <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
+  </div>
 
+  <div id="tab-tongquan" class="tab-content active">${tongquanHTML}</div>
+  <div id="tab-thucdon" class="tab-content">${thucdonHTML}</div>
+  <div id="tab-danhgia" class="tab-content">${danhgiaHTML}</div>
+`;
       sidebarContent.innerHTML = contentHTML;
       sidebar.classList.add("show");
       // NÚT ĐÓNG SIDEBAR
@@ -349,6 +353,19 @@ function displayPlaces(places) {
         );
 
       });
+sidebar.classList.add("show");
+
+// Gắn sự kiện sau khi phần tử đã render vào DOM
+setTimeout(() => {
+  const closeBtn = document.getElementById("closeSidebar");
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      sidebar.classList.remove("show");
+    };
+  }
+}, 0);
+
+
 
       // 🎯 Chuyển tab
       const tabs = sidebarContent.querySelectorAll(".tab-btn");
@@ -499,5 +516,11 @@ document.addEventListener("click", (e) => {
   const searchBox = document.querySelector(".search-box");
   if (!searchBox.contains(e.target)) {
     suggestionsEl.classList.remove("show");
+  }
+});
+// ✅ Xử lý đóng sidebar (luôn hoạt động, dù sidebarContent bị thay đổi)
+document.addEventListener("click", (e) => {
+  if (e.target && e.target.id === "closeSidebar") {
+    document.getElementById("sidebar").classList.remove("show");
   }
 });
