@@ -258,6 +258,72 @@ function displayPlaces(places) {
 
       sidebarContent.innerHTML = contentHTML;
       sidebar.classList.add("show");
+      // =========================
+      // 🚗 NÚT TÌM ĐƯỜNG ĐI
+      // =========================
+      const tongquanTab = sidebarContent.querySelector("#tab-tongquan");
+      const routeBtn = document.createElement("button");
+      routeBtn.textContent = "📍 Tìm đường đi";
+      routeBtn.className = "route-btn";
+      tongquanTab.appendChild(routeBtn);
+
+      let routeControl = null;
+
+      routeBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          alert("Trình duyệt không hỗ trợ định vị!");
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const userLat = pos.coords.latitude;
+            const userLon = pos.coords.longitude;
+
+            // Nếu đã có route cũ thì xóa trước
+            if (routeControl) {
+              map.removeControl(routeControl);
+            }
+
+            // Tạo route mới
+            routeControl = L.Routing.control({
+              waypoints: [
+                L.latLng(userLat, userLon),
+                L.latLng(lat, lon)
+              ],
+              lineOptions: {
+                styles: [{ color: "blue", weight: 5, opacity: 0.7 }]
+              },
+              show: false,
+              addWaypoints: false,
+              routeWhileDragging: false,
+              createMarker: (i, wp) => {
+                return L.marker(wp.latLng, {
+                  icon: i === 0
+                    ? L.icon({
+                        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24]
+                      })
+                    : L.icon({
+                        iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24]
+                      })
+                });
+              }
+            }).addTo(map);
+
+            // Zoom ra để thấy toàn tuyến
+            routeControl.on("routesfound", (e) => {
+              const route = e.routes[0];
+              const bounds = L.latLngBounds(route.coordinates);
+              map.fitBounds(bounds, { padding: [50, 50] });
+            });
+          },
+          () => alert("Không thể lấy vị trí hiện tại!")
+        );
+      });
 
       // 🎯 Chuyển tab
       const tabs = sidebarContent.querySelectorAll(".tab-btn");
