@@ -9,6 +9,8 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 let markers = [];
+let currentRouteLine = null;
+let routeControl = null;
 
 // =========================
 // 🍴 ICON TƯƠNG ỨNG LOẠI QUÁN
@@ -258,6 +260,18 @@ function displayPlaces(places) {
 
       sidebarContent.innerHTML = contentHTML;
       sidebar.classList.add("show");
+      // NÚT ĐÓNG SIDEBAR
+      const closeBtn = document.getElementById("closeSidebar");
+      closeBtn.addEventListener("click", () => {
+          sidebar.classList.remove("show");
+
+          // Nếu đang có route hiển thị, xóa luôn
+          if (routeControl) {
+              map.removeControl(routeControl);
+              routeControl = null;
+          }
+      });
+
       // =========================
       // 🚗 NÚT TÌM ĐƯỜNG ĐI
       // =========================
@@ -266,9 +280,7 @@ function displayPlaces(places) {
       routeBtn.textContent = "📍 Tìm đường đi";
       routeBtn.className = "route-btn";
       tongquanTab.appendChild(routeBtn);
-
-      let routeControl = null;
-
+      
       routeBtn.addEventListener("click", () => {
         if (!navigator.geolocation) {
           alert("Trình duyệt không hỗ trợ định vị!");
@@ -280,9 +292,10 @@ function displayPlaces(places) {
             const userLat = pos.coords.latitude;
             const userLon = pos.coords.longitude;
 
-            // Nếu đã có route cũ thì xóa trước
+            // 🔹 Xóa routeControl cũ nếu có
             if (routeControl) {
               map.removeControl(routeControl);
+              routeControl = null;
             }
 
             // Tạo route mới
@@ -314,15 +327,27 @@ function displayPlaces(places) {
               }
             }).addTo(map);
 
-            // Zoom ra để thấy toàn tuyến
+            // Khi tuyến được tìm thấy, hiển thị info và zoom
             routeControl.on("routesfound", (e) => {
               const route = e.routes[0];
               const bounds = L.latLngBounds(route.coordinates);
               map.fitBounds(bounds, { padding: [50, 50] });
+
+              const distanceKm = (route.summary.totalDistance / 1000).toFixed(1); // km
+              const durationMin = Math.ceil(route.summary.totalTime / 60); // phút
+
+              let infoEl = tongquanTab.querySelector(".route-info");
+              if (!infoEl) {
+                infoEl = document.createElement("p");
+                infoEl.className = "route-info";
+                tongquanTab.appendChild(infoEl);
+              }
+              infoEl.innerHTML = `🛣️ Quãng đường: ${distanceKm} km<br>⏱️ Thời gian: ${durationMin} phút`;
             });
           },
           () => alert("Không thể lấy vị trí hiện tại!")
         );
+
       });
 
       // 🎯 Chuyển tab
