@@ -1,12 +1,12 @@
-from flask import Flask, jsonify, request, send_from_directory, Response
-from chatbot_component_v2 import render_food_chatbot
+from flask import Flask, jsonify, request, send_from_directory
+from chatbot_component_v2 import get_chatbot_html
 import pandas as pd
 import os
 import json
-import streamlit.components.v1 as components
 
 app = Flask(__name__)
 CSV_FILE = "Data.csv"
+GEMINI_API_KEY = "AIzaSyApgc9Zzduf1d7LdXUvsZriymK4RvBHOjc"
 
 
 @app.route("/api/places", methods=["GET"])
@@ -16,34 +16,38 @@ def get_places_data():
         return jsonify([])
 
     df = pd.read_csv(CSV_FILE)
-
-    # 🔧 Chuyển NaN -> None
     df = df.where(pd.notnull(df), None)
 
-    # ⚙️ Lọc theo từ khóa nếu có
     query = request.args.get("query", "").lower()
     if query:
         df = df[df["ten_quan"].str.lower().str.contains(query, na=False) |
                 df["dia_chi"].str.lower().str.contains(query, na=False)]
 
-    # 🚀 Xuất ra JSON đúng chuẩn (không có NaN)
     json_str = df.to_json(orient="records", force_ascii=False)
     data = json.loads(json_str)
     return jsonify(data)
 
 
-# --- Giao diện web ---
+@app.route("/")
+def serve_index():
+    """Serve trang chính với chatbot tích hợp"""
+    # Đọc file HTML gốc
+    with open("frontend/index.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    
+    # Lấy chatbot HTML
+    chatbot_html = get_chatbot_html(GEMINI_API_KEY)
+    
+    # Inject chatbot vào trước thẻ </body>
+    html_content = html_content.replace("</body>", f"{chatbot_html}</body>")
+    
+    return html_content
+
+
 @app.route("/<path:path>")
 def serve_frontend(path):
     return send_from_directory("frontend", path)
 
-@app.route("/")
-def serve_index():
-    return send_from_directory("frontend", "index.html")
 
 if __name__ == "__main__":
-    app.run(debug=True)
-    
-#---CHATBOT-----Start--------------------------------------------------------
-GEMINI_API_KEY = "AIzaSyApgc9Zzduf1d7LdXUvsZriymK4RvBHOjc"
-render_food_chatbot(gemini_api_key=GEMINI_API_KEY)
+    app.run(debug=True, port=5000)

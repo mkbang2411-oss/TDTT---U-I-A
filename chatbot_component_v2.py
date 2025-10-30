@@ -1,11 +1,14 @@
 import streamlit.components.v1 as components
 
-def render_food_chatbot(gemini_api_key):
+def get_chatbot_html(gemini_api_key):
     """
-    Render chatbot gợi ý món ăn sử dụng Gemini API
+    Trả về HTML string của chatbot để nhúng vào Flask
     
     Args:
         gemini_api_key (str): API key của Gemini AI
+        
+    Returns:
+        str: HTML string hoàn chỉnh của chatbot
     """
     
     chatbot_html = f"""
@@ -561,7 +564,7 @@ def render_food_chatbot(gemini_api_key):
                 "Cà phê, trà sữa hay nước ép hơm ☕",
                 "Mình biết nhiều quán xịn lắm, hỏi mình đi 😚",
                 "Hôm nay ăn healthy hay cheat day đây 😆",
-                "Để mình tìm cho vài quán ngon quanh bạn nè 🍔",
+                "Để mình tìm cho vài quán ngon quanh bạn nè 🔍",
                 "Nói mình nghe vị trí bạn ở đâu nha 📍",
                 "Hello~ Bụng kêu chưa 😋",
                 "Muốn mình gợi ý đồ uống mát mẻ hông nè 😎",
@@ -753,7 +756,6 @@ def render_food_chatbot(gemini_api_key):
                 if (type === 'user') {{
                     conversationHistory.push({{ role: 'user', text: text }});
                 }} else {{
-                    // Lưu text không có HTML tags vào history
                     const plainText = text.replace(/<[^>]*>/g, '');
                     conversationHistory.push({{ role: 'bot', text: plainText }});
                 }}
@@ -781,22 +783,17 @@ def render_food_chatbot(gemini_api_key):
             }}
             
             function cleanMarkdown(text) {{
-                // Xóa markdown
                 text = text
-                    .replace(/\*\*(.*?)\*\*/g, '$1')
-                    .replace(/\*(.*?)\*/g, '$1')
+                    .replace(/\\*\\*(.*?)\\*\\*/g, '$1')
+                    .replace(/\\*(.*?)\\*/g, '$1')
                     .replace(/__(.*?)__/g, '$1')
                     .replace(/_(.*?)_/g, '$1');
                 
-                // Highlight tên món ăn sau số thứ tự (1. Tên Món: hoặc 1. Tên Món Dài:)
-                text = text.replace(/(\d+\.\s+)([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][^:]+):/g, (match, num, dishName) => {{
+                text = text.replace(/(\\d+\\.\\s+)([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][^:]+):/g, (match, num, dishName) => {{
                     return num + `<span class="dish-name">${{dishName.trim()}}</span>:`;
                 }});
                 
-                // Thêm xuống dòng TRƯỚC mỗi số thứ tự (từ số 2 trở đi)
-                text = text.replace(/([.!?])\s+(\d+)\.\s+/g, '$1\\n\\n$2. ');
-                
-                // Trim đầu cuối
+                text = text.replace(/([.!?])\\s+(\\d+)\\.\\s+/g, '$1\\n\\n$2. ');
                 text = text.trim();
                 
                 return text;
@@ -903,6 +900,19 @@ Respond naturally, caringly and helpfully in the SAME LANGUAGE the user used:`;
     </body>
     </html>
     """
+    
+    return chatbot_html
+
+
+def render_food_chatbot(gemini_api_key):
+    """
+    Render chatbot gợi ý món ăn sử dụng Gemini API (Cho Streamlit)
+    
+    Args:
+        gemini_api_key (str): API key của Gemini AI
+    """
+    
+    chatbot_html = get_chatbot_html(gemini_api_key)
     
     # Sử dụng components.html với height phù hợp
     components.html(chatbot_html, height=700, scrolling=False)
