@@ -1,10 +1,13 @@
 from flask import Flask, jsonify, request, send_from_directory
 from chatbot_component_v2 import get_chatbot_html
+from friends_api import friends_bp
 import pandas as pd
 import os
 import json
 
+
 app = Flask(__name__)
+app.register_blueprint(friends_bp)
 CSV_FILE = "Data.csv"
 GEMINI_API_KEY = "AIzaSyApgc9Zzduf1d7LdXUvsZriymK4RvBHOjc"
 
