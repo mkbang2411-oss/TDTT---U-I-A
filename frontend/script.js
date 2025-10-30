@@ -570,3 +570,26 @@ document.getElementById("locate-btn").addEventListener("click", () => {
     }
   );
 });
+
+// =========================
+// 🖼️ CLICK ẢNH -> PHÓNG TO
+// =========================
+document.addEventListener("click", (e) => {
+  if (e.target.tagName === "IMG" && e.target.closest(".tab-content")) {
+    const src = e.target.src;
+    const modal = document.getElementById("imageModal");
+    const modalImg = document.getElementById("modalImg");
+    modalImg.src = src;
+    modal.style.display = "flex";
+  }
+});
+
+document.getElementById("closeModal").addEventListener("click", () => {
+  document.getElementById("imageModal").style.display = "none";
+});
+
+document.getElementById("imageModal").addEventListener("click", (e) => {
+  if (e.target.id === "imageModal") {
+    e.currentTarget.style.display = "none";
+  }
+});
