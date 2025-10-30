@@ -4,7 +4,7 @@ import os
 import time
 
 # ⚙️ Cấu hình
-SERP_API_KEY = ""
+SERP_API_KEY = "94605f0ff0080702a523fc8065a1e348af088289a63febf6aa93b5cc9f375d75"  # Nhớ điền key thật của bạn
 CSV_FILE = "Data.csv"
 
 
@@ -41,10 +41,8 @@ def parse_place_data(places: list):
         if "gps_coordinates" not in p:
             continue
 
-        # 🖼️ Hình ảnh
-        image_url = p.get("thumbnail", "")
-        if not image_url and "images" in p and p["images"]:
-            image_url = p["images"][0].get("image", "")
+        # ❌ Không cần lấy hình ảnh nữa, để trống cột
+        image_url = ""
 
         # 🍜 Thực đơn
         menu_items = ""
@@ -55,6 +53,7 @@ def parse_place_data(places: list):
         price = p.get("price", p.get("price_level", ""))
 
         records.append({
+            "data_id": p.get("data_id", ""),
             "ten_quan": p.get("title", ""),
             "dia_chi": p.get("address", ""),
             "so_dien_thoai": p.get("phone", ""),
@@ -62,7 +61,7 @@ def parse_place_data(places: list):
             "gio_mo_cua": p.get("hours", ""),
             "gia_trung_binh": price,
             "thuc_don": menu_items,
-            "hinh_anh": image_url,
+            "hinh_anh": image_url,  # vẫn giữ cột này nhưng không có dữ liệu
             "lat": p["gps_coordinates"]["latitude"],
             "lon": p["gps_coordinates"]["longitude"]
         })
