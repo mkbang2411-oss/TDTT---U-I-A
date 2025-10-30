@@ -292,44 +292,57 @@ function displayPlaces(places) {
         }
 
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const userLat = pos.coords.latitude;
-            const userLon = pos.coords.longitude;
+  (pos) => {
+    const userLat = pos.coords.latitude;
+    const userLon = pos.coords.longitude;
 
-            // 🔹 Xóa routeControl cũ nếu có
-            if (routeControl) {
-              map.removeControl(routeControl);
-              routeControl = null;
-            }
+    // 🧭 Thêm marker vị trí người dùng
+    L.marker([userLat, userLon], {
+      icon: L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+      }),
+    })
+      .addTo(map)
+      .bindPopup("📍 Vị trí của bạn")
+      .openPopup();
 
-            // Tạo route mới
-            routeControl = L.Routing.control({
-              waypoints: [
-                L.latLng(userLat, userLon),
-                L.latLng(lat, lon)
-              ],
-              lineOptions: {
-                styles: [{ color: "blue", weight: 5, opacity: 0.7 }]
-              },
-              show: false,
-              addWaypoints: false,
-              routeWhileDragging: false,
-              createMarker: (i, wp) => {
-                return L.marker(wp.latLng, {
-                  icon: i === 0
-                    ? L.icon({
-                        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 24]
-                      })
-                    : L.icon({
-                        iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 24]
-                      })
-                });
-              }
-            }).addTo(map);
+    // 🔹 Xóa routeControl cũ nếu có
+    if (routeControl) {
+      map.removeControl(routeControl);
+      routeControl = null;
+    }
+
+    // 🚗 Tạo route mới
+    routeControl = L.Routing.control({
+      waypoints: [
+        L.latLng(userLat, userLon),
+        L.latLng(lat, lon)
+      ],
+      lineOptions: {
+        styles: [{ color: "blue", weight: 5, opacity: 0.7 }]
+      },
+      show: false,
+      addWaypoints: false,
+      routeWhileDragging: false,
+      createMarker: (i, wp) => {
+        return L.marker(wp.latLng, {
+          icon: i === 0
+            ? L.icon({
+                iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+                iconSize: [24, 24],
+                iconAnchor: [12, 24]
+              })
+            : L.icon({
+                iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+                iconSize: [24, 24],
+                iconAnchor: [12, 24]
+              })
+        });
+      }
+    }).addTo(map);
+
 
             // Khi tuyến được tìm thấy, hiển thị info và zoom
             routeControl.on("routesfound", (e) => {
@@ -364,8 +377,6 @@ setTimeout(() => {
     };
   }
 }, 0);
-
-
 
       // 🎯 Chuyển tab
       const tabs = sidebarContent.querySelectorAll(".tab-btn");
@@ -523,4 +534,39 @@ document.addEventListener("click", (e) => {
   if (e.target && e.target.id === "closeSidebar") {
     document.getElementById("sidebar").classList.remove("show");
   }
+});
+
+// =========================
+// 📍 NÚT ĐỊNH VỊ GPS TRÊN GIAO DIỆN CHÍNH
+// =========================
+document.getElementById("locate-btn").addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    alert("Trình duyệt của bạn không hỗ trợ định vị GPS!");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const userLat = pos.coords.latitude;
+      const userLon = pos.coords.longitude;
+
+      // 🔹 Thêm marker vị trí người dùng
+      L.marker([userLat, userLon], {
+        icon: L.icon({
+          iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+        }),
+      })
+        .addTo(map)
+        .bindPopup("📍 Vị trí của bạn")
+        .openPopup();
+
+      // 🔹 Zoom vào vị trí người dùng
+      map.setView([userLat, userLon], 15);
+    },
+    (err) => {
+      alert("Không thể lấy vị trí của bạn: " + err.message);
+    }
+  );
 });
