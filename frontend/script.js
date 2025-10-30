@@ -1,210 +1,368 @@
 // =========================
 // 🗺️ CẤU HÌNH MAP
 // =========================
-const map = L.map('map').setView([10.7769, 106.7009], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+const map = L.map("map").setView([10.7769, 106.7009], 13);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
 }).addTo(map);
 
 let markers = [];
 
 // =========================
-// 🍴 BỘ SƯU TẬP ICON THEO LOẠI QUÁN
+// 🍴 ICON TƯƠNG ỨNG LOẠI QUÁN
 // =========================
 const icons = {
   pho: L.icon({
-    iconUrl: "icons/pho.png", // tô phở
-     iconSize: [26, 26],     
-    iconAnchor: [13, 26],   
-    popupAnchor: [0, -25]   
+    iconUrl: "icons/pho.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
   }),
   cafe: L.icon({
-    iconUrl: "icons/coffee.png", // tách cà phê
-     iconSize: [26, 26],     
-    iconAnchor: [13, 26],   
-    popupAnchor: [0, -25]   
+    iconUrl: "icons/coffee.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
   }),
   tra_sua: L.icon({
-    iconUrl: "icons/tra_sua.png", // ly trà sữa
-     iconSize: [26, 26],     
-    iconAnchor: [13, 26],   
-    popupAnchor: [0, -25]   
+    iconUrl: "icons/tra_sua.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
   }),
   bun: L.icon({
-    iconUrl: "icons/pho.png", // tô bún
-     iconSize: [26, 26],    
-    iconAnchor: [13, 26],   
-    popupAnchor: [0, -25]   
+    iconUrl: "icons/bun.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+  banh_mi: L.icon({
+    iconUrl: "icons/banh_mi.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+  banh_ngot: L.icon({
+    iconUrl: "icons/banh_ngot.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+  my_cay: L.icon({
+    iconUrl: "icons/my_cay.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
   }),
   com: L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/3174/3174880.png", // chén cơm
-     iconSize: [26, 26],    
-    iconAnchor: [13, 26],   
-    popupAnchor: [0, -25]   
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/3174/3174880.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+  banh_kem: L.icon({
+    iconUrl: "icons/banh_kem.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
   }),
   default: L.icon({
-    iconUrl: "icons/default.png", // dao nĩa mặc định
-     iconSize: [26, 26],     
-    iconAnchor: [13, 26],   
-    popupAnchor: [0, -25]   
-  })
+    iconUrl: "icons/default.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
 };
 
 // =========================
-// 🧠 HÀM XÁC ĐỊNH LOẠI QUÁN TỪ TÊN
+// 🧠 XÁC ĐỊNH LOẠI QUÁN (đồng bộ với icons)
 // =========================
 function detectCategory(name = "") {
   name = name.toLowerCase();
-  if (name.includes("phở")) return "pho";
+  if (name.includes("phở") || name.includes("pho")) return "pho";
   if (name.includes("cà phê") || name.includes("coffee")) return "cafe";
-  if (name.includes("trà sữa")) return "tra_sua";
-  if (name.includes("bún") || name.includes("bánh canh") || name.includes("bò huế")) return "bun";
-  if (name.includes("cơm") || name.includes("com")) return "com";
+  if (name.includes("trà sữa") || name.includes("milk tea") || name.includes("bubble tea")) return "tra_sua";
+  if (name.includes("bún") || name.includes("bun bo") || name.includes("bò huế")) return "bun";
+  if (name.includes("bánh mì") || name.includes("banh mi")) return "banh_mi";
+  if (name.includes("bánh ngọt") || name.includes("banh ngot") || name.includes("cake") || name.includes("dessert")) return "banh_ngot";
+  if (name.includes("mì cay") || name.includes("mi cay") || name.includes("spicy noodles") || name.includes("ramen")) return "my_cay";
+  if (name.includes("cơm") || name.includes("com") || name.includes("rice")) return "com";
+  if (name.includes("bánh kem") || name.includes("banh kem") || name.includes("cake") || name.includes("birthday cake")) return "banh_kem";
   return "default";
 }
 
 // =========================
-// 🔍 HÀM HIỂN THỊ MARKER
+// 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS
+// =========================
+function renderReviews(googleReviews, userReviews) {
+  const allReviews = [...googleReviews, ...userReviews];
+  const avgRating =
+    allReviews.length > 0
+      ? (
+          allReviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
+          allReviews.length
+        ).toFixed(1)
+      : "Chưa có";
+
+  const starCount = [5, 4, 3, 2, 1].map(
+    (s) => allReviews.filter((r) => r.rating === s).length
+  );
+
+  const maxCount = Math.max(...starCount, 1);
+
+  return `
+    <div class="review-summary">
+      <div class="review-average">
+        <div class="review-score">${avgRating}</div>
+        <div class="review-stars">${"⭐".repeat(Math.round(avgRating) || 0)}</div>
+        <div class="review-total">${allReviews.length} đánh giá</div>
+      </div>
+
+      <div class="review-bars">
+        ${[5, 4, 3, 2, 1]
+          .map(
+            (s, i) => `
+          <div class="bar-row">
+            <span>${s}⭐</span>
+            <div class="bar">
+              <div class="fill" style="width:${
+                (starCount[i] / maxCount) * 100
+              }%"></div>
+            </div>
+            <span>${starCount[i]}</span>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+    </div>
+
+    <div class="review-list">
+      ${
+        allReviews.length === 0
+          ? "<p>Chưa có đánh giá nào.</p>"
+          : allReviews
+              .map(
+                (r) => `
+        <div class="review-card">
+          <div class="review-header">
+            <img src="${
+              r.avatar ||
+              "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+            }" class="review-avatar">
+            <div>
+              <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
+              <div class="review-stars">${"⭐".repeat(r.rating || 0)}</div>
+              <div class="review-time">${r.date || ""}</div>
+            </div>
+          </div>
+          <div class="review-text">${r.comment || ""}</div>
+        </div>`
+              )
+              .join("")
+      }
+    </div>
+  `;
+}
+
+
+
+// =========================
+// 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
 function displayPlaces(places) {
-  // Xoá marker cũ
-  markers.forEach(m => map.removeLayer(m));
+  markers.forEach((m) => map.removeLayer(m));
   markers = [];
-
-  console.log("📂 Dữ liệu nhận được:", places);
 
   if (!places || places.length === 0) {
     alert("Không tìm thấy quán nào!");
     return;
   }
 
-  // Duyệt qua từng địa điểm
-  places.forEach(p => {
+  places.forEach((p) => {
     const lat = parseFloat(p.lat);
     const lon = parseFloat(p.lon);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    // Xác định icon theo loại quán
     const category = detectCategory(p.ten_quan);
     const icon = icons[category] || icons.default;
-
     const marker = L.marker([lat, lon], { icon }).addTo(map);
 
-    const popupContent = `
-      <div style="min-width:220px; font-family:sans-serif;">
-        <h4 style="margin:0 0 5px 0;">${p.ten_quan || "Không tên"}</h4>
-        ${p.hinh_anh ? `<img src="${p.hinh_anh}" width="200" style="border-radius:8px;margin-bottom:5px">` : ""}
-        <p><b>Địa chỉ:</b> ${p.dia_chi || "Không rõ"}</p>
-        <p><b>Điện thoại:</b> ${p.so_dien_thoai || "Không có"}</p>
-        <p><b>Đánh giá:</b> ⭐ ${p.rating || "Chưa có"}</p>
-        <p><b>Giờ mở cửa:</b> ${p.gio_mo_cua || "Không rõ"}</p>
-        <p><b>Giá trung bình:</b> ${p.gia_trung_binh || "?"}</p>
+    marker.on("click", async () => {
+      map.setView([lat, lon], 17, { animate: true });
+      const sidebar = document.getElementById("sidebar");
+      const sidebarContent = document.getElementById("sidebar-content");
+
+      const place_id = p.data_id || p.ten_quan;
+      let googleReviews = [];
+      let userReviews = [];
+
+      try {
+        const res = await fetch(`/api/reviews/${place_id}`);
+        if (res.ok) {
+          const reviewData = await res.json();
+          googleReviews = reviewData.google || [];
+          userReviews = reviewData.user || [];
+        }
+      } catch (err) {
+        console.error("❌ Lỗi khi tải review:", err);
+      }
+
+      const tongquanHTML = `
+        <h2>${p.ten_quan || "Không tên"}</h2>
+        ${
+          p.hinh_anh
+            ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin-bottom:10px;">`
+            : ""
+        }
+        <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
+        <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
+        <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
+        <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+        <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
+      `;
+
+      const thucdonHTML = `
+  ${
+    p.thuc_don
+      ? p.thuc_don
+          .split(/[;,]+/)
+          .map(
+            (img) =>
+              `<img src="${img.trim()}" class="menu-img" alt="Thực đơn">`
+          )
+          .join("")
+      : "<p>Không có hình thực đơn.</p>"
+  }
+`;
+
+
+      const danhgiaHTML = `
+  <div class="review-section">
+    ${renderReviews(googleReviews, userReviews)}
+
+    <div class="review-form">
+      <h3>📝 Thêm đánh giá của bạn</h3>
+      <input type="text" id="reviewName" placeholder="Tên của bạn" />
+
+      <div class="star-rating" id="starRating">
+        <span class="star" data-value="1">★</span>
+        <span class="star" data-value="2">★</span>
+        <span class="star" data-value="3">★</span>
+        <span class="star" data-value="4">★</span>
+        <span class="star" data-value="5">★</span>
       </div>
-    `;
 
-    marker.bindPopup(popupContent);
+      <textarea id="reviewComment" placeholder="Cảm nhận của bạn..."></textarea>
+      <button id="submitReview">Gửi đánh giá</button>
+    </div>
+  </div>
+`;
 
-// 🧭 Khi click vào marker -> zoom đến marker đó
-    marker.on("click", () => {
-    map.setView([lat, lon], 17, { animate: true }); // zoom level 17, có animation
+
+      const contentHTML = `
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
+          <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
+          <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
+        </div>
+
+        <div id="tab-tongquan" class="tab-content active">${tongquanHTML}</div>
+        <div id="tab-thucdon" class="tab-content">${thucdonHTML}</div>
+        <div id="tab-danhgia" class="tab-content">${danhgiaHTML}</div>
+      `;
+
+      sidebarContent.innerHTML = contentHTML;
+      sidebar.classList.add("show");
+
+      // 🎯 Xử lý chuyển tab
+      const tabs = sidebarContent.querySelectorAll(".tab-btn");
+      const tabContents = sidebarContent.querySelectorAll(".tab-content");
+
+      tabs.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          tabs.forEach((b) => b.classList.remove("active"));
+          tabContents.forEach((c) => c.classList.remove("active"));
+          btn.classList.add("active");
+          document
+            .getElementById(`tab-${btn.dataset.tab}`)
+            .classList.add("active");
+        });
+      });
+
+      // 🎯 Xử lý gửi đánh giá
+      // ⭐ Xử lý chọn sao + gửi đánh giá
+let selectedRating = 0;
+
+document.querySelectorAll("#starRating .star").forEach((star) => {
+  star.addEventListener("click", () => {
+    selectedRating = parseInt(star.dataset.value);
+    document.querySelectorAll("#starRating .star").forEach((s, i) => {
+      s.classList.toggle("active", i < selectedRating);
+    });
+  });
 });
 
-    markers.push(marker);
+document.getElementById("submitReview").addEventListener("click", async () => {
+  const review = {
+    ten: document.getElementById("reviewName").value.trim(),
+    rating: selectedRating,
+    comment: document.getElementById("reviewComment").value.trim(),
+  };
 
+  if (!review.ten || !review.comment || review.rating === 0) {
+    alert("Vui lòng nhập tên, nội dung và chọn số sao!");
+    return;
+  }
+
+  await fetch(`/api/reviews/${place_id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(review),
   });
 
-  // Zoom khung bản đồ vừa đủ chứa tất cả marker
+  alert("✅ Cảm ơn bạn đã gửi đánh giá!");
+  marker.fire("click");
+});
+    });
+
+    markers.push(marker);
+  });
+
   const group = new L.featureGroup(markers);
   map.fitBounds(group.getBounds().pad(0.2));
 }
 
+
+
+
 // =========================
-// 📡 GỌI API LẤY DỮ LIỆU TỪ CSV
+// 📡 GỌI API LẤY DỮ LIỆU CSV
 // =========================
 async function fetchPlaces(query = "") {
   try {
-    const url = "/api/places";
-    const res = await fetch(url);
+    const res = await fetch("/api/places");
     const data = await res.json();
 
     const filtered = query
-      ? data.filter(p => p.ten_quan && p.ten_quan.toLowerCase().includes(query.toLowerCase()))
+      ? data.filter(
+          (p) =>
+            p.ten_quan &&
+            p.ten_quan.toLowerCase().includes(query.toLowerCase())
+        )
       : data;
 
     displayPlaces(filtered);
   } catch (err) {
-    console.error("Lỗi khi tải dữ liệu:", err);
+    console.error("❌ Lỗi khi tải dữ liệu:", err);
     alert("Không thể tải dữ liệu từ server!");
   }
 }
 
 // =========================
-// 🎯 SỰ KIỆN NÚT "TÌM"
+// 🎯 TÌM KIẾM
 // =========================
 document.getElementById("btnSearch").addEventListener("click", () => {
   const query = document.getElementById("query").value.trim();
   fetchPlaces(query);
 });
 
-// ✅ Tự động hiển thị tất cả quán khi mở trang
 fetchPlaces();
 
 // =========================
-// ✨ GỢI Ý TỰ ĐỘNG & ENTER SEARCH
-// =========================
-const queryInput = document.getElementById("query");
-const suggestionsBox = document.getElementById("suggestions");
-let allPlaces = [];
-
-// Lấy toàn bộ dữ liệu để phục vụ autocomplete
-async function preloadPlaces() {
-  try {
-    const res = await fetch("/api/places");
-    allPlaces = await res.json();
-  } catch (err) {
-    console.error("Không thể tải dữ liệu autocomplete:", err);
-  }
-}
-
-// Hiển thị gợi ý theo từ khóa nhập
-queryInput.addEventListener("input", () => {
-  const keyword = queryInput.value.trim().toLowerCase();
-  suggestionsBox.innerHTML = "";
-
-  if (!keyword) {
-    suggestionsBox.classList.remove("show");
-    return;
-  }
-
-  const matched = allPlaces
-    .filter(p => p.ten_quan && p.ten_quan.toLowerCase().includes(keyword))
-    .slice(0, 5);
-
-  if (matched.length === 0) {
-    suggestionsBox.classList.remove("show");
-    return;
-  }
-
-  matched.forEach(p => {
-    const div = document.createElement("div");
-    div.textContent = p.ten_quan;
-    div.addEventListener("click", () => {
-      queryInput.value = p.ten_quan;
-      suggestionsBox.classList.remove("show");
-      fetchPlaces(p.ten_quan);
-    });
-    suggestionsBox.appendChild(div);
-  });
-
-  suggestionsBox.classList.add("show");
-});
-
-// Gọi trước để load dữ liệu autocomplete
-preloadPlaces();
-
-// =========================
-// 📍 ĐỊNH VỊ GPS NGƯỜI DÙNG
+// 📍 GPS NGƯỜI DÙNG
 // =========================
 const locateBtn = document.getElementById("locate-btn");
 let userMarker = null;
@@ -216,27 +374,23 @@ locateBtn.addEventListener("click", () => {
     return;
   }
 
-  locateBtn.innerHTML = "⏳"; // loading icon
+  locateBtn.innerHTML = "⏳";
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const accuracy = pos.coords.accuracy;
 
-      // Xoá marker cũ nếu có
       if (userMarker) map.removeLayer(userMarker);
       if (accuracyCircle) map.removeLayer(accuracyCircle);
 
-      // Tạo marker người dùng
       userMarker = L.marker([lat, lon], {
-        title: "Vị trí của bạn",
         icon: L.divIcon({
           className: "user-marker",
-          html: '<div style="width:14px;height:14px;background:#0078ff;border-radius:50%;border:3px solid white;box-shadow:0 0 4px rgba(0,0,0,0.4);"></div>',
+          html: '<div style="width:14px;height:14px;background:#0078ff;border-radius:50%;border:3px solid white;"></div>',
         }),
       }).addTo(map);
 
-      // Tạo vòng tròn sai số
       accuracyCircle = L.circle([lat, lon], {
         radius: accuracy,
         color: "#0078ff",
@@ -254,4 +408,39 @@ locateBtn.addEventListener("click", () => {
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
+});
+
+// =========================
+// 🔒 ĐÓNG SIDEBAR
+// =========================
+document
+  .getElementById("closeSidebar")
+  .addEventListener("click", () => {
+    document.getElementById("sidebar").classList.remove("show");
+  });
+
+// =====================
+// 📸 Zoom ảnh thực đơn
+// =====================
+document.addEventListener("click", function (e) {
+  if (e.target.classList.contains("menu-img")) {
+    const imgSrc = e.target.getAttribute("src");
+
+    // Tạo overlay
+    const overlay = document.createElement("div");
+    overlay.classList.add("img-overlay");
+
+    // Tạo ảnh phóng to
+    const zoomedImg = document.createElement("img");
+    zoomedImg.src = imgSrc;
+    zoomedImg.classList.add("zoomed-img");
+
+    // Đóng khi click ra ngoài ảnh
+    overlay.addEventListener("click", () => {
+      overlay.remove();
+    });
+
+    overlay.appendChild(zoomedImg);
+    document.body.appendChild(overlay);
+  }
 });
