@@ -577,7 +577,7 @@ def get_chatbot_html(gemini_api_key):
                     'thằng ngu', 'con ngu', 'đồ điên', 'đồ chó', 'rảnh háng', 'bố đời', 'đồ rẻ rách',
                     
                     // --- nhóm tục tả sinh lý ---
-                    'lồn', 'buồi', 'cu', 'chim to', 'chim nhỏ', 'bướm', 'nứng', 'cặc', 
+                    'lồn', 'buồi', 'cu', 'chim to', 'chim nhỏ', 'bướm', 'nứng', 'cặc', 'đỉ',
                     'đĩ', 'điếm', 'cave', 'gái gọi', 'đi khách', 'dâm', 'râm', 'râm dục', 'biến thái', 
                     'thủ dâm', 'dương vật', 'âm đạo', 'âm vật', 'hiếp', 'hiếp dâm', 'giao cấu',
                     
@@ -592,7 +592,7 @@ def get_chatbot_html(gemini_api_key):
                     // --- nhóm không dấu / né lọc ---
                     'dit', 'ditme', 'dit me', 'ditmemay', 'du', 'djtme', 'dmme', 'dmmay', 'vclon', 
                     'vai lon', 'vai loz', 'vai lonz', 'dmml', 'dcmm', 'dcmay', 'vlon', 'vailon', 
-                    'vailoz', 'vailonzz', 'ditconme', 'dmconcho',
+                    'vailoz', 'vailonzz', 'ditconme', 'dmconcho', 'cac',
                     
                     // --- nhóm “tiếng Anh Việt hóa” mà người Việt hay dùng để chửi ---
                     'fuck', 'fuk', 'fukk', 'fucc', 'fucck', 'fuking', 'fucking', 'fck', 'fcku', 'fcking',
@@ -702,7 +702,12 @@ def get_chatbot_html(gemini_api_key):
                 const commonVietnameseWords = [
                     'anh', 'em', 'toi', 'tao', 'may', 'minh', 'ngu', 'dit', 'lon', 'buoi',
                     'cho', 'dm', 'dmm', 'dcm', 'vl', 'vcl', 'vkl', 'vlon', 'vailon', 
-                    'me', 'cha', 'con', 'cu', 'an', 'uong', 'nau', 'ngon', 'qua', 'mon', 'ban', 'mua'
+                    'me', 'cha', 'con', 'cu', 'an', 'uong', 'nau', 'ngon', 'qua', 'mon', 'ban', 'mua',
+                    'vl', 'vkl', 'vcc', 'vklm', 'cmn', 'cmnr', 'cmnl', 'vcđ', 'vđc', 'vcml', 
+                    'dkm', 'vml', 'vclm', 'vcmm', 'dmnr', 'dcmj', 'dmj', 'ccmnr', 'vchz', 'vlz',
+                    'dit', 'ditme', 'dit me', 'ditmemay', 'du', 'djtme', 'dmme', 'dmmay', 'vclon', 
+                    'vai lon', 'vai loz', 'vai lonz', 'dmml', 'dcmm', 'dcmay', 'vlon', 'vailon', 
+                    'vailoz', 'vailonzz', 'ditconme', 'dmconcho', 'cac', 'loz', 'clm', 'di cho', 'con di'
                 ];
                 const normalized = normalizeText(text);
                 if (commonVietnameseWords.some(w => normalized.includes(w))) return 'vi';
@@ -710,21 +715,31 @@ def get_chatbot_html(gemini_api_key):
                 return 'en';
             }}
             
-            // Hàm chuẩn hóa văn bản trước khi kiểm tra
             function normalizeText(text) {{
                 return text
-                    .toLowerCase()                                     // chuyển hết thành chữ thường
-                    .normalize('NFD')                                  // tách dấu tiếng Việt
-                    .replace(/[\u0300-\u036f]/g, '')                   // xoá dấu
-                    .replace(/[^a-zA-Z0-9\u4e00-\u9fff\u3131-\uD79D\s]/g, '') // chỉ giữ lại chữ, số, tiếng Trung, tiếng Hàn
-                    .replace(/(.)\1{2,}/g, '$1$1')                     // gom ký tự lặp: đmmmmm -> đmm, fuuuuuck -> fuuck
-                    .trim();                                           // bỏ khoảng trắng đầu/cuối
+                    .normalize('NFC')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/đ/g, 'd')
+                    .replace(/[^a-z0-9\s]/g, '')
+                    .replace(/([a-z0-9])\\1{{1,}}/g, '$1') // ✅ rút ký tự lặp
+                    .trim();
             }}
+
+            // ✅ Tạo bản không dấu cho toàn bộ từ tiếng Việt
+            profanityWords.vi = [
+                ...new Set([
+                    ...profanityWords.vi,
+                    ...profanityWords.vi.map(w => normalizeText(w))
+                ])
+            ];
 
             function containsProfanity(text, langOverride) {{
                 const lang = langOverride || detectLanguage(text);
-
+                console.log("🧠 Kiểm tra profanity:", text);
                 let list = [];
+
                 switch (lang) {{
                     case 'vi': list = profanityWords.vi; break;
                     case 'en': list = profanityWords.en; break;
@@ -735,19 +750,24 @@ def get_chatbot_html(gemini_api_key):
 
                 if (!list || list.length === 0) return false;
 
-                // ⚙️ Nếu tiếng Việt có dấu → KHÔNG normalize (để giữ nghĩa thật)
-                const hasVietnameseAccent = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
-                const textToCheck = hasVietnameseAccent.test(text)
-                    ? text.toLowerCase()
-                    : normalizeText(text);
+                const lowerText = text.toLowerCase();
+                const normalizedText = normalizeText(text);
 
                 return list.some(word => {{
-                    const normalizedWord = normalizeText(word);
-                    if (normalizedWord.length < 3) return false;
+                    const wordRaw = word.toLowerCase();
+                    const wordNorm = normalizeText(word);
 
-                    const escaped = normalizedWord.replace(/[.*+?^${{}}()|[\]\\]/g, '\\$&');
-                    const pattern = new RegExp(`(^|\\s)${{escaped}}($|\\s)`, 'i');
-                    return pattern.test(textToCheck);
+                    const escapedRaw = wordRaw.replace(/[.*+?^${{}}()|[\]\\]/g, '\\$&');
+                    const escapedNorm = wordNorm.replace(/[.*+?^${{}}()|[\]\\]/g, '\\$&');
+
+                    const patternRaw = new RegExp(`(^|[^a-zA-ZÀ-ỹ]*)${{escapedRaw}}([^a-zA-ZÀ-ỹ]*|$)`, 'i');
+                    const patternNorm = new RegExp(`(^|[^a-zA-ZÀ-ỹ]*)${{escapedNorm}}([^a-zA-ZÀ-ỹ]*|$)`, 'i');
+
+                    if (patternRaw.test(lowerText) || patternNorm.test(normalizedText)) {{
+                        console.log("🚨 Phát hiện:", word, "=> match với", text);
+                        return true;
+                    }}
+                    return patternRaw.test(lowerText) || patternNorm.test(normalizedText);
                 }});
             }}
             
@@ -883,7 +903,6 @@ def get_chatbot_html(gemini_api_key):
                 "Ăn gì mà không béo hông 😅",
                 "Thời tiết kiểu này chắc hợp ăn món nước ha 🍜",
                 "Lâu rồi chưa ăn món Việt ngon ngon 😋",
-                "Nay rảnh nấu ăn, gợi ý món dễ làm đi 👩‍🍳",
                 "Nghĩ mãi không ra ăn gì hết 😭",
                 "Có món nào vừa rẻ vừa ngon hông nè 💸",
                 "Nay thèm hải sản xíu 🦐",
