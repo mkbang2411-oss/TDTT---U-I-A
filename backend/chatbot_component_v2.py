@@ -573,7 +573,7 @@ def get_chatbot_html(gemini_api_key):
                     
                     // --- nhóm xúc phạm, nhục mạ ---
                     'ngu', 'ngu học', 'óc chó', 'não phẳng', 'não cá vàng', 'khùng', 'ngáo', 'điên', 
-                    'khốn', 'mất dạy', 'vô học', 'láo', 'bố láo', 'láo toét', 'chó má', 'súc vật', 
+                    'khốn nạn', 'mất dạy', 'vô học', 'láo', 'bố láo', 'láo toét', 'chó má', 'súc vật', 
                     'thằng ngu', 'con ngu', 'đồ điên', 'đồ chó', 'rảnh háng', 'bố đời', 'đồ rẻ rách',
                     
                     // --- nhóm tục tả sinh lý ---
