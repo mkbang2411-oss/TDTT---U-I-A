@@ -20,32 +20,6 @@ body {
 }
 
 /* ==========================================
-   📍 NÚT ĐỊNH VỊ GPS
-========================================== */
-#locate-btn {
-  position: absolute;
-  bottom: 0px;
-  right: -30px;
-  background: white;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 20px;
-  z-index: 1000;
-  transition: all 0.2s ease;
-}
-
-#locate-btn:hover {
-  transform: scale(1.1);
-  background: #f0f8ff;
-}
-
-/* ==========================================
    🔍 THANH TÌM KIẾM 
 ========================================== */
 #controls {
@@ -54,13 +28,14 @@ body {
   left: 50%;
   transform: translateX(-50%);
   background: white;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 12px;
   box-shadow: 0 3px 8px rgba(0,0,0,0.25);
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
   z-index: 1000;
-  align-items: center;
 }
 
 .search-box {
@@ -106,6 +81,89 @@ body {
   background: #005fd1;
   transform: translateY(-1px);
 }
+
+/* ==========================================
+   🧭 THANH NHẬP ĐỊA ĐIỂM (BÊN TRÊN)
+========================================== */
+.gps-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#gpsInput {
+  padding: 8px 10px;
+  width: 260px; /* mặc định bằng với #query */
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+#gpsInput:focus {
+  border-color: #0078ff;
+  box-shadow: 0 0 3px rgba(0, 120, 255, 0.6);
+}
+
+.gps-btn {
+  padding: 8px 10px;
+  border: none;
+  background: #0078ff;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.gps-btn:hover {
+  background: #005fd1;
+  transform: translateY(-1px);
+}
+
+.gps-box,
+.search-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 👇 ép cùng chiều rộng tổng thể cho 2 hàng */
+.gps-box { margin-left: -2px; }
+.search-row {
+  width: 100%;
+  max-width: 320px; /* chỉnh theo tổng chiều dài ô + nút */
+}
+
+/* 👇 căn lại input GPS cho trùng cột với ô tìm quán ăn */
+#gpsInput {
+  width: 260px;
+  padding: 8px 10px 8px 30px; /* giống #query */
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* đồng bộ chiều cao, viền, nút */
+.gps-btn,
+#btnSearch {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 /* ==========================================
    💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE)

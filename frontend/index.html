@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="vi">
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-/>
+
 
 <head>
   <meta charset="UTF-8" />
   <title>Bản đồ quán ăn</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link
@@ -18,13 +16,23 @@
 </head>
 <body>
   <div id="controls">
-    <div id="locate-btn" title="Xác định vị trí của tôi">📍</div>
-    <div class="search-box">
-      <input id="query" type="text" placeholder="Tìm kiếm..." autocomplete="off" />
-      <div id="suggestions" class="suggestions"></div>
-    </div>
+  <!-- 🧭 THANH NHẬP ĐỊA ĐIỂM -->
+  <div class="gps-box">
+    <input id="gpsInput" type="text" placeholder="Nhập vị trí của bạn..." autocomplete="off" />
+    <button id="gpsEnterBtn" title="Tìm địa điểm" class="gps-btn">↩</button>
+    <button id="gpsLocateBtn" title="Dùng GPS" class="gps-btn">📍</button>
+  </div>
+
+  <!-- 🔍 THANH TÌM QUÁN ĂN -->
+<div class="search-row">
+  <div class="search-box">
+    <input id="query" type="text" placeholder="Tìm quán ăn..." autocomplete="off" />
+    <div id="suggestions" class="suggestions"></div>
+  </div>
     <button id="btnSearch">🔍 Tìm</button>
   </div>
+</div>
+
 <div id="sidebar" class="hidden">
   <button id="closeSidebar">×</button>
   <div id="sidebar-content"></div>

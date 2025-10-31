@@ -285,88 +285,91 @@ function displayPlaces(places) {
       routeBtn.className = "route-btn";
       tongquanTab.appendChild(routeBtn);
       
-      routeBtn.addEventListener("click", () => {
-        if (!navigator.geolocation) {
-          alert("Trình duyệt không hỗ trợ định vị!");
+      routeBtn.addEventListener("click", async () => {
+        const gpsInput = document.getElementById("gpsInput");
+        const inputValue = gpsInput ? gpsInput.value.trim() : "";
+
+        // 🔹 Nếu người dùng đã định vị GPS trước đó
+        if (inputValue === "Vị trí hiện tại của tôi" && window.currentUserCoords) {
+          const { lat: userLat, lon: userLon } = window.currentUserCoords;
+
+          // Xóa route cũ nếu có
+          if (routeControl) {
+            map.removeControl(routeControl);
+            routeControl = null;
+          }
+
+          drawRoute(userLat, userLon, lat, lon, tongquanTab);
           return;
         }
 
-        navigator.geolocation.getCurrentPosition(
-  (pos) => {
-    const userLat = pos.coords.latitude;
-    const userLon = pos.coords.longitude;
+        // 🔹 Nếu người dùng nhập địa chỉ chữ → dùng geocode
+        if (inputValue) {
+          const coords = await geocodeAddress(inputValue);
+          if (!coords) return;
 
-    // 🧭 Thêm marker vị trí người dùng
-    L.marker([userLat, userLon], {
-      icon: L.icon({
-        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-        iconSize: [28, 28],
-        iconAnchor: [14, 28],
-      }),
-    })
-      .addTo(map)
-      .bindPopup("📍 Vị trí của bạn")
-      .openPopup();
+          const userLat = coords.lat;
+          const userLon = coords.lon;
 
-    // 🔹 Xóa routeControl cũ nếu có
-    if (routeControl) {
-      map.removeControl(routeControl);
-      routeControl = null;
-    }
+          if (routeControl) {
+            map.removeControl(routeControl);
+            routeControl = null;
+          }
 
-    // 🚗 Tạo route mới
-    routeControl = L.Routing.control({
-      waypoints: [
-        L.latLng(userLat, userLon),
-        L.latLng(lat, lon)
-      ],
-      lineOptions: {
-        styles: [{ color: "blue", weight: 5, opacity: 0.7 }]
-      },
-      show: false,
-      addWaypoints: false,
-      routeWhileDragging: false,
-      createMarker: (i, wp) => {
-        return L.marker(wp.latLng, {
-          icon: i === 0
-            ? L.icon({
-                iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-                iconSize: [24, 24],
-                iconAnchor: [12, 24]
-              })
-            : L.icon({
-                iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-                iconSize: [24, 24],
-                iconAnchor: [12, 24]
-              })
-        });
-      }
-    }).addTo(map);
-
-
-            // Khi tuyến được tìm thấy, hiển thị info và zoom
-            routeControl.on("routesfound", (e) => {
-              const route = e.routes[0];
-              const bounds = L.latLngBounds(route.coordinates);
-              map.fitBounds(bounds, { padding: [50, 50] });
-
-              const distanceKm = (route.summary.totalDistance / 1000).toFixed(1); // km
-              const durationMin = Math.ceil(route.summary.totalTime / 60); // phút
-
-              let infoEl = tongquanTab.querySelector(".route-info");
-              if (!infoEl) {
-                infoEl = document.createElement("p");
-                infoEl.className = "route-info";
-                tongquanTab.appendChild(infoEl);
-              }
-              infoEl.innerHTML = `🛣️ Quãng đường: ${distanceKm} km<br>⏱️ Thời gian: ${durationMin} phút`;
-            });
-          },
-          () => alert("Không thể lấy vị trí hiện tại!")
-        );
-
+          drawRoute(userLat, userLon, lat, lon, tongquanTab);
+        } 
+        else {
+          // 🔹 Nếu không nhập gì và chưa có GPS
+           alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+        }
       });
+
 sidebar.classList.add("show");
+
+function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
+  routeControl = L.Routing.control({
+    waypoints: [L.latLng(userLat, userLon), L.latLng(destLat, destLon)],
+    lineOptions: {
+      styles: [{ color: "blue", weight: 5, opacity: 0.7 }],
+    },
+    show: false,
+    addWaypoints: false,
+    routeWhileDragging: false,
+    createMarker: (i, wp) => {
+      return L.marker(wp.latLng, {
+        icon: i === 0
+          ? L.icon({
+              iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+              iconSize: [30, 30],
+              iconAnchor: [15, 30],
+            })
+          : L.icon({
+              iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+              iconSize: [30, 30],
+              iconAnchor: [15, 30],
+            }),
+      });
+    },
+  }).addTo(map);
+
+  routeControl.on("routesfound", (e) => {
+    const route = e.routes[0];
+    const bounds = L.latLngBounds(route.coordinates);
+    map.fitBounds(bounds, { padding: [50, 50] });
+
+    const distanceKm = (route.summary.totalDistance / 1000).toFixed(1);
+    const durationMin = Math.ceil(route.summary.totalTime / 60);
+
+    let infoEl = tongquanTab.querySelector(".route-info");
+    if (!infoEl) {
+      infoEl = document.createElement("p");
+      infoEl.className = "route-info";
+      tongquanTab.appendChild(infoEl);
+    }
+    infoEl.innerHTML = `🛣️ Quãng đường: ${distanceKm} km<br>⏱️ Thời gian: ${durationMin} phút`;
+  });
+}
+
 
 // Gắn sự kiện sau khi phần tử đã render vào DOM
 setTimeout(() => {
@@ -537,41 +540,6 @@ document.addEventListener("click", (e) => {
 });
 
 // =========================
-// 📍 NÚT ĐỊNH VỊ GPS TRÊN GIAO DIỆN CHÍNH
-// =========================
-document.getElementById("locate-btn").addEventListener("click", () => {
-  if (!navigator.geolocation) {
-    alert("Trình duyệt của bạn không hỗ trợ định vị GPS!");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const userLat = pos.coords.latitude;
-      const userLon = pos.coords.longitude;
-
-      // 🔹 Thêm marker vị trí người dùng
-      L.marker([userLat, userLon], {
-        icon: L.icon({
-          iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-          iconSize: [28, 28],
-          iconAnchor: [14, 28],
-        }),
-      })
-        .addTo(map)
-        .bindPopup("📍 Vị trí của bạn")
-        .openPopup();
-
-      // 🔹 Zoom vào vị trí người dùng
-      map.setView([userLat, userLon], 15);
-    },
-    (err) => {
-      alert("Không thể lấy vị trí của bạn: " + err.message);
-    }
-  );
-});
-
-// =========================
 // 🖼️ CLICK ẢNH -> PHÓNG TO
 // =========================
 document.addEventListener("click", (e) => {
@@ -593,3 +561,138 @@ document.getElementById("imageModal").addEventListener("click", (e) => {
     e.currentTarget.style.display = "none";
   }
 });
+
+// =========================
+// 🌍 CHUYỂN ĐỊA ĐIỂM CHỮ → TỌA ĐỘ (OSM API)
+// =========================
+
+async function geocodeAddress(address) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+      };
+    }
+
+    alert("❌ Không tìm thấy địa điểm này!");
+    return null;
+  } catch (err) {
+    console.error("Lỗi khi geocode:", err);
+    alert("❌ Lỗi khi tìm địa điểm!");
+    return null;
+  }
+}
+
+
+// =========================
+// ↩ NÚT ENTER: tìm theo địa điểm người nhập
+// =========================
+document.getElementById("gpsEnterBtn").addEventListener("click", async () => {
+  const input = document.getElementById("gpsInput").value.trim();
+  if (!input) {
+    alert("Vui lòng nhập địa điểm!");
+    return;
+  }
+
+  const coords = await geocodeAddress(input);
+  if (coords) {
+
+    if (window.startMarker) {
+      map.removeLayer(window.startMarker);
+    }
+
+     window.startMarker = L.marker([coords.lat, coords.lon], {
+      icon: L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+      }),
+    })
+      .addTo(map)
+      .bindPopup(`📍 ${input}`)
+      .openPopup();
+    //lưu địa điểm xuất phát mới cho an toàn
+    window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
+
+    map.setView([coords.lat, coords.lon], 15);
+  }
+});
+
+// =========================
+// 📍 NÚT GPS: tự động định vị bản thân
+// =========================
+document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
+  if (!navigator.geolocation) {
+    alert("Trình duyệt không hỗ trợ định vị GPS!");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const userLat = pos.coords.latitude;
+      const userLon = pos.coords.longitude;
+
+      // ✅ Điền text vào ô nhập (để người dùng biết là đang dùng GPS)
+      const gpsInput = document.getElementById("gpsInput");
+      gpsInput.value = "Vị trí hiện tại của tôi";
+
+      // ✅ Lưu lại tọa độ thật để khi nhấn “Tìm đường đi” dùng đúng vị trí này
+      window.currentUserCoords = { lat: userLat, lon: userLon };
+      
+      // ✅ Xóa marker xuất phát cũ (dù là GPS hay nhập tay)
+      if (window.startMarker) {
+        map.removeLayer(window.startMarker);
+      }
+
+      // ✅ Thêm marker mới cho điểm xuất phát
+      window.startMarker = L.marker([userLat, userLon], {
+        icon: L.icon({
+          iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+          iconSize: [30, 30],
+          iconAnchor: [15, 30],
+        }),
+      })
+        .addTo(map)
+        .bindPopup("📍 Bạn đang ở đây (tọa độ thật)")
+        .openPopup();
+
+      map.setView([userLat, userLon], 15);
+    },
+    (err) => {
+      alert("Không thể lấy vị trí của bạn: " + err.message);
+    }
+  );
+});
+
+// =========================
+// ⌨️ ENTER chỉ hoạt động khi người dùng đang tương tác với ô nhập địa điểm
+// =========================
+let isUsingGpsInput = false;
+
+// Khi người dùng click hoặc gõ trong ô nhập
+const gpsInput = document.getElementById("gpsInput");
+gpsInput.addEventListener("focus", () => (isUsingGpsInput = true));
+gpsInput.addEventListener("input", () => (isUsingGpsInput = true));
+
+// Khi người dùng click ra ngoài map hoặc sidebar → tắt chế độ nhập
+document.addEventListener("click", (e) => {
+  const gpsBox = document.querySelector(".gps-box");
+  if (!gpsBox.contains(e.target)) {
+    isUsingGpsInput = false;
+  }
+});
+
+// Khi nhấn Enter → chỉ hoạt động nếu đang trong chế độ nhập
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && isUsingGpsInput) {
+    e.preventDefault();
+    document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
+  }
+});
+
+
