@@ -3,10 +3,9 @@
 <head>
     <meta charset = "UTF-8">
     <title>Sign In</title>
+    <link rel="stylesheet" href="banner.css">
     <style>
         .text-box{
-            background-color: #FED57E;
-            border: 3px solid #BC2A12;
             border-radius: 15px;
             padding: 15px 55px;
             text-align: center;
@@ -23,11 +22,10 @@
             align-items: center;
         }
         .text-box h1{
-            color: white;
-            font-family: "SIGNUP";
+            color: #BC2A12;
+            font-family: "Haetenschweiler Regular", sans-serif;
             font-size: 35px;
             margin: 0;
-            -webkit-text-stroke: 2px #BC2A12;
             text-align: center;
         }
         .login-form{
@@ -54,23 +52,25 @@
         }
         .login-form .Sign-up-button {
             background-color: #FED57E;
-            border: 2.5px solid #BC2A12;
+            border: 3.5px solid #fed57e;
             border-radius: 15px;
-            color: #FED57E;
-            width: 150px;
-            height: 45px;
-            font-size: 30px;
-            -webkit-text-stroke: 1.7px #BC2A12;
+            color: white;
+            width: 70px;
+            height: 30px;
+            font-size: 15px;
             text-align: center;
         }
-        .login-form .Sign-up-button :hover{
+        .login-form .Sign-up-button:hover{
             background-color: #BC2A12;
             color: white;
         }
     </style>
 </head>
 <body>      
-    <img src="Picture/UIA.png" width="850" height="200" alt="UIA Logo">
+    <div class="background">
+        <img src="Picture/background.png" class="bg" alt="UIA Logo">
+        <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
+    </div>
     <div class="text-box">
         <h1>SIGN UP</h1>
         <form class="login-form">
@@ -80,7 +80,7 @@
             <input type="password" id="password" name="password" placeholder="Password" required>
             <label for="ConFpassword">Confirm Password:</label>
             <input type="ConFpassword" id="ConFpassword" name="ConFpassword" placeholder="ConFpassword" required>
-            <button type="button" class="Sign-up-button" onclick="location.href='/weblogin.html'">Sign Up</button> 
+            <button type="button" class="Sign-up-button" onclick="location.href='/weblogin.html'">Done</button> 
         </form>
     </div>
 </body>

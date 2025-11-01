@@ -1,7 +1,7 @@
 /* Button.css */
 .button-SignUp, .button-SignIn {
-    background-color: #EFD293;
-    color: #BC2A12;
+    background-color: #BC2A21;
+    color: white;
     padding: 0;                 /* bỏ padding để line-height hoạt động chính xác */
     border-radius: 20px;
     font-weight: bold;
@@ -23,5 +23,13 @@
 
 .button-SignUp:hover,
 .button-SignIn:hover {
-    color: white;
+    color: #efd293;
+}
+
+.account-button{
+    position: absolute;
+    top: 10px;
+    left: 830px;
+    width: 50px;
+    height: auto;
 }

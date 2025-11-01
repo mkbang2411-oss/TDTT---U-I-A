@@ -3,12 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <title>Web Demo</title>
-    <link rel="stylesheet" href="Account.css">
-
+    <link rel="stylesheet" href="banner.css">
+    <link rel="stylesheet" href="button.css">
+    <link rel="stylesheet" href="weblogin.css">
 </head>
 <body>
-    <img src="Picture/UIA.png" width="850" height="200" alt="UIA Logo">
-    <a href="Account.html" class="Account">Account</a>
-    
+    <div class="background">
+        <img src="Picture/background.png" class="bg" alt="UIA Logo">
+        <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
+        <a href ="Account.html">
+            <img src="Picture/user.png"  class="account-button">
+        </a>
+    </div>
+    <form class="search-form" action="/search" method="get">
+        <div class="search-item">
+            <input type="text" name="query1" class="search-input" placeholder="Name of food...">
+            
+        </div>
+        <div class="search-item">
+            <input type="text" name="query2" class="search-input" placeholder="Budget...">
+           
+        </div>
+        <div class="search-item">
+            <input type="text" name="query3" class="search-input" placeholder="Your address...">
+            
+    </form>
+
 </body>
 </html>
