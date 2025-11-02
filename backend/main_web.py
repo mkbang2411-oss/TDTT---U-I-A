@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, send_from_directory
 from chatbot_component_v2 import get_chatbot_html
 import pandas as pd
+from datetime import datetime
 import os, json
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/")
@@ -59,21 +60,16 @@ def save_user_reviews(data):
 # ============================
 @app.route("/api/reviews/<place_id>")
 def get_reviews(place_id):
-    """Trả review Google + người dùng cho 1 quán"""
     all_reviews = load_user_reviews()
+    value = all_reviews.get(place_id)
 
-    # Nếu key trong JSON là danh sách reviews (list)
-    if place_id in all_reviews:
-        value = all_reviews[place_id]
-        if isinstance(value, list):
-            # 👉 Giả định đây là các review Google đã lấy sẵn
-            return jsonify({"google": value, "user": []})
-        else:
-            # Nếu đã ở dạng {"google": [], "user": []}
-            return jsonify(value)
+    if isinstance(value, list):
+        return jsonify({"google": value, "user": []})
+    elif isinstance(value, dict):
+        return jsonify(value)
+    else:
+        return jsonify({"google": [], "user": []})
 
-    # Không có review
-    return jsonify({"google": [], "user": []})
 
 
 # ============================
@@ -86,18 +82,27 @@ def add_review(place_id):
         return jsonify({"success": False, "message": "Thiếu thông tin"}), 400
 
     all_reviews = load_user_reviews()
-    if place_id not in all_reviews:
+    value = all_reviews.get(place_id)
+
+    # Nếu chưa có key này -> tạo mới
+    if value is None:
         all_reviews[place_id] = {"google": [], "user": []}
+
+    # Nếu key là LIST (tức dữ liệu Google ban đầu)
+    elif isinstance(value, list):
+        all_reviews[place_id] = {"google": value, "user": []}
 
     new_review = {
         "ten": data.get("ten"),
         "rating": int(data.get("rating", 0)),
-        "comment": data.get("comment")
+        "comment": data.get("comment"),
+        "date": datetime.now().isoformat()
     }
 
     all_reviews[place_id]["user"].append(new_review)
     save_user_reviews(all_reviews)
     return jsonify({"success": True, "message": "✅ Đã thêm đánh giá!"})
+
 
 # ============================
 # 🌐 ROUTE FRONTEND
