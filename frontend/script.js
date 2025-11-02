@@ -88,6 +88,38 @@ function detectCategory(name = "") {
 // =========================
 // 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS
 // =========================
+function timeAgo(dateString) {
+  if (!dateString) return "";
+
+  // Nếu là chuỗi kiểu "2 weeks ago" của Google thì giữ nguyên
+  if (isNaN(Date.parse(dateString)) && isNaN(Number(dateString))) {
+    return dateString;
+  }
+
+  const now = new Date();
+  const past = new Date(dateString);
+  if (isNaN(past)) return "";
+
+  // ⚙️ Sửa lỗi lệch múi giờ (UTC → local)
+  const localPast = new Date(past.getTime() + past.getTimezoneOffset() * 60000);
+  const diff = Math.floor((now - localPast) / 1000);
+
+  const minutes = Math.floor(diff / 60);
+  const hours = Math.floor(diff / 3600);
+  const days = Math.floor(diff / 86400);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+
+  if (diff < 60) return "vừa xong";
+  if (minutes < 60) return `${minutes} phút trước`;
+  if (hours < 24) return `${hours} giờ trước`;
+  if (days < 30) return `${days} ngày trước`;
+  if (months < 12) return `${months} tháng trước`;
+  return `${years} năm trước`;
+}
+
+
+
 function renderReviews(googleReviews, userReviews) {
   const allReviews = [...googleReviews, ...userReviews];
   const avgRating =
@@ -147,7 +179,7 @@ function renderReviews(googleReviews, userReviews) {
             <div>
               <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
               <div class="review-stars">${"⭐".repeat(r.rating || 0)}</div>
-              <div class="review-time">${r.date || ""}</div>
+              <div class="review-time">${timeAgo(r.date || r.relative_time_description)}</div>
             </div>
           </div>
           <div class="review-text">${r.comment || ""}</div>
@@ -405,14 +437,17 @@ setTimeout(() => {
       });
 
       document.getElementById("submitReview").addEventListener("click", async () => {
-        const review = {
-          ten: document.getElementById("reviewName").value.trim(),
-          rating: selectedRating,
-          comment: document.getElementById("reviewComment").value.trim(),
-        };
+       const review = {
+  ten: document.getElementById("reviewName").value.trim(),
+  rating: selectedRating,
+  comment: document.getElementById("reviewComment").value.trim(),
+  date: new Date().toLocaleString("sv-SE")
+};
+
+
 
         if (!review.ten || !review.comment || review.rating === 0) {
-          alert("Vui lòng nhập tên, nội dung và chọn số sao!");
+          showToast("Vui lòng nhập tên, nội dung và chọn số sao!", "error");
           return;
         }
 
@@ -421,8 +456,7 @@ setTimeout(() => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(review),
         });
-
-        alert("✅ Cảm ơn bạn đã gửi đánh giá!");
+        showToast("✅ Cảm ơn bạn đã gửi đánh giá!", "success");
         marker.fire("click");
       });
     });
@@ -694,5 +728,3 @@ document.addEventListener("keydown", (e) => {
     document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
   }
 });
-
-
