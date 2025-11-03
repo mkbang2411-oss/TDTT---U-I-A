@@ -798,3 +798,37 @@ body {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Thanh khẩu vị phụ */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#query {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+#flavor {
+  width: 160px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+#btnSearch {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+#btnSearch:hover {
+  background-color: #0056b3;
+}
