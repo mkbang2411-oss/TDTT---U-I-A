@@ -299,14 +299,14 @@ function displayPlaces(places) {
       // NÚT ĐÓNG SIDEBAR
       const closeBtn = document.getElementById("closeSidebar");
       closeBtn.addEventListener("click", () => {
-          sidebar.classList.remove("show");
+  sidebar.classList.add("hidden"); // 👉 Ẩn sidebar
 
-          // Nếu đang có route hiển thị, xóa luôn
-          if (routeControl) {
-              map.removeControl(routeControl);
-              routeControl = null;
-          }
-      });
+  if (routeControl) {
+    map.removeControl(routeControl);
+    routeControl = null;
+  }
+});
+
 
       // =========================
       // 🚗 NÚT TÌM ĐƯỜNG ĐI
@@ -356,7 +356,7 @@ function displayPlaces(places) {
         }
       });
 
-sidebar.classList.add("show");
+sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
 
 function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
   routeControl = L.Routing.control({
