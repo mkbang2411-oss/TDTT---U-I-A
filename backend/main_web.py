@@ -15,7 +15,7 @@ GEMINI_API_KEY = "AIzaSyApgc9Zzduf1d7LdXUvsZriymK4RvBHOjc"
 # 📁 FILE PATH
 # ============================
 BASE_DIR = os.path.dirname(__file__)
-CSV_FILE = os.path.join(BASE_DIR, "Data.csv")
+CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 REVIEWS_FILE = os.path.join(BASE_DIR, "reviews.json")
 
 # ============================
