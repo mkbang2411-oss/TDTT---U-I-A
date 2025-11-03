@@ -239,10 +239,11 @@ function displayPlaces(places) {
             : ""
         }
         <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
-        <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
-        <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-        <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
-        <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
+<p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
+<p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
+<p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+<p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
+<p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
       `;
 
       const thucdonHTML = `
@@ -299,14 +300,14 @@ function displayPlaces(places) {
       // NÚT ĐÓNG SIDEBAR
       const closeBtn = document.getElementById("closeSidebar");
       closeBtn.addEventListener("click", () => {
-          sidebar.classList.remove("show");
+  sidebar.classList.add("hidden"); // 👉 Ẩn sidebar
 
-          // Nếu đang có route hiển thị, xóa luôn
-          if (routeControl) {
-              map.removeControl(routeControl);
-              routeControl = null;
-          }
-      });
+  if (routeControl) {
+    map.removeControl(routeControl);
+    routeControl = null;
+  }
+});
+
 
       // =========================
       // 🚗 NÚT TÌM ĐƯỜNG ĐI
@@ -356,7 +357,7 @@ function displayPlaces(places) {
         }
       });
 
-sidebar.classList.add("show");
+sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
 
 function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
   routeControl = L.Routing.control({
@@ -471,14 +472,29 @@ setTimeout(() => {
 // =========================
 // 📡 LẤY DỮ LIỆU CSV
 // =========================
-async function fetchPlaces(query = "") {
+// =========================
+// 📡 LẤY DỮ LIỆU CSV + LỌC THEO KHẨU VỊ
+// =========================
+async function fetchPlaces(query = "", flavor = "") {
   try {
     const res = await fetch("/api/places");
     const data = await res.json();
 
-    const filtered = query
-      ? data.filter((p) => p.ten_quan && p.ten_quan.toLowerCase().includes(query.toLowerCase()))
-      : data;
+    let filtered = data;
+
+    // Nếu có tìm tên quán
+    if (query) {
+      filtered = filtered.filter(
+        (p) => p.ten_quan && p.ten_quan.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    // Nếu có nhập khẩu vị
+    if (flavor) {
+      filtered = filtered.filter(
+        (p) => p.khau_vi && p.khau_vi.toLowerCase().includes(flavor.toLowerCase())
+      );
+    }
 
     displayPlaces(filtered);
   } catch (err) {
@@ -487,13 +503,16 @@ async function fetchPlaces(query = "") {
   }
 }
 
+
 // =========================
 // 🎯 TÌM KIẾM
 // =========================
 document.getElementById("btnSearch").addEventListener("click", () => {
   const query = document.getElementById("query").value.trim();
-  fetchPlaces(query);
+  const flavor = document.getElementById("flavor").value.trim();
+  fetchPlaces(query, flavor);
 });
+
 
 fetchPlaces();
 
