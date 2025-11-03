@@ -475,24 +475,83 @@ setTimeout(() => {
 // =========================
 // 📡 LẤY DỮ LIỆU CSV + LỌC THEO KHẨU VỊ
 // =========================
+// =========================
+// 📡 LẤY DỮ LIỆU CSV + TÌM GẦN ĐÚNG (FUZZY SEARCH)
+// =========================
+// =========================
+// 📡 LẤY DỮ LIỆU CSV + TÌM GẦN ĐÚNG (FUZZY SEARCH, BỎ DẤU)
+// =========================
 async function fetchPlaces(query = "", flavor = "") {
   try {
     const res = await fetch("/api/places");
     const data = await res.json();
 
-    let filtered = data;
-
-    // Nếu có tìm tên quán
-    if (query) {
-      filtered = filtered.filter(
-        (p) => p.ten_quan && p.ten_quan.toLowerCase().includes(query.toLowerCase())
-      );
+    // ⚙️ Hàm bỏ dấu tiếng Việt
+    function normalize(str) {
+      return str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // bỏ dấu
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase()
+        .trim();
     }
 
-    // Nếu có nhập khẩu vị
+    let filtered = data;
+
+    // Nếu không có từ khóa và khẩu vị → hiển thị tất cả
+    if (!query && !flavor) {
+      displayPlaces(data);
+      return;
+    }
+
+    // --- 1️⃣ Fuzzy Search theo tên quán (có bỏ dấu) ---
+    if (query) {
+      const normalizedQuery = normalize(query);
+
+      // Dữ liệu đã bỏ dấu để Fuse hoạt động tốt hơn
+      const fuse = new Fuse(
+        data.map((p) => ({
+          ...p,
+          ten_quan_no_dau: normalize(p.ten_quan || ""),
+        })),
+        {
+          keys: ["ten_quan_no_dau"],
+          threshold: 0.4, // độ mờ khớp
+          ignoreLocation: true,
+        }
+      );
+
+      const fuzzyResults = fuse.search(normalizedQuery).map((r) => r.item);
+
+// --- Lọc lại lần 2: chỉ giữ quán có từ khớp thật sự ---
+const queryWords = normalizedQuery.split(" ").filter(Boolean);
+
+filtered = fuzzyResults.filter((p) => {
+  const name = normalize(p.ten_quan || "");
+
+  // Phải có ít nhất 1 từ khớp gần hoặc khớp nguyên
+  const hasTrueMatch = queryWords.some((w) =>
+    name === w ||
+    name.includes(` ${w} `) ||
+    name.startsWith(`${w} `) ||
+    name.endsWith(` ${w}`) ||
+    (name.includes(w) && !name.includes("mi cay")) // loại các quán “mì cay” nếu tìm “trà sữa”
+  );
+
+  return hasTrueMatch;
+});
+
+
+    }
+
+    // --- 2️⃣ Lọc thêm theo khẩu vị (nếu có nhập) ---
     if (flavor) {
+      const normalizedFlavor = normalize(flavor);
       filtered = filtered.filter(
-        (p) => p.khau_vi && p.khau_vi.toLowerCase().includes(flavor.toLowerCase())
+        (p) =>
+          p.khau_vi &&
+          normalize(p.khau_vi).includes(normalizedFlavor)
       );
     }
 
@@ -502,8 +561,6 @@ async function fetchPlaces(query = "", flavor = "") {
     alert("Không thể tải dữ liệu từ server!");
   }
 }
-
-
 // =========================
 // 🎯 TÌM KIẾM
 // =========================
