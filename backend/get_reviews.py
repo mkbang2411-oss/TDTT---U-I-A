@@ -5,47 +5,67 @@ import os
 import time
 
 # ⚙️ Cấu hình
-SERP_API_KEY = ""  # nhập key của bạn
+SERP_API_KEY = "965493118ea3afd38375442b8a2345f83ad60b1a6deea265d96ed02a81d47c94"  # nhập key của bạn
 CSV_FILE = "Data.csv"
 REVIEWS_FILE = "reviews.json"
 
 
-def get_google_reviews(data_id):
+def get_google_reviews(data_id, max_reviews=16):
     """
-    Gọi SerpAPI để lấy review thật từ Google Maps theo data_id
+    Gọi SerpAPI để lấy tối đa `max_reviews` review (tối đa 20)
+    Không yêu cầu phải có đủ các mức sao.
     """
     if not SERP_API_KEY:
         print("⚠️ Chưa có SERP_API_KEY. Hãy đặt biến môi trường hoặc sửa trong code.")
         return []
 
-    url = "https://serpapi.com/search.json"
-    params = {
-        "engine": "google_maps_reviews",
-        "data_id": data_id,
-        "api_key": SERP_API_KEY
-    }
+    all_reviews = []
+    page_token = None
+    page = 1
 
-    try:
-        res = requests.get(url, params=params, timeout=30)
-        if res.status_code != 200:
-            print(f"⚠️ Lỗi HTTP {res.status_code} cho data_id={data_id}")
-            return []
-        data = res.json()
-    except Exception as e:
-        print(f"❌ Lỗi khi gọi API cho {data_id}: {e}")
-        return []
+    while len(all_reviews) < max_reviews:
+        params = {
+            "engine": "google_maps_reviews",
+            "data_id": data_id,
+            "api_key": SERP_API_KEY,
+        }
+        if page_token:
+            params["next_page_token"] = page_token
 
-    reviews = data.get("reviews", [])
-    result = []
-    for r in reviews:
-        result.append({
-            "user": r.get("user", {}).get("name", "Ẩn danh"),
-            "avatar": r.get("user", {}).get("thumbnail", ""),
-            "rating": r.get("rating", ""),
-            "comment": r.get("snippet", ""),
-            "date": r.get("date", "")
-        })
-    return result
+        try:
+            res = requests.get("https://serpapi.com/search.json", params=params, timeout=30)
+            if res.status_code != 200:
+                print(f"⚠️ Lỗi HTTP {res.status_code} (page {page}) cho data_id={data_id}")
+                break
+
+            data = res.json()
+            reviews = data.get("reviews", [])
+            if not reviews:
+                break
+
+            for r in reviews:
+                all_reviews.append({
+                    "user": r.get("user", {}).get("name", "Ẩn danh"),
+                    "avatar": r.get("user", {}).get("thumbnail", ""),
+                    "rating": r.get("rating", ""),
+                    "comment": r.get("snippet", ""),
+                    "date": r.get("date", "")
+                })
+                if len(all_reviews) >= max_reviews:
+                    break
+
+            page_token = data.get("serpapi_pagination", {}).get("next_page_token")
+            if not page_token:
+                break
+
+            page += 1
+            time.sleep(3)
+
+        except Exception as e:
+            print(f"❌ Lỗi khi gọi API cho {data_id}: {e}")
+            break
+
+    return all_reviews[:max_reviews]
 
 
 def crawl_all_reviews():
@@ -77,12 +97,14 @@ def crawl_all_reviews():
         if not data_id:
             continue
 
-        # Nếu đã có review thì bỏ qua (để tiết kiệm API)
-        if data_id in all_reviews:
-            print(f"⏩ Bỏ qua {ten_quan} (đã có trong reviews.json)")
+        # ✅ Nếu đã có >= 16 review thì bỏ qua
+        existing = all_reviews.get(data_id, [])
+        if len(existing) >= 16:
+            print(f"✅ Bỏ qua {ten_quan} (đã có {len(existing)} review)")
             continue
 
-        reviews = get_google_reviews(data_id)
+        print(f"🔁 Đang lấy review cho {ten_quan}...")
+        reviews = get_google_reviews(data_id, max_reviews=20)
         all_reviews[data_id] = reviews
 
         print(f"✅ {idx+1}/{len(df)} - {ten_quan}: {len(reviews)} review")
@@ -91,7 +113,7 @@ def crawl_all_reviews():
         with open(REVIEWS_FILE, "w", encoding="utf-8") as f:
             json.dump(all_reviews, f, ensure_ascii=False, indent=2)
 
-        time.sleep(5)  # để tránh vượt giới hạn SerpAPI
+        time.sleep(5)  # tránh vượt giới hạn API
 
     print(f"🎉 Hoàn tất! Dữ liệu lưu vào {REVIEWS_FILE}")
 
