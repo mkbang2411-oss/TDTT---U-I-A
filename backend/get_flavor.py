@@ -53,12 +53,13 @@ with open(INPUT_CSV, encoding="utf-8") as f:
         results.append(row)
 
 # ======================================================
-# 🔹 5. Ghi file kết quả
+# 🔹 5. Ghi file kết quả (sửa tại đây)
 # ======================================================
 fieldnames = list(results[0].keys())
 with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
-    writer = csv.DictWriter(f, fieldnames=fieldnames)
+    writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
     writer.writeheader()
     writer.writerows(results)
 
 print(f"\n✅ Đã lưu kết quả vào: {OUTPUT_CSV}")
+
