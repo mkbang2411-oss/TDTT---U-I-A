@@ -9,8 +9,15 @@ app = Flask(__name__, static_folder="../frontend", static_url_path="/")
 # ============================
 # 🔑 GEMINI API KEY
 # ============================
-GEMINI_API_KEY = "AIzaSyApgc9Zzduf1d7LdXUvsZriymK4RvBHOjc"
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        config = json.load(f)
+        GEMINI_API_KEY = config.get("GEMINI_API_KEY", "")
+else:
+    GEMINI_API_KEY = ""
+    print("⚠️ Không tìm thấy file config.json, chatbot có thể không hoạt động!")
 # ============================
 # 📁 FILE PATH
 # ============================
