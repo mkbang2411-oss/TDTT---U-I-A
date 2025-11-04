@@ -4,8 +4,9 @@ import re
 # ======================================================
 # 🔹 1. Cấu hình file
 # ======================================================
-INPUT_CSV = r"D:\Food_map\backend\Data.csv"
-OUTPUT_CSV = r"D:\Food_map\backend\Data_with_flavor.csv"
+BASE_DIR = os.path.dirname(__file__)  # thư mục chứa get_flavor.py
+INPUT_CSV = os.path.join(BASE_DIR, "Data.csv")
+OUTPUT_CSV = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 
 # ======================================================
 # 🔹 2. Bảng từ khóa khẩu vị
