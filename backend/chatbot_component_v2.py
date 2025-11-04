@@ -686,7 +686,7 @@ def get_chatbot_html(gemini_api_key):
                     
                     // --- nhóm viết tắt & kiểu chat Việt hóa ---
                     'vl', 'vkl', 'vcc', 'vklm', 'cmn', 'cmnr', 'cmnl', 'vcđ', 'vđc', 'vcml', 
-                    'dkm', 'vml', 'vclm', 'vcmm', 'dmnr', 'dcmj', 'dmj', 'ccmnr', 'vchz', 'vlz',
+                    'dkm', 'vml', 'vclm', 'vcmm', 'dmnr', 'dcmj', 'dmj', 'ccmnr', 'vchz', 'vlz', 'cc',
                     
                     // --- nhóm không dấu / né lọc ---
                     'dit', 'ditme', 'dit me', 'ditmemay', 'du', 'djtme', 'dmme', 'dmmay', 'vclon', 
@@ -704,7 +704,7 @@ def get_chatbot_html(gemini_api_key):
                     'bullshit', 'bullshjt', 'bullsh1t', 'bulsit', 'bs', 'bsht', 'crap', 'crp',
                     'hell', 'go to hell', 'dumbass', 'dipshit', 'moron', 'loser', 
                     'jerk', 'mf', 'mofo', 'motherfucker', 'sonofabitch', 'son of a bitch', 'retard', 'idiot',
-                    'porn', 'p0rn', 'sex', 'sexy', 'horny', 'nude', 'naked'
+                    'porn', 'p0rn', 'sex', 'sexy', 'horny', 'nude', 'naked', 'gay', 'say get', 'sex', 'sẽ',
                 ],
                 en: [
                     'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'dick', 'pussy', 'cock', 
@@ -868,7 +868,8 @@ def get_chatbot_html(gemini_api_key):
                 return text
                     .normalize('NFC')
                     .toLowerCase()
-                    .replace(/([a-z0-9à-ỹđ])\1{{1,}}/g, '$1')
+                    // chỉ rút gọn khi lặp từ 3 ký tự trở lên
+                    .replace(/([a-z0-9à-ỹđ])\1{2,}/g, '$1$1')
                     .trim();
             }}
 
