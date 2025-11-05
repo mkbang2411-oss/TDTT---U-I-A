@@ -318,11 +318,36 @@ function displayPlaces(places) {
     const icon = icons[category] || icons.default;
     const marker = L.marker([lat, lon], { icon }).addTo(map);
 
+      // 🟢 TOOLTIP khi rê chuột vào marker
+  const tooltipHTML = `
+    <div style="text-align:center;min-width:180px;">
+      <strong>${p.ten_quan || "Không tên"}</strong><br>
+      ${
+        p.hinh_anh
+          ? `<img src="${p.hinh_anh}" style="width:100px;height:70px;object-fit:cover;border-radius:6px;margin-top:4px;">`
+          : ""
+      }
+      <div style="font-size:13px;margin-top:4px;">
+        <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
+        <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
+      </div>
+    </div>
+  `;
+
+  // Gắn tooltip vào marker
+  marker.bindTooltip(tooltipHTML, {
+    direction: "top",   // vị trí tooltip
+    offset: [0, -10],   // đẩy tooltip lên một chút
+    opacity: 0.95,
+    sticky: true,       // theo chuột
+    className: "custom-tooltip" // dùng để CSS đẹp hơn
+  });
+
     marker.on("click", async () => {
       map.setView([lat, lon], 17, { animate: true });
       const sidebar = document.getElementById("sidebar");
       const sidebarContent = document.getElementById("sidebar-content");
-
+    
       const place_id = p.data_id || p.ten_quan;
       let googleReviews = [];
       let userReviews = [];
@@ -414,7 +439,6 @@ function displayPlaces(places) {
     routeControl = null;
   }
 });
-
 
       // =========================
       // 🚗 NÚT TÌM ĐƯỜNG ĐI
