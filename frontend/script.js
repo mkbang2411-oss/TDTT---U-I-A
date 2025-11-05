@@ -614,7 +614,28 @@ async function fetchPlaces(query = "", flavor = "") {
 
     // --- 1️⃣ Fuzzy Search theo tên quán (có bỏ dấu) ---
     if (query) {
-      const normalizedQuery = normalize(query);
+      let normalizedQuery = normalize(query);
+
+      // ✅ Nếu query không có khoảng trắng, thử thêm khoảng trắng để khớp tên quán
+      if (!normalizedQuery.includes(" ")) {
+        const possibleMatches = data.map((p) => normalize(p.ten_quan || ""));
+        const splitVariants = [];
+
+        // tạo các phiên bản có chèn khoảng trắng vào các vị trí khác nhau
+        for (let i = 1; i < normalizedQuery.length; i++) {
+          splitVariants.push(
+            normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
+          );
+        }
+
+        // nếu bất kỳ variant nào xuất hiện trong tên quán → chọn variant đó
+        for (const variant of splitVariants) {
+          if (possibleMatches.some((name) => name.includes(variant))) {
+            normalizedQuery = variant;
+            break;
+          }
+        }
+      }
 
       // Dữ liệu đã bỏ dấu để Fuse hoạt động tốt hơn
       const fuse = new Fuse(
@@ -631,34 +652,38 @@ async function fetchPlaces(query = "", flavor = "") {
 
       const fuzzyResults = fuse.search(normalizedQuery).map((r) => r.item);
 
-// --- Lọc lại lần 2: chỉ giữ quán có từ khớp thật sự ---
-const queryWords = normalizedQuery.split(" ").filter(Boolean);
+      // ⚙️ Xử lý khớp từ khóa chính xác hơn
+      const queryWords = normalizedQuery.split(" ").filter(Boolean);
+      const normalizedPhrase = normalizedQuery.trim();
 
-filtered = fuzzyResults.filter((p) => {
-  const name = normalize(p.ten_quan || "");
+      filtered = fuzzyResults.filter((p) => {
+        const name = normalize(p.ten_quan || "");
 
-  // Phải có ít nhất 1 từ khớp gần hoặc khớp nguyên
-  const hasTrueMatch = queryWords.some((w) =>
-    name === w ||
-    name.includes(` ${w} `) ||
-    name.startsWith(`${w} `) ||
-    name.endsWith(` ${w}`) ||
-    (name.includes(w) && !name.includes("mi cay")) // loại các quán “mì cay” nếu tìm “trà sữa”
-  );
+        // ✅ Regex khớp cụm từ hoàn chỉnh
+        const phraseRegex = new RegExp(`\\b${normalizedPhrase}\\b`, "i");
+        const hasFullPhrase = phraseRegex.test(name);
 
-  return hasTrueMatch;
-});
+        // ✅ Regex khớp từng từ
+        const hasWordMatch = queryWords.some((w) => {
+          const wordRegex = new RegExp(`\\b${w}\\b`, "i");
+          return wordRegex.test(name);
+        });
 
+        // ✅ Nếu query có ≥ 2 từ (vd: “mi cay”) → bắt buộc khớp cụm đầy đủ
+        if (queryWords.length >= 2) {
+          return hasFullPhrase;
+        }
 
+        // ✅ Nếu chỉ 1 từ (vd: “pho”, “bun”) thì cho phép khớp từng từ
+        return hasFullPhrase || hasWordMatch;
+      });
     }
 
     // --- 2️⃣ Lọc thêm theo khẩu vị (nếu có nhập) ---
     if (flavor) {
       const normalizedFlavor = normalize(flavor);
       filtered = filtered.filter(
-        (p) =>
-          p.khau_vi &&
-          normalize(p.khau_vi).includes(normalizedFlavor)
+        (p) => p.khau_vi && normalize(p.khau_vi).includes(normalizedFlavor)
       );
     }
 
@@ -668,6 +693,8 @@ filtered = fuzzyResults.filter((p) => {
     alert("Không thể tải dữ liệu từ server!");
   }
 }
+
+
 // =========================
 // 🎯 TÌM KIẾM
 // =========================
