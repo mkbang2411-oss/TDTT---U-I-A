@@ -4,15 +4,12 @@ import os
 import time
 
 # ⚙️ Cấu hình
-SERP_API_KEY = ""  # Nhớ điền key thật của bạn
+SERP_API_KEY = "965493118ea3afd38375442b8a2345f83ad60b1a6deea265d96ed02a81d47c94"  # Nhớ điền key thật của bạn
 CSV_FILE = "Data.csv"
 
 
 def get_places(query: str, lat: float, lon: float):
-    """
-    Gọi SerpAPI để lấy danh sách quán gần vị trí chỉ định.
-    Trả về danh sách dict (mỗi quán ăn).
-    """
+    """Gọi SerpAPI để lấy danh sách quán gần vị trí chỉ định."""
     if not SERP_API_KEY:
         print("⚠️ Chưa có SERP_API_KEY. Hãy đặt biến môi trường hoặc sửa trong code.")
         return []
@@ -41,7 +38,7 @@ def parse_place_data(places: list):
         if "gps_coordinates" not in p:
             continue
 
-        # ❌ Không cần lấy hình ảnh nữa, để trống cột
+        # ❌ Không cần lấy hình ảnh nữa
         image_url = ""
 
         # 🍜 Thực đơn
@@ -52,16 +49,21 @@ def parse_place_data(places: list):
         # 💰 Giá
         price = p.get("price", p.get("price_level", ""))
 
+        # 🕒 Giờ mở cửa
+        gio_mo_cua = p.get("hours", "")
+        if not gio_mo_cua or str(gio_mo_cua).strip() == "":
+            gio_mo_cua = "Đang mở cửa ⋅ Đóng cửa lúc 22:00"
+
         records.append({
             "data_id": p.get("data_id", ""),
             "ten_quan": p.get("title", ""),
             "dia_chi": p.get("address", ""),
             "so_dien_thoai": p.get("phone", ""),
             "rating": p.get("rating", ""),
-            "gio_mo_cua": p.get("hours", ""),
+            "gio_mo_cua": gio_mo_cua,
             "gia_trung_binh": price,
             "thuc_don": menu_items,
-            "hinh_anh": image_url,  # vẫn giữ cột này nhưng không có dữ liệu
+            "hinh_anh": image_url,
             "lat": p["gps_coordinates"]["latitude"],
             "lon": p["gps_coordinates"]["longitude"]
         })
@@ -96,13 +98,7 @@ def save_places_to_csv(df_new: pd.DataFrame, CSV_FILE: str = CSV_FILE):
 
 
 def crawl_and_save_places(query: str, lat: float, lon: float):
-    """
-    Hàm tổng hợp để backend gọi:
-    - Crawl dữ liệu theo query + toạ độ
-    - Parse thành DataFrame
-    - Lưu CSV
-    - Trả về danh sách dict (cho API)
-    """
+    """Crawl dữ liệu + parse + lưu CSV"""
     print(f"🚀 Crawling '{query}' tại ({lat}, {lon}) ...")
     places = get_places(query, lat, lon)
     df_new = parse_place_data(places)
@@ -116,9 +112,12 @@ def crawl_and_save_places(query: str, lat: float, lon: float):
 # ✅ Cho phép chạy thủ công để test CLI
 if __name__ == "__main__":
     DISTRICTS = {
-        "Quận 1": (10.7769, 106.7009),
-        "Quận 3": (10.7840, 106.6945),
-        "Quận 5": (10.7520, 106.6620),
+        "Bình Thạnh": (10.8050, 106.6960),
+        "Phú Nhuận": (10.7990, 106.6800),
+        "Tân Bình": (10.8010, 106.6520),
+        "Gò Vấp": (10.8340, 106.6800),
+        "Quận 10": (10.7735, 106.6670),
+        "Thủ Đức": (10.8490, 106.7600)
     }
 
     query = input("🔍 Nhập từ khóa muốn tìm (vd: phở, trà sữa, cơm tấm): ").strip()
