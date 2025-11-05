@@ -61,6 +61,23 @@ const icons = {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   }),
+  
+  kem: L.icon({
+    iconUrl: "icons/kem.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+
+  lau: L.icon({
+    iconUrl: "icons/lau.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+    mi: L.icon({
+    iconUrl: "icons/ramen.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }), 
   default: L.icon({
     iconUrl: "icons/default.png",
     iconSize: [26, 26],
@@ -73,17 +90,87 @@ const icons = {
 // =========================
 function detectCategory(name = "") {
   name = name.toLowerCase();
+
+  // 🥣 Phở
   if (name.includes("phở") || name.includes("pho")) return "pho";
+
+  // ☕ Cà phê
   if (name.includes("cà phê") || name.includes("coffee")) return "cafe";
-  if (name.includes("trà sữa") || name.includes("milk tea") || name.includes("bubble tea")) return "tra_sua";
+
+  // 🧋 Trà sữa
+  if (name.includes("trà sữa") || name.includes("milktea") ||name.includes("milk tea") || name.includes("bubble tea")) return "tra_sua";
+
+  // 🍜 Bún / Bún bò
   if (name.includes("bún") || name.includes("bun bo") || name.includes("bò huế")) return "bun";
+
+  // 🥖 Bánh mì
   if (name.includes("bánh mì") || name.includes("banh mi")) return "banh_mi";
-  if (name.includes("bánh ngọt") || name.includes("banh ngot") || name.includes("cake") || name.includes("dessert")) return "banh_ngot";
-  if (name.includes("mì cay") || name.includes("mi cay") || name.includes("spicy noodles") || name.includes("ramen")) return "my_cay";
+
+  // 🍰 Bánh ngọt / Bakery / Dessert
+  if (
+    name.includes("bánh ngọt") ||
+    name.includes("banh ngot") ||
+    name.includes("cake") ||
+    name.includes("tiệm bánh") ||
+    name.includes("dessert") ||
+    name.includes("bakery")
+  )
+    return "banh_ngot";
+
+  // 🍜 Mì cay
+  if (
+    name.includes("mì cay") ||
+    name.includes("mi cay") ||
+    name.includes("spicy noodles") ||
+    name.includes("ramen")
+  )
+    return "my_cay";
+
+  // 🍚 Cơm
   if (name.includes("cơm") || name.includes("com") || name.includes("rice")) return "com";
-  if (name.includes("bánh kem") || name.includes("banh kem") || name.includes("cake") || name.includes("birthday cake")) return "banh_kem";
+
+  // 🎂 Bánh kem / Cake sinh nhật
+  if (
+    name.includes("bánh kem") ||
+    name.includes("banh kem") ||
+    name.includes("birthday cake")
+  )
+    return "banh_kem";
+
+  // 🍦 Kem
+  if (
+    name.includes("kem") ||
+    name.includes("ice cream") ||
+    name.includes("gelato") ||
+    name.includes("snow ice") ||
+    name.includes("frozen")
+  )
+    return "kem";
+
+  // 🔥 Lẩu
+  if (
+    name.includes("lẩu") ||
+    name.includes("lau") ||
+    name.includes("hotpot") ||
+    name.includes("hot pot") ||
+    name.includes("thái") ||
+    name.includes("suki")
+  )
+    return "lau";
+
+  // 🍜 Mì (chung)
+  if (
+    (name.includes("mì") || name.includes("my") || name.includes("mỳ")) &&
+    !name.includes("cay") // tránh trùng với "mì cay"
+  )
+    return "mi";
+
+  // ⚙️ Mặc định
   return "default";
 }
+
+
+
 
 // =========================
 // 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS
@@ -117,6 +204,26 @@ function timeAgo(dateString) {
   if (months < 12) return `${months} tháng trước`;
   return `${years} năm trước`;
 }
+
+// 🕓 Format thời gian từ "2025-11-05T10:20:30.137452" → "5/11/2025 12:15 PM"
+function formatDate(dateString) {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  if (isNaN(date)) return dateString; // nếu không parse được, giữ nguyên
+
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  let hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+
+  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
+}
+
 
 
 
@@ -179,7 +286,7 @@ function renderReviews(googleReviews, userReviews) {
             <div>
               <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
               <div class="review-stars">${"⭐".repeat(r.rating || 0)}</div>
-              <div class="review-time">${timeAgo(r.date || r.relative_time_description)}</div>
+              <div class="review-time">${formatDate(r.date) || timeAgo(r.relative_time_description)}</div>
             </div>
           </div>
           <div class="review-text">${r.comment || ""}</div>
@@ -211,11 +318,36 @@ function displayPlaces(places) {
     const icon = icons[category] || icons.default;
     const marker = L.marker([lat, lon], { icon }).addTo(map);
 
+      // 🟢 TOOLTIP khi rê chuột vào marker
+  const tooltipHTML = `
+    <div style="text-align:center;min-width:180px;">
+      <strong>${p.ten_quan || "Không tên"}</strong><br>
+      ${
+        p.hinh_anh
+          ? `<img src="${p.hinh_anh}" style="width:100px;height:70px;object-fit:cover;border-radius:6px;margin-top:4px;">`
+          : ""
+      }
+      <div style="font-size:13px;margin-top:4px;">
+        <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
+        <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
+      </div>
+    </div>
+  `;
+
+  // Gắn tooltip vào marker
+  marker.bindTooltip(tooltipHTML, {
+    direction: "top",   // vị trí tooltip
+    offset: [0, -10],   // đẩy tooltip lên một chút
+    opacity: 0.95,
+    sticky: true,       // theo chuột
+    className: "custom-tooltip" // dùng để CSS đẹp hơn
+  });
+
     marker.on("click", async () => {
       map.setView([lat, lon], 17, { animate: true });
       const sidebar = document.getElementById("sidebar");
       const sidebarContent = document.getElementById("sidebar-content");
-
+    
       const place_id = p.data_id || p.ten_quan;
       let googleReviews = [];
       let userReviews = [];
@@ -307,7 +439,6 @@ function displayPlaces(places) {
     routeControl = null;
   }
 });
-
 
       // =========================
       // 🚗 NÚT TÌM ĐƯỜNG ĐI
@@ -507,7 +638,28 @@ async function fetchPlaces(query = "", flavor = "") {
 
     // --- 1️⃣ Fuzzy Search theo tên quán (có bỏ dấu) ---
     if (query) {
-      const normalizedQuery = normalize(query);
+      let normalizedQuery = normalize(query);
+
+      // ✅ Nếu query không có khoảng trắng, thử thêm khoảng trắng để khớp tên quán
+      if (!normalizedQuery.includes(" ")) {
+        const possibleMatches = data.map((p) => normalize(p.ten_quan || ""));
+        const splitVariants = [];
+
+        // tạo các phiên bản có chèn khoảng trắng vào các vị trí khác nhau
+        for (let i = 1; i < normalizedQuery.length; i++) {
+          splitVariants.push(
+            normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
+          );
+        }
+
+        // nếu bất kỳ variant nào xuất hiện trong tên quán → chọn variant đó
+        for (const variant of splitVariants) {
+          if (possibleMatches.some((name) => name.includes(variant))) {
+            normalizedQuery = variant;
+            break;
+          }
+        }
+      }
 
       // Dữ liệu đã bỏ dấu để Fuse hoạt động tốt hơn
       const fuse = new Fuse(
@@ -524,34 +676,38 @@ async function fetchPlaces(query = "", flavor = "") {
 
       const fuzzyResults = fuse.search(normalizedQuery).map((r) => r.item);
 
-// --- Lọc lại lần 2: chỉ giữ quán có từ khớp thật sự ---
-const queryWords = normalizedQuery.split(" ").filter(Boolean);
+      // ⚙️ Xử lý khớp từ khóa chính xác hơn
+      const queryWords = normalizedQuery.split(" ").filter(Boolean);
+      const normalizedPhrase = normalizedQuery.trim();
 
-filtered = fuzzyResults.filter((p) => {
-  const name = normalize(p.ten_quan || "");
+      filtered = fuzzyResults.filter((p) => {
+        const name = normalize(p.ten_quan || "");
 
-  // Phải có ít nhất 1 từ khớp gần hoặc khớp nguyên
-  const hasTrueMatch = queryWords.some((w) =>
-    name === w ||
-    name.includes(` ${w} `) ||
-    name.startsWith(`${w} `) ||
-    name.endsWith(` ${w}`) ||
-    (name.includes(w) && !name.includes("mi cay")) // loại các quán “mì cay” nếu tìm “trà sữa”
-  );
+        // ✅ Regex khớp cụm từ hoàn chỉnh
+        const phraseRegex = new RegExp(`\\b${normalizedPhrase}\\b`, "i");
+        const hasFullPhrase = phraseRegex.test(name);
 
-  return hasTrueMatch;
-});
+        // ✅ Regex khớp từng từ
+        const hasWordMatch = queryWords.some((w) => {
+          const wordRegex = new RegExp(`\\b${w}\\b`, "i");
+          return wordRegex.test(name);
+        });
 
+        // ✅ Nếu query có ≥ 2 từ (vd: “mi cay”) → bắt buộc khớp cụm đầy đủ
+        if (queryWords.length >= 2) {
+          return hasFullPhrase;
+        }
 
+        // ✅ Nếu chỉ 1 từ (vd: “pho”, “bun”) thì cho phép khớp từng từ
+        return hasFullPhrase || hasWordMatch;
+      });
     }
 
     // --- 2️⃣ Lọc thêm theo khẩu vị (nếu có nhập) ---
     if (flavor) {
       const normalizedFlavor = normalize(flavor);
       filtered = filtered.filter(
-        (p) =>
-          p.khau_vi &&
-          normalize(p.khau_vi).includes(normalizedFlavor)
+        (p) => p.khau_vi && normalize(p.khau_vi).includes(normalizedFlavor)
       );
     }
 
@@ -561,6 +717,8 @@ filtered = fuzzyResults.filter((p) => {
     alert("Không thể tải dữ liệu từ server!");
   }
 }
+
+
 // =========================
 // 🎯 TÌM KIẾM
 // =========================
