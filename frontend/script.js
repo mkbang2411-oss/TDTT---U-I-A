@@ -61,6 +61,23 @@ const icons = {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   }),
+  
+  kem: L.icon({
+    iconUrl: "icons/kem.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+
+  lau: L.icon({
+    iconUrl: "icons/lau.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }),
+    mi: L.icon({
+    iconUrl: "icons/ramen.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  }), 
   default: L.icon({
     iconUrl: "icons/default.png",
     iconSize: [26, 26],
@@ -73,17 +90,87 @@ const icons = {
 // =========================
 function detectCategory(name = "") {
   name = name.toLowerCase();
+
+  // 🥣 Phở
   if (name.includes("phở") || name.includes("pho")) return "pho";
+
+  // ☕ Cà phê
   if (name.includes("cà phê") || name.includes("coffee")) return "cafe";
-  if (name.includes("trà sữa") || name.includes("milk tea") || name.includes("bubble tea")) return "tra_sua";
+
+  // 🧋 Trà sữa
+  if (name.includes("trà sữa") || name.includes("milktea") ||name.includes("milk tea") || name.includes("bubble tea")) return "tra_sua";
+
+  // 🍜 Bún / Bún bò
   if (name.includes("bún") || name.includes("bun bo") || name.includes("bò huế")) return "bun";
+
+  // 🥖 Bánh mì
   if (name.includes("bánh mì") || name.includes("banh mi")) return "banh_mi";
-  if (name.includes("bánh ngọt") || name.includes("banh ngot") || name.includes("cake") || name.includes("dessert")) return "banh_ngot";
-  if (name.includes("mì cay") || name.includes("mi cay") || name.includes("spicy noodles") || name.includes("ramen")) return "my_cay";
+
+  // 🍰 Bánh ngọt / Bakery / Dessert
+  if (
+    name.includes("bánh ngọt") ||
+    name.includes("banh ngot") ||
+    name.includes("cake") ||
+    name.includes("tiệm bánh") ||
+    name.includes("dessert") ||
+    name.includes("bakery")
+  )
+    return "banh_ngot";
+
+  // 🍜 Mì cay
+  if (
+    name.includes("mì cay") ||
+    name.includes("mi cay") ||
+    name.includes("spicy noodles") ||
+    name.includes("ramen")
+  )
+    return "my_cay";
+
+  // 🍚 Cơm
   if (name.includes("cơm") || name.includes("com") || name.includes("rice")) return "com";
-  if (name.includes("bánh kem") || name.includes("banh kem") || name.includes("cake") || name.includes("birthday cake")) return "banh_kem";
+
+  // 🎂 Bánh kem / Cake sinh nhật
+  if (
+    name.includes("bánh kem") ||
+    name.includes("banh kem") ||
+    name.includes("birthday cake")
+  )
+    return "banh_kem";
+
+  // 🍦 Kem
+  if (
+    name.includes("kem") ||
+    name.includes("ice cream") ||
+    name.includes("gelato") ||
+    name.includes("snow ice") ||
+    name.includes("frozen")
+  )
+    return "kem";
+
+  // 🔥 Lẩu
+  if (
+    name.includes("lẩu") ||
+    name.includes("lau") ||
+    name.includes("hotpot") ||
+    name.includes("hot pot") ||
+    name.includes("thái") ||
+    name.includes("suki")
+  )
+    return "lau";
+
+  // 🍜 Mì (chung)
+  if (
+    (name.includes("mì") || name.includes("my") || name.includes("mỳ")) &&
+    !name.includes("cay") // tránh trùng với "mì cay"
+  )
+    return "mi";
+
+  // ⚙️ Mặc định
   return "default";
 }
+
+
+
 
 // =========================
 // 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS
@@ -117,6 +204,26 @@ function timeAgo(dateString) {
   if (months < 12) return `${months} tháng trước`;
   return `${years} năm trước`;
 }
+
+// 🕓 Format thời gian từ "2025-11-05T10:20:30.137452" → "5/11/2025 12:15 PM"
+function formatDate(dateString) {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  if (isNaN(date)) return dateString; // nếu không parse được, giữ nguyên
+
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  let hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+
+  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
+}
+
 
 
 
@@ -179,7 +286,7 @@ function renderReviews(googleReviews, userReviews) {
             <div>
               <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
               <div class="review-stars">${"⭐".repeat(r.rating || 0)}</div>
-              <div class="review-time">${timeAgo(r.date || r.relative_time_description)}</div>
+              <div class="review-time">${formatDate(r.date) || timeAgo(r.relative_time_description)}</div>
             </div>
           </div>
           <div class="review-text">${r.comment || ""}</div>
