@@ -444,6 +444,30 @@ body {
   background: #005fd1;
 }
 
+.review-form.logged-in .form-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.review-form .user-avatar-form {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+  border: 1px solid #ddd;
+}
+
+.review-form .user-name {
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+.review-form .form-title {
+  margin-bottom: 15px; /* Thêm khoảng cách cho tiêu đề */
+}
+
 /* ==========================================
    📱 RESPONSIVE
 ========================================== */

@@ -1,0 +1,141 @@
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset = "UTF-8">
+    <title>Sign In</title>
+    
+    <link rel="stylesheet" href="{% static 'banner.css' %}">
+    <style>
+        .text-box{
+            border-radius: 15px;
+            padding: 15px 55px;
+            text-align: center;
+            width: 150px;
+            height: 25px;
+            left: 100px;
+            right: 100px;
+            display: flex;
+            margin: 50px auto;
+            padding-top: 1px;
+            padding-right: 70px;
+            padding-left: 70px;
+            flex-direction: column;
+            align-items: center;
+        }
+        .text-box h1{
+            color: #bc2a12;
+            font-family: "Haetenschweiler Regular", sans-serif;
+            font-size: 35px;
+            margin: 0;
+            text-align: center;
+        }
+        .login-form{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .login-form label{
+            color: #BC2A12;
+            font-weight: bold;
+            height: 15px;
+            margin-top: 15px;
+            margin-left: -170px;
+            width: 100%;
+        }
+        .login-form input{
+            width: 220px;
+            padding: 8px 10px;
+            border: 2px solid #BC2A12;
+            border-radius: 5px;
+            outline: #BC2A12;
+            font-size: 10px;
+        }
+        .login-form .Sign-in-button {
+            background-color: #FED57E;
+            border: 3px solid #FED57E;
+            border-radius: 15px;
+            color: white;
+            width: 70px;
+            height: 30px;
+            font-size: 15px;
+            
+            text-align: center;
+        }
+        .login-form .Sign-in-button:hover{
+            background-color: #BC2A12;
+            color: white;
+        }
+        .django-error {
+            color: red;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 5px 0 10px 0;
+        }
+        .google-button {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #4285F4; /* Màu xanh của Google */
+            color: white !important; /* Dùng !important để ghi đè màu link */
+            border-radius: 5px;
+            text-decoration: none; /* Bỏ gạch chân của link */
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+        .google-button:hover {
+            background-color: #357ae8;
+        }
+    </style>
+</head>
+    <body>      
+        <div class="background">
+            <img src="{% static 'Picture/background.png' %}" class="bg" alt="UIA Logo">
+            <img src="{% static 'Picture/UIAaa.png' %}" class="uia"  alt="UIA">
+        </div>
+        <div class="text-box">
+            <h1>SIGN IN</h1>
+
+            <form class="login-form" method="POST" action="{% url 'account_login' %}">
+                
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="django-error">
+                        {{ form.non_field_errors.as_text }}
+                    </div>
+                {% endif %}
+
+                <label for="{{ form.login.id_for_label }}">Email:</label>
+                {{ form.login }} 
+                {% if form.login.errors %}
+                    <div class="django-error">
+                        {{ form.login.errors.as_text }}
+                    </div>
+                {% endif %}
+
+                <label for="{{ form.password.id_for_label }}">Password:</label>
+                {{ form.password }} 
+                {% if form.password.errors %}
+                    <div class="django-error">
+                        {{ form.password.errors.as_text }}
+                    </div>
+                {% endif %}
+
+                <button type="submit" class="Sign-in-button" >Done</button> 
+            </form>
+            <div style="margin-top: 25px; width: 100%;">
+                <p style="color: #BC2A12; font-weight: bold; text-align: center;">
+                    Or sign in with:
+                </p>
+                
+                <a href="{% provider_login_url 'google' %}" class="google-button">
+                    Google
+                </a>
+            </div>
+        </div>
+    </body>
+</html>
