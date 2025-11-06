@@ -297,6 +297,67 @@ function renderReviews(googleReviews, userReviews) {
   `;
 }
 
+function formatVietnamTime(h, m) {
+  if (h === 0 && m === 0) return "12:00 khuya";
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function convertToMinutes(h, m) {
+  // ✅ Nếu 0:00 → tính là 24:00 (cuối ngày), không phải đầu ngày
+  if (h === 0 && m === 0) return 24 * 60;
+  return h * 60 + m;
+}
+
+function getRealtimeStatus(hoursStr) {
+  if (!hoursStr) return "Không rõ";
+
+  hoursStr = hoursStr.toLowerCase().trim();
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // ✅ 24h
+  if (hoursStr.includes("mở cả ngày")) {
+    return "✅ Đang mở cửa (24h)";
+  }
+
+  // ✅ "Đang mở cửa ⋅ Đóng cửa lúc XX:XX"
+  if (hoursStr.includes("đang mở cửa")) {
+    const match = hoursStr.match(/đóng cửa lúc\s*(\d{1,2}):(\d{2})/);
+    if (match) {
+      const h = parseInt(match[1]);
+      const m = parseInt(match[2]);
+      const closeMinutes = convertToMinutes(h, m);
+      const closeFormatted = formatVietnamTime(h, m);
+
+      if (currentMinutes < closeMinutes) {
+        return `✅ Đang mở cửa (Đóng lúc ${closeFormatted})`;
+      } else {
+        return `❌ Đã đóng cửa (Đóng lúc ${closeFormatted})`;
+      }
+    }
+  }
+
+  // ✅ "Đóng cửa ⋅ Mở cửa lúc XX:XX"
+  if (hoursStr.includes("đóng cửa")) {
+    const match = hoursStr.match(/mở cửa lúc\s*(\d{1,2}):(\d{2})/);
+    if (match) {
+      const h = parseInt(match[1]);
+      const m = parseInt(match[2]);
+      const openMinutes = convertToMinutes(h, m);
+      const openFormatted = formatVietnamTime(h, m);
+
+      if (currentMinutes >= openMinutes) {
+        return `✅ Đang mở cửa (Mở lúc ${openFormatted})`;
+      } else {
+        return `❌ Đã đóng cửa (Mở lúc ${openFormatted})`;
+      }
+    }
+  }
+
+  return hoursStr;
+}
+
+
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
@@ -373,7 +434,7 @@ function displayPlaces(places) {
         <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
 <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
 <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-<p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+<p><i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua)}</p>
 <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
 <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
       `;
