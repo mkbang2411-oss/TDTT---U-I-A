@@ -1056,6 +1056,10 @@ def get_food_planner_html():
 }
 
 /* ========== MANUAL MODE ========== */
+.meal-item.drag-over {  
+    background-color: #fff3cd !important;  
+    border: 2px solid #
+
 .search-box-manual {
     margin-bottom: 15px;
 }
@@ -1226,6 +1230,28 @@ def get_food_planner_html():
     color: #e74c3c;
 }
 
+/* ========== STYLE INPUT TÊN CARD ========== */
+/* ========== STYLE INPUT TÊN CARD ========== */
+.meal-title-input {
+    padding: 4px 8px;
+    border: 2px solid #FFE5D9;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    width: 160px;
+    background: white; /* 🔥 THÊM background */
+}
+
+.meal-title-input:focus {
+    border-color: #FF6B35;
+}
+
+.meal-tick-btn:hover {
+    transform: scale(1.15);
+    opacity: 0.8;
+}
+
 /* ========== MOBILE RESPONSIVE ========== */
 @media (max-width: 768px) {
     .food-planner-panel {
@@ -1365,6 +1391,10 @@ let draggedElement = null;
 let selectedPlaceForReplacement = null;
 let waitingForPlaceSelection = null;
 let isManualEditMode = false;
+let autoScrollInterval = null;
+let lastDragY = 0;
+let dragDirection = 0;
+let lastTargetElement = null;
 
 // Themes data
 const themes = {
@@ -1449,12 +1479,30 @@ function toggleFilters() {
 }
 
 // ========== SAVED PLANS ==========
-function loadSavedPlans() {
+function loadSavedPlan(planId) {
     const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
+    const plan = savedPlans.find(p => p.id === planId);
     
-    if (savedPlans.length > 0) {
-        document.getElementById('savedPlansSection').style.display = 'block';
-        displaySavedPlansList(savedPlans);
+    if (plan) {
+        currentPlan = {};
+        
+        // 🔥 RESTORE từ array về object và giữ thứ tự
+        if (Array.isArray(plan.plan)) {
+            const orderList = [];
+            plan.plan.forEach(item => {
+                // Deep copy dữ liệu
+                currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
+                orderList.push(item.key);
+            });
+            currentPlan._order = orderList;
+        } else {
+            // Fallback cho dữ liệu cũ (object)
+            Object.assign(currentPlan, plan.plan);
+        }
+
+        currentPlanId = planId;
+        isEditMode = false;
+        displayPlanVertical(currentPlan, false);
     }
 }
 
@@ -1498,33 +1546,61 @@ function toggleSavedPlans() {
     }
 }
 
+// ========== SAVE PLAN - SỬ DỤNG ARRAY THAY VÌ OBJECT ==========
 function savePlan() {
     if (!currentPlan) return;
+
+    // 🔥 LƯỚI ĐÚNG THỨ TỰ VỀ DOM
+    const mealItems = document.querySelectorAll('.meal-item');
+    const planArray = [];
     
+    // Lấy thứ tự từ DOM (user đã kéo thả)
+    mealItems.forEach(item => {
+        const mealKey = item.dataset.mealKey;
+        if (mealKey && currentPlan[mealKey]) {
+            // 🔥 CẬP NHẬT NGAY TỪ INPUT TRƯỚC KHI LƯU
+            const timeInput = item.querySelector('.time-input-inline');
+            if (timeInput && timeInput.value) {
+                currentPlan[mealKey].time = timeInput.value;
+            }
+            
+            // Kiểm tra các input khác
+            const titleInput = item.querySelector('input[onchange*="updateMealTitle"]');
+            if (titleInput && titleInput.value) {
+                currentPlan[mealKey].title = titleInput.value;
+            }
+            
+            // Thêm vào array
+            planArray.push({
+                key: mealKey,
+                data: JSON.parse(JSON.stringify(currentPlan[mealKey])) // Deep copy
+            });
+        }
+    });
+
+    // Cập nhật order
+    currentPlan._order = planArray.map(x => x.key);
+
     const planName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
     
     if (planName) {
         const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
         
+        const planRecord = {
+            id: currentPlanId || Date.now().toString(),
+            name: planName,
+            plan: planArray,  // ← Array có thứ tự
+            savedAt: new Date().toISOString()
+        };
+        
         if (currentPlanId) {
             const index = savedPlans.findIndex(p => p.id === currentPlanId);
             if (index !== -1) {
-                savedPlans[index] = {
-                    id: currentPlanId,
-                    name: planName,
-                    plan: currentPlan,
-                    savedAt: new Date().toISOString()
-                };
+                savedPlans[index] = planRecord;
             }
         } else {
-            const newPlan = {
-                id: Date.now().toString(),
-                name: planName,
-                plan: currentPlan,
-                savedAt: new Date().toISOString()
-            };
-            savedPlans.unshift(newPlan);
-            currentPlanId = newPlan.id;
+            savedPlans.unshift(planRecord);
+            currentPlanId = planRecord.id;
         }
         
         if (savedPlans.length > 20) {
@@ -1542,21 +1618,22 @@ function savePlan() {
     }
 }
 
-function loadSavedPlan(planId) {
+// ========== LOAD SAVED PLAN - RESTORE TỪARAY VỀ OBJECT ==========
+function loadSavedPlans() {
     const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
-    const plan = savedPlans.find(p => p.id === planId);
-    
-    if (plan) {
-        currentPlan = plan.plan;
-        currentPlanId = planId;
-        
-        if (!filtersCollapsed) {
-            toggleFilters();
-        }
-        
-        isEditMode = false;
-        displayPlanVertical(currentPlan, false);
+    const section = document.getElementById('savedPlansSection');
+    const listDiv = document.getElementById('savedPlansList');
+
+    if (!section || !listDiv) return;
+
+    if (!savedPlans || savedPlans.length === 0) {
+        section.style.display = 'none';
+        listDiv.innerHTML = '<p style="color: #999; font-size: 13px; padding: 15px; text-align: center;">Chưa có kế hoạch nào</p>';
+        return;
     }
+
+    section.style.display = 'block';
+    displaySavedPlansList(savedPlans);
 }
 
 function deleteSavedPlan(planId) {
@@ -1634,6 +1711,7 @@ document.getElementById('foodPlannerBtn').addEventListener('click', function() {
 function openFoodPlanner() {
     document.getElementById('foodPlannerPanel').classList.add('active');
     isPlannerOpen = true;
+    loadSavedPlans();
 }
 
 function closeFoodPlanner() {
@@ -1786,12 +1864,10 @@ function displayPlanVertical(plan, editMode = false) {
     const mealOrder = ['breakfast', 'morning_drink', 'lunch', 'afternoon_drink', 'dinner', 'dessert', 'meal', 'meal1', 'drink', 'meal2'];
     let hasPlaces = false;
     
-    // Lấy tất cả các keys và sắp xếp theo thời gian
-    const allMealKeys = Object.keys(plan).sort((a, b) => {
-        const timeA = plan[a]?.time || '00:00';
-        const timeB = plan[b]?.time || '00:00';
-        return timeA.localeCompare(timeB);
-    });
+    // 🔥 Lấy đúng thứ tự từ _order nếu có
+    const allMealKeys = plan._order && Array.isArray(plan._order) 
+        ? plan._order 
+        : Object.keys(plan).filter(k => k !== '_order');
     
     for (const key of allMealKeys) {
         const meal = plan[key];
@@ -1815,8 +1891,16 @@ function displayPlanVertical(plan, editMode = false) {
                     <div class="meal-card-vertical empty-slot ${editMode ? 'edit-mode' : ''}">
                         <div class="meal-title-vertical">
                             <div class="meal-title-left">
-                                <span style="font-size: 22px;">${icon}</span>
-                                <span>${meal.title}</span>
+                                ${editMode ? `
+                                    <select onchange="updateMealIcon('${key}', this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
+                                        ${iconOptions.map(ico => `<option value="${ico}" ${ico === icon ? 'selected' : ''}>${ico}</option>`).join('')}
+                                    </select>
+                                ` : `<span style="font-size: 22px;">${icon}</span>`}
+                                ${editMode 
+                                    ? `<input type="text" value="${meal.title}" onchange="updateMealTitle('${key}', this.value)" 
+                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">`
+                                    : `<span>${meal.title}</span>`
+                                }
                             </div>
                             ${editMode ? `
                             <div class="meal-actions">
@@ -1861,8 +1945,18 @@ function displayPlanVertical(plan, editMode = false) {
                 <div class="meal-card-vertical ${editMode ? 'edit-mode' : ''}" ${cardClickEvent} style="${cardCursor}">
                     <div class="meal-title-vertical">
                         <div class="meal-title-left">
-                            <span style="font-size: 22px;">${icon}</span>
-                            <span>${meal.title}</span>
+                            ${editMode ? `
+                                <select onchange="updateMealIcon('${key}', this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
+                                    ${iconOptions.map(ico => `<option value="${ico}" ${ico === icon ? 'selected' : ''}>${ico}</option>`).join('')}
+                                </select>
+                            ` : `<span style="font-size: 22px;">${icon}</span>`}
+                            ${editMode ? 
+                                `<div style="display: flex; gap: 4px; align-items: center; flex: 1;">
+                                    <input type="text" value="${meal.title}" onchange="updateMealTitle('${key}', this.value)" 
+                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">
+                                </div>` :
+                                `<span>${meal.title}</span>`
+                            }
                         </div>
                         ${editMode ? `
                         <div class="meal-actions">
@@ -2086,30 +2180,171 @@ function setupDragAndDrop() {
     
     mealItems.forEach(item => {
         item.addEventListener('dragstart', handleDragStart);
-        item.addEventListener('dragover', handleDragOver);
-        item.addEventListener('drop', handleDrop);
         item.addEventListener('dragend', handleDragEnd);
+        item.addEventListener('dragover', handleDragOverItem);  // 🔥 ĐỔI TỪ dragenter
     });
+    
+    const container = document.querySelector('.timeline-container');
+    if (container) {
+        container.addEventListener('dragover', handleDragOver);
+        container.addEventListener('drop', handleDrop);  // 🔥 THÊM DROP
+    }
 }
 
 function handleDragStart(e) {
     draggedElement = this;
+    window.draggedElement = this;
     this.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', this.innerHTML);
+    
+    lastTargetElement = null; // 🔥 RESET
+    startAutoScroll();
 }
+
+function handleDragEnd(e) {
+    if (draggedElement) {
+        draggedElement.classList.remove('dragging');
+    }
+    draggedElement = null;
+    window.draggedElement = null;
+    lastDragY = 0;
+    lastTargetElement = null; // 🔥 RESET
+    
+    stopAutoScroll();
+}
+
+// ========== DRAG OVER ITEM - HIGHLIGHT VỊ TRÍ MUỐN ĐỔI ==========
+function handleDragOverItem(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    
+    if (!draggedElement || draggedElement === this) return;
+    
+    e.dataTransfer.dropEffect = 'move';
+    
+    // 🔥 HIGHLIGHT card đích - để người dùng thấy rõ
+    if (lastTargetElement && lastTargetElement !== this) {
+        lastTargetElement.classList.remove('drag-over');
+    }
+    
+    lastTargetElement = this;
+    this.classList.add('drag-over');  // Thêm class để hiện visual feedback
+    
+    lastDragY = e.clientY;
+    return false;
+}
+
+// ========== DRAG ENTER - ĐỘI VỊ TRÍ NGAY LẬP TỨC KHI CHẠM ==========
+function handleDragEnter(e) {
+    if (!draggedElement || draggedElement === this) return;
+    
+    const draggedKey = draggedElement.dataset.mealKey;
+    const targetKey = this.dataset.mealKey;
+    
+    // 🔥 CHỈ ĐỔI 1 LẦN - TRÁNH ĐỔI LẶP LẠI
+    if (lastTargetElement !== this) {
+        lastTargetElement = this;
+        
+        // ✅ ĐỔI VỊ TRÍ TRONG DOM
+        if (draggedElement.parentNode === this.parentNode) {
+            const temp = draggedElement.innerHTML;
+            draggedElement.innerHTML = this.innerHTML;
+            this.innerHTML = temp;
+            
+            // ✅ ĐỔI ATTRIBUTE
+            const tempKey = draggedElement.dataset.mealKey;
+            draggedElement.dataset.mealKey = this.dataset.mealKey;
+            this.dataset.mealKey = tempKey;
+        }
+        
+        // ✅ ĐỔI DỮ LIỆU TRONG currentPlan
+        if (currentPlan && draggedKey && targetKey) {
+            const temp = currentPlan[draggedKey];
+            currentPlan[draggedKey] = currentPlan[targetKey];
+            currentPlan[targetKey] = temp;
+        }
+    }
+}
+
+// ✨ AUTO-SCROLL TOÀN BỘ PANEL - CỰC NHANH
+function startAutoScroll() {
+    if (autoScrollInterval) return;
+    
+    autoScrollInterval = setInterval(() => {
+        if (!draggedElement) {
+            stopAutoScroll();
+            return;
+        }
+        
+        const container = document.querySelector('.panel-content');
+        if (!container) return;
+        
+        const rect = container.getBoundingClientRect();
+        
+        // 🔥 DÙNG lastDragY CẬP NHẬT LiÊN TỤC
+        if (lastDragY === 0) return;
+        
+        const topEdge = rect.top + 150;      // Vùng trên
+        const bottomEdge = rect.bottom - 150; // Vùng dưới
+        
+        let scrollSpeed = 0;
+        
+        // CUỘN LÊN
+        if (lastDragY < topEdge) {
+            const distance = topEdge - lastDragY;
+            const ratio = Math.min(1, distance / 150);
+            scrollSpeed = -(10 + ratio * 40); // 10-50 px/frame
+            container.scrollTop += scrollSpeed;
+        }
+        // CUỘN XUỐNG
+        else if (lastDragY > bottomEdge) {
+            const distance = lastDragY - bottomEdge;
+            const ratio = Math.min(1, distance / 150);
+            scrollSpeed = (10 + ratio * 40); // 10-50 px/frame
+            container.scrollTop += scrollSpeed;
+        }
+        
+    }, 16); // 60fps - mượt
+}
+
+function stopAutoScroll() {
+    if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
+    }
+}
+
+// ✨ THEO DÕI CHUỘT TRÊN TOÀN BỘ DOCUMENT
+document.addEventListener('dragover', (e) => {
+    if (draggedElement) {
+        lastDragY = e.clientY;
+    }
+}, { passive: true });
 
 function handleDragOver(e) {
     if (e.preventDefault) {
         e.preventDefault();
     }
+    
+    // 🔥 CẬP NHẬT LiÊN TỤC VỊ TRÍ Y TOÀN CẦU
+    lastDragY = e.clientY;
+    
+    if (!draggedElement) return;
+    
     e.dataTransfer.dropEffect = 'move';
     
-    const afterElement = getDragAfterElement(this.parentElement, e.clientY);
+    // Tìm phần tử nằm sau vị trí hiện tại
+    const afterElement = getDragAfterElement(
+        document.querySelector('.timeline-container'),
+        e.clientY
+    );
+    
     if (afterElement == null) {
-        this.parentElement.appendChild(draggedElement);
+        document.querySelector('.timeline-container').appendChild(draggedElement);
     } else {
-        this.parentElement.insertBefore(draggedElement, afterElement);
+        document.querySelector('.timeline-container').insertBefore(draggedElement, afterElement);
     }
     
     return false;
@@ -2120,22 +2355,50 @@ function handleDrop(e) {
         e.stopPropagation();
     }
     
-    if (draggedElement !== this) {
-        const draggedKey = draggedElement.dataset.mealKey;
-        const targetKey = this.dataset.mealKey;
-        
-        if (currentPlan && draggedKey && targetKey) {
-            const temp = currentPlan[draggedKey];
-            currentPlan[draggedKey] = currentPlan[targetKey];
-            currentPlan[targetKey] = temp;
-        }
+    if (!draggedElement || !lastTargetElement) return;
+    
+    if (draggedElement === lastTargetElement) return;
+    
+    const draggedKey = draggedElement.dataset.mealKey;
+    const targetKey = lastTargetElement.dataset.mealKey;
+    
+    // 🔥 CẬP NHẬT DỮ LIỆU TRƯỚC KHI ĐỔI
+    // Từ input tên của draggedElement
+    const draggedTitleInput = draggedElement.querySelector('.meal-title-input');
+    const draggedTimeInput = draggedElement.querySelector('.time-input-inline');
+    if (draggedTitleInput && draggedKey && currentPlan[draggedKey]) {
+        currentPlan[draggedKey].title = draggedTitleInput.value;
+    }
+    if (draggedTimeInput && draggedKey && currentPlan[draggedKey]) {
+        currentPlan[draggedKey].time = draggedTimeInput.value;
+    }
+    
+    // Từ input tên của targetElement
+    const targetTitleInput = lastTargetElement.querySelector('.meal-title-input');
+    const targetTimeInput = lastTargetElement.querySelector('.time-input-inline');
+    if (targetTitleInput && targetKey && currentPlan[targetKey]) {
+        currentPlan[targetKey].title = targetTitleInput.value;
+    }
+    if (targetTimeInput && targetKey && currentPlan[targetKey]) {
+        currentPlan[targetKey].time = targetTimeInput.value;
+    }
+    
+    // ✅ SWAP DỮ LIỆU
+    if (currentPlan && draggedKey && targetKey) {
+        const temp = currentPlan[draggedKey];
+        currentPlan[draggedKey] = currentPlan[targetKey];
+        currentPlan[targetKey] = temp;
+    }
+    
+    // ✅ RENDER LẠI (không swap HTML trực tiếp)
+    displayPlanVertical(currentPlan, isEditMode);
+    
+    // 🔥 REMOVE HIGHLIGHT
+    if (lastTargetElement) {
+        lastTargetElement.classList.remove('drag-over');
     }
     
     return false;
-}
-
-function handleDragEnd(e) {
-    this.classList.remove('dragging');
 }
 
 function getDragAfterElement(container, y) {
@@ -2159,6 +2422,24 @@ function updateMealTime(mealKey, newTime) {
         currentPlan[mealKey].time = newTime;
     }
 }
+
+// ========== UPDATE MEAL TITLE ==========
+function updateMealTitle(mealKey, newTitle) {
+    if (currentPlan && currentPlan[mealKey]) {
+        currentPlan[mealKey].title = newTitle;
+    }
+}
+
+// ========== UPDATE MEAL ICON ==========
+function updateMealIcon(mealKey, newIcon) {
+    if (currentPlan && currentPlan[mealKey]) {
+        currentPlan[mealKey].icon = newIcon;
+        displayPlanVertical(currentPlan, isEditMode);
+    }
+}
+
+// ========== ICON OPTIONS ==========
+const iconOptions = ['🍳', '🥐', '🍜', '🍚', '🍛', '🍝', '🍕', '🍔', '🌮', '🥗', '🍱', '🍤', '🍣', '🦞', '☕', '🧋', '🍵', '🥤', '🍰', '🍨', '🧁', '🍩', '🍪', '🍽️'];
 
 // ========== MANUAL MODE: PLANS MANAGEMENT ==========
 function toggleManualEditMode() {
@@ -2337,10 +2618,14 @@ function displayManualPlanTimeline() {
                     <div class="meal-card-vertical empty-slot ${editMode ? 'edit-mode' : ''}">
                         <div class="meal-title-vertical">
                             <div class="meal-title-left">
-                                <span style="font-size: 22px;">🍽️</span>
+                                ${editMode ? `
+                                    <select onchange="updateManualItemIcon(${item.id}, this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
+                                        ${iconOptions.map(ico => `<option value="${ico}" ${ico === (item.icon || '🍽️') ? 'selected' : ''}>${ico}</option>`).join('')}
+                                    </select>
+                                ` : `<span style="font-size: 22px;">${item.icon || '🍽️'}</span>`}
                                 ${editMode ? 
                                     `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
-                                        style="border: none; background: transparent; font-size: 15px; font-weight: 600; outline: none; flex: 1;">` :
+                                        style="border: none; background: transparent; font-size: 15px; font-weight: 600; outline: none; flex: 1;" onclick="event.stopPropagation();">` :
                                     `<span>${item.title}</span>`
                                 }
                             </div>
@@ -2365,56 +2650,71 @@ function displayManualPlanTimeline() {
                 </div>
             `;
         } else {
-            // Card có quán
-            const place = item.place;
-            html += `
-                <div class="meal-item" data-meal-id="${item.id}">
-                    <div class="time-marker">
-                        <input type="time" class="time-input-inline" value="${item.time}" onchange="updateManualItemTime(${item.id}, this.value)">
-                    </div>
-                    <div class="time-dot"></div>
-                    <div class="meal-card-vertical edit-mode" onclick="flyToPlace(${place.lat}, ${place.lon})">
-                        <div class="meal-title-vertical">
-                            <div class="meal-title-left">
-                                <span style="font-size: 22px;">🍽️</span>
-                                <input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
-                                       style="border: none; background: transparent; font-size: 15px; font-weight: 600; outline: none; flex: 1;" onclick="event.stopPropagation();">
+                    // Card có quán
+                    const place = item.place;
+                    const cardClickEvent = editMode ? '' : `onclick="flyToPlace(${place.lat}, ${place.lon})"`;
+                    const cardCursor = editMode ? 'cursor: default;' : 'cursor: pointer;';
+                    
+                    html += `
+                        <div class="meal-item" data-meal-id="${item.id}">
+                            <div class="time-marker">
+                                ${editMode ? 
+                                    `<input type="time" class="time-input-inline" value="${item.time}" onchange="updateManualItemTime(${item.id}, this.value)">` :
+                                    `<div class="time-badge">${item.time}</div>`
+                                }
                             </div>
-                            <div class="meal-actions" style="display: flex;">
-                                <button class="meal-action-btn delete-meal" onclick="event.stopPropagation(); deleteManualItem(${item.id})" title="Xóa quán">
-                                    🗑️
-                                </button>
-                                <button class="meal-action-btn select-meal ${isWaiting ? 'active' : ''}" 
-                                        onclick="event.stopPropagation(); selectPlaceForManualItem(${item.id})" title="Chọn quán mới">
-                                    ${isWaiting ? '⏳' : '✔'}
-                                </button>
-                            </div>
-                        </div>
-                        <div class="place-info-vertical">
-                            <div class="place-name-vertical">${place.ten_quan}</div>
-                            <div class="place-address-vertical">📍 ${place.dia_chi}</div>
-                            <div class="place-meta-vertical">
-                                <div class="meta-item-vertical">
-                                    <span>⭐</span>
-                                    <strong>${place.rating ? place.rating.toFixed(1) : 'N/A'}</strong>
-                                </div>
-                                ${place.gia_trung_binh ? `
-                                    <div class="meta-item-vertical">
-                                        <span>💰</span>
-                                        <strong>${place.gia_trung_binh}</strong>
+                            <div class="time-dot"></div>
+                            <div class="meal-card-vertical ${editMode ? 'edit-mode' : ''}" ${cardClickEvent} style="${cardCursor}">
+                                <div class="meal-title-vertical">
+                                    <div class="meal-title-left">
+                                        ${editMode ? `
+                                            <select onchange="updateManualItemIcon(${item.id}, this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
+                                                ${iconOptions.map(ico => `<option value="${ico}" ${ico === (item.icon || '🍽️') ? 'selected' : ''}>${ico}</option>`).join('')}
+                                            </select>
+                                        ` : `<span style="font-size: 22px;">${item.icon || '🍽️'}</span>`}
+                                        ${editMode ? 
+                                            `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
+                                                class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">` :
+                                            `<span>${item.title}</span>`
+                                        }
                                     </div>
-                                ` : ''}
+                                    ${editMode ? `
+                                    <div class="meal-actions">
+                                        <button class="meal-action-btn delete-meal" onclick="event.stopPropagation(); deleteManualItem(${item.id})" title="Xóa quán">
+                                            🗑️
+                                        </button>
+                                        <button class="meal-action-btn select-meal ${isWaiting ? 'active' : ''}" 
+                                                onclick="event.stopPropagation(); selectPlaceForManualItem(${item.id})" title="Chọn quán mới">
+                                            ${isWaiting ? '⏳' : '✔'}
+                                        </button>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                <div class="place-info-vertical">
+                                    <div class="place-name-vertical">${place.ten_quan}</div>
+                                    <div class="place-address-vertical">📍 ${place.dia_chi}</div>
+                                    <div class="place-meta-vertical">
+                                        <div class="meta-item-vertical">
+                                            <span>⭐</span>
+                                            <strong>${place.rating ? place.rating.toFixed(1) : 'N/A'}</strong>
+                                        </div>
+                                        ${place.gia_trung_binh ? `
+                                            <div class="meta-item-vertical">
+                                                <span>💰</span>
+                                                <strong>${place.gia_trung_binh}</strong>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            `;
+                    `;
+                }
+            });
+            
+            html += '</div>';
+            contentDiv.innerHTML = html;
         }
-    });
-    
-    html += '</div>';
-    contentDiv.innerHTML = html;
-}
 
 function updateManualPlanName(newName) {
     if (!currentManualPlanId) return;
@@ -2477,6 +2777,14 @@ function updateManualItemTitle(itemId, newTitle) {
     }
 }
 
+function updateManualItemIcon(itemId, newIcon) {
+    const item = manualPlan.find(i => i.id === itemId);
+    if (item) {
+        item.icon = newIcon;
+        displayManualPlanTimeline();
+    }
+}
+
 function selectPlaceForManualItem(itemId) {
     if (waitingForPlaceSelection === itemId) {
         waitingForPlaceSelection = null;
@@ -2496,12 +2804,30 @@ function resetManualPlan() {
 
 function saveManualPlanChanges() {
     if (!currentManualPlanId) return;
-    
+
+    // 🔥 Cập nhật time từ DOM
+    const mealItems = document.querySelectorAll('.meal-item');
+    mealItems.forEach(item => {
+        const mealId = parseInt(item.dataset.mealId);
+        const timeInput = item.querySelector('.time-input-inline');
+        if (timeInput) {
+            const manualItem = manualPlan.find(i => i.id === mealId);
+            if (manualItem) {
+                manualItem.time = timeInput.value;
+            }
+        }
+    });
+
     const plan = manualPlans.find(p => p.id === currentManualPlanId);
     if (plan) {
         plan.items = [...manualPlan];
         plan.updatedAt = new Date().toISOString();
         localStorage.setItem('manual_food_plans', JSON.stringify(manualPlans));
+        
+        // 🔥 THÊM: Thoát edit mode sau khi lưu
+        if (isManualEditMode) {
+            toggleManualEditMode();
+        }
         
         alert('✅ Đã lưu kế hoạch thành công!');
         displayManualPlansList();
