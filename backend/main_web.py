@@ -3,6 +3,7 @@ from chatbot_component_v2 import get_chatbot_html
 import pandas as pd
 from datetime import datetime
 import os, json
+from food_planner_v2 import generate_food_plan, get_food_planner_html
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/")
 
@@ -18,6 +19,7 @@ if os.path.exists(CONFIG_FILE):
 else:
     GEMINI_API_KEY = ""
     print("⚠️ Không tìm thấy file config.json, chatbot có thể không hoạt động!")
+
 # ============================
 # 📁 FILE PATH
 # ============================
@@ -77,8 +79,6 @@ def get_reviews(place_id):
     else:
         return jsonify({"google": [], "user": []})
 
-
-
 # ============================
 # ✏️ API: THÊM REVIEW NGƯỜI DÙNG
 # ============================
@@ -110,13 +110,49 @@ def add_review(place_id):
     save_user_reviews(all_reviews)
     return jsonify({"success": True, "message": "✅ Đã thêm đánh giá!"})
 
+# ============================
+# 🍽️ API: TẠO FOOD PLAN (ENHANCED)
+# ============================
+@app.route("/api/food-plan", methods=["GET"])
+def get_food_plan():
+    try:
+        # Lấy parameters
+        user_lat = float(request.args.get("lat", 10.7769))
+        user_lon = float(request.args.get("lon", 106.7009))
+        theme = request.args.get("theme", None)
+        tastes_str = request.args.get("tastes", "")
+        start_time = request.args.get("start_time", "07:00")
+        end_time = request.args.get("end_time", "21:00")
+        
+        # Parse tastes
+        user_tastes = [t.strip() for t in tastes_str.split(",") if t.strip()] if tastes_str else None
+        
+        print(f"🍽️ Tạo food plan: lat={user_lat}, lon={user_lon}, theme={theme}, tastes={user_tastes}")
+        
+        # Generate plan với các tham số mới
+        plan = generate_food_plan(
+            user_lat, user_lon, 
+            csv_file=CSV_FILE,
+            theme=theme,
+            user_tastes=user_tastes,
+            start_time=start_time,
+            end_time=end_time
+        )
+        
+        return jsonify(plan)
+        
+    except Exception as e:
+        print(f"❌ Lỗi tạo food plan: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 # ============================
 # 🌐 ROUTE FRONTEND
 # ============================
 @app.route("/")
 def serve_index():
-    """Serve trang chính với chatbot tích hợp"""
+    """Serve trang chính với chatbot + food planner tích hợp"""
     # Đọc file HTML gốc
     with open("../frontend/index.html", "r", encoding="utf-8") as f:
         html_content = f.read()
@@ -124,8 +160,11 @@ def serve_index():
     # Lấy chatbot HTML
     chatbot_html = get_chatbot_html(GEMINI_API_KEY)
     
-    # Inject chatbot vào trước thẻ </body>
-    html_content = html_content.replace("</body>", f"{chatbot_html}</body>")
+    # Lấy food planner HTML
+    food_planner_html = get_food_planner_html()
+    
+    # Inject cả 2 vào trước </body>
+    html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}</body>")
     
     return html_content
 
@@ -138,6 +177,8 @@ def serve_static_files(path):
 # ============================
 if __name__ == "__main__":
     print(f"📂 Đang chạy Flask tại: {os.path.abspath(BASE_DIR)}")
+    print(f"📄 File CSV: {os.path.exists(CSV_FILE)}")
     print(f"📄 File reviews.json: {os.path.exists(REVIEWS_FILE)}")
     print(f"🤖 Chatbot đã được tích hợp!")
+    print(f"🍽️ Food Planner đã được tích hợp!")
     app.run(debug=True)
