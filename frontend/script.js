@@ -594,7 +594,10 @@ function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
   routeControl = L.Routing.control({
     waypoints: [L.latLng(userLat, userLon), L.latLng(destLat, destLon)],
     lineOptions: {
-      styles: [{ color: "blue", weight: 5, opacity: 0.7 }],
+      styles: [
+        { color: "white", weight: 5, opacity: 1 },     // viền trắng ngoài cho nổi bật
+        { color: "#34A853", weight: 6, opacity: 1 }    // xanh lá chuẩn Google Maps
+      ],
     },
     show: false,
     addWaypoints: false,
@@ -1062,3 +1065,31 @@ document.addEventListener("keydown", (e) => {
     document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
   }
 });
+
+// =========================
+// 👁️‍🗨️ NÚT ẨN / HIỆN ĐƯỜNG ĐI
+// =========================
+const gpsHideRouteBtn = document.getElementById("gpsHideRouteBtn");
+
+let hiddenRoute = null; // lưu tuyến đường bị ẩn
+
+gpsHideRouteBtn.addEventListener("click", () => {
+  if (routeControl) {
+    hiddenRoute = routeControl;
+    map.removeControl(routeControl);
+    routeControl = null;
+    showToast("👁️‍🗨️ Đã ẩn đường đi", "success");
+  } 
+  else if (hiddenRoute) {
+    hiddenRoute.addTo(map);
+    routeControl = hiddenRoute;
+    hiddenRoute = null;
+    showToast("✅ Đã hiện lại đường đi", "success");
+  } 
+  else {
+    showToast("⚠️ Chưa có tuyến đường nào để ẩn/hiện!", "error");
+  }
+});
+
+
+
