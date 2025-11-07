@@ -1864,10 +1864,14 @@ function displayPlanVertical(plan, editMode = false) {
     const mealOrder = ['breakfast', 'morning_drink', 'lunch', 'afternoon_drink', 'dinner', 'dessert', 'meal', 'meal1', 'drink', 'meal2'];
     let hasPlaces = false;
     
-    // 🔥 Lấy đúng thứ tự từ _order nếu có
-    const allMealKeys = plan._order && Array.isArray(plan._order) 
-        ? plan._order 
-        : Object.keys(plan).filter(k => k !== '_order');
+    // 🔥 SẮP XẾP THEO THỜI GIAN THỰC TẾ
+    const allMealKeys = Object.keys(plan)
+        .filter(k => k !== '_order' && plan[k] && plan[k].time)
+        .sort((a, b) => {
+            const timeA = plan[a].time || '00:00';
+            const timeB = plan[b].time || '00:00';
+            return timeA.localeCompare(timeB);
+        });
     
     for (const key of allMealKeys) {
         const meal = plan[key];
