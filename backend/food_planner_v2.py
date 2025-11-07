@@ -2044,6 +2044,11 @@ function addNewMealSlot() {
         icon: '🍽️',
         place: null
     };
+
+    if (!currentPlan._order) {
+        currentPlan._order = [];
+    }
+    currentPlan._order.push(newKey);
     
     waitingForPlaceSelection = newKey;
     displayPlanVertical(currentPlan, isEditMode);
