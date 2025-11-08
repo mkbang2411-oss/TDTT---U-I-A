@@ -79,36 +79,6 @@ def get_reviews(place_id):
     else:
         return jsonify({"google": [], "user": []})
 
-# ============================
-# ✏️ API: THÊM REVIEW NGƯỜI DÙNG
-# ============================
-# @app.route("/api/reviews/<place_id>", methods=["POST"])
-# def add_review(place_id):
-#     data = request.json
-#     if not data or not data.get("ten") or not data.get("comment"):
-#         return jsonify({"success": False, "message": "Thiếu thông tin"}), 400
-
-#     all_reviews = load_user_reviews()
-#     value = all_reviews.get(place_id)
-
-#     # Nếu chưa có key này -> tạo mới
-#     if value is None:
-#         all_reviews[place_id] = {"google": [], "user": []}
-
-#     # Nếu key là LIST (tức dữ liệu Google ban đầu)
-#     elif isinstance(value, list):
-#         all_reviews[place_id] = {"google": value, "user": []}
-
-#     new_review = {
-#         "ten": data.get("ten"),
-#         "rating": int(data.get("rating", 0)),
-#         "comment": data.get("comment"),
-#         "date": datetime.now().isoformat()
-#     }
-
-#     all_reviews[place_id]["user"].append(new_review)
-#     save_user_reviews(all_reviews)
-#     return jsonify({"success": True, "message": "✅ Đã thêm đánh giá!"})
 
 # ============================
 # 🍽️ API: TẠO FOOD PLAN (ENHANCED)
