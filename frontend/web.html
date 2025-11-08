@@ -1,14 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Web Demo</title>
-    <link rel="stylesheet" href="Button.css">
-    <link rel="stylesheet" href="banner.css">
-    <link rel="stylesheet" href="weblogin.css">
-
-</head>
 <body>
+    <div
+        id="map"
+    </div>
     <div class="background">
         <img src="Picture/background.png" class="bg" alt="UIA Logo">
         <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
@@ -16,7 +9,7 @@
     
     <a href="SignUp.html" class="button-SignUp">Sign Up</a>
     <a href="SignIn.html" class="button-SignIn">Sign In</a>
-    <form class="search-form" action="/search" method="get">
+    <form class="search-form" onsubmit="return false;">
         <div class="search-item">
             <input type="text" name="query1" class="search-input" placeholder="Name of food...">
             
@@ -27,7 +20,13 @@
         </div>
         <div class="search-item">
             <input type="text" name="query3" class="search-input" placeholder="Your address...">
+        </div>
+        <div class="search-item">
+            <input type="text" name="query1" class="search-input" placeholder="Radious..."> 
+        </div>
+        <div class="search-item">
+            <input type="text" name="query1" class="search-input" placeholder="Taste...">
             
+        </div> 
     </form>
 </body>
-</html>

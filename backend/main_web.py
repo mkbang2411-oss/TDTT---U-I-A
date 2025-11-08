@@ -4,7 +4,6 @@ import pandas as pd
 from datetime import datetime
 import os, json
 from food_planner_v2 import generate_food_plan, get_food_planner_html
-
 app = Flask(__name__, static_folder="../frontend", static_url_path="/")
 
 # ============================
@@ -23,10 +22,11 @@ else:
 # ============================
 # 📁 FILE PATH
 # ============================
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 REVIEWS_FILE = os.path.join(BASE_DIR, "reviews.json")
-
+WEB_FILE = os.path.join(BASE_DIR,"../frontend/web.html")
+INDEX_FILE = os.path.join(BASE_DIR, "../frontend/index.html")
 # ============================
 # 🍴 API: LẤY DANH SÁCH QUÁN
 # ============================
@@ -153,9 +153,12 @@ def get_food_plan():
 @app.route("/")
 def serve_index():
     """Serve trang chính với chatbot + food planner tích hợp"""
+    with open(WEB_FILE, "r", encoding="utf-8") as f:
+        web_content = f.read()
     # Đọc file HTML gốc
-    with open("../frontend/index.html", "r", encoding="utf-8") as f:
+    with open(INDEX_FILE, "r", encoding="utf-8") as f:
         html_content = f.read()
+    #Đọc file web 
     
     # Lấy chatbot HTML
     chatbot_html = get_chatbot_html(GEMINI_API_KEY)
@@ -164,13 +167,15 @@ def serve_index():
     food_planner_html = get_food_planner_html()
     
     # Inject cả 2 vào trước </body>
-    html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}</body>")
-    
+    html_content = html_content.replace(
+        '<div id="insert-chatbot-and-map"></div>',
+        #"</body>", f"{chatbot_html}\n{food_planner_html}</body>")
+        f"{web_content}\n{chatbot_html}\n{food_planner_html}")
     return html_content
 
 @app.route("/<path:path>")
 def serve_static_files(path):
-    return send_from_directory("../frontend", path)
+    return send_from_directory(os.path.join(BASE_DIR, "../frontend"), path)
 
 # ============================
 # 🚀 CHẠY SERVER
