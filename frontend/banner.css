@@ -1,21 +1,33 @@
 /* Khung chứa background */
 .background {
-    position: relative;
-    width: 850px;
+    position: fixed;
+    width: 1550px;
     margin: 0 auto; /* canh giữa trang nếu muốn */
+    z-index: 1000;
+    pointer-events: none;
+    top: 0;
 }
 
 /* Ảnh nền */
 .background img.bg {
-    width: 880px;
+    width: 1550px;
     height: 200px;
+    object-fit:cover;
+    display: block;
 }
 
 /* Ảnh UIA chồng lên */
 .background img.uia {
     position: absolute;
     top: -15px;
-    left: 170px;
+    left: 500px;
     width: 500px;
     height: 230px;
+    object-fit: cover;
+}
+#map{
+    position: fixed;
+    z-index: 1;
+    width: 100%;
+    height: 100vh;
 }
