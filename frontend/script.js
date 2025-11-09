@@ -1090,6 +1090,3 @@ gpsHideRouteBtn.addEventListener("click", () => {
     showToast("⚠️ Chưa có tuyến đường nào để ẩn/hiện!", "error");
   }
 });
-
-
-

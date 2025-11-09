@@ -18,7 +18,6 @@ rules = {
     "ngọt": ["ngọt","bánh", "cake", "chè", "trà sữa", "kem", "bánh ngọt", "sữa chua", "sữa tươi", "matcha","kẹo","bakery","bánh flan"],
     "chua": ["chua", "me", "chanh", "tắc", "dấm", "giấm", "canh chua", "thái"],
     "đắng": ["coffe", "đắng", "trà", "matcha", "ca cao", "socola", "cacao"],
-    "tanh": ["hải sản", "cá", "tôm", "mực", "ốc", "hến", "nghêu", "sò", "gỏi cá", "lẩu hải sản"],
 }
 
 # ======================================================

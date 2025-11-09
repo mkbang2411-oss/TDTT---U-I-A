@@ -825,37 +825,100 @@ body {
 }
 
 /* Thanh khẩu vị phụ */
-.search-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-#query {
-  flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-
-#flavor {
+/* 🎨 Style cho multi-select khẩu vị */
+.flavor-selector {
+  position: relative;
   width: 160px;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
 }
 
-#btnSearch {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 12px;
+.flavor-selector-btn {
+  width: 100%;
+  padding: 6px 8px;
+  background: white;
+  border: 1px solid #ccc;
   border-radius: 8px;
   cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 34px;
 }
-#btnSearch:hover {
-  background-color: #0056b3;
+
+.flavor-selector-btn:hover {
+  border-color: #007bff;
+}
+
+.flavor-dropdown {
+  position: absolute;
+  top: 105%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: none;
+}
+
+.flavor-dropdown.show {
+  display: block;
+}
+
+.flavor-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.flavor-option:hover {
+  background: #f5f5f5;
+}
+
+.flavor-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.flavor-option label {
+  cursor: pointer;
+  flex: 1;
+  font-size: 13px;
+}
+
+.selected-flavors {
+  color: #666;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-flavors.empty {
+  color: #999;
+}
+
+.flavor-count {
+  background: #007bff;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+.arrow {
+  font-size: 10px;
+  color: #666;
 }
 
 .leaflet-tooltip.custom-tooltip {
