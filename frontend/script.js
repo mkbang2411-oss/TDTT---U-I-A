@@ -715,16 +715,71 @@ setTimeout(() => {
 // =========================
 // 📡 LẤY DỮ LIỆU CSV + TÌM GẦN ĐÚNG (FUZZY SEARCH, BỎ DẤU)
 // =========================
-async function fetchPlaces(query = "", flavor = "") {
+// =======================================================
+// ✅ HÀM TÁCH GIÁ
+// =======================================================
+function parsePriceRange(priceStr) {
+  if (!priceStr || priceStr.toLowerCase().includes("không")) return null;
+
+  let cleaned = priceStr.toLowerCase().replace(/\s/g, ""); // bỏ khoảng trắng
+
+  let multiplier = 1;
+
+  // nếu có N / nghìn / k → nhân 1000
+  if (/n|k|nghin/.test(cleaned)) multiplier = 1000;
+
+  // loại bỏ chữ cái và dấu ₫
+  cleaned = cleaned.replace(/[^\d\-]/g, "");
+
+  const parts = cleaned.split("-");
+
+  const minP = (parseInt(parts[0]) || 0) * multiplier;
+  const maxP = (parseInt(parts[1]) || minP) * multiplier;
+
+  return [minP, maxP];
+}
+
+
+
+// =======================================================
+// ✅ HÀM TÍNH KHOẢNG CÁCH (Km)
+// =======================================================
+function distance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+
+  const plat1 = parseFloat(lat1);
+  const plon1 = parseFloat(lon1);
+  const plat2 = parseFloat(lat2);
+  const plon2 = parseFloat(lon2);
+
+  if (isNaN(plat1) || isNaN(plon1) || isNaN(plat2) || isNaN(plon2)) return Infinity;
+
+  const dLat = (plat2 - plat1) * Math.PI / 180;
+  const dLon = (plon2 - plon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(plat1 * Math.PI / 180) *
+    Math.cos(plat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // km
+}
+
+
+// =======================================================
+// ✅ FETCH + LỌC DỮ LIỆU
+// =======================================================
+async function fetchPlaces(query = "", flavors = [], budget = "", radius = "") {
   try {
     const res = await fetch("/api/places");
-    const data = await res.json();
+    let data = await res.json();
 
-    // ⚙️ Hàm bỏ dấu tiếng Việt
     function normalize(str) {
       return str
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "") // bỏ dấu
+        .replace(/[\u0300-\u036f]/g, "")
         .replace(/đ/g, "d")
         .replace(/Đ/g, "D")
         .toLowerCase()
@@ -733,29 +788,20 @@ async function fetchPlaces(query = "", flavor = "") {
 
     let filtered = data;
 
-    // Nếu không có từ khóa và khẩu vị → hiển thị tất cả
-    if (!query && !flavor) {
-      displayPlaces(data);
-      return;
-    }
-
-    // --- 1️⃣ Fuzzy Search theo tên quán (có bỏ dấu) ---
+    // ========== 1️⃣ Fuzzy Search ==========
     if (query) {
       let normalizedQuery = normalize(query);
 
-      // ✅ Nếu query không có khoảng trắng, thử thêm khoảng trắng để khớp tên quán
+      // chia chữ nếu user gõ liền "bundaubac..."
       if (!normalizedQuery.includes(" ")) {
         const possibleMatches = data.map((p) => normalize(p.ten_quan || ""));
         const splitVariants = [];
 
-        // tạo các phiên bản có chèn khoảng trắng vào các vị trí khác nhau
         for (let i = 1; i < normalizedQuery.length; i++) {
           splitVariants.push(
             normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
           );
         }
-
-        // nếu bất kỳ variant nào xuất hiện trong tên quán → chọn variant đó
         for (const variant of splitVariants) {
           if (possibleMatches.some((name) => name.includes(variant))) {
             normalizedQuery = variant;
@@ -764,55 +810,90 @@ async function fetchPlaces(query = "", flavor = "") {
         }
       }
 
-      // Dữ liệu đã bỏ dấu để Fuse hoạt động tốt hơn
+      // Fuzzy engine
       const fuse = new Fuse(
-        data.map((p) => ({
-          ...p,
-          ten_quan_no_dau: normalize(p.ten_quan || ""),
-        })),
-        {
-          keys: ["ten_quan_no_dau"],
-          threshold: 0.4, // độ mờ khớp
-          ignoreLocation: true,
-        }
+        data.map((p) => ({ ...p, ten_quan_no_dau: normalize(p.ten_quan || "") })),
+        { keys: ["ten_quan_no_dau"], threshold: 0.4, ignoreLocation: true }
       );
 
       const fuzzyResults = fuse.search(normalizedQuery).map((r) => r.item);
 
-      // ⚙️ Xử lý khớp từ khóa chính xác hơn
       const queryWords = normalizedQuery.split(" ").filter(Boolean);
       const normalizedPhrase = normalizedQuery.trim();
 
       filtered = fuzzyResults.filter((p) => {
         const name = normalize(p.ten_quan || "");
-
-        // ✅ Regex khớp cụm từ hoàn chỉnh
         const phraseRegex = new RegExp(`\\b${normalizedPhrase}\\b`, "i");
         const hasFullPhrase = phraseRegex.test(name);
 
-        // ✅ Regex khớp từng từ
         const hasWordMatch = queryWords.some((w) => {
           const wordRegex = new RegExp(`\\b${w}\\b`, "i");
           return wordRegex.test(name);
         });
 
-        // ✅ Nếu query có ≥ 2 từ (vd: “mi cay”) → bắt buộc khớp cụm đầy đủ
-        if (queryWords.length >= 2) {
-          return hasFullPhrase;
-        }
-
-        // ✅ Nếu chỉ 1 từ (vd: “pho”, “bun”) thì cho phép khớp từng từ
-        return hasFullPhrase || hasWordMatch;
+        return queryWords.length >= 2 ? hasFullPhrase : hasFullPhrase || hasWordMatch;
       });
     }
 
-    // --- 2️⃣ Lọc thêm theo khẩu vị (nếu có nhập) ---
-    if (flavor) {
-      const normalizedFlavor = normalize(flavor);
-      filtered = filtered.filter(
-        (p) => p.khau_vi && normalize(p.khau_vi).includes(normalizedFlavor)
-      );
+    // ========== 2️⃣ Lọc khẩu vị ==========
+    if (flavors.length > 0) {
+      filtered = filtered.filter((p) => {
+        if (!p.khau_vi) return false;
+        const norm = normalize(p.khau_vi);
+        return flavors.some(f => norm.includes(normalize(f)));
+      });
     }
+
+    // ========== 3️⃣ Lọc giá ==========
+   if (budget !== "") {
+  const [budgetMin, budgetMax] = budget.split("-").map(n => parseInt(n));
+
+  filtered = filtered.filter((p) => {
+    const range = parsePriceRange(p.gia_trung_binh);
+    if (!range) return false;
+
+    const [minP, maxP] = range;
+
+    // ✅ Kiểm tra giao nhau giữa 2 khoảng
+    return minP >= budgetMin && maxP <= budgetMax;
+  });
+}
+
+
+
+// ========== 4️⃣ Lọc bán kính ==========
+if (radius !== "") {
+  const r = parseFloat(radius); // km
+
+  if (!window.currentUserCoords || !window.currentUserCoords.lat || !window.currentUserCoords.lon) {
+    alert("Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!");
+  } else {
+    const userLat = parseFloat(window.currentUserCoords.lat);
+    const userLon = parseFloat(window.currentUserCoords.lon);
+
+    filtered = filtered.filter((p) => {
+      if (!p.lat || !p.lon) return false;
+
+      const plat = parseFloat(p.lat.toString().replace(",", "."));
+      const plon = parseFloat(p.lon.toString().replace(",", "."));
+      if (isNaN(plat) || isNaN(plon)) return false;
+
+      const d = distance(userLat, userLon, plat, plon);
+
+      // ==== 🔹 Debug khoảng cách từng quán ====
+      if (d > r) {
+        console.warn(`❌ ${p.ten_quan} cách ${d.toFixed(2)} km, vượt radius ${r} km`);
+      } else {
+        console.log(`✅ ${p.ten_quan} cách ${d.toFixed(2)} km, trong radius ${r} km`);
+      }
+
+      return d <= r; // lọc quán theo radius
+    });
+  }
+}
+
+
+
 
     displayPlaces(filtered);
   } catch (err) {
@@ -821,17 +902,63 @@ async function fetchPlaces(query = "", flavor = "") {
   }
 }
 
-
-// =========================
-// 🎯 TÌM KIẾM
-// =========================
+// =======================================================
+// ✅ NÚT TÌM KIẾM
+// =======================================================
 document.getElementById("btnSearch").addEventListener("click", () => {
   const query = document.getElementById("query").value.trim();
-  const flavor = document.getElementById("flavor").value.trim();
-  fetchPlaces(query, flavor);
+
+  const selectedFlavors = Array.from(
+    document.querySelectorAll("#flavorDropdown input:checked")
+  ).map(c => c.value);
+
+  const budget = document.getElementById("budget").value;
+  const radius = document.getElementById("radius").value;
+
+  fetchPlaces(query, selectedFlavors, budget, radius);
 });
 
+// =======================================================
+// ✅ MULTI-SELECT KHẨU VỊ
+// =======================================================
+const flavorBtn = document.getElementById("flavorBtn");
+const flavorDropdown = document.getElementById("flavorDropdown");
+const selectedFlavorsEl = flavorBtn.querySelector(".selected-flavors");
+const flavorSelector = document.getElementById("flavorSelector"); // FIX BUG
 
+flavorBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  flavorDropdown.classList.toggle("show");
+});
+
+// Ẩn dropdown khi click ra ngoài
+document.addEventListener("click", (e) => {
+  if (!flavorSelector.contains(e.target)) {
+    flavorDropdown.classList.remove("show");
+  }
+});
+
+// Cập nhật text hiển thị
+const checkboxes = flavorDropdown.querySelectorAll("input[type='checkbox']");
+checkboxes.forEach(cb => {
+  cb.addEventListener("change", () => {
+    const selected = Array.from(checkboxes)
+      .filter(c => c.checked)
+      .map(c => c.value);
+
+    if (selected.length === 0) {
+      selectedFlavorsEl.textContent = "Chọn khẩu vị";
+      selectedFlavorsEl.classList.add("empty");
+    } else {
+      selectedFlavorsEl.textContent = selected.join(", ");
+      selectedFlavorsEl.classList.remove("empty");
+    }
+  });
+});
+
+// =======================================================
+// ✅ TẢI LẦN ĐẦU
+// =======================================================
 fetchPlaces();
 
 // =========================
@@ -1090,6 +1217,3 @@ gpsHideRouteBtn.addEventListener("click", () => {
     showToast("⚠️ Chưa có tuyến đường nào để ẩn/hiện!", "error");
   }
 });
-
-
-
