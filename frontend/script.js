@@ -88,7 +88,8 @@ const icons = {
 // =========================
 // 🧠 XÁC ĐỊNH LOẠI QUÁN
 // =========================
-function detectCategory(name = "") {
+function detectCategory(name = "") 
+{
   name = name.toLowerCase();
 
   // 🥣 Phở
@@ -175,11 +176,13 @@ function detectCategory(name = "") {
 // =========================
 // 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS
 // =========================
-function timeAgo(dateString) {
+function timeAgo(dateString) 
+{
   if (!dateString) return "";
 
   // Nếu là chuỗi kiểu "2 weeks ago" của Google thì giữ nguyên
-  if (isNaN(Date.parse(dateString)) && isNaN(Number(dateString))) {
+  if (isNaN(Date.parse(dateString)) && isNaN(Number(dateString))) 
+  {
     return dateString;
   }
 
@@ -225,17 +228,39 @@ function formatDate(dateString) {
 }
 
 
+// =========================
+// 🍪 LẤY CSRF COOKIE CỦA DJANGO
+// =========================
+function getCookie(name) 
+{
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') 
+  {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) 
+    {
+      const cookie = cookies[i].trim();
+      // Kiểm tra xem cookie có bắt đầu bằng tên chúng ta muốn không
+      if (cookie.substring(0, name.length + 1) === (name + '=')) 
+      {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
 
-
-function renderReviews(googleReviews, userReviews) {
-  const allReviews = [...googleReviews, ...userReviews];
+function renderReviewSummary(googleReviews, userReviews) 
+{
+  const allReviews = [...userReviews,...googleReviews ];
   const avgRating =
-    allReviews.length > 0
-      ? (
-          allReviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
-          allReviews.length
-        ).toFixed(1)
-      : "Chưa có";
+  allReviews.length > 0
+    ? (
+        allReviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
+        allReviews.length
+      ).toFixed(1)
+    : "Chưa có";
 
   const starCount = [5, 4, 3, 2, 1].map(
     (s) => allReviews.filter((r) => r.rating === s).length
@@ -257,11 +282,12 @@ function renderReviews(googleReviews, userReviews) {
             (s, i) => `
           <div class="bar-row">
             <span>${s}⭐</span>
-            <div class="bar">
-              <div class="fill" style="width:${
-                (starCount[i] / maxCount) * 100
-              }%"></div>
-            </div>
+              <div class="bar">
+                <div class="fill" style="width:${
+                  (starCount[i] / maxCount) * 100
+                }%">
+                </div>
+              </div>
             <span>${starCount[i]}</span>
           </div>
         `
@@ -269,8 +295,15 @@ function renderReviews(googleReviews, userReviews) {
           .join("")}
       </div>
     </div>
+  `;
+}
 
+function renderReviewList(googleReviews, userReviews) {
+  const allReviews = [...userReviews, ...googleReviews]; // User reviews lên trước
+
+  return `
     <div class="review-list">
+      <div class="review-list">
       ${
         allReviews.length === 0
           ? "<p>Chưa có đánh giá nào.</p>"
@@ -280,8 +313,8 @@ function renderReviews(googleReviews, userReviews) {
         <div class="review-card">
           <div class="review-header">
             <img src="${
-              r.avatar ||
-              "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+              r.avatar || // Avatar đã lưu trong file JSON (ưu tiên 1)
+              "https://cdn-icons-png.flaticon.com/512/847/847969.png" // Avatar mặc định (ưu tiên 2)
             }" class="review-avatar">
             <div>
               <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
@@ -412,11 +445,19 @@ function displayPlaces(places) {
       const place_id = p.data_id || p.ten_quan;
       let googleReviews = [];
       let userReviews = [];
+      let currentUser = null; // Biến lưu thông tin user
 
       try {
-        const res = await fetch(`/api/reviews/${place_id}`);
+        const res = await fetch(`http://127.0.0.1:8000/api/reviews/${place_id}`, {
+            credentials: 'include' //gửi cookie đăng nhập
+        });
+        
         if (res.ok) {
-          const reviewData = await res.json();
+          const responseData = await res.json();
+          
+          const reviewData = responseData.reviews; // Lấy object reviews
+          currentUser = responseData.user;       // Lấy object user
+          
           googleReviews = reviewData.google || [];
           userReviews = reviewData.user || [];
         }
@@ -432,11 +473,11 @@ function displayPlaces(places) {
             : ""
         }
         <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
-<p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
-<p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-<p><i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua)}</p>
-<p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
-<p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
+        <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
+        <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
+        <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+        <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
+        <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
       `;
 
       const thucdonHTML = `
@@ -450,27 +491,46 @@ function displayPlaces(places) {
   }
 `;
 
+      let reviewFormHTML = "";
+      // Nếu user TỒN TẠI và ĐÃ ĐĂNG NHẬP
+      if (currentUser && currentUser.is_logged_in) {
+          reviewFormHTML = `
+            <div class="review-form logged-in">
+              <h3 class="form-title">📝 Thêm đánh giá của bạn</h3>
+              <div class="form-header">
+                <img src="${currentUser.avatar}" class="user-avatar-form" alt="Avatar">
+                <span class="user-name">${currentUser.username}</span>
+              </div>
+              <div class="star-rating" id="starRating">
+                <span class="star" data-value="1">★</span>
+                <span class="star" data-value="2">★</span>
+                <span class="star" data-value="3">★</span>
+                <span class="star" data-value="4">★</span>
+                <span class="star" data-value="5">★</span>
+              </div>
+              <textarea id="reviewComment" placeholder="Cảm nhận của bạn..."></textarea>
+              <button id="submitReview">Gửi đánh giá</button>
+            </div>
+          `;
+      } 
+      // Nếu CHƯA ĐĂNG NHẬP
+      else {
+          reviewFormHTML = `
+            <div class="review-form">
+              <h3>📝 Thêm đánh giá của bạn</h3>
+              <p>Vui lòng <a href="http://127.0.0.1:8000/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
+            </div>
+          `;
+      }
+
+      // Nó sẽ tự động dùng reviewFormHTML vừa tạo
       const danhgiaHTML = `
-  <div class="review-section">
-    ${renderReviews(googleReviews, userReviews)}
-
-    <div class="review-form">
-      <h3>📝 Thêm đánh giá của bạn</h3>
-      <input type="text" id="reviewName" placeholder="Tên của bạn" />
-
-      <div class="star-rating" id="starRating">
-        <span class="star" data-value="1">★</span>
-        <span class="star" data-value="2">★</span>
-        <span class="star" data-value="3">★</span>
-        <span class="star" data-value="4">★</span>
-        <span class="star" data-value="5">★</span>
-      </div>
-
-      <textarea id="reviewComment" placeholder="Cảm nhận của bạn..."></textarea>
-      <button id="submitReview">Gửi đánh giá</button>
-    </div>
-  </div>
-`;
+        <div class="review-section">
+          ${renderReviewSummary(googleReviews, userReviews)} 
+          ${reviewFormHTML}
+          ${renderReviewList(googleReviews, userReviews)}
+        </div>
+      `;
 
       const contentHTML = `
   <div class="sidebar-header">
@@ -671,28 +731,57 @@ setTimeout(() => {
         });
       });
 
-      document.getElementById("submitReview").addEventListener("click", async () => {
-       const review = {
-  ten: document.getElementById("reviewName").value.trim(),
-  rating: selectedRating,
-  comment: document.getElementById("reviewComment").value.trim(),
-  date: new Date().toLocaleString("sv-SE")
-};
+      document.getElementById("submitReview").addEventListener("click", async () => 
+      {
+        // 1. Chỉ lấy rating và comment
+        const review = 
+        {
+          rating: selectedRating,
+          comment: document.getElementById("reviewComment").value.trim(),
+        };
 
-
-
-        if (!review.ten || !review.comment || review.rating === 0) {
-          showToast("Vui lòng nhập tên, nội dung và chọn số sao!", "error");
+        // 2. Cập nhật validation (bỏ 'ten')
+        if (!review.comment || review.rating === 0) 
+        {
+          // (Giả sử bạn có hàm showToast, nếu không thì dùng alert)
+           alert("Vui lòng nhập nội dung và chọn số sao!");
+          // showToast("Vui lòng nhập nội dung và chọn số sao!", "error");
           return;
         }
+        
+        try {
+          // 3. Gọi API Django (port 8000) với CSRF và credentials
+          const response = await fetch(`http://127.0.0.1:8000/api/reviews/${place_id}`, {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie('csrftoken') // Lấy token từ hàm helper
+            },
+            body: JSON.stringify(review), // Chỉ gửi rating và comment
+            credentials: 'include' // RẤT QUAN TRỌNG: để gửi cookie đăng nhập
+          });
 
-        await fetch(`/api/reviews/${place_id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(review),
-        });
-        showToast("✅ Cảm ơn bạn đã gửi đánh giá!", "success");
-        marker.fire("click");
+          const result = await response.json();
+
+          if (response.ok && result.success) 
+          {
+            // showToast(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!", "success");
+            alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
+            
+            // Tải lại sidebar để xem review mới
+            marker.fire("click"); 
+
+          } else {
+            // Báo lỗi nếu API trả về lỗi (vd: chưa đăng nhập, lỗi 403)
+            // showToast(result.message || "Lỗi khi gửi đánh giá. Bạn đã đăng nhập chưa?", "error");
+            alert(result.message || "Lỗi khi gửi đánh giá. Bạn đã đăng nhập chưa?");
+          }
+
+        } catch (err) {
+          console.error("Lỗi fetch API:", err);
+          // showToast("Lỗi kết nối. Không thể gửi đánh giá.", "error");
+          alert("Lỗi kết nối. Không thể gửi đánh giá.");
+        }
       });
     });
 

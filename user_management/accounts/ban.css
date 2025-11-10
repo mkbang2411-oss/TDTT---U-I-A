@@ -1,0 +1,21 @@
+/* Khung chứa background */
+.background {
+    position: relative;
+    width: 850px;
+    margin: 0 auto; /* canh giữa trang nếu muốn */
+}
+
+/* Ảnh nền */
+.background img.bg {
+    width: 880px;
+    height: 200px;
+}
+
+/* Ảnh UIA chồng lên */
+.background img.uia {
+    position: absolute;
+    top: -15px;
+    left: 170px;
+    width: 500px;
+    height: 230px;
+}
