@@ -347,6 +347,8 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
 def get_food_planner_html():
     """Trả về HTML cho Food Planner - Version 2"""
     return '''
+<!-- Leaflet Polyline Offset Plugin -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet-polylineoffset@1.1.1/leaflet.polylineoffset.min.js"></script>
 <style>
 /* ========== FLOATING BUTTON ========== */
 .food-planner-btn {
@@ -376,6 +378,27 @@ def get_food_planner_html():
     width: 28px;
     height: 28px;
     fill: white;
+}
+
+/* ========== ROUTE TOOLTIP ========== */
+.route-tooltip {
+    background: rgba(0, 0, 0, 0.8) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.route-tooltip::before {
+    border-top-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.route-number-marker {
+    background: none !important;
+    border: none !important;
 }
 
 /* ========== SIDE PANEL ========== */
@@ -1503,6 +1526,9 @@ function loadSavedPlan(planId) {
         currentPlanId = planId;
         isEditMode = false;
         displayPlanVertical(currentPlan, false);
+
+        // 🔥 VẼ ĐƯỜNG ĐI NGAY SAU KHI LOAD
+        setTimeout(() => drawRouteOnMap(currentPlan), 500);
     }
 }
 
@@ -1667,6 +1693,7 @@ function toggleEditMode() {
         if (isEditMode) {
             editBtn.classList.add('active');
             editBtn.title = 'Thoát chỉnh sửa';
+            clearRoutes(); // Xóa đường khi vào edit mode
         } else {
             editBtn.classList.remove('active');
             editBtn.title = 'Chỉnh sửa';
@@ -1712,11 +1739,25 @@ function openFoodPlanner() {
     document.getElementById('foodPlannerPanel').classList.add('active');
     isPlannerOpen = true;
     loadSavedPlans();
+    
+    // 🔥 TỰ ĐỘNG VẼ LẠI ĐƯỜNG ĐI KHI MỞ PANEL
+    if (currentPlan && !isEditMode) {
+        setTimeout(() => {
+            const hasPlaces = Object.keys(currentPlan)
+                .filter(k => k !== '_order')
+                .some(k => currentPlan[k] && currentPlan[k].place);
+            
+            if (hasPlaces) {
+                drawRouteOnMap(currentPlan);
+            }
+        }, 300);
+    }
 }
 
 function closeFoodPlanner() {
     document.getElementById('foodPlannerPanel').classList.remove('active');
     isPlannerOpen = false;
+    clearRoutes(); // Xóa đường khi đóng panel
 }
 
 // ========== GET SELECTED FLAVORS ==========
@@ -1822,6 +1863,7 @@ function displayPlanVertical(plan, editMode = false) {
                 <p>Không có quán nào phù hợp trong khu vực của bạn</p>
             </div>
         `;
+        clearRoutes();
         return;
     }
     
@@ -2017,6 +2059,7 @@ function displayPlanVertical(plan, editMode = false) {
                 <p>Không có quán nào phù hợp trong khu vực của bạn</p>
             </div>
         `;
+        clearRoutes();
         return;
     }
 
@@ -2029,6 +2072,13 @@ function displayPlanVertical(plan, editMode = false) {
 
     if (editMode) {
         setupDragAndDrop();
+    }
+    
+    // 🔥 VẼ ĐƯỜNG ĐI KHI HIỂN THỊ KẾ HOẠCH
+    if (!editMode && hasPlaces) {
+        setTimeout(() => drawRouteOnMap(plan), 500);
+    } else {
+        clearRoutes();
     }
 }
 
@@ -2084,6 +2134,348 @@ function addMinutesToTime(timeStr, minutes) {
     const newHours = Math.floor(totalMins / 60) % 24;
     const newMins = totalMins % 60;
     return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+}
+
+// ========== KIỂM TRA 2 ĐOẠN ĐƯỜNG CÓ TRÙNG KHÔNG ==========
+function checkRouteOverlap(coords1, coords2, threshold = 0.0001) {
+    // Giảm threshold để chính xác hơn
+    let overlapCount = 0;
+    const sampleStep = Math.max(1, Math.floor(coords1.length / 20)); // Lấy mẫu để tăng tốc
+    
+    for (let i = 0; i < coords1.length; i += sampleStep) {
+        const point1 = coords1[i];
+        
+        for (let j = 0; j < coords2.length; j += sampleStep) {
+            const point2 = coords2[j];
+            
+            const distance = Math.sqrt(
+                Math.pow(point1[0] - point2[0], 2) + 
+                Math.pow(point1[1] - point2[1], 2)
+            );
+            
+            if (distance < threshold) {
+                overlapCount++;
+                break;
+            }
+        }
+    }
+    
+    // Chỉ cần 15% điểm trùng là đủ
+    const minOverlapPoints = Math.ceil(coords1.length / sampleStep * 0.15);
+    return overlapCount >= minOverlapPoints;
+}
+
+// ========== DRAW ROUTE ON MAP ==========
+let routeLayers = [];
+
+function clearRoutes() {
+    if (typeof map !== 'undefined' && routeLayers.length > 0) {
+        routeLayers.forEach(layer => {
+            map.removeLayer(layer);
+        });
+        routeLayers = [];
+    }
+}
+
+function getRouteColor(index, total) {
+    const colors = [
+        '#FF6B35', // Cam
+        '#FFA500', // Cam sáng
+        '#32CD32', // Xanh lá
+        '#00CED1', // Xanh da trời
+        '#1E90FF', // Xanh dương
+        '#FF1493', // Hồng đậm
+        '#9370DB'  // Tím
+    ];
+    
+    if (total <= 1) return colors[0];
+    
+    const colorIndex = Math.min(
+        Math.floor((index / (total - 1)) * (colors.length - 1)),
+        colors.length - 1
+    );
+    
+    return colors[colorIndex];
+}
+
+// ========== HÀM DỊCH CHUYỂN POLYLINE THEO MÉT (CỐ ĐỊNH) ==========
+function offsetPolylineByMeters(coords, offsetMeters) {
+    const offsetCoords = [];
+    
+    for (let i = 0; i < coords.length; i++) {
+        const lat = coords[i][0];
+        const lon = coords[i][1];
+        
+        // Tính vector hướng đi (tangent)
+        let tangentLat, tangentLon;
+        
+        if (i === 0) {
+            tangentLat = coords[i + 1][0] - lat;
+            tangentLon = coords[i + 1][1] - lon;
+        } else if (i === coords.length - 1) {
+            tangentLat = lat - coords[i - 1][0];
+            tangentLon = lon - coords[i - 1][1];
+        } else {
+            tangentLat = coords[i + 1][0] - coords[i - 1][0];
+            tangentLon = coords[i + 1][1] - coords[i - 1][1];
+        }
+        
+        // Chuẩn hóa vector hướng đi
+        const tangentLength = Math.sqrt(tangentLat * tangentLat + tangentLon * tangentLon);
+        if (tangentLength > 0) {
+            tangentLat /= tangentLength;
+            tangentLon /= tangentLength;
+        }
+        
+        // 🔥 Vector vuông góc BÊN PHẢI của hướng đi (xoay 90° theo chiều kim đồng hồ)
+        const perpLat = tangentLon;  // Swap và đổi dấu để xoay đúng
+        const perpLon = -tangentLat;
+        
+        // 🔥 TÍNH OFFSET BẰNG MÉT (không phụ thuộc zoom)
+        const metersPerDegreeLat = 111320;
+        const metersPerDegreeLon = 111320 * Math.cos(lat * Math.PI / 180);
+        
+        const offsetLat = (offsetMeters / metersPerDegreeLat) * perpLat;
+        const offsetLon = (offsetMeters / metersPerDegreeLon) * perpLon;
+        
+        offsetCoords.push([lat + offsetLat, lon + offsetLon]);
+    }
+    
+    return offsetCoords;
+}
+
+function drawRouteOnMap(plan) {
+    if (typeof map === 'undefined' || typeof L === 'undefined') {
+        console.log('Map chưa sẵn sàng');
+        return;
+    }
+    
+    clearRoutes();
+    
+    const drawnSegments = [];
+    const waypoints = [];
+    
+    // Thêm vị trí user
+    if (window.currentUserCoords) {
+        waypoints.push({
+            lat: window.currentUserCoords.lat,
+            lon: window.currentUserCoords.lon,
+            name: 'Vị trí của bạn',
+            isUser: true
+        });
+    }
+    
+    // Lấy tất cả meal keys và sắp xếp theo thời gian
+    const allMealKeys = Object.keys(plan)
+        .filter(k => k !== '_order' && plan[k] && plan[k].time && plan[k].place)
+        .sort((a, b) => {
+            const timeA = plan[a].time || '00:00';
+            const timeB = plan[b].time || '00:00';
+            return timeA.localeCompare(timeB);
+        });
+    
+    // Thêm các quán theo thứ tự
+    allMealKeys.forEach(key => {
+        const meal = plan[key];
+        if (meal && meal.place) {
+            waypoints.push({
+                lat: meal.place.lat,
+                lon: meal.place.lon,
+                name: meal.place.ten_quan,
+                time: meal.time,
+                isUser: false
+            });
+        }
+    });
+    
+    if (waypoints.length < 2) {
+        console.log('Không đủ điểm để vẽ đường');
+        return;
+    }
+    
+    const totalRoutes = waypoints.length - 1;
+    
+    // 🔥 PATTERN VÀ WEIGHT ĐỒNG NHẤT CHO TẤT CẢ CÁC ĐƯỜNG
+    const routeWeight = 6;
+    const routeDash = null; // Đường liền
+    
+    async function drawSingleRoute(startPoint, endPoint, index) {
+    try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.code === 'Ok' && data.routes && data.routes[0]) {
+            const route = data.routes[0];
+            const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+            
+            const color = getRouteColor(index, totalRoutes);
+            
+            // 🔥 KIỂM TRA TRÙNG VÀ TÍNH OFFSET (pixels nhỏ)
+            let offsetPixels = 0;
+            
+            for (let i = 0; i < drawnSegments.length; i++) {
+                if (checkRouteOverlap(coords, drawnSegments[i].coords)) {
+                    const overlapCount = drawnSegments.filter(seg => 
+                        checkRouteOverlap(coords, seg.coords)
+                    ).length;
+                    
+                    // 🔥 Offset 3 pixels mỗi đường (luân phiên trái/phải)
+                    offsetPixels = (overlapCount % 2 === 0) ? 8 : -8;
+                    console.log(`⚠️ Đường ${index} trùng ${overlapCount} đường, offset = ${offsetPixels}px`);
+                    break;
+                }
+            }
+            
+            drawnSegments.push({ coords: coords, index: index });
+            
+            // 🔥 Vẽ VIỀN TRẮNG
+            const outlinePolyline = L.polyline(coords, {
+                color: '#FFFFFF',
+                weight: routeWeight + 3,
+                opacity: 0.9,
+                smoothFactor: 1
+            }).addTo(map);
+            
+            routeLayers.push(outlinePolyline);
+            
+            // 🔥 VẼ ĐƯỜNG MÀU CHÍNH
+            const mainPolyline = L.polyline(coords, {
+                color: color,
+                weight: routeWeight,
+                opacity: 1,
+                smoothFactor: 1,
+                dashArray: null
+            }).addTo(map);
+            
+            // ✅ ÁP DỤNG OFFSET SAU KHI ADD VÀO MAP (cho cả 2 layer)
+            if (offsetPixels !== 0) {
+                if (typeof outlinePolyline.setOffset === 'function') {
+                    outlinePolyline.setOffset(offsetPixels);
+                }
+                if (typeof mainPolyline.setOffset === 'function') {
+                    mainPolyline.setOffset(offsetPixels);
+                }
+            }
+            
+            const tooltipText = index === 0 
+                ? `🚗 Khởi hành → ${endPoint.name}`
+                : `${index}. ${startPoint.name} → ${endPoint.name}`;
+            
+            mainPolyline.bindTooltip(tooltipText, {
+                permanent: false,
+                direction: 'center',
+                className: 'route-tooltip'
+            });
+            
+            routeLayers.push(mainPolyline);
+            
+            // ĐÁNH SỐ QUÁN
+            if (!startPoint.isUser) {
+                const numberMarker = L.marker([startPoint.lat, startPoint.lon], {
+                    icon: L.divIcon({
+                        className: 'route-number-marker',
+                        html: `<div style="
+                            background: ${color};
+                            color: white;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: bold;
+                            font-size: 18px;
+                            border: 4px solid white;
+                            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                            z-index: 1000;
+                        ">${index}</div>`,
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    }),
+                    zIndexOffset: 1000
+                }).addTo(map);
+                
+                routeLayers.push(numberMarker);
+            }
+            
+            // ĐÁNH SỐ QUÁN CUỐI
+            if (index === totalRoutes - 1 && !endPoint.isUser) {
+                const lastColor = getRouteColor(totalRoutes - 1, totalRoutes);
+                const lastNumberMarker = L.marker([endPoint.lat, endPoint.lon], {
+                    icon: L.divIcon({
+                        className: 'route-number-marker',
+                        html: `<div style="
+                            background: ${lastColor};
+                            color: white;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: bold;
+                            font-size: 18px;
+                            border: 4px solid white;
+                            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                            z-index: 1000;
+                        ">${totalRoutes}</div>`,
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    }),
+                    zIndexOffset: 1000
+                }).addTo(map);
+                
+                routeLayers.push(lastNumberMarker);
+            }
+            
+        } else {
+            console.log('Không tìm thấy route, dùng đường thẳng');
+            const color = getRouteColor(index, totalRoutes);
+            
+            const outlineLine = L.polyline(
+                [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
+            ).addTo(map);
+            routeLayers.push(outlineLine);
+
+            const mainStraightLine = L.polyline(
+                [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                { color: color, weight: routeWeight, opacity: 1 }
+            ).addTo(map);
+            routeLayers.push(mainStraightLine);
+        }
+        
+    } catch (error) {
+        console.error('Lỗi vẽ route:', error);
+        const color = getRouteColor(index, totalRoutes);
+        
+        const outlineLine = L.polyline(
+            [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+            { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
+        ).addTo(map);
+        routeLayers.push(outlineLine);
+
+        const mainStraightLine = L.polyline(
+            [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+            { color: color, weight: routeWeight, opacity: 1 }
+        ).addTo(map);
+        routeLayers.push(mainStraightLine);
+    }
+}
+    
+    // Vẽ từng đoạn route
+    (async function drawAllRoutes() {
+        for (let i = 0; i < waypoints.length - 1; i++) {
+            await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+        }
+        
+        const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
+        map.fitBounds(bounds, { padding: [50, 50] });
+        
+        console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường`);
+    })();
 }
 
 // ========== DELETE MEAL SLOT ==========
@@ -3053,5 +3445,17 @@ document.addEventListener('keydown', function(e) {
         closeFoodPlanner();
     }
 });
+// ========== LOAD POLYLINE OFFSET PLUGIN ==========
+(function() {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/leaflet-polylineoffset@1.1.1/leaflet.polylineoffset.min.js';
+    script.onload = function() {
+        console.log('✅ Leaflet PolylineOffset loaded');
+    };
+    script.onerror = function() {
+        console.error('❌ Failed to load PolylineOffset plugin');
+    };
+    document.head.appendChild(script);
+})();
 </script>
 '''
