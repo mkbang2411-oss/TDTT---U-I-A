@@ -27,6 +27,7 @@
             font-size: 35px;
             margin: 0;
             text-align: center;
+            margin-top: 180px;
         }
         .login-form{
             display: flex;
@@ -70,6 +71,9 @@
         .SignIn-text a{
             color: #FFBE0A
         }
+        .SignIn-text a:hover{
+            color:#BC2A12;
+        }
     </style>
 </head>
 <body>      
@@ -87,7 +91,7 @@
             <label for="ConFpassword">Confirm Password:</label>
             <input type="ConFpassword" id="ConFpassword" name="ConFpassword" placeholder="ConFpassword" required>
             <button type="button" class="Sign-up-button" onclick="location.href='weblogin.html'">Done</button> 
-            <div class="SignUp-text">
+            <div class="SignIn-text">
                 Don't have an account? <a href="SignIn.html">Sign In</a>
             </div>
         </form>

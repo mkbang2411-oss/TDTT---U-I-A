@@ -27,6 +27,9 @@ BASE_DIR = os.path.dirname(__file__)
 CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 REVIEWS_FILE = os.path.join(BASE_DIR, "reviews.json")
 
+WEB_FILE = os.path.join(BASE_DIR,"../frontend/web.html")
+INDEX_FILE = os.path.join(BASE_DIR, "../frontend/index.html")
+
 # ============================
 # 🍴 API: LẤY DANH SÁCH QUÁN
 # ============================
@@ -124,7 +127,7 @@ def get_food_plan():
 def serve_index():
     """Serve trang chính với chatbot + food planner tích hợp"""
     # Đọc file HTML gốc
-    with open("../frontend/index.html", "r", encoding="utf-8") as f:
+    with open(INDEX_FILE, "r", encoding="utf-8") as f:
         html_content = f.read()
     
     # Lấy chatbot HTML
