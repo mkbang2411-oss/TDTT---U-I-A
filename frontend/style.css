@@ -828,8 +828,10 @@ body {
 /* 🎨 Style cho multi-select khẩu vị */
 .flavor-selector {
   position: relative;
-  width: 160px;
+  min-width: 160px; /* 👈 thêm dòng này */
+  flex-shrink: 0;   /* 👈 ngăn co lại khi trong flex */
 }
+
 
 .flavor-selector-btn {
   width: 100%;
@@ -916,6 +918,15 @@ body {
   margin-left: 4px;
 }
 
+.flavor-selector-btn .selected-flavors {
+  flex: 1;
+  min-width: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+
 .arrow {
   font-size: 10px;
   color: #666;
@@ -930,6 +941,8 @@ body {
   font-size: 13px;
   line-height: 1.3;
 }
+
+
 
 /* Tooltip tùy chỉnh cho marker */
 .leaflet-tooltip.custom-tooltip {
@@ -998,4 +1011,14 @@ body {
 
 .toast.error {
   background: #e53935; /* đỏ */
+}
+
+.budget-selector select,
+.radius-selector select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  background: white;
+  cursor: pointer;
 }

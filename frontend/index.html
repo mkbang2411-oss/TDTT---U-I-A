@@ -82,8 +82,60 @@ function showToast(message, type = "success") {
     <div id="suggestions" class="suggestions"></div>
   </div>
 
-  <!-- 🧂 Ô nhập khẩu vị phụ -->
-  <input id="flavor" type="text" placeholder="Khẩu vị (VD: cay, ngọt...)" autocomplete="off" />
+<!-- Multi-select khẩu vị -->
+<div class="flavor-selector" id="flavorSelector">
+  <div class="flavor-selector-btn" id="flavorBtn">
+    <span class="selected-flavors empty">Chọn khẩu vị</span>
+    <span class="arrow">▼</span>
+  </div>
+  <div class="flavor-dropdown" id="flavorDropdown">
+    <div class="flavor-option">
+      <input type="checkbox" value="cay" id="flavor-cay">
+      <label for="flavor-cay">Cay</label>
+    </div>
+    <div class="flavor-option">
+      <input type="checkbox" value="ngot" id="flavor-ngot">
+      <label for="flavor-ngot">Ngọt</label>
+    </div>
+    <div class="flavor-option">
+      <input type="checkbox" value="man" id="flavor-man">
+      <label for="flavor-man">Mặn</label>
+    </div>
+    <div class="flavor-option">
+      <input type="checkbox" value="chua" id="flavor-chua">
+      <label for="flavor-chua">Chua</label>
+    </div>
+    <div class="flavor-option">
+      <input type="checkbox" value="dam" id="flavor-dam">
+      <label for="flavor-dam">Đậm vị</label>
+    </div>
+  </div>
+</div>
+<!-- 🔢 BUDGET -->
+<div class="budget-selector">
+  <select id="budget">
+    <option value="">Giá trung bình</option>
+    <option value="1-100000">1 – 100.000 ₫</option>
+    <option value="100000-200000">100.000 – 200.000 ₫</option>
+    <option value="200000-300000">200.000 – 300.000 ₫</option>
+    <option value="300000-9999999">300.000 ₫ trở lên</option>
+  </select>
+</div>
+
+
+<!-- 📏 BÁN KÍNH -->
+<div class="radius-selector">
+  <select id="radius">
+    <option value="">Bán kính</option>
+    <option value="0.5">500 m</option>
+    <option value="1">1 km</option>
+    <option value="2">2 km</option>
+    <option value="3">3 km</option>
+    <option value="5">5 km</option>
+  </select>
+</div>
+
+
 
   <button id="btnSearch">🔍 Tìm</button>
 </div>
