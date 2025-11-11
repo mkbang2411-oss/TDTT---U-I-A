@@ -1,3 +1,8 @@
-.account-button{
-    right : 50px;
+.background-left{
+    position: absolute;
+   
+    width: 500px;
+    height: 100px;
+    left: 10px;
+    transform: scale(1.5);
 }

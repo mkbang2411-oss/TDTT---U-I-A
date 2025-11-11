@@ -1,10 +1,9 @@
 /* Khung chứa background */
 .background {
-    position: fixed;
+    position: relative;
     width: 1550px;
     margin: 0 auto; /* canh giữa trang nếu muốn */
     z-index: 1000;
-    pointer-events: none;
     top: 0;
 }
 
@@ -31,3 +30,12 @@
     width: 100%;
     height: 100vh;
 }
+.account-button {
+    position: absolute;
+    right: 2000px !important;
+    top: 50px;
+    z-index: 10;
+    transform: scale(0.1);
+}
+
+
