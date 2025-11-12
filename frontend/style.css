@@ -244,7 +244,7 @@ body {
 ========================================== */
 #sidebar {
   position: fixed;
-  top: 24%;
+  bottom: 30px;
   left: 0;
   width: 400px;
   height: calc(100% - 280px);
@@ -803,7 +803,7 @@ body {
 
 #sidebar {
   position: fixed;
-  top: 33%;
+  bottom: 30px;
   left: 0;
   width: 400px;
   height: calc(100% - 276px);
