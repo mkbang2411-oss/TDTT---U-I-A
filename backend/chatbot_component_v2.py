@@ -19,7 +19,7 @@ def get_chatbot_html(gemini_api_key):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <!-- Emoji Picker Element (Google) -->
         <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js" type="module"></script>
-        <style>
+         <style>
             * {{
                 box-sizing: border-box;
             }}
@@ -1844,4 +1844,5 @@ def render_food_chatbot(gemini_api_key):
     chatbot_html = get_chatbot_html(gemini_api_key)
     
     # Sử dụng components.html với height phù hợp
+
     components.html(chatbot_html, height=700, scrolling=False)
