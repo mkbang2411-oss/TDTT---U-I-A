@@ -19,7 +19,7 @@ def get_chatbot_html(gemini_api_key):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <!-- Emoji Picker Element (Google) -->
         <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js" type="module"></script>
-         <style>
+        <style>
             * {{
                 box-sizing: border-box;
             }}
@@ -117,9 +117,9 @@ def get_chatbot_html(gemini_api_key):
                 position: fixed;
                 bottom: 30px;
                 right: 30px;
-                width: 360px;
+                width: 320px;
                 max-width: calc(100vw - 60px);
-                height: 600px;
+                height: calc(100% - 240px);
                 max-height: calc(100vh - 60px);
                 background-color: white;
                 border-radius: 20px;
@@ -468,7 +468,7 @@ def get_chatbot_html(gemini_api_key):
                 outline: none;
                 padding: 10px 40px 10px 14px; /* 🟠 chừa chỗ bên phải cho emoji */
                 border-radius: 22px;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 500;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
                 min-width: 0;
@@ -639,8 +639,8 @@ def get_chatbot_html(gemini_api_key):
             
             <div class="input-area">
                 <div class="input-wrapper">
-                    <input type="text" class="message-input" id="messageInput" placeholder="Bạn muốn ăn gì hôm nay?..." />
-                    <button class="emoji-button" id="emojiBtn">😊</button>
+                    <input type="text" class="message-input" id="messageInput" placeholder="Bạn muốn ăn gì hôm nay?" />
+                    <button class="emoji-button" id="emojiBtn"> 😊</button>
                 </div>
                 <button class="send-button" id="sendBtn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1844,5 +1844,4 @@ def render_food_chatbot(gemini_api_key):
     chatbot_html = get_chatbot_html(gemini_api_key)
     
     # Sử dụng components.html với height phù hợp
-
     components.html(chatbot_html, height=700, scrolling=False)
