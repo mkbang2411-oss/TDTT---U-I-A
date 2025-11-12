@@ -1,9 +1,7 @@
-/* ==========================================
-   🌐 GLOBAL STYLE
-========================================== */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 body {
   margin: 0;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: "Montserrat", sans-serif;
   background: #fff;
   color: #222;
 }
@@ -23,21 +21,23 @@ body {
    🔍 THANH TÌM KIẾM 
 ========================================== */
 #controls {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  padding: 8px 14px;
-  border-radius: 12px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  z-index: 1000;
+    position: fixed;           /* ĐỔI: từ relative/absolute sang fixed */
+    top: 155px;                /* Đặt dưới banner (200px) + khoảng cách */
+    left: 50%;
+    background: white;
+    transform: translateX(-50%);
+    z-index: 1001;             /* Cao hơn map (z-index: 1) */
+    background: transparent;         /* THÊM: nền trắng cho dễ nhìn */
+    border-radius: none;  /* THÊM: đổ bóng */
+    display: flex;
+    gap: 20px;
+    flex-wrap: nowrap;
+    max-width: 90%;
+    align-items: flex-start;
+    padding: 10px;
 }
 
+/* Khom đụng zô*/
 .search-box {
   position: relative;
   display: flex;
@@ -48,28 +48,28 @@ body {
   position: absolute;
   left: 10px;
   font-size: 16px;
-  color: #888;
+  color: #ffffff;
   pointer-events: none;
 }
 
 #query {
   padding: 8px 10px 8px 30px;
   width: 260px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  border: 2px solid #ee5536;
+  border-radius: 8px;
   outline: none;
   transition: all 0.2s ease;
 }
-
-#query:focus {
-  border-color: #0078ff;
-  box-shadow: 0 0 3px rgba(0, 120, 255, 0.6);
+#query:hover {
+    background-color: #ffffff;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
 }
 
 #btnSearch {
   padding: 8px 14px;
   border: none;
-  background: #0078ff;
+  background: #ff672f;
   color: white;
   border-radius: 6px;
   cursor: pointer;
@@ -78,7 +78,7 @@ body {
 }
 
 #btnSearch:hover {
-  background: #005fd1;
+  background: #ff4242;
   transform: translateY(-1px);
 }
 
@@ -92,24 +92,38 @@ body {
   margin-bottom: 6px;
 }
 
+
 .search-row {
   display: flex;
+  border-radius: 8px;
   align-items: center;
   gap: 8px;
+}
+
+.search-row {
+    background-color: #ffffff;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255, 228, 194, 0.3); /* glow trắng */
 }
 
 #gpsInput {
   padding: 8px 10px;
   width: 260px; /* mặc định bằng với #query */
-  border: 1px solid #ccc;
   border-radius: 6px;
+  border: 2px solid #ee5536;
   outline: none;
   transition: all 0.2s ease;
 }
 
+#gpsInput:hover {
+    background-color: #ffffff;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+}
+
 #gpsInput:focus {
-  border-color: #0078ff;
-  box-shadow: 0 0 3px rgba(0, 120, 255, 0.6);
+  border-color: #ffffff;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.6);
 }
 
 .gps-btn {
@@ -147,7 +161,7 @@ body {
 #gpsInput {
   width: 260px;
   padding: 8px 10px 8px 30px; /* giống #query */
-  border: 1px solid #ccc;
+  border: 2px solid #ee5536;
   border-radius: 6px;
   outline: none;
   transition: all 0.2s ease;
@@ -229,14 +243,15 @@ body {
    📋 SIDEBAR (THÔNG TIN CHI TIẾT)
 ========================================== */
 #sidebar {
-  position: absolute;
-  top: 0;
+  position: fixed;
+  top: 24%;
   left: 0;
-  width: 360px;
-  height: 100%;
+  width: 400px;
+  height: calc(100% - 280px);
   background: #fff;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-  z-index: 1000;
+  border-radius: 6px;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.6);
+  z-index: 4000;
   overflow-y: auto;
   overflow-x: hidden;
   transition: transform 0.3s ease;
@@ -245,6 +260,7 @@ body {
 
 #sidebar.show {
   transform: translateX(0);
+  z-index: 4000;
 }
 
 #closeSidebar {
@@ -258,7 +274,7 @@ body {
 }
 
 #sidebar-content {
-  padding: 60px 20px 20px;
+  padding: 30px 20px 20px;
 }
 
 #sidebar-content h2 {
@@ -786,21 +802,22 @@ body {
 }
 
 #sidebar {
-  position: absolute;
-  top: 0;
+  position: fixed;
+  top: 24%;
   left: 0;
-  width: 380px;
-  height: 100vh;
+  width: 400px;
+  height: calc(100% - 280px);
   background: #fff;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  box-shadow: 2px 0 10px rgba(0,0,0,0.2);
   overflow-y: auto;
   transform: translateX(-100%);
   transition: transform 0.3s ease;
-  z-index: 1000;
+  z-index: 4000;
 }
 
 #sidebar.show {
   transform: translateX(0);
+  z-index: 4000;
 }
 
 /* ====================== */
@@ -814,6 +831,7 @@ body {
   top: 0;
   width: 100%;
   height: 100%;
+  border-radius: 6px;
   background-color: rgba(0, 0, 0, 0.85);
   justify-content: center;
   align-items: center;
@@ -861,7 +879,7 @@ body {
   width: 100%;
   padding: 6px 8px;
   background: white;
-  border: 1px solid #ccc;
+  border: 2px solid #ee5536;
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
@@ -873,7 +891,9 @@ body {
 }
 
 .flavor-selector-btn:hover {
-  border-color: #007bff;
+    background-color: #ffffff;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
 }
 
 .flavor-dropdown {
@@ -905,7 +925,9 @@ body {
 }
 
 .flavor-option:hover {
-  background: #f5f5f5;
+    background-color: #fff5ce;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px #ffe1be(255, 255, 255, 0.417); /* glow trắng */
 }
 
 .flavor-option input[type="checkbox"] {
@@ -933,7 +955,7 @@ body {
 }
 
 .flavor-count {
-  background: #007bff;
+  background: #ff4000;
   color: white;
   padding: 2px 6px;
   border-radius: 10px;
@@ -952,8 +974,8 @@ body {
 
 
 .arrow {
-  font-size: 10px;
-  color: #666;
+  font-size: 12px;
+  color: #e95d00;
 }
 
 .leaflet-tooltip.custom-tooltip {
@@ -1039,10 +1061,31 @@ body {
 
 .budget-selector select,
 .radius-selector select {
+  color: #8c8c8c;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 15px;
+  border: 2px solid #ee5536;
+  font-size: 14px;
   background: white;
   cursor: pointer;
+}
+
+.budget-selector select:hover {
+    background-color: #ffffff;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+}
+
+.radius-selector select:hover {
+    background-color: #ffffff;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+}
+
+/*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
+input,
+button,
+select,
+textarea {
+    font-family: "Montserrat", sans-serif !important;
 }

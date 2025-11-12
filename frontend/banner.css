@@ -1,41 +1,28 @@
-/* Khung chứa background */
+/* --- Khung banner --- */
 .background {
-    position: relative;
-    width: 1550px;
-    margin: 0 auto; /* canh giữa trang nếu muốn */
-    z-index: 1000;
+    position: fixed;
+    width: 100%;
+    margin: 0 auto;
     top: 0;
+    z-index: 1000;
 }
 
-/* Ảnh nền */
+/* --- Ảnh nền banner --- */
 .background img.bg {
-    width: 1550px;
-    height: 200px;
-    object-fit:cover;
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
     display: block;
 }
 
-/* Ảnh UIA chồng lên */
+/* --- Logo UIA giữa banner --- */
 .background img.uia {
     position: absolute;
-    top: -15px;
-    left: 500px;
-    width: 500px;
-    height: 230px;
-    object-fit: cover;
+    top: 50%;                /* căn giữa theo chiều dọc */
+    left: 50%;               /* căn giữa theo chiều ngang */
+    transform: translate(-50%, -50%); /* thật sự giữa */
+    width: 450px;
+    height: 200px;
+    object-fit: contain;
 }
-#map{
-    position: fixed;
-    z-index: 1;
-    width: 100%;
-    height: 100vh;
-}
-.account-button {
-    position: absolute;
-    right: 2000px !important;
-    top: 50px;
-    z-index: 10;
-    transform: scale(0.1);
-}
-
 
