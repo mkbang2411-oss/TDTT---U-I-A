@@ -1,3 +1,27 @@
-.account-button{
-    right : 50px;
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+body {
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
 }
+
+.background-left{
+    position: absolute;
+    width: 500px;
+    height: 100px;
+    left: 10px;
+    transform: scale(1.5);    
+    transform: rotate(90deg);
+    height: 1984px;
+    width: 683px;
+    left: -1120px;
+    top: -650px;
+}
+
+/*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
+input,
+button,
+select,
+textarea {
+    font-family: "Montserrat", sans-serif !important;
+}
+

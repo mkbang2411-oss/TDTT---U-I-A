@@ -127,7 +127,7 @@ def get_food_plan():
 def serve_index():
     """Serve trang chính với chatbot + food planner tích hợp"""
     # Đọc file HTML gốc
-    with open(INDEX_FILE, "r", encoding="utf-8") as f:
+    with open(WEB_FILE, "r", encoding="utf-8") as f:
         html_content = f.read()
     
     # Lấy chatbot HTML

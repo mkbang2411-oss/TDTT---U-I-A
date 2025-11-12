@@ -1,32 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Web Demo</title>
+    <link rel="stylesheet" href="banner.css">
+    <link rel="stylesheet" href="button.css">
+    <link rel="stylesheet" href="weblogin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+
+    <!-- 🌟 Toast thông báo -->
+<div id="toast" class="toast hidden">
+<span id="toast-message"></span>
+<button id="toast-close">&times;</button>
+</div>
+
+<!-- 🔔 Toast Notification -->
+<div id="toast" class="toast"></div>
+
+<style>
+    .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 10px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 9999;
+    font-size: 15px;
+    }
+    .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    }
+    .toast.success {
+    background: #4caf50;
+    }
+    .toast.error {
+    background: #e53935;
+    }
+    </style>
+
+    <script>
+    function showToast(message, type = "success") {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => toast.className = "toast", 3000);
+    }
+</script>
+
+
 <body>
-    <div
-        id="map"
+    <header class="banner">
+        <div class="background">
+            <img src="Picture/background.png" class="bg" alt="UIA Logo">
+            <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
+        </div>
+        
+        <a href="SignUp.html" class="button-SignUp">Sign Up</a>
+        <a href="SignIn.html" class="button-SignIn">Sign In</a>
+    </header>
+
+    <div id="controls">
+        <!-- 🧭 THANH NHẬP ĐỊA ĐIỂM -->
+        <div class="gps-box">
+            <input id="gpsInput" type="text" placeholder="Địa điểm của bạn..." autocomplete="off" />
+            <button id="gpsEnterBtn" title="Tìm địa điểm" class="gps-btn">↩</button>
+            <button id="gpsLocateBtn" title="Dùng GPS" class="gps-btn">📍</button>
+        </div>
+
+    <!-- 🔍 THANH TÌM QUÁN ĂN -->
+    <div class="search-row">
+        <div class="search-box">
+            <input id="query" type="text" placeholder="Tìm quán ăn..." autocomplete="off" />
+            <div id="suggestions" class="suggestions"></div>
+        </div>
+    </div>   
+
+    <!-- Multi-select khẩu vị -->
+    <div class="flavor-selector" id="flavorSelector">
+        <div class="flavor-selector-btn" id="flavorBtn">
+            <span class="selected-flavors empty">Khẩu vị</span>
+            <span class="arrow">▼</span>
+        </div>
+        <div class="flavor-dropdown" id="flavorDropdown">
+                <div class="flavor-option">
+                    <input type="checkbox" value="cay" id="flavor-cay">
+                    <label for="flavor-cay">Cay</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="ngot" id="flavor-ngot">
+                    <label for="flavor-ngot">Ngọt</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="man" id="flavor-man">
+                    <label for="flavor-man">Mặn</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="chua" id="flavor-chua">
+                    <label for="flavor-chua">Chua</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="dam" id="flavor-dam">
+                    <label for="flavor-dam">Đậm vị</label>
+                </div>
+        </div>
     </div>
-    <div class="background">
-        <img src="Picture/background.png" class="bg" alt="UIA Logo">
-        <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
+
+
+    <!-- 🔢 BUDGET -->
+    <div class="budget-selector">
+    <select id="budget">
+        <option value="">Ngân sách mặc định</option>
+        <option value="1-100000">1 – 100.000 ₫</option>
+        <option value="100000-200000">100.000 – 200.000 ₫</option>
+        <option value="200000-300000">200.000 – 300.000 ₫</option>
+        <option value="300000-9999999">300.000 ₫ trở lên</option>
+    </select>
     </div>
-    
-    <a href="SignUp.html" class="button-SignUp">Sign Up</a>
-    <a href="SignIn.html" class="button-SignIn">Sign In</a>
-    <form class="search-form" onsubmit="return false;">
-        <div class="search-item">
-            <input type="text" name="query1" class="search-input" placeholder="Name of food...">
-            
-        </div>
-        <div class="search-item">
-            <input type="text" name="query2" class="search-input" placeholder="Budget...">
-           
-        </div>
-        <div class="search-item">
-            <input type="text" name="query3" class="search-input" placeholder="Your address...">
-        </div>
-        <div class="search-item">
-            <input type="text" name="query1" class="search-input" placeholder="Radious..."> 
-        </div>
-        <div class="search-item">
-            <input type="text" name="query1" class="search-input" placeholder="Taste...">
-            
-        </div> 
-    </form>
+
+
+    <!-- 📏 BÁN KÍNH -->
+    <div class="radius-selector">
+    <select id="radius">
+        <option value="">Bán kính tìm kiếm</option>
+        <option value="0.5">500 m</option>
+        <option value="1">1 km</option>
+        <option value="2">2 km</option>
+        <option value="3">3 km</option>
+        <option value="5">5 km</option>
+    </select>
+    </div>
+
+
+
+    <button id="btnSearch">🔍 Tìm</button>
+    </div>
+    </div>
+
+    <div id="sidebar" class="hidden">
+    <button id="closeSidebar">×</button>
+    <div id="sidebar-content"></div>
+    </div>
+
+    <div id="map"></div>
+    <!-- 🖼️ Popup zoom ảnh -->
+    <div id="imageModal" class="image-modal">
+    <span id="closeModal">&times;</span>
+    <img id="modalImg" src="" alt="Zoomed image">
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+    <script src="script.js"></script>
+    <div id="insert-chatbot-and-map"></div>
+
 </body>
+</html>
+

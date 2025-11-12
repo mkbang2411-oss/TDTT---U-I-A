@@ -84,8 +84,8 @@ def get_chatbot_html(gemini_api_key):
                 position: fixed;
                 bottom: 30px;
                 right: 30px;
-                width: 64px;
-                height: 64px;
+                width: 55px;
+                height: 55px;
                 border-radius: 50%;
                 background: linear-gradient(135deg, #FF6B35 0%, #FF8C61 100%);
                 border: none;
@@ -117,9 +117,9 @@ def get_chatbot_html(gemini_api_key):
                 position: fixed;
                 bottom: 30px;
                 right: 30px;
-                width: 360px;
+                width: 320px;
                 max-width: calc(100vw - 60px);
-                height: 600px;
+                height: calc(100% - 240px);
                 max-height: calc(100vh - 60px);
                 background-color: white;
                 border-radius: 20px;
@@ -468,7 +468,7 @@ def get_chatbot_html(gemini_api_key):
                 outline: none;
                 padding: 10px 40px 10px 14px; /* 🟠 chừa chỗ bên phải cho emoji */
                 border-radius: 22px;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 500;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
                 min-width: 0;
@@ -639,8 +639,8 @@ def get_chatbot_html(gemini_api_key):
             
             <div class="input-area">
                 <div class="input-wrapper">
-                    <input type="text" class="message-input" id="messageInput" placeholder="Bạn muốn ăn gì hôm nay?..." />
-                    <button class="emoji-button" id="emojiBtn">😊</button>
+                    <input type="text" class="message-input" id="messageInput" placeholder="Bạn muốn ăn gì hôm nay?" />
+                    <button class="emoji-button" id="emojiBtn"> 😊</button>
                 </div>
                 <button class="send-button" id="sendBtn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

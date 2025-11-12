@@ -4,6 +4,16 @@
     <meta charset = "UTF-8">
     <title>Sign In</title>
     <link rel="stylesheet" href="banner.css">
+    <link rel="stylesheet" href="button.css">
+    <link rel="stylesheet" href="weblogin.css">
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" href="style.css" />
     <style>
         .text-box{
             border-radius: 15px;
@@ -76,11 +86,54 @@
         }
     </style>
 </head>
-<body>      
-    <div class="background">
-        <img src="Picture/background.png" class="bg" alt="UIA Logo">
-        <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
-    </div>
+
+<!-- 🔔 Toast Notification -->
+<div id="toast" class="toast"></div>
+
+<style>
+    .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 10px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 9999;
+    font-size: 15px;
+    }
+    .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    }
+    .toast.success {
+    background: #4caf50;
+    }
+    .toast.error {
+    background: #e53935;
+    }
+    </style>
+
+    <script>
+    function showToast(message, type = "success") {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => toast.className = "toast", 3000);
+    }
+</script>
+
+<body>   
+    <header class="banner">   
+        <div class="background">
+            <img src="Picture/background.png" class="bg" alt="UIA Logo">
+            <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
+        </div>
+    </header>
+
     <div class="text-box">
         <h1>SIGN UP</h1>
         <form class="login-form">
@@ -92,7 +145,8 @@
             <input type="ConFpassword" id="ConFpassword" name="ConFpassword" placeholder="ConFpassword" required>
             <button type="button" class="Sign-up-button" onclick="location.href='weblogin.html'">Done</button> 
             <div class="SignIn-text">
-                Don't have an account? <a href="SignIn.html">Sign In</a>
+                Don't have an account? <br>
+                <a href="SignIn.html">Sign In</a>
             </div>
         </form>
     </div>

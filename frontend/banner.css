@@ -1,33 +1,41 @@
-/* Khung chứa background */
-.background {
-    position: fixed;
-    width: 1550px;
-    margin: 0 auto; /* canh giữa trang nếu muốn */
-    z-index: 1000;
-    pointer-events: none;
-    top: 0;
+/* --- Khung banner --- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+body {
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
 }
 
-/* Ảnh nền */
+.background {
+    position: fixed;
+    width: 100%;
+    margin: 0 auto;
+    top: 0;
+    z-index: 1000;
+}
+
+/* --- Ảnh nền banner --- */
 .background img.bg {
-    width: 1550px;
-    height: 200px;
-    object-fit:cover;
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
     display: block;
 }
 
-/* Ảnh UIA chồng lên */
+/* --- Logo UIA giữa banner --- */
 .background img.uia {
     position: absolute;
-    top: -15px;
-    left: 500px;
-    width: 500px;
-    height: 230px;
-    object-fit: cover;
+    top: 50%;                /* căn giữa theo chiều dọc */
+    left: 50%;               /* căn giữa theo chiều ngang */
+    transform: translate(-50%, -50%); /* thật sự giữa */
+    width: 450px;
+    height: 200px;
+    object-fit: contain;
 }
-#map{
-    position: fixed;
-    z-index: 1;
-    width: 100%;
-    height: 100vh;
+
+/*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
+input,
+button,
+select,
+textarea {
+    font-family: "Montserrat", sans-serif !important;
 }
