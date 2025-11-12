@@ -868,26 +868,39 @@ body {
 
 /* Thanh khẩu vị phụ */
 /* 🎨 Style cho multi-select khẩu vị */
+/* Fix cho flavor selector đồng bộ với các ô khác */
 .flavor-selector {
   position: relative;
-  min-width: 160px; /* 👈 thêm dòng này */
-  flex-shrink: 0;   /* 👈 ngăn co lại khi trong flex */
+  min-width: 160px;  /* ✅ Đã có rồi */
+  max-width: 180px;  /* ⭐ THÊM dòng này để giới hạn độ rộng */
+  flex-shrink: 0;
 }
-
 
 .flavor-selector-btn {
   width: 100%;
-  padding: 6px 8px;
+  padding: 8px 10px;  /* ⭐ ĐỔI từ 6px 8px → 8px 10px (giống select) */
   background: white;
   border: 2px solid #ee5536;
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
+  font-size: 13px;  /* ⭐ Đảm bảo cùng size với select */
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 34px;
+  min-height: 36px;  /* ⭐ ĐỔI thành 36px cho đồng bộ */
+  box-sizing: border-box;  /* ⭐ THÊM để tính cả padding vào width */
+}
+
+/* Đảm bảo text không bị tràn */
+.flavor-selector-btn .selected-flavors {
+  flex: 1;
+  min-width: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 13px;  /* ⭐ THÊM để đồng bộ */
+  color: #8c8c8c;   /* ⭐ THÊM màu giống select */
 }
 
 .flavor-selector-btn:hover {
@@ -1062,10 +1075,10 @@ body {
 .budget-selector select,
 .radius-selector select {
   color: #8c8c8c;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-radius: 8px;
   border: 2px solid #ee5536;
-  font-size: 14px;
+  font-size: 13px;
   background: white;
   cursor: pointer;
 }

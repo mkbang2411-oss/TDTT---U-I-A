@@ -1,4 +1,10 @@
 /* --- Khung banner --- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+body {
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
+}
+
 .background {
     position: fixed;
     width: 100%;
@@ -26,3 +32,10 @@
     object-fit: contain;
 }
 
+/*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
+input,
+button,
+select,
+textarea {
+    font-family: "Montserrat", sans-serif !important;
+}
