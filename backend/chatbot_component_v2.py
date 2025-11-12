@@ -84,8 +84,8 @@ def get_chatbot_html(gemini_api_key):
                 position: fixed;
                 bottom: 30px;
                 right: 30px;
-                width: 64px;
-                height: 64px;
+                width: 55px;
+                height: 55px;
                 border-radius: 50%;
                 background: linear-gradient(135deg, #FF6B35 0%, #FF8C61 100%);
                 border: none;

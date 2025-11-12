@@ -366,7 +366,6 @@ def get_food_planner_html():
     justify-content: center;
     z-index: 9998;
     transition: all 0.2s ease;
-    border: 2px solid white;
 }
 
 .food-planner-btn:hover {
