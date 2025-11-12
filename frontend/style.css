@@ -803,10 +803,10 @@ body {
 
 #sidebar {
   position: fixed;
-  top: 24%;
+  top: 33%;
   left: 0;
   width: 400px;
-  height: calc(100% - 280px);
+  height: calc(100% - 276px);
   background: #fff;
   box-shadow: 2px 0 10px rgba(0,0,0,0.2);
   overflow-y: auto;
