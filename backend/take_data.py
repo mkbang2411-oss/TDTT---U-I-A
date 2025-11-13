@@ -4,7 +4,7 @@ import os
 import time
 
 # ⚙️ Cấu hình
-SERP_API_KEY = "965493118ea3afd38375442b8a2345f83ad60b1a6deea265d96ed02a81d47c94"  # Nhớ điền key thật của bạn
+SERP_API_KEY = "919519991034d358c7da2ae6f11bc21ded6a8e50a6193c568000e4ef8c9d8e2a"  # Nhớ điền key thật của bạn
 CSV_FILE = "Data.csv"
 
 
@@ -50,10 +50,13 @@ def parse_place_data(places: list):
         price = p.get("price", p.get("price_level", ""))
 
         # 🕒 Giờ mở cửa
-        gio_mo_cua = p.get("hours", "")
-        if not gio_mo_cua or str(gio_mo_cua).strip() == "":
-            gio_mo_cua = "Đang mở cửa ⋅ Đóng cửa lúc 22:00"
-
+        gio_mo_cua = ""
+        if "open_state" in p and p["open_state"]:
+            gio_mo_cua = p["open_state"]
+        elif "hours" in p and p["hours"]:
+            gio_mo_cua = p["hours"]
+        else:
+            gio_mo_cua = "Không rõ giờ mở cửa"
         records.append({
             "data_id": p.get("data_id", ""),
             "ten_quan": p.get("title", ""),
@@ -112,12 +115,15 @@ def crawl_and_save_places(query: str, lat: float, lon: float):
 # ✅ Cho phép chạy thủ công để test CLI
 if __name__ == "__main__":
     DISTRICTS = {
-        "Bình Thạnh": (10.8050, 106.6960),
+        #"Quận 1": (10.7769, 106.7009),
+        #"Quận 3": (10.7840, 106.6945),
+        "Quận 5": (10.7520, 106.6620),
+        #"Bình Thạnh": (10.8050, 106.6960),
         "Phú Nhuận": (10.7990, 106.6800),
         "Tân Bình": (10.8010, 106.6520),
         "Gò Vấp": (10.8340, 106.6800),
         "Quận 10": (10.7735, 106.6670),
-        "Thủ Đức": (10.8490, 106.7600)
+        #"Thủ Đức": (10.8490, 106.7600)
     }
 
     query = input("🔍 Nhập từ khóa muốn tìm (vd: phở, trà sữa, cơm tấm): ").strip()

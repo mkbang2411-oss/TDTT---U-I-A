@@ -434,7 +434,7 @@ if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
           : ""
       }
       <div style="font-size:13px;margin-top:4px;">
-        <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
+        <i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}<br>
         <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
       </div>
     </div>
@@ -490,7 +490,7 @@ if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
         <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
         <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
         <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-        <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+        <p><i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}</p>
         <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
         <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
       `;

@@ -5,7 +5,7 @@ import os
 import time
 
 # ⚙️ Cấu hình
-SERP_API_KEY = "965493118ea3afd38375442b8a2345f83ad60b1a6deea265d96ed02a81d47c94"  # nhập key của bạn
+SERP_API_KEY = "919519991034d358c7da2ae6f11bc21ded6a8e50a6193c568000e4ef8c9d8e2a"  # nhập key của bạn
 CSV_FILE = "Data.csv"
 REVIEWS_FILE = "reviews.json"
 
