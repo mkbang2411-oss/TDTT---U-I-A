@@ -1,7 +1,9 @@
 // =========================
 // 🗺️ CẤU HÌNH MAP
 // =========================
-const map = L.map("map").setView([10.7769, 106.7009], 13);
+const map = L.map("map",{
+  zoomControl: false  // ← THÊM DÒNG NÀY để tắt nút +/-
+}).setView([10.7769, 106.7009], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution:
@@ -78,6 +80,11 @@ const icons = {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   }), 
+  khu_am_thuc: L.icon({
+  iconUrl: "icons/star.png", // 👉 Bạn đặt file này trong thư mục /icons
+  iconSize: [26, 26],
+  iconAnchor: [13, 26],
+  }),
   default: L.icon({
     iconUrl: "icons/default.png",
     iconSize: [26, 26],
@@ -408,8 +415,13 @@ function displayPlaces(places) {
     const lon = parseFloat(p.lon);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    const category = detectCategory(p.ten_quan);
-    const icon = icons[category] || icons.default;
+    let icon;
+if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
+  icon = icons.khu_am_thuc; // 👉 icon riêng cho khu ẩm thực
+} else {
+  const category = detectCategory(p.ten_quan);
+  icon = icons[category] || icons.default;
+}
     const marker = L.marker([lat, lon], { icon }).addTo(map);
 
       // 🟢 TOOLTIP khi rê chuột vào marker
@@ -422,7 +434,7 @@ function displayPlaces(places) {
           : ""
       }
       <div style="font-size:13px;margin-top:4px;">
-        <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
+        <i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}<br>
         <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
       </div>
     </div>
@@ -472,10 +484,13 @@ function displayPlaces(places) {
             ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin-bottom:10px;">`
             : ""
         }
+         ${p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")
+    ? `<p style="color:#ff6600;font-weight:bold;">🔥 Đây là khu ẩm thực sầm uất, có nhiều món ăn và hoạt động về đêm.</p>`
+    : ""}
         <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
         <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
         <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-        <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+        <p><i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}</p>
         <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
         <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
       `;
@@ -611,30 +626,33 @@ function displayPlaces(places) {
 
 sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
 
-      // =========================
-      // ✓ NÚT CHỌN QUÁN CHO FOOD PLANNER
-      // =========================
-      if (window.foodPlannerState && 
-          window.foodPlannerState.isEditMode && 
-          window.foodPlannerState.isEditMode() && 
-          window.foodPlannerState.isWaitingForPlaceSelection && 
-          window.foodPlannerState.isWaitingForPlaceSelection()) {
-        
-        const selectPlaceBtn = document.createElement("button");
-        selectPlaceBtn.textContent = "✓ Chọn quán này";
-        selectPlaceBtn.className = "route-btn";
-        selectPlaceBtn.style.marginTop = "10px";
-        selectPlaceBtn.style.background = "linear-gradient(135deg, #4caf50 0%, #45a049 100%)";
-        selectPlaceBtn.style.color = "white";
-        selectPlaceBtn.style.border = "none";
-        selectPlaceBtn.style.fontWeight = "600";
-        tongquanTab.appendChild(selectPlaceBtn);
-        
-        selectPlaceBtn.addEventListener("click", () => {
+        // =========================
+        // ✓ NÚT CHỌN QUÁN CHO FOOD PLANNER
+        // =========================
+        if (window.foodPlannerState && 
+            typeof window.foodPlannerState.isWaitingForPlaceSelection === 'function' &&
+            window.foodPlannerState.isWaitingForPlaceSelection()) {
+          
+          const selectPlaceBtn = document.createElement("button");
+          selectPlaceBtn.textContent = "✓ Chọn quán này";
+          selectPlaceBtn.className = "route-btn";
+          selectPlaceBtn.style.marginTop = "10px";
+          selectPlaceBtn.style.background = "linear-gradient(135deg, #4caf50 0%, #45a049 100%)";
+          selectPlaceBtn.style.color = "white";
+          selectPlaceBtn.style.border = "none";
+          selectPlaceBtn.style.fontWeight = "600";
+          selectPlaceBtn.style.fontSize = "14px";
+          selectPlaceBtn.style.padding = "10px 20px";
+          selectPlaceBtn.style.borderRadius = "8px";
+          selectPlaceBtn.style.cursor = "pointer";
+          tongquanTab.appendChild(selectPlaceBtn);
+          
+          selectPlaceBtn.addEventListener("click", () => {
+
           const placeData = {
             ten_quan: p.ten_quan,
             dia_chi: p.dia_chi,
-            rating: p.rating || 0,
+            rating: parseFloat(p.rating) || 0,
             lat: lat,
             lon: lon,
             data_id: p.data_id || p.ten_quan,
@@ -643,9 +661,16 @@ sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
             khau_vi: p.khau_vi || ''
           };
           
-          if (window.foodPlannerState.selectPlace && 
-              window.foodPlannerState.selectPlace(placeData)) {
-            sidebar.classList.remove("show");
+          console.log("Chon quan:", placeData.ten_quan);
+          
+          if (typeof window.foodPlannerState.selectPlace === 'function') {
+            const success = window.foodPlannerState.selectPlace(placeData);
+            if (success) {
+              sidebar.classList.remove("show");
+              alert("Da chon quan: " + placeData.ten_quan);
+            } else {
+              alert("Khong the chon quan. Vui long thu lai!");
+            }
           }
         });
       }
