@@ -159,7 +159,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Cấu hình hành vi đăng nhập
-LOGIN_REDIRECT_URL = 'http://127.0.0.1:5000/'
+LOGIN_REDIRECT_URL = 'http://127.0.0.1:5000/weblogin.html'
 LOGOUT_REDIRECT_URL = 'http://127.0.0.1:5000/'
 
 # Cấu hình email
@@ -172,3 +172,6 @@ ACCOUNT_LOGIN_ON_SIGNUP = False
 
 # 2. Chỉ định URL để chuyển hướng đến SAU KHI ĐĂNG KÝ
 ACCOUNT_SIGNUP_REDIRECT_URL = '/accounts/login/'
+
+# Bỏ qua trang xác nhận khi đăng nhập bằng social
+SOCIALACCOUNT_LOGIN_ON_GET = True

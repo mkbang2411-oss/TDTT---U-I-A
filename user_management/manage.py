@@ -21,9 +21,5 @@ def main():
 if __name__ == '__main__':
     main()
 
-#
-# cd TDTT---U-I-A
-# .\venv\Scripts\Activate.ps1
-# pip install -r requirements.txt (CHỈ CẦN CHẠY 1 LẦN)
-# cd user_management
-# python manage.py runserver
+#  pip 
+# .\TDTT---U-I-A\venv\Scripts\python.exe .\TDTT---U-I-A\user_management\manage.py runserver

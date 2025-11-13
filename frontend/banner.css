@@ -32,6 +32,71 @@ body {
     object-fit: contain;
 }
 
+.divider-with-text {
+    display: inline-flex; /* Sử dụng flexbox để căn chỉnh */
+    align-items: center; /* Căn giữa các item theo chiều dọc */
+    text-align: center;
+    
+    color: #BC2A12;
+    margin-bottom: 10px; /* Khoảng cách tới nút Google */
+}
+
+/* Đây là code tạo 2 đường gạch ngang */
+.divider-with-text::before,
+.divider-with-text::after {
+    content: '  '; /* Bắt buộc phải có để pseudo-element hiển thị */
+    width: 150px; /* chiều dài của hai đường kẻ */
+    height: 1px; /* Độ dày của đường kẻ */
+    background-color: #BC2A12; 
+}
+
+/* Thêm khoảng cách giữa chữ và đường kẻ */
+.divider-with-text::before {
+    margin-right: 10px; /* Khoảng cách bên phải của đường kẻ trái */
+}
+.divider-with-text::after {
+    margin-left: 10px; /* Khoảng cách bên trái của đường kẻ phải */
+}
+
+/* === CSS CHO NÚT GOOGLE MỚI === */
+.google-signin-button {
+    /* Layout */
+    display: inline-flex; /* Dùng flex để logo và chữ nằm ngang */
+    align-items: center;  /* Căn giữa logo và chữ theo chiều dọc */
+    
+    /* Kích thước & Khoảng cách */
+    padding: 8px 16px;
+    
+    /* Giao diện */
+    background-color: #ffffff; /* Nền trắng */
+    border: 1px solid #dadce0; /* Viền xám mờ của Google */
+    border-radius: 15px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Đổ bóng nhẹ */
+    
+    /* Chữ */
+    color: #3c4043; /* Màu chữ xám đậm */
+    font-family: "Google Sans", Arial, sans-serif; /* Font của Google */
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none; /* Bỏ gạch chân của thẻ <a> */
+    
+    cursor: pointer;
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+/* Hiệu ứng khi rê chuột */
+.google-signin-button:hover {
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+/* CSS cho cái logo bên trong nút */
+.google-signin-button img {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px; /* Khoảng cách giữa logo và chữ */
+}
+
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,
 button,
