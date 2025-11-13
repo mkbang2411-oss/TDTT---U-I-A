@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset = "UTF-8">
-    <title>Sign In</title>
+    <meta charset="UTF-8">
+    <title>Đăng kí</title>
     <link rel="stylesheet" href="banner.css">
     <link rel="stylesheet" href="button.css">
     <link rel="stylesheet" href="weblogin.css">
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <link rel="stylesheet" href="style.css" />
     <style>
@@ -66,9 +64,10 @@
             border: 3.5px solid #fed57e;
             border-radius: 15px;
             color: white;
-            width: 70px;
+            width: 100px;
             height: 30px;
             font-size: 15px;
+            cursor: pointer;
             text-align: center;
         }
         .login-form .Sign-up-button:hover{
@@ -76,79 +75,112 @@
             color: white;
         }
         .SignIn-text{
-            color: #BC2A12
+            color: #BC2A12;
         }
         .SignIn-text a{
-            color: #FFBE0A
+            color: #FFBE0A;
         }
         .SignIn-text a:hover{
             color:#BC2A12;
         }
+        .error-message {
+            color: #BC2A12;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        .success-message {
+            color: #4caf50;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
     </style>
 </head>
-
-<!-- 🔔 Toast Notification -->
-<div id="toast" class="toast"></div>
-
-<style>
-    .toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #333;
-    color: #fff;
-    padding: 12px 18px;
-    border-radius: 10px;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s ease;
-    z-index: 9999;
-    font-size: 15px;
-    }
-    .toast.show {
-    opacity: 1;
-    transform: translateY(0);
-    }
-    .toast.success {
-    background: #4caf50;
-    }
-    .toast.error {
-    background: #e53935;
-    }
-    </style>
-
-    <script>
-    function showToast(message, type = "success") {
-    const toast = document.getElementById("toast");
-    toast.textContent = message;
-    toast.className = `toast show ${type}`;
-    setTimeout(() => toast.className = "toast", 3000);
-    }
-</script>
 
 <body>   
     <header class="banner">   
         <div class="background">
             <img src="Picture/background.png" class="bg" alt="UIA Logo">
-            <img src="Picture/UIAaa.png" class="uia"  alt="UIA">
+            <img src="Picture/UIAaa.png" class="uia" alt="UIA">
         </div>
     </header>
 
     <div class="text-box">
         <h1>SIGN UP</h1>
-        <form class="login-form">
+        <form class="login-form" id="signupForm">
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" placeholder="Email" required>
-            <label for="password"> Password:</label>
+            
+            <label for="password">Mật khẩu:</label>
             <input type="password" id="password" name="password" placeholder="Password" required>
-            <label for="ConFpassword">Confirm Password:</label>
-            <input type="ConFpassword" id="ConFpassword" name="ConFpassword" placeholder="ConFpassword" required>
-            <button type="button" class="Sign-up-button" onclick="location.href='weblogin.html'">Done</button> 
+            
+            <label for="confirmPassword">Xác nhận mật khẩu:</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm Password" required>
+            
+            <p class="error-message" id="errorMsg"></p>
+            <p class="success-message" id="successMsg"></p>
+            
+            <button type="submit" class="Sign-up-button">Xong</button> 
+            
             <div class="SignIn-text">
-                Don't have an account? <br>
-                <a href="SignIn.html">Sign In</a>
+                Bạn đã có tài khoản ? <br>
+                <a href="SignIn.html">Đăng nhập</a>
             </div>
         </form>
     </div>
+
+    <script>
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Ngăn form reload trang
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const successMsg = document.getElementById('successMsg');
+            
+            // Reset messages
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            // Kiểm tra validation
+            if (password.length < 6) {
+                errorMsg.textContent = 'Mật khẩu phải có ít nhất 6 ký tự!';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                errorMsg.textContent = 'Mật khẩu xác nhận không khớp!';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            // Lưu thông tin user (có thể gọi API backend ở đây)
+            const userData = {
+                email: email,
+                password: password, // Trong thực tế nên hash password
+                createdAt: new Date().toISOString()
+            };
+            
+            // Lưu vào localStorage (demo - trong thực tế dùng database)
+            localStorage.setItem('userData', JSON.stringify(userData));
+            
+            // Tự động đăng nhập sau khi đăng ký
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('username', email.split('@')[0]);
+            localStorage.setItem('userEmail', email);
+            
+            // Hiển thị thông báo thành công
+            successMsg.textContent = 'Đăng ký thành công! Đang chuyển hướng...';
+            successMsg.style.display = 'block';
+            
+            // Chuyển về trang chủ sau 1.5s
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        });
+    </script>
 </body>
 </html>

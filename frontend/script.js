@@ -1,7 +1,9 @@
 // =========================
 // 🗺️ CẤU HÌNH MAP
 // =========================
-const map = L.map("map").setView([10.7769, 106.7009], 13);
+const map = L.map("map",{
+  zoomControl: false  // ← THÊM DÒNG NÀY để tắt nút +/-
+}).setView([10.7769, 106.7009], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution:
@@ -624,30 +626,33 @@ if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
 
 sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
 
-      // =========================
-      // ✓ NÚT CHỌN QUÁN CHO FOOD PLANNER
-      // =========================
-      if (window.foodPlannerState && 
-          window.foodPlannerState.isEditMode && 
-          window.foodPlannerState.isEditMode() && 
-          window.foodPlannerState.isWaitingForPlaceSelection && 
-          window.foodPlannerState.isWaitingForPlaceSelection()) {
-        
-        const selectPlaceBtn = document.createElement("button");
-        selectPlaceBtn.textContent = "✓ Chọn quán này";
-        selectPlaceBtn.className = "route-btn";
-        selectPlaceBtn.style.marginTop = "10px";
-        selectPlaceBtn.style.background = "linear-gradient(135deg, #4caf50 0%, #45a049 100%)";
-        selectPlaceBtn.style.color = "white";
-        selectPlaceBtn.style.border = "none";
-        selectPlaceBtn.style.fontWeight = "600";
-        tongquanTab.appendChild(selectPlaceBtn);
-        
-        selectPlaceBtn.addEventListener("click", () => {
+        // =========================
+        // ✓ NÚT CHỌN QUÁN CHO FOOD PLANNER
+        // =========================
+        if (window.foodPlannerState && 
+            typeof window.foodPlannerState.isWaitingForPlaceSelection === 'function' &&
+            window.foodPlannerState.isWaitingForPlaceSelection()) {
+          
+          const selectPlaceBtn = document.createElement("button");
+          selectPlaceBtn.textContent = "✓ Chọn quán này";
+          selectPlaceBtn.className = "route-btn";
+          selectPlaceBtn.style.marginTop = "10px";
+          selectPlaceBtn.style.background = "linear-gradient(135deg, #4caf50 0%, #45a049 100%)";
+          selectPlaceBtn.style.color = "white";
+          selectPlaceBtn.style.border = "none";
+          selectPlaceBtn.style.fontWeight = "600";
+          selectPlaceBtn.style.fontSize = "14px";
+          selectPlaceBtn.style.padding = "10px 20px";
+          selectPlaceBtn.style.borderRadius = "8px";
+          selectPlaceBtn.style.cursor = "pointer";
+          tongquanTab.appendChild(selectPlaceBtn);
+          
+          selectPlaceBtn.addEventListener("click", () => {
+
           const placeData = {
             ten_quan: p.ten_quan,
             dia_chi: p.dia_chi,
-            rating: p.rating || 0,
+            rating: parseFloat(p.rating) || 0,
             lat: lat,
             lon: lon,
             data_id: p.data_id || p.ten_quan,
@@ -656,9 +661,16 @@ sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
             khau_vi: p.khau_vi || ''
           };
           
-          if (window.foodPlannerState.selectPlace && 
-              window.foodPlannerState.selectPlace(placeData)) {
-            sidebar.classList.remove("show");
+          console.log("Chon quan:", placeData.ten_quan);
+          
+          if (typeof window.foodPlannerState.selectPlace === 'function') {
+            const success = window.foodPlannerState.selectPlace(placeData);
+            if (success) {
+              sidebar.classList.remove("show");
+              alert("Da chon quan: " + placeData.ten_quan);
+            } else {
+              alert("Khong the chon quan. Vui long thu lai!");
+            }
           }
         });
       }
