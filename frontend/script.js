@@ -1,7 +1,9 @@
 // =========================
 // 🗺️ CẤU HÌNH MAP
 // =========================
-const map = L.map("map").setView([10.7769, 106.7009], 13);
+const map = L.map("map",{
+  zoomControl: false  // ← THÊM DÒNG NÀY để tắt nút +/-
+}).setView([10.7769, 106.7009], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution:
