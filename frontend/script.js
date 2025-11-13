@@ -78,6 +78,11 @@ const icons = {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   }), 
+  khu_am_thuc: L.icon({
+  iconUrl: "icons/star.png", // 👉 Bạn đặt file này trong thư mục /icons
+  iconSize: [26, 26],
+  iconAnchor: [13, 26],
+  }),
   default: L.icon({
     iconUrl: "icons/default.png",
     iconSize: [26, 26],
@@ -408,8 +413,13 @@ function displayPlaces(places) {
     const lon = parseFloat(p.lon);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    const category = detectCategory(p.ten_quan);
-    const icon = icons[category] || icons.default;
+    let icon;
+if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
+  icon = icons.khu_am_thuc; // 👉 icon riêng cho khu ẩm thực
+} else {
+  const category = detectCategory(p.ten_quan);
+  icon = icons[category] || icons.default;
+}
     const marker = L.marker([lat, lon], { icon }).addTo(map);
 
       // 🟢 TOOLTIP khi rê chuột vào marker
@@ -472,6 +482,9 @@ function displayPlaces(places) {
             ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin-bottom:10px;">`
             : ""
         }
+         ${p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")
+    ? `<p style="color:#ff6600;font-weight:bold;">🔥 Đây là khu ẩm thực sầm uất, có nhiều món ăn và hoạt động về đêm.</p>`
+    : ""}
         <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
         <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
         <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
