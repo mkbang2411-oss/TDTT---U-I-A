@@ -520,6 +520,7 @@ def get_food_planner_html():
 .filters-wrapper {
     margin-bottom: 20px;
     transition: all 0.3s ease;
+    overflow: hidden; 
 }
 
 .filters-wrapper.collapsed .filter-section {
@@ -716,6 +717,11 @@ def get_food_planner_html():
     color: #333;
     font-size: 14px;
     margin-bottom: 4px;
+    /* 🔥 RÚT GỌN text khi dài */
+    max-width: 180px; /* Giới hạn chiều rộng */
+    white-space: nowrap; /* Không xuống dòng */
+    overflow: hidden; /* Ẩn phần thừa */
+    text-overflow: ellipsis; /* Thêm dấu ... */
 }
 
 .saved-plan-date {
@@ -740,6 +746,101 @@ def get_food_planner_html():
 
 .delete-plan-btn:hover {
     background: #c0392b;
+}
+
+/* ========== STYLE TÊN PLAN KHI EDIT ========== */
+.schedule-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 🔥 Icon emoji - cố định, KHÔNG di chuyển */
+.schedule-title > span:first-child {
+    flex-shrink: 0;
+}
+
+/* 🔥 Container cho text - có overflow */
+.schedule-title > span:last-child {
+    flex: 1;
+    min-width: 0;
+    max-width: 280px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 🔥 Text bên trong - MẶC ĐỊNH KHÔNG chạy */
+.schedule-title > span:last-child > span {
+    display: inline-block;
+    white-space: nowrap;
+    animation: none; /* 🔥 Mặc định tắt */
+}
+
+/* 🔥 CHỈ CHẠY khi có class "overflow" */
+.schedule-title > span:last-child.overflow > span {
+    animation: marquee 10s ease-in-out infinite;
+}
+
+/* 🔥 Animation chạy qua lại - mượt mà hơn */
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+    40% {
+        transform: translateX(calc(-100% + 100px)); /* Chạy sang trái */
+    }
+    50% {
+        transform: translateX(calc(-100% + 100px)); /* Dừng lại lâu hơn */
+    }
+    60% {
+        transform: translateX(calc(-100% + 100px)); /* Dừng tiếp */
+    }
+    100% {
+        transform: translateX(0); /* Chạy về phải */
+    }
+}
+
+/* ========== KHI Ở CHẾ ĐỘ EDIT - KHUNG VIỀN CAM GRADIENT CỐ ĐỊNH ========== */
+.schedule-title > span[contenteditable="true"] {
+    border: 3px solid transparent;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(to right, #FF6B35, #FF8E53) border-box;
+    border-radius: 8px;
+    padding: 6px 10px;
+    width: 100%;
+    max-width: 180px; /* 🔥 THU NHỎ lại để tránh nút + */
+    min-width: 150px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    display: block;
+    outline: none;
+    cursor: text;
+    box-sizing: border-box;
+    margin-right: 8px; /* 🔥 THÊM khoảng cách với nút bên phải */
+}
+
+/* 🔥 TẮT ANIMATION khi đang edit */
+.schedule-title > span[contenteditable="true"] > span {
+    animation: none !important;
+    transform: none !important;
+}
+
+/* 🔥 Ẩn scrollbar nhưng vẫn scroll được */
+.schedule-title > span[contenteditable="true"]::-webkit-scrollbar {
+    height: 3px;
+}
+
+.schedule-title > span[contenteditable="true"]::-webkit-scrollbar-thumb {
+    background: linear-gradient(to right, #FF6B35, #FF8E53);
+    border-radius: 10px;
+}
+
+.schedule-title > span[contenteditable="true"]::-webkit-scrollbar-track {
+    background: #FFE5D9;
 }
 
 /* ========== TIMELINE VERTICAL ========== */
@@ -1069,6 +1170,10 @@ def get_food_planner_html():
     font-size: 1.1rem;
     font-weight: 600;
     margin: 0;
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .action-buttons {
@@ -1081,6 +1186,11 @@ def get_food_planner_html():
 .meal-item.drag-over {  
     background-color: #fff3cd !important;  
     border: 2px solid #
+
+.manual-plans-container {
+    transition: max-height 0.3s ease;
+    overflow: hidden;
+}
 
 .search-box-manual {
     margin-bottom: 15px;
@@ -1374,8 +1484,8 @@ def get_food_planner_html():
             
             <!-- MANUAL MODE -->
             <div class="tab-content" id="manualTab">
-                <div class="filter-section" onclick="toggleManualPlansSection()" style="cursor: pointer;">
-                    <div class="filter-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="filter-section">
+                    <div class="filter-title" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleManualPlansSection()">
                         <span>📋 Kế hoạch của bạn</span>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; transition: transform 0.3s ease;" id="manualPlansArrow">
                             <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
@@ -1417,6 +1527,7 @@ let autoScrollInterval = null;
 let lastDragY = 0;
 let dragDirection = 0;
 let lastTargetElement = null;
+window.currentPlanName = null;
 
 // Themes data
 const themes = {
@@ -1501,36 +1612,6 @@ function toggleFilters() {
 }
 
 // ========== SAVED PLANS ==========
-function loadSavedPlan(planId) {
-    const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
-    const plan = savedPlans.find(p => p.id === planId);
-    
-    if (plan) {
-        currentPlan = {};
-        
-        // 🔥 RESTORE từ array về object và giữ thứ tự
-        if (Array.isArray(plan.plan)) {
-            const orderList = [];
-            plan.plan.forEach(item => {
-                // Deep copy dữ liệu
-                currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
-                orderList.push(item.key);
-            });
-            currentPlan._order = orderList;
-        } else {
-            // Fallback cho dữ liệu cũ (object)
-            Object.assign(currentPlan, plan.plan);
-        }
-
-        currentPlanId = planId;
-        isEditMode = false;
-        displayPlanVertical(currentPlan, false);
-
-        // 🔥 VẼ ĐƯỜNG ĐI NGAY SAU KHI LOAD
-        setTimeout(() => drawRouteOnMap(currentPlan), 500);
-    }
-}
-
 function displaySavedPlansList(plans) {
     const listDiv = document.getElementById('savedPlansList');
     if (!plans || plans.length === 0) {
@@ -1545,7 +1626,7 @@ function displaySavedPlansList(plans) {
         const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
         
         html += `
-            <div class="saved-plan-item" onclick="loadSavedPlan('${plan.id}')">
+            <div class="saved-plan-item" onclick="loadSavedPlans('${plan.id}')">
                 <div class="saved-plan-info">
                     <div class="saved-plan-name">${plan.name}</div>
                     <div class="saved-plan-date">📅 ${dateStr} • ⏰ ${timeStr}</div>
@@ -1561,6 +1642,14 @@ function displaySavedPlansList(plans) {
 function toggleSavedPlans() {
     const listDiv = document.getElementById('savedPlansList');
     const arrow = document.getElementById('savedPlansArrow');
+    
+    // 🔥 NẾU ĐANG MỞ "LỊCH TRÌNH ĐÃ LƯU" → ĐÓNG FILTERS
+    if (!listDiv.classList.contains('open')) {
+        const filtersWrapper = document.getElementById('filtersWrapper');
+        if (filtersWrapper && !filtersWrapper.classList.contains('collapsed')) {
+            toggleFilters(); // Đóng filters trước khi mở lịch trình
+        }
+    }
     
     if (listDiv.classList.contains('open')) {
         listDiv.classList.remove('open');
@@ -1606,59 +1695,114 @@ function savePlan() {
     // Cập nhật order
     currentPlan._order = planArray.map(x => x.key);
 
-    const planName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
+    // 🔥 LẤY TÊN TỪ DOM (nếu user đã edit inline)
+    const titleElement = document.querySelector('.schedule-title span[contenteditable]');
+    let currentDisplayName = titleElement ? titleElement.textContent.trim() : (window.currentPlanName || '');
     
-    if (planName) {
-        const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
-        
-        const planRecord = {
-            id: currentPlanId || Date.now().toString(),
-            name: planName,
-            plan: planArray,  // ← Array có thứ tự
-            savedAt: new Date().toISOString()
-        };
-        
-        if (currentPlanId) {
-            const index = savedPlans.findIndex(p => p.id === currentPlanId);
-            if (index !== -1) {
-                savedPlans[index] = planRecord;
-            }
-        } else {
-            savedPlans.unshift(planRecord);
-            currentPlanId = planRecord.id;
+    // Nếu chưa có tên hoặc là tên mặc định, hỏi user
+    if (!currentDisplayName || currentDisplayName === 'Lịch trình của bạn') {
+        currentDisplayName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
+        if (!currentDisplayName) return; // User cancel
+    } else if (!currentPlanId) {
+        // Plan mới nhưng đã có tên custom → hỏi lại để confirm
+        const newName = prompt('Đặt tên cho kế hoạch:', currentDisplayName);
+        if (!newName) return;
+        currentDisplayName = newName;
+    }
+    // Nếu đã có planId và đã có tên custom → dùng luôn, không hỏi
+    
+    const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
+    
+    const planRecord = {
+        id: currentPlanId || Date.now().toString(),
+        name: currentDisplayName, // 🔥 DÙNG TÊN ĐÃ EDIT
+        plan: planArray,  // ← Array có thứ tự
+        savedAt: new Date().toISOString()
+    };
+    
+    if (currentPlanId) {
+        const index = savedPlans.findIndex(p => p.id === currentPlanId);
+        if (index !== -1) {
+            savedPlans[index] = planRecord;
         }
-        
-        if (savedPlans.length > 20) {
-            savedPlans.length = 20;
-        }
-        
-        localStorage.setItem('food_plans', JSON.stringify(savedPlans));
-        
-        alert('✅ Đã lưu kế hoạch thành công!');
-        loadSavedPlans();
-        
-        if (isEditMode) {
-            toggleEditMode();
-        }
+    } else {
+        savedPlans.unshift(planRecord);
+        currentPlanId = planRecord.id;
+    }
+    
+    if (savedPlans.length > 20) {
+        savedPlans.length = 20;
+    }
+    
+    localStorage.setItem('food_plans', JSON.stringify(savedPlans));
+    
+    // 🔥 CẬP NHẬT TÊN HIỂN THỊ
+    window.currentPlanName = planRecord.name;
+    
+    alert('✅ Đã lưu kế hoạch thành công!');
+    loadSavedPlans();
+    
+    if (isEditMode) {
+        toggleEditMode();
     }
 }
 
 // ========== LOAD SAVED PLAN - RESTORE TỪARAY VỀ OBJECT ==========
-function loadSavedPlans() {
+function loadSavedPlans(planId) {
     const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
     const section = document.getElementById('savedPlansSection');
-    const listDiv = document.getElementById('savedPlansList');
-
-    if (!section || !listDiv) return;
-
-    if (!savedPlans || savedPlans.length === 0) {
+    
+    // 🔥 HIỂN THỊ SECTION NẾU CÓ PLANS
+    if (savedPlans.length > 0) {
+        section.style.display = 'block';
+    } else {
         section.style.display = 'none';
-        listDiv.innerHTML = '<p style="color: #999; font-size: 13px; padding: 15px; text-align: center;">Chưa có kế hoạch nào</p>';
-        return;
     }
-
-    section.style.display = 'block';
+    
     displaySavedPlansList(savedPlans);
+    
+    // Nếu có planId, load plan đó
+    if (planId) {
+        const filtersWrapper = document.getElementById('filtersWrapper');
+        if (filtersWrapper && !filtersWrapper.classList.contains('collapsed')) {
+            toggleFilters(); // Gọi hàm có sẵn để đóng
+        }
+        const plan = savedPlans.find(p => p.id === planId);
+        
+        if (plan) {
+            currentPlan = {};
+            
+            if (Array.isArray(plan.plan)) {
+                const orderList = [];
+                plan.plan.forEach(item => {
+                    currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
+                    orderList.push(item.key);
+                });
+                currentPlan._order = orderList;
+            } else {
+                Object.assign(currentPlan, plan.plan);
+            }
+
+            currentPlanId = planId;
+            window.currentPlanName = plan.name;
+            isEditMode = false;
+            displayPlanVertical(currentPlan, false);
+
+            setTimeout(() => drawRouteOnMap(currentPlan), 500);
+            
+            const savedPlansList = document.getElementById('savedPlansList');
+            const savedPlansArrow = document.getElementById('savedPlansArrow');
+            
+            if (savedPlansList && savedPlansArrow) {
+                savedPlansList.classList.remove('open');
+                savedPlansArrow.style.transform = 'rotate(0deg)';
+            }
+            
+            if (section) {
+                section.style.display = 'block';
+            }
+        }
+    }
 }
 
 function deleteSavedPlan(planId) {
@@ -1830,7 +1974,8 @@ async function generateAutoPlan() {
         
         currentPlan = await response.json();
         currentPlanId = null;
-        
+        window.currentPlanName = null;
+
         if (!filtersCollapsed) {
             toggleFilters();
         }
@@ -1868,7 +2013,10 @@ function displayPlanVertical(plan, editMode = false) {
     
     let html = `
     <div class="schedule-header">
-        <h3 class="schedule-title">📅 Lịch trình của bạn</h3>
+        <h3 class="schedule-title">
+            <span style="margin-right: 8px;">📅</span>
+            <span ${editMode ? 'contenteditable="true" class="editable" onblur="updateAutoPlanName(this.textContent)"' : ''}><span>${window.currentPlanName || 'Lịch trình của bạn'}</span></span>
+        </h3>
         <div class="action-buttons" id="actionButtons">
             <button class="action-btn secondary" onclick="generateAutoPlan()" title="Tạo lại">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
@@ -2021,7 +2169,7 @@ function displayPlanVertical(plan, editMode = false) {
                         <div class="place-meta-vertical">
                             <div class="meta-item-vertical">
                                 <span>⭐</span>
-                                <strong>${place.rating.toFixed(1)}</strong>
+                                <strong>${place.rating ? parseFloat(place.rating).toFixed(1) : 'N/A'}</strong>
                             </div>
                             <div class="meta-item-vertical">
                                 <span>🚗</span>
@@ -2079,6 +2227,19 @@ function displayPlanVertical(plan, editMode = false) {
     } else {
         clearRoutes();
     }
+
+    // 🔥 KIỂM TRA text có dài hơn khung không
+    setTimeout(() => {
+        const titleContainer = document.querySelector('.schedule-title > span:last-child');
+        if (titleContainer && !titleContainer.hasAttribute('contenteditable')) {
+            const textSpan = titleContainer.querySelector('span');
+            if (textSpan && textSpan.scrollWidth > titleContainer.clientWidth) {
+                titleContainer.classList.add('overflow'); // 🔥 Thêm class để bật animation
+            } else {
+                titleContainer.classList.remove('overflow');
+            }
+        }
+    }, 100);
 }
 
 // ========== ADD NEW MEAL SLOT ==========
@@ -2506,9 +2667,24 @@ function selectPlaceForMeal(mealKey) {
 
 // ========== REPLACE PLACE IN MEAL ==========
 function replacePlaceInMeal(newPlace) {
-    if (!waitingForPlaceSelection || !currentPlan) return;
+    // 🔥 KIỂM TRA ĐẦY ĐỦ
+    if (!waitingForPlaceSelection) {
+        console.error("❌ Không có slot nào đang chờ chọn quán");
+        return false;
+    }
+    
+    if (!currentPlan) {
+        console.error("❌ currentPlan không tồn tại");
+        return false;
+    }
     
     const mealKey = waitingForPlaceSelection;
+    
+    // 🔥 KIỂM TRA MEAL KEY CÓ TỒN TẠI KHÔNG
+    if (!currentPlan[mealKey]) {
+        console.error("❌ Meal key không tồn tại trong plan:", mealKey);
+        return false;
+    }
     
     let prevLat, prevLon;
     if (window.currentUserCoords) {
@@ -2516,11 +2692,13 @@ function replacePlaceInMeal(newPlace) {
         prevLon = window.currentUserCoords.lon;
     }
     
-    const allKeys = Object.keys(currentPlan).sort((a, b) => {
-        const timeA = currentPlan[a]?.time || '00:00';
-        const timeB = currentPlan[b]?.time || '00:00';
-        return timeA.localeCompare(timeB);
-    });
+    const allKeys = Object.keys(currentPlan)
+        .filter(k => k !== '_order')
+        .sort((a, b) => {
+            const timeA = currentPlan[a]?.time || '00:00';
+            const timeB = currentPlan[b]?.time || '00:00';
+            return timeA.localeCompare(timeB);
+        });
     
     const currentIndex = allKeys.indexOf(mealKey);
     
@@ -2541,10 +2719,11 @@ function replacePlaceInMeal(newPlace) {
     const suggestLeave = new Date(arriveTime.getTime() - travelTime * 60000);
     const suggestLeaveStr = suggestLeave.toTimeString().substring(0, 5);
     
+    // 🔥 CẬP NHẬT QUÁN
     currentPlan[mealKey].place = {
         ten_quan: newPlace.ten_quan,
         dia_chi: newPlace.dia_chi,
-        rating: newPlace.rating || 0,
+        rating: parseFloat(newPlace.rating) || 0,
         lat: newPlace.lat,
         lon: newPlace.lon,
         distance: Math.round(distance * 100) / 100,
@@ -2556,13 +2735,12 @@ function replacePlaceInMeal(newPlace) {
         khau_vi: newPlace.khau_vi || ''
     };
     
+    console.log("✅ Da cap nhat quan cho mealKey:", mealKey);
     waitingForPlaceSelection = null;
-    selectedPlaceForReplacement = null;
     displayPlanVertical(currentPlan, isEditMode);
     
-    alert('✅ Đã thay đổi quán thành công!');
+    return true; // 🔥 RETURN TRUE KHI THÀNH CÔNG
 }
-
 function calculateDistanceJS(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -2872,7 +3050,7 @@ function displayManualPlansList() {
         const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
         const itemCount = plan.items && Array.isArray(plan.items) ? plan.items.length : 0;
         html += `
-            <div class="saved-plan-item" onclick="openManualPlan('${plan.id}')">
+            <div class="saved-plan-item" onclick="event.stopPropagation(); openManualPlan('${plan.id}')">
                 <div class="saved-plan-info">
                     <div class="saved-plan-name">${plan.name}</div>
                     <div class="saved-plan-date">📅 ${dateStr} • ${itemCount} quán</div>
@@ -2931,17 +3109,30 @@ function openManualPlan(planId) {
     
     currentManualPlanId = planId;
     manualPlan = plan.items.length > 0 ? [...plan.items] : [];
-    isManualEditMode = false; // Reset edit mode khi mở plan mới
-    waitingForPlaceSelection = null; // Reset waiting state
+    isManualEditMode = false;
+    waitingForPlaceSelection = null;
     
-    // Đóng danh sách kế hoạch
+    // 🔥 ĐÓNG "KẾ HOẠCH CỦA BẠN" - FORCE STYLE
     const container = document.getElementById('manualPlansContainer');
     const arrow = document.getElementById('manualPlansArrow');
-    container.style.maxHeight = '0';
-    arrow.style.transform = 'rotate(0deg)';
+    
+    if (container && arrow) {
+        // Set trực tiếp style để chắc chắn
+        container.style.maxHeight = '0';
+        container.style.overflow = 'hidden';
+        arrow.style.transform = 'rotate(0deg)';
+        
+        console.log('✅ Đã đóng "Kế hoạch của bạn"');
+    }
     
     // Hiển thị timeline
     displayManualPlanTimeline();
+
+    // Scroll lên top
+    const panelContent = document.querySelector('.panel-content');
+    if (panelContent) {
+        panelContent.scrollTop = 0;
+    }
 }
 
 function deleteManualPlan(planId) {
@@ -2970,7 +3161,9 @@ function displayManualPlanTimeline() {
     
     let html = `
     <div class="schedule-header">
-        <h3 class="schedule-title" ${editMode ? 'contenteditable="true" onblur="updateManualPlanName(this.textContent)"' : ''} style="outline: none; ${editMode ? 'cursor: text;' : ''}">${planName}</h3>
+        <h3 class="schedule-title">
+            <span ${editMode ? 'contenteditable="true" class="editable" onblur="updateManualPlanName(this.textContent)"' : ''}><span>${planName}</span></span>
+        </h3>
         <div class="action-buttons">
             <button class="action-btn edit ${editMode ? 'active' : ''}" id="editManualPlanBtn" onclick="toggleManualEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
@@ -3025,7 +3218,7 @@ function displayManualPlanTimeline() {
                                 ` : `<span style="font-size: 22px;">${item.icon || '🍽️'}</span>`}
                                 ${editMode ? 
                                     `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
-                                        style="border: none; background: transparent; font-size: 15px; font-weight: 600; outline: none; flex: 1;" onclick="event.stopPropagation();">` :
+                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn" style="flex: 1;">` :
                                     `<span>${item.title}</span>`
                                 }
                             </div>
@@ -3114,16 +3307,55 @@ function displayManualPlanTimeline() {
             
             html += '</div>';
             contentDiv.innerHTML = html;
-        }
+
+            // 🔥 KIỂM TRA text có dài hơn khung không
+            setTimeout(() => {
+                const titleContainer = document.querySelector('.schedule-title > span:last-child');
+                if (titleContainer && !titleContainer.hasAttribute('contenteditable')) {
+                    const textSpan = titleContainer.querySelector('span');
+                    if (textSpan && textSpan.scrollWidth > titleContainer.clientWidth) {
+                        titleContainer.classList.add('overflow'); // 🔥 Thêm class để bật animation
+                    } else {
+                        titleContainer.classList.remove('overflow');
+                    }
+                }
+            }, 100);         
+}
 
 function updateManualPlanName(newName) {
     if (!currentManualPlanId) return;
     
+    const cleanName = newName.trim() || 'Kế hoạch';
+    
     const plan = manualPlans.find(p => p.id === currentManualPlanId);
     if (plan) {
-        plan.name = newName.trim() || 'Kế hoạch';
+        // 🔥 Nếu tên không đổi thì KHÔNG làm gì
+        if (plan.name === cleanName) return;
+        
+        plan.name = cleanName;
         localStorage.setItem('manual_food_plans', JSON.stringify(manualPlans));
         displayManualPlansList();
+    }
+}
+
+function updateAutoPlanName(newName) {
+    if (!currentPlanId) return;
+    
+    const cleanName = newName.trim() || 'Kế hoạch';
+    
+    // 🔥 Nếu tên không đổi thì KHÔNG làm gì
+    if (window.currentPlanName === cleanName) return;
+    
+    const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
+    const plan = savedPlans.find(p => p.id === currentPlanId);
+    
+    if (plan) {
+        plan.name = cleanName;
+        window.currentPlanName = plan.name;
+        localStorage.setItem('food_plans', JSON.stringify(savedPlans));
+        
+        // 🔥 CẬP NHẬT LIST "LỊCH TRÌNH ĐÃ LƯU"
+        displaySavedPlansList(savedPlans);
     }
 }
 
@@ -3398,13 +3630,21 @@ function flyToPlace(lat, lon) {
 
 // ========== EXPOSE FUNCTIONS TO WINDOW ==========
 window.foodPlannerState = {
-    isEditMode: () => isEditMode || currentManualPlanId !== null,
-    isWaitingForPlaceSelection: () => waitingForPlaceSelection !== null,
+    isEditMode: () => {
+        return isEditMode || isManualEditMode;
+    },
+    isWaitingForPlaceSelection: () => {
+        return waitingForPlaceSelection !== null;
+    },
     selectPlace: (place) => {
+        console.log("selectPlace duoc goi:", place.ten_quan);
+        console.log("waitingForPlaceSelection:", waitingForPlaceSelection);
+        console.log("currentManualPlanId:", currentManualPlanId);
+        
         if (waitingForPlaceSelection) {
-            // Kiểm tra xem đang ở mode nào
-            if (currentManualPlanId) {
-                // Manual mode
+            if (currentTab === 'manual') {
+                // MANUAL MODE
+                console.log("Dang o Manual Mode");
                 const item = manualPlan.find(i => i.id === waitingForPlaceSelection);
                 if (item) {
                     item.place = {
@@ -3420,14 +3660,25 @@ window.foodPlannerState = {
                     };
                     waitingForPlaceSelection = null;
                     displayManualPlanTimeline();
+                    console.log("Manual mode: Da cap nhat quan thanh cong!");
+                    return true;
+                } else {
+                    console.error("❌ Không tìm thấy item trong manualPlan");
+                    return false; // 🔥 RETURN FALSE
                 }
             } else {
-                // Auto mode
-                selectedPlaceForReplacement = place;
-                replacePlaceInMeal(place);
+                // AUTO MODE
+                console.log("Dang o Auto Mode");
+                const success = replacePlaceInMeal(place); // 🔥 NHẬN RETURN VALUE
+                if (success) {
+                    console.log("Auto mode: Da thay doi quan thanh cong!");
+                } else {
+                    console.error("Auto mode: Loi khi thay doi quan!");
+                }
+                return success; // 🔥 RETURN ĐÚNG KẾT QUẢ
             }
-            return true;
         }
+        console.log("Khong co slot nao dang cho chon quan");
         return false;
     }
 };

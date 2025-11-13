@@ -991,6 +991,10 @@ body {
   color: #e95d00;
 }
 
+.leaflet-control-zoom {
+    display: none !important;
+}
+
 .leaflet-tooltip.custom-tooltip {
   background: white;
   border-radius: 8px;
