@@ -28,7 +28,11 @@ CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 REVIEWS_FILE = os.path.join(BASE_DIR, "reviews.json")
 
 WEB_FILE = os.path.join(BASE_DIR,"../frontend/web.html")
+WEBLOGIN_HTML = os.path.join(BASE_DIR,"../frontend/weblogin.html")
+
 INDEX_FILE = os.path.join(BASE_DIR, "../frontend/index.html")
+
+HTML_W_Chatbot_Foodplan = ["web.html", "weblogin.html","index.html"]
 
 # ============================
 # 🍴 API: LẤY DANH SÁCH QUÁN
@@ -123,27 +127,32 @@ def get_food_plan():
 # ============================
 # 🌐 ROUTE FRONTEND
 # ============================
-@app.route("/")
-def serve_index():
-    """Serve trang chính với chatbot + food planner tích hợp"""
-    # Đọc file HTML gốc
-    with open(WEB_FILE, "r", encoding="utf-8") as f:
+
+#### ✨ HÀM HELPER - Đặt trước các route ######
+def serve_html_with_components(file_path):
+    """Inject chatbot + food planner vào file HTML"""
+    with open(file_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     
-    # Lấy chatbot HTML
     chatbot_html = get_chatbot_html(GEMINI_API_KEY)
-    
-    # Lấy food planner HTML
     food_planner_html = get_food_planner_html()
     
-    # Inject cả 2 vào trước </body>
     html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}</body>")
-    
     return html_content
+#############################
 
-@app.route("/<path:path>")
-def serve_static_files(path):
-    return send_from_directory("../frontend", path)
+# Cho Chat Bot + Food Plan vào 3 file html
+@app.route("/")
+def serve_web():
+    return serve_html_with_components(WEB_FILE)
+
+@app.route("/1")
+def serve_weblogin():
+    return serve_html_with_components(WEBLOGIN_HTML)
+
+@app.route("/test")
+def serve_index():
+    return serve_html_with_components(INDEX_FILE)
 
 # ============================
 # 🚀 CHẠY SERVER
