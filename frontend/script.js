@@ -1060,6 +1060,25 @@ checkboxes.forEach(cb => {
 // =======================================================
 fetchPlaces();
 
+// ========== LƯU BÁN KÍNH VÀO GLOBAL STATE ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const radiusInput = document.getElementById('radius');
+    
+    if (radiusInput) {
+        // Lưu giá trị ban đầu
+        window.currentRadius = radiusInput.value;
+        console.log('✅ Khởi tạo bán kính:', window.currentRadius, 'km');
+        
+        // Cập nhật khi thay đổi
+        radiusInput.addEventListener('change', function() {
+            window.currentRadius = this.value;
+            console.log('🎯 Đã cập nhật bán kính:', window.currentRadius, 'km');
+        });
+    } else {
+        console.error('⚠️ Không tìm thấy input #radius');
+    }
+});
+
 // =========================
 // 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
 // =========================
@@ -1316,3 +1335,4 @@ gpsHideRouteBtn.addEventListener("click", () => {
     showToast("⚠️ Chưa có tuyến đường nào để ẩn/hiện!", "error");
   }
 });
+
