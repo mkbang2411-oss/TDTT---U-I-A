@@ -97,6 +97,9 @@ def get_food_plan():
         start_time = request.args.get("start_time", "07:00")
         end_time = request.args.get("end_time", "21:00")
         
+        radius_km_str = request.args.get("radius_km")
+        radius_km = float(radius_km_str) if radius_km_str else None
+
         # Parse tastes
         user_tastes = [t.strip() for t in tastes_str.split(",") if t.strip()] if tastes_str else None
         
@@ -109,7 +112,8 @@ def get_food_plan():
             theme=theme,
             user_tastes=user_tastes,
             start_time=start_time,
-            end_time=end_time
+            end_time=end_time,
+            radius_km=radius_km
         )
         
         return jsonify(plan)
