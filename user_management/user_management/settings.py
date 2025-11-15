@@ -172,3 +172,4 @@ ACCOUNT_LOGIN_ON_SIGNUP = False
 
 # 2. Chỉ định URL để chuyển hướng đến SAU KHI ĐĂNG KÝ
 ACCOUNT_SIGNUP_REDIRECT_URL = '/accounts/login/'
+

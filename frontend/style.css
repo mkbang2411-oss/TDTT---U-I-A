@@ -1169,6 +1169,10 @@ body {
   }
 }
 
+.michelin-glow {
+  filter: drop-shadow(0 0 6px red) drop-shadow(0 0 12px red);
+}
+
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,
 button,

@@ -29,7 +29,7 @@ def get_places(query: str, lat: float, lon: float):
 
 
 def parse_place_data(places: list):
-    """Chuyển đổi dữ liệu từ SerpAPI thành DataFrame"""
+    """Chuyển đổi dữ liệu từ SerpAPI thành DataFrame chuẩn các cột"""
     if not places:
         return pd.DataFrame()
 
@@ -38,40 +38,46 @@ def parse_place_data(places: list):
         if "gps_coordinates" not in p:
             continue
 
-        # ❌ Không cần lấy hình ảnh nữa
-        image_url = ""
-
-        # 🍜 Thực đơn
+        # Danh sách món
         menu_items = ""
         if "menu_items" in p and isinstance(p["menu_items"], list):
             menu_items = ", ".join([i.get("title", "") for i in p["menu_items"]])
 
-        # 💰 Giá
+        # Giá trung bình
         price = p.get("price", p.get("price_level", ""))
 
-        # 🕒 Giờ mở cửa
-        gio_mo_cua = ""
-        if "open_state" in p and p["open_state"]:
-            gio_mo_cua = p["open_state"]
-        elif "hours" in p and p["hours"]:
-            gio_mo_cua = p["hours"]
-        else:
-            gio_mo_cua = "Không rõ giờ mở cửa"
+        # Giờ mở cửa
+        gio_mo_cua = p.get("open_state") or p.get("hours") or "Không rõ giờ mở cửa"
+
+        # Thêm các cột mới: khẩu vị, mô tả (nếu SerpAPI không có, để trống)
+        khau_vi = p.get("keywords", "")  # ví dụ SerpAPI trả về tags/keywords
+        mo_ta = p.get("description", "")
+
         records.append({
-            "data_id": p.get("data_id", ""),
             "ten_quan": p.get("title", ""),
             "dia_chi": p.get("address", ""),
             "so_dien_thoai": p.get("phone", ""),
             "rating": p.get("rating", ""),
             "gio_mo_cua": gio_mo_cua,
+            "lat": p["gps_coordinates"]["latitude"],
+            "lon": p["gps_coordinates"]["longitude"],
             "gia_trung_binh": price,
             "thuc_don": menu_items,
-            "hinh_anh": image_url,
-            "lat": p["gps_coordinates"]["latitude"],
-            "lon": p["gps_coordinates"]["longitude"]
+            "hinh_anh": "",  # bạn có thể điền link hình nếu muốn
+            "data_id": p.get("data_id", ""),
+            "khau_vi": "",
+            "mo_ta": ""
         })
 
-    return pd.DataFrame(records)
+    # Chọn thứ tự cột chuẩn
+    df = pd.DataFrame(records)
+    df = df[[
+        "ten_quan", "dia_chi", "so_dien_thoai", "rating", "gio_mo_cua",
+        "lat", "lon", "gia_trung_binh", "thuc_don", "hinh_anh", "data_id",
+        "khau_vi", "mo_ta"
+    ]]
+    return df
+
 
 
 def save_places_to_csv(df_new: pd.DataFrame, CSV_FILE: str = CSV_FILE):
@@ -115,15 +121,24 @@ def crawl_and_save_places(query: str, lat: float, lon: float):
 # ✅ Cho phép chạy thủ công để test CLI
 if __name__ == "__main__":
     DISTRICTS = {
-        #"Quận 1": (10.7769, 106.7009),
-        #"Quận 3": (10.7840, 106.6945),
-        "Quận 5": (10.7520, 106.6620),
-        #"Bình Thạnh": (10.8050, 106.6960),
-        "Phú Nhuận": (10.7990, 106.6800),
-        "Tân Bình": (10.8010, 106.6520),
-        "Gò Vấp": (10.8340, 106.6800),
-        "Quận 10": (10.7735, 106.6670),
-        #"Thủ Đức": (10.8490, 106.7600)
+         "Quận 1": (10.77566, 106.70042),
+    "Quận 3": (10.78353, 106.68710),
+    "Quận 4": (10.76073, 106.70755),
+    "Quận 5": (10.75669, 106.66370),
+    "Quận 6": (10.74805, 106.63550),
+    "Quận 7": (10.73861, 106.72639),
+    "Quận 8": (10.72464, 106.62863),
+    "Quận 10": (10.77347, 106.66700),
+    "Quận 11": (10.76287, 106.65015),
+    "Quận 12": (10.86752, 106.64113),
+    "Bình Thạnh": (10.81058, 106.70915),
+    "Gò Vấp": (10.83806, 106.66750),
+    "Phú Nhuận": (10.79919, 106.68026),
+    "Tân Bình": (10.80203, 106.64931),
+    "Tân Phú": (10.78640, 106.62883),
+
+    # Thành phố Thủ Đức (tương ứng Quận 2 + 9 + Thủ Đức cũ)
+    "Thành phố Thủ Đức": (10.84941, 106.75371)
     }
 
     query = input("🔍 Nhập từ khóa muốn tìm (vd: phở, trà sữa, cơm tấm): ").strip()

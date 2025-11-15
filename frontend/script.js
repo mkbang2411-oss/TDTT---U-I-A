@@ -81,7 +81,7 @@ const icons = {
     iconAnchor: [13, 26],
   }), 
   khu_am_thuc: L.icon({
-  iconUrl: "icons/star.png", // 👉 Bạn đặt file này trong thư mục /icons
+  iconUrl: "icons/street_food.png", // 👉 Bạn đặt file này trong thư mục /icons
   iconSize: [26, 26],
   iconAnchor: [13, 26],
   }),
@@ -90,6 +90,11 @@ const icons = {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   }),
+  michelin: L.icon({
+  iconUrl: "icons/star.png", // đặt file PNG vào thư mục /icons
+  iconSize: [26, 26],
+  iconAnchor: [13, 26],
+}),
 };
 
 // =========================
@@ -416,13 +421,23 @@ function displayPlaces(places, shouldZoom = true) {
     if (isNaN(lat) || isNaN(lon)) return;
 
     let icon;
-if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
-  icon = icons.khu_am_thuc; // 👉 icon riêng cho khu ẩm thực
-} else {
-  const category = detectCategory(p.ten_quan);
-  icon = icons[category] || icons.default;
+
+if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+    icon = icons.michelin; // ⭐ ICON RIÊNG MICHELIN
 }
+else if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
+    icon = icons.khu_am_thuc;
+}
+else {
+    const category = detectCategory(p.ten_quan);
+    icon = icons[category] || icons.default;
+}
+
     const marker = L.marker([lat, lon], { icon }).addTo(map);
+
+    if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+    marker._icon.classList.add("michelin-glow");
+    }
 
       // 🟢 TOOLTIP khi rê chuột vào marker
   const tooltipHTML = `
@@ -689,6 +704,14 @@ saveBtn.addEventListener("click", () => {
         currentPlaceId = place_id; // Lưu ID quán hiện tại
       });
 
+      // Khi mở quán mới → luôn xóa route cũ để tránh tự zoom lỗi
+if (routeControl) {
+  map.removeControl(routeControl);
+  routeControl = null;
+  currentPlaceId = null;
+}
+
+
 sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
 
         // =========================
@@ -771,8 +794,13 @@ function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
 
   routeControl.on("routesfound", (e) => {
     const route = e.routes[0];
-    const bounds = L.latLngBounds(route.coordinates);
+    const coords = route.coordinates;
+
+// Nếu route hợp lệ mới fitBounds
+if (coords && coords.length > 1) {
+    const bounds = L.latLngBounds(coords);
     map.fitBounds(bounds, { padding: [50, 50] });
+}
 
     const distanceKm = (route.summary.totalDistance / 1000).toFixed(1);
     const durationMin = Math.ceil(route.summary.totalTime / 60);
@@ -901,16 +929,39 @@ setTimeout(() => {
 // ✅ HÀM TÁCH GIÁ
 // =======================================================
 function parsePriceRange(priceStr) {
-  if (!priceStr || priceStr.toLowerCase().includes("không")) return null;
+  if (!priceStr) return null;
 
-  let cleaned = priceStr.toLowerCase().replace(/\s/g, ""); // bỏ khoảng trắng
+  let s = priceStr.toLowerCase().trim();
+
+  // ❌ Nếu chứa “không”, bỏ qua
+  if (s.includes("không")) return null;
+
+  // 👉 Nếu dạng “Trên …”
+  if (s.includes("trên") || s.includes("tren") || s.startsWith(">")) {
+    // Lấy ra số đầu tiên
+    let num = s.replace(/[^\d\.]/g, ""); // giữ lại số và dấu .
+    let value = parseInt(num.replace(/\./g, "")); // bỏ dấu chấm ngăn cách
+
+    if (s.includes("k") || s.includes("nghìn") || s.includes("nghin"))
+      value *= 1000;
+
+    if (s.includes("triệu") || s.includes("million"))
+      value *= 1000000;
+
+    return [value, Infinity]; // giá từ X trở lên
+  }
+
+  // ==========================================
+  // ⬇️ XỬ LÝ BÌNH THƯỜNG: "20k - 30k", "50.000 - 70.000"
+  // ==========================================
+
+  let cleaned = s.replace(/\s/g, "");
 
   let multiplier = 1;
 
-  // nếu có N / nghìn / k → nhân 1000
-  if (/n|k|nghin/.test(cleaned)) multiplier = 1000;
+  // nếu có kí hiệu nghìn
+  if (/k|n|nghin|nghìn/.test(cleaned)) multiplier = 1000;
 
-  // loại bỏ chữ cái và dấu ₫
   cleaned = cleaned.replace(/[^\d\-]/g, "");
 
   const parts = cleaned.split("-");
@@ -920,6 +971,7 @@ function parsePriceRange(priceStr) {
 
   return [minP, maxP];
 }
+
 
 
 
@@ -1027,7 +1079,9 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
 
     // ========== 3️⃣ Lọc giá ==========
    if (budget !== "") {
-  const [budgetMin, budgetMax] = budget.split("-").map(n => parseInt(n));
+  const [budgetMin, budgetMax] = budget.split("-").map(n => {
+    return n === "Infinity" ? Infinity : parseInt(n);
+  });
 
   filtered = filtered.filter((p) => {
     const range = parsePriceRange(p.gia_trung_binh);
@@ -1035,8 +1089,13 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
 
     const [minP, maxP] = range;
 
-    // ✅ Kiểm tra giao nhau giữa 2 khoảng
-    return minP >= budgetMin && maxP <= budgetMax;
+    // ⭐ TH1: "300.000 trở lên"
+    if (budgetMax === Infinity) {
+      return minP >= budgetMin;   // chỉ lấy quán có giá bắt đầu từ budgetMin
+    }
+
+    // ⭐ TH2: khoảng giá bình thường
+    return maxP >= budgetMin && minP <= budgetMax; // giao nhau
   });
 }
 
