@@ -1,7 +1,9 @@
 // =========================
 // 🗺️ CẤU HÌNH MAP
 // =========================
-const map = L.map("map").setView([10.7769, 106.7009], 13);
+const map = L.map("map",{
+  zoomControl: false  // ← THÊM DÒNG NÀY để tắt nút +/-
+}).setView([10.7769, 106.7009], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution:
@@ -78,6 +80,11 @@ const icons = {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   }), 
+  khu_am_thuc: L.icon({
+  iconUrl: "icons/star.png", // 👉 Bạn đặt file này trong thư mục /icons
+  iconSize: [26, 26],
+  iconAnchor: [13, 26],
+  }),
   default: L.icon({
     iconUrl: "icons/default.png",
     iconSize: [26, 26],
@@ -394,7 +401,7 @@ function getRealtimeStatus(hoursStr) {
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
-function displayPlaces(places) {
+function displayPlaces(places, shouldZoom = true) {
   markers.forEach((m) => map.removeLayer(m));
   markers = [];
 
@@ -408,8 +415,13 @@ function displayPlaces(places) {
     const lon = parseFloat(p.lon);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    const category = detectCategory(p.ten_quan);
-    const icon = icons[category] || icons.default;
+    let icon;
+if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
+  icon = icons.khu_am_thuc; // 👉 icon riêng cho khu ẩm thực
+} else {
+  const category = detectCategory(p.ten_quan);
+  icon = icons[category] || icons.default;
+}
     const marker = L.marker([lat, lon], { icon }).addTo(map);
 
       // 🟢 TOOLTIP khi rê chuột vào marker
@@ -422,7 +434,7 @@ function displayPlaces(places) {
           : ""
       }
       <div style="font-size:13px;margin-top:4px;">
-        <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
+        <i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}<br>
         <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
       </div>
     </div>
@@ -466,19 +478,42 @@ function displayPlaces(places) {
       }
 
       const tongquanHTML = `
-        <h2>${p.ten_quan || "Không tên"}</h2>
-        ${
-          p.hinh_anh
-            ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin-bottom:10px;">`
-            : ""
-        }
-        <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
-        <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
-        <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-        <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
-        <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
-        <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
-      `;
+  <div class="place-header" style="display:flex;align-items:center;justify-content:space-between;">
+    <h2 style="margin:0;">${p.ten_quan || "Không tên"}</h2>
+    <!-- ❤️ Nút yêu thích bên phải tên -->
+    <button id="favoriteBtn" class="action-btn" style="padding:8px 10px;min-width:auto;border:none;background:none;">
+      <i class="fa-regular fa-heart" style="font-size:22px;"></i>
+    </button>
+  </div>
+
+  ${
+    p.hinh_anh
+      ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin:10px 0;">`
+      : ""
+  }
+
+  ${p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")
+    ? `<p style="color:#ff6600;font-weight:bold;">🔥 Đây là khu ẩm thực sầm uất, có nhiều món ăn và hoạt động về đêm.</p>`
+    : ""}
+
+  <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
+  <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
+  <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
+  <p><i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}</p>
+  <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
+  <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
+
+    <!-- 🔖 Nút lưu quán (đang ẩn bằng CSS) -->
+  <div style="margin-top:10px;display:flex;justify-content:center;">
+    <button id="saveBtn" class="action-btn" style="display:none;">
+      <i class="fa-regular fa-bookmark"></i>
+      <span>Lưu quán</span>
+    </button>
+  </div>
+`;
+
+
+
 
       const thucdonHTML = `
   ${
@@ -550,15 +585,38 @@ function displayPlaces(places) {
 `;
       sidebarContent.innerHTML = contentHTML;
       sidebar.classList.add("show");
+
+      // 👉 Sau khi render xong, gắn sự kiện cho nút
+const favoriteBtn = document.getElementById("favoriteBtn");
+const saveBtn = document.getElementById("saveBtn");
+
+let clickCount = 0; // Đếm số lần click để xử lý chẵn/lẻ
+
+favoriteBtn.addEventListener("click", () => {
+  clickCount++;
+  if (clickCount % 2 === 1) {
+    favoriteBtn.classList.add("active");
+    favoriteBtn.querySelector("i").classList.replace("fa-regular", "fa-solid");
+  } else {
+    favoriteBtn.classList.remove("active");
+    favoriteBtn.querySelector("i").classList.replace("fa-solid", "fa-regular");
+  }
+});
+
+saveBtn.addEventListener("click", () => {
+  clickCount++;
+  if (clickCount % 2 === 1) {
+    saveBtn.classList.add("active");
+    saveBtn.querySelector("i").classList.replace("fa-regular", "fa-solid");
+  } else {
+    saveBtn.classList.remove("active");
+    saveBtn.querySelector("i").classList.replace("fa-solid", "fa-regular");
+  }
+});
       // NÚT ĐÓNG SIDEBAR
       const closeBtn = document.getElementById("closeSidebar");
       closeBtn.addEventListener("click", () => {
   sidebar.classList.add("hidden"); // 👉 Ẩn sidebar
-
-  if (routeControl) {
-    map.removeControl(routeControl);
-    routeControl = null;
-  }
 });
 
       // =========================
@@ -574,39 +632,61 @@ function displayPlaces(places) {
         const gpsInput = document.getElementById("gpsInput");
         const inputValue = gpsInput ? gpsInput.value.trim() : "";
 
-        // 🔹 Nếu người dùng đã định vị GPS trước đó
-        if (inputValue === "Vị trí hiện tại của tôi" && window.currentUserCoords) {
-          const { lat: userLat, lon: userLon } = window.currentUserCoords;
+        // ✅ Nếu đang chỉ đường cho cùng quán này → XÓA ĐƯỜNG (toggle off)
+        if (routeControl && currentPlaceId === place_id) {
+          map.removeControl(routeControl);
+          routeControl = null;
+          currentPlaceId = null;
 
-          // Xóa route cũ nếu có
-          if (routeControl) {
-            map.removeControl(routeControl);
-            routeControl = null;
+          // ✅ XÓA THÔNG TIN QUÃNG ĐƯỜNG
+          const infoEl = tongquanTab.querySelector(".route-info");
+          if (infoEl) {
+            infoEl.remove();
           }
+          
+          return; // Dừng lại, không vẽ lại
+        }
 
-          drawRoute(userLat, userLon, lat, lon, tongquanTab);
+        // ✅ Nếu có đường cũ (dù quán nào) → XÓA trước khi vẽ mới
+        if (routeControl) {
+          map.removeControl(routeControl);
+          routeControl = null;
+          currentPlaceId = null;
+        }
+
+        // 🔹 Kiểm tra xem có vị trí xuất phát không
+        if (!inputValue && !window.currentUserCoords) {
+          alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
           return;
         }
 
+        let userLat, userLon;
+
+        // 🔹 Nếu người dùng đã định vị GPS trước đó
+        if (inputValue === "Vị trí hiện tại của tôi" && window.currentUserCoords) {
+          userLat = window.currentUserCoords.lat;
+          userLon = window.currentUserCoords.lon;
+        } 
         // 🔹 Nếu người dùng nhập địa chỉ chữ → dùng geocode
-        if (inputValue) {
+        else if (inputValue) {
           const coords = await geocodeAddress(inputValue);
           if (!coords) return;
-
-          const userLat = coords.lat;
-          const userLon = coords.lon;
-
-          if (routeControl) {
-            map.removeControl(routeControl);
-            routeControl = null;
-          }
-
-          drawRoute(userLat, userLon, lat, lon, tongquanTab);
-        } 
-        else {
-          // 🔹 Nếu không nhập gì và chưa có GPS
-           alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+          userLat = coords.lat;
+          userLon = coords.lon;
         }
+        // 🔹 Nếu không nhập gì nhưng có GPS đã lưu
+        else if (window.currentUserCoords) {
+          userLat = window.currentUserCoords.lat;
+          userLon = window.currentUserCoords.lon;
+        }
+        else {
+          alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+          return;
+        }
+
+        // ✅ Vẽ đường mới
+        drawRoute(userLat, userLon, lat, lon, tongquanTab);
+        currentPlaceId = place_id; // Lưu ID quán hiện tại
       });
 
 sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
@@ -798,8 +878,11 @@ setTimeout(() => {
     markers.push(marker);
   });
 
-  const group = new L.featureGroup(markers);
-  map.fitBounds(group.getBounds().pad(0.2));
+  // ✅ Chỉ zoom đến quán nếu shouldZoom = true
+  if (shouldZoom && markers.length > 0) {
+    const group = new L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.2));
+  }
 }
 
 // =========================
@@ -870,8 +953,7 @@ function distance(lat1, lon1, lat2, lon2) {
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU
 // =======================================================
-async function fetchPlaces(query = "", flavors = [], budget = "", radius = "") {
-  try {
+async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", shouldZoom = true) {  try {
     const res = await fetch("/api/places");
     let data = await res.json();
 
@@ -994,7 +1076,7 @@ if (radius !== "") {
 
 
 
-    displayPlaces(filtered);
+    displayPlaces(filtered, shouldZoom);
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
     alert("Không thể tải dữ liệu từ server!");
@@ -1004,7 +1086,8 @@ if (radius !== "") {
 // =======================================================
 // ✅ NÚT TÌM KIẾM
 // =======================================================
-document.getElementById("btnSearch").addEventListener("click", () => {
+document.getElementById("btnSearch").addEventListener("click", async () => {
+  const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
 
   const selectedFlavors = Array.from(
@@ -1014,7 +1097,43 @@ document.getElementById("btnSearch").addEventListener("click", () => {
   const budget = document.getElementById("budget").value;
   const radius = document.getElementById("radius").value;
 
-  fetchPlaces(query, selectedFlavors, budget, radius);
+  // ✅ CÓ ĐỊA ĐIỂM → Tìm địa điểm trước, rồi filter quán (không zoom đến quán)
+  if (gpsInputValue && gpsInputValue !== "Vị trí hiện tại của tôi") {
+    const coords = await geocodeAddress(gpsInputValue);
+    if (!coords) return; // Nếu không tìm thấy địa điểm thì dừng
+
+    // Xóa marker cũ (nếu có)
+    if (window.startMarker) {
+      map.removeLayer(window.startMarker);
+    }
+
+    // Tạo marker mới
+    window.startMarker = L.marker([coords.lat, coords.lon], {
+      icon: L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+      }),
+    })
+      .addTo(map)
+      .bindPopup(`📍 ${gpsInputValue}`)
+      .openPopup();
+
+    // Lưu tọa độ xuất phát
+    window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
+
+    // Zoom đến địa điểm
+    map.setView([coords.lat, coords.lon], 15);
+
+    // Nếu có query/filter → Tìm quán NHƯNG KHÔNG ZOOM đến quán
+    if (query || selectedFlavors.length > 0 || budget || radius) {
+      await fetchPlaces(query, selectedFlavors, budget, radius, false); // ✅ Thêm param false = không zoom
+    }
+  } 
+  // ✅ KHÔNG CÓ ĐỊA ĐIỂM → Tìm quán bình thường (zoom như cũ)
+  else {
+    fetchPlaces(query, selectedFlavors, budget, radius, true); // ✅ true = zoom bình thường
+  }
 });
 
 // =======================================================
@@ -1204,41 +1323,6 @@ async function geocodeAddress(address) {
   }
 }
 
-
-// =========================
-// ↩ NÚT ENTER: tìm theo địa điểm người nhập
-// =========================
-document.getElementById("gpsEnterBtn").addEventListener("click", async () => {
-  const input = document.getElementById("gpsInput").value.trim();
-  if (!input) {
-    alert("Vui lòng nhập địa điểm!");
-    return;
-  }
-
-  const coords = await geocodeAddress(input);
-  if (coords) {
-
-    if (window.startMarker) {
-      map.removeLayer(window.startMarker);
-    }
-
-     window.startMarker = L.marker([coords.lat, coords.lon], {
-      icon: L.icon({
-        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-      }),
-    })
-      .addTo(map)
-      .bindPopup(`📍 ${input}`)
-      .openPopup();
-    //lưu địa điểm xuất phát mới cho an toàn
-    window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
-
-    map.setView([coords.lat, coords.lon], 15);
-  }
-});
-
 // =========================
 // 📍 NÚT GPS: tự động định vị bản thân
 // =========================
@@ -1310,29 +1394,3 @@ document.addEventListener("keydown", (e) => {
     document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
   }
 });
-
-// =========================
-// 👁️‍🗨️ NÚT ẨN / HIỆN ĐƯỜNG ĐI
-// =========================
-const gpsHideRouteBtn = document.getElementById("gpsHideRouteBtn");
-
-let hiddenRoute = null; // lưu tuyến đường bị ẩn
-
-gpsHideRouteBtn.addEventListener("click", () => {
-  if (routeControl) {
-    hiddenRoute = routeControl;
-    map.removeControl(routeControl);
-    routeControl = null;
-    showToast("👁️‍🗨️ Đã ẩn đường đi", "success");
-  } 
-  else if (hiddenRoute) {
-    hiddenRoute.addTo(map);
-    routeControl = hiddenRoute;
-    hiddenRoute = null;
-    showToast("✅ Đã hiện lại đường đi", "success");
-  } 
-  else {
-    showToast("⚠️ Chưa có tuyến đường nào để ẩn/hiện!", "error");
-  }
-});
-

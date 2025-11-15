@@ -285,6 +285,19 @@ THEME_CATEGORIES = {
             'đồ cay hàn', 'đồ cay thái'
         ],
         'icon': '🌶️'
+    },
+    # 🔥 THÊM KEY MỚI CHO "KHU ẨM THỰC"
+    'food_street': {
+        'name': 'Khu ẩm thực',
+        'keywords': [],  # Không cần keywords vì xét trực tiếp cột mo_ta
+        'icon': '🏪'
+    },
+    
+    # 🔥 THÊM LUÔN CHO MICHELIN (nếu chưa có)
+    'michelin': {
+        'name': 'Michelin',
+        'keywords': [],  # Xét trực tiếp cột mo_ta
+        'icon': '⭐'
     }
 }
 
@@ -301,43 +314,136 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
     user_tastes = filters.get('tastes', [])
     categories = filters.get('categories', [])
     
-    for _, row in df.iterrows():
+    # 🔥 DEBUG: KIỂM TRA TRƯỚC KHI LỌC
+    if theme and 'food_street' in theme:
+        print(f"\n{'='*70}")
+        print(f"🔍 KIỂM TRA TOÀN BỘ QUÁN 'KHU ẨM THỰC' TRONG CSV")
+        print(f"📍 Vị trí user: ({user_lat:.6f}, {user_lon:.6f})")
+        print(f"🎯 Bán kính: {radius_km} km")
+        print(f"{'='*70}\n")
+        
+        food_street_all = df[df['mo_ta'].str.strip() == 'Khu ẩm thực']
+        print(f"📊 Tổng: {len(food_street_all)} quán có mo_ta='Khu ẩm thực'\n")
+        
+        for idx, row in food_street_all.iterrows():
+            ten_quan = row['ten_quan']
+            
+            # Parse tọa độ
+            try:
+                lat_str = str(row['lat']).strip().strip('"').strip()
+                lon_str = str(row['lon']).strip().strip('"').strip()
+                lat = float(lat_str)
+                lon = float(lon_str)
+            except Exception as e:
+                print(f"❌ [{idx}] {ten_quan}")
+                print(f"   LỖI PARSE: {e}")
+                print(f"   lat='{row['lat']}', lon='{row['lon']}'")
+                print()
+                continue
+            
+            # Tính khoảng cách
+            dist = calculate_distance(user_lat, user_lon, lat, lon)
+            
+            # Kiểm tra giờ mở cửa
+            gio_mo_cua = row.get('gio_mo_cua', '')
+            is_open = is_open_now(gio_mo_cua)
+            
+            # Log kết quả
+            status = "✅" if (dist <= radius_km and is_open) else "❌"
+            print(f"{status} [{idx}] {ten_quan}")
+            print(f"   📍 Khoảng cách: {dist:.2f} km {'(OK)' if dist <= radius_km else '(QUÁ XA)'}")
+            print(f"   ⏰ {gio_mo_cua} {'(MỞ CỬA)' if is_open else '(ĐÓNG CỬA)'}")
+            print()
+        
+        print(f"{'='*70}\n")
+    
+    # 🔥 BẮT ĐẦU LỌC THỰC TẾ
+    food_street_count = 0
+    skipped_rows = 0
+    
+    print(f"📦 TỔNG SỐ ROW TRONG CSV: {len(df)}")
+    print(f"📦 ROW CUỐI CÙNG: {df.index[-1]}\n")
+    
+    for idx, row in df.iterrows():
+        # 🔥 BỌC TOÀN BỘ LOGIC TRONG TRY-CATCH
         try:
-            data_id = clean_value(row['data_id'])
+            data_id = clean_value(row.get('data_id', ''))
             
             if data_id in excluded_ids:
                 continue
             
-            place_lat = float(row['lat'])
-            place_lon = float(row['lon'])
+            # 🔥 Parse tọa độ an toàn
+            lat_str = str(row.get('lat', '')).strip().strip('"').strip()
+            lon_str = str(row.get('lon', '')).strip().strip('"').strip()
+            
+            # 🔥 KIỂM TRA TRƯỚC KHI CONVERT
+            if not lat_str or not lon_str or lat_str == 'nan' or lon_str == 'nan':
+                continue
+                
+            place_lat = float(lat_str)
+            place_lon = float(lon_str)
+            
             distance = calculate_distance(user_lat, user_lon, place_lat, place_lon)
             
+            # Kiểm tra bán kính
             if distance > radius_km:
                 continue
             
-            if not is_open_now(row.get('gio_mo_cua', '')):
+            # Kiểm tra giờ mở cửa
+            gio_mo_cua = row.get('gio_mo_cua', '')
+            if not is_open_now(gio_mo_cua):
                 continue
             
-            name_normalized = normalize_text_with_accent(str(row['ten_quan']))
+            # 🔥 IN RA TRƯỚC KHI CHECK THEME
+            if idx >= 477 and idx <= 492:
+                print(f"\n→ Row {idx} ({row.get('ten_quan', '')}): ĐÃ QUA LỌC DISTANCE & TIME")
+                print(f"   theme = '{theme}'")
+                print(f"   mo_ta = '{row.get('mo_ta', '')}'")
             
-            # 🔥 LỌC THEO CHỦ ĐỀ - XÉT THEO TỪ RIÊNG LẺ
+            name_normalized = normalize_text_with_accent(str(row.get('ten_quan', '')))
+            
+            # 🔥 LỌC THEO CHỦ ĐỀ
             if theme:
-                # 🔥 XỬ LÝ NHIỀU CHỦ ĐỀ (theme có thể là "food_street,michelin")
+                if idx >= 477 and idx <= 492:
+                    print(f"   ✓ Vào if theme")
+                
+                # 🔥 XỬ LÝ NHIỀU CHỦ ĐỀ
                 themes_list = [t.strip() for t in theme.split(',')]
+                
+                if idx >= 477 and idx <= 492:
+                    print(f"   themes_list = {themes_list}")
+                
                 match_found = False
                 
                 for single_theme in themes_list:
+                    if idx >= 477 and idx <= 492:
+                        print(f"   Đang check single_theme = '{single_theme}'")
+                    
                     if single_theme not in THEME_CATEGORIES:
+                        if idx >= 477 and idx <= 492:
+                            print(f"   ✗ '{single_theme}' không có trong THEME_CATEGORIES!")
                         continue
                     
-                    if single_theme == 'Khu ẩm thực':
+                    if single_theme == 'food_street':
+                        if idx >= 477 and idx <= 492:
+                            print(f"   ✓ Vào if food_street")
+                        
                         mo_ta = str(row.get('mo_ta', '')).strip()
+                        
+                        if idx >= 477 and idx <= 492:
+                            print(f"   mo_ta = '{mo_ta}'")
+                            print(f"   mo_ta == 'Khu ẩm thực' ? {mo_ta == 'Khu ẩm thực'}")
+                            print(f"   repr(mo_ta) = {repr(mo_ta)}")
+                            print(f"   len(mo_ta) = {len(mo_ta)}")
                         
                         if mo_ta == 'Khu ẩm thực':
                             match_found = True
+                            food_street_count += 1
+                            if idx >= 477 and idx <= 492:
+                                print(f"   ✅ MATCHED!")
                             break
                     
-                    elif single_theme == 'Michelin':
+                    elif single_theme == 'michelin':
                         mo_ta = str(row.get('mo_ta', '')).strip()
                         
                         if mo_ta == 'Michelin':
@@ -351,10 +457,6 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                         for keyword in theme_keywords:
                             keyword_normalized = normalize_text_with_accent(keyword)
                             
-                            # 🔥 KIỂM TRA CHÍNH XÁC: Keyword phải là TỪ RIÊNG LẺ, không phải substring
-                            # VD: "nhà hàng" match "cafe nhà hàng" ✅ nhưng không match "nhàn hạ" ❌
-                            
-                            # Thêm khoảng trắng 2 đầu để đảm bảo match từ hoàn chỉnh
                             search_text = ' ' + name_normalized + ' '
                             search_keyword = ' ' + keyword_normalized + ' '
                             
@@ -362,22 +464,31 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                                 match_found = True
                                 break
 
-                        # 🔥 THÊM: XÉT CỘT khau_vi CHO CHỦ ĐỀ ĐẶC BIỆT
+                        # XÉT CỘT khau_vi
                         if not match_found and single_theme in ['spicy_food', 'dessert_bakery']:
                             khau_vi = str(row.get('khau_vi', '')).strip().lower()
                             
-                            if khau_vi:  # Chỉ xét nếu có dữ liệu
+                            if khau_vi:
                                 if single_theme == 'spicy_food' and 'cay' in khau_vi:
                                     match_found = True
                                 elif single_theme == 'dessert_bakery' and 'ngọt' in khau_vi:
                                     match_found = True
                 
+                if idx >= 477 and idx <= 492:
+                    print(f"   match_found = {match_found}")
+                
                 if not match_found:
+                    if idx >= 477 and idx <= 492:
+                        print(f"   ✗ KHÔNG MATCH → CONTINUE\n")
                     continue
             
+            # THÊM VÀO RESULTS
+            if idx >= 477 and idx <= 492:
+                print(f"   ✅ THÊM VÀO RESULTS!\n")
+            
             results.append({
-                'ten_quan': clean_value(row['ten_quan']),
-                'dia_chi': clean_value(row['dia_chi']),
+                'ten_quan': clean_value(row.get('ten_quan', '')),
+                'dia_chi': clean_value(row.get('dia_chi', '')),
                 'so_dien_thoai': clean_value(row.get('so_dien_thoai', '')),
                 'rating': float(clean_value(row.get('rating', 0))) if pd.notna(row.get('rating')) else 0,
                 'gio_mo_cua': clean_value(row.get('gio_mo_cua', '')),
@@ -392,7 +503,21 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
             })
             
         except Exception as e:
+            # 🔥 BẤT KỲ LỖI GÌ CŨNG CHỈ BỎ QUA, KHÔNG DỪNG
+            skipped_rows += 1
             continue
+    
+    # 🔥 LOGGING KẾT QUẢ CUỐI
+    if theme and 'food_street' in theme:
+        print(f"\n{'='*60}")
+        print(f"📊 TỔNG KẾT: Tìm thấy {food_street_count} quán 'Khu ẩm thực'")
+        print(f"⚠️ Bỏ qua {skipped_rows} dòng lỗi")
+        print(f"📦 Tổng kết quả trả về: {len(results)} quán")
+        if results:
+            print(f"\n🏆 TOP 5 GẦN NHẤT:")
+            for i, r in enumerate(results[:5], 1):
+                print(f"   {i}. {r['ten_quan']} - {r['distance']:.2f} km - ⭐{r['rating']}")
+        print(f"{'='*60}\n")
     
     results.sort(key=lambda x: (x['distance'], -x['rating']))
     return results[:top_n]
@@ -1317,6 +1442,8 @@ def get_food_planner_html():
     box-shadow: 0 3px 8px rgba(0,0,0,0.15);
     cursor: pointer;
     transition: transform 0.15s ease;
+    flex-shrink: 0;  /* 🔥 THÊM DÒNG NÀY */
+    min-width: 44px;  /* 🔥 ĐẢM BẢO KHÔNG BỊ NÉN NHỎ HƠN */
 }
 
 .action-btn:hover {

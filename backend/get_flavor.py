@@ -10,13 +10,13 @@ INPUT_CSV = os.path.join(BASE_DIR, "Data.csv")
 OUTPUT_CSV = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 
 # ======================================================
-# 🔹 2. Bảng từ khóa khẩu vị (sắp xếp ưu tiên từ dài → ngắn)
+# 🔹 2. Bảng từ khóa khẩu vị (sắp xếp ưu tiên từ dài → ngắn)A
 # ======================================================
 rules = {
     "cay": ["sa tế", "lẩu thái", "kim chi", "hàn quốc", "cay", "ớt", "huế"],
     "mặn": ["bánh canh", "bánh mì", "cơm tấm", "bò kho", "trứng muối", "mặn", "phở", "sườn", "bún", "lẩu"],
     "ngọt": ["bánh ngọt", "trà sữa", "sữa chua", "sữa tươi", "bánh flan", "ngọt", "bánh", "cake", "chè", "kem", "matcha", "kẹo", "bakery"],
-    "chua": ["canh chua", "chua", "me", "chanh", "tắc", "dấm", "giấm", "thái"],
+    "chua": ["canh chua", "chua", "me", "chanh", "tắc", "dấm", "giấm", "thái", "nước cam"],
     "đắng": ["ca cao", "socola", "coffe", "đắng", "trà", "matcha", "cacao"],
     "tanh": ["lẩu hải sản", "gỏi cá", "hải sản", "cá", "tôm", "mực", "ốc", "hến", "nghêu", "sò"],
 }

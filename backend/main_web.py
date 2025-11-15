@@ -27,7 +27,7 @@ BASE_DIR = os.path.dirname(__file__)
 CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 REVIEWS_FILE = os.path.join(BASE_DIR, "reviews.json")
 
-WEB_FILE = os.path.join(BASE_DIR,"../frontend/web.html")
+WEB_FILE = os.path.join(BASE_DIR,"../frontend/main_web.html")
 INDEX_FILE = os.path.join(BASE_DIR, "../frontend/index.html")
 
 # ============================
