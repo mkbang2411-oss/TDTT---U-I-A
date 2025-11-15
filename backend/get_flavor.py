@@ -10,33 +10,59 @@ INPUT_CSV = os.path.join(BASE_DIR, "Data.csv")
 OUTPUT_CSV = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 
 # ======================================================
-# 🔹 2. Bảng từ khóa khẩu vị
+# 🔹 2. Bảng từ khóa khẩu vị (sắp xếp ưu tiên từ dài → ngắn)A
 # ======================================================
 rules = {
-    "cay": ["cay", "sa tế", "ớt", "huế", "lẩu thái", "kim chi", "hàn quốc"],
-    "mặn": ["mặn", "phở", "cơm tấm", "sườn", "bánh canh", "bún", "bò kho", "trứng muối","bánh mì","lẩu"],
-    "ngọt": ["ngọt","bánh", "cake", "chè", "trà sữa", "kem", "bánh ngọt", "sữa chua", "sữa tươi", "matcha","kẹo","bakery","bánh flan"],
-    "chua": ["chua", "me", "chanh", "tắc", "dấm", "giấm", "canh chua", "lẩu thái","nước cam"],
-    "đắng": ["coffe", "đắng", "trà", "matcha", "ca cao", "socola", "cacao"],
+    "cay": ["sa tế", "lẩu thái", "kim chi", "hàn quốc", "cay", "ớt", "huế"],
+    "mặn": ["bánh canh", "bánh mì", "cơm tấm", "bò kho", "trứng muối", "mặn", "phở", "sườn", "bún", "lẩu"],
+    "ngọt": ["bánh ngọt", "trà sữa", "sữa chua", "sữa tươi", "bánh flan", "ngọt", "bánh", "cake", "chè", "kem", "matcha", "kẹo", "bakery"],
+    "chua": ["canh chua", "chua", "me", "chanh", "tắc", "dấm", "giấm", "thái", "nước cam"],
+    "đắng": ["ca cao", "socola", "coffe", "đắng", "trà", "matcha", "cacao"],
+    "tanh": ["lẩu hải sản", "gỏi cá", "hải sản", "cá", "tôm", "mực", "ốc", "hến", "nghêu", "sò"],
 }
 
 # ======================================================
-# 🔹 3. Hàm nhận diện khẩu vị theo tên quán
+# 🔹 3. Hàm nhận diện khẩu vị theo tên quán (ưu tiên từ dài)
 # ======================================================
 def detect_flavor_from_name(name: str) -> str:
     name_lower = name.lower()
     matched_flavors = []
+    matched_positions = {}  # Lưu vị trí match để tránh trùng lặp
 
     for flavor, keywords in rules.items():
         for kw in keywords:
-            if re.search(rf"\b{re.escape(kw)}\b", name_lower):
-                matched_flavors.append(flavor)
-                break  # nếu khớp 1 keyword thì đủ cho vị đó
+            # Tìm tất cả vị trí khớp với keyword
+            pattern = rf"\b{re.escape(kw)}\b"
+            matches = list(re.finditer(pattern, name_lower))
+            
+            for match in matches:
+                start, end = match.span()
+                
+                # Kiểm tra xem vị trí này đã bị match bởi từ khóa dài hơn chưa
+                overlapped = False
+                for saved_flavor, (saved_start, saved_end) in matched_positions.items():
+                    # Nếu vị trí hiện tại nằm trong vị trí đã match
+                    if start >= saved_start and end <= saved_end:
+                        overlapped = True
+                        break
+                    # Nếu từ khóa mới dài hơn và bao phủ từ cũ → thay thế
+                    elif start <= saved_start and end >= saved_end:
+                        # Xóa flavor cũ
+                        if saved_flavor in matched_flavors:
+                            matched_flavors.remove(saved_flavor)
+                        del matched_positions[saved_flavor]
+                        break
+                
+                if not overlapped:
+                    if flavor not in matched_flavors:
+                        matched_flavors.append(flavor)
+                    matched_positions[flavor] = (start, end)
+                    break  # Đã match cho flavor này rồi
 
     if not matched_flavors:
         return "không xác định"
 
-    # loại trùng, giữ thứ tự
+    # Loại trùng, giữ thứ tự
     matched_flavors = list(dict.fromkeys(matched_flavors))
     return ", ".join(matched_flavors)
 
