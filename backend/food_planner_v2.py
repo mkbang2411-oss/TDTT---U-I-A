@@ -45,49 +45,56 @@ def clean_value(value):
         return value
     return value
 
-def is_open_now(opening_hours_str):
-    """Kiểm tra quán có đang mở cửa không"""
+def is_open_now(opening_hours_str, check_time=None):
+    """
+    Kiểm tra quán có đang mở cửa không
+    
+    Args:
+        opening_hours_str: Chuỗi giờ mở cửa từ CSV
+        check_time: Giờ cần check (string 'HH:MM' hoặc time object). Nếu None thì dùng giờ hiện tại
+    """
     if not opening_hours_str or pd.isna(opening_hours_str):
         return True  # Không có thông tin => cho qua
     
     try:
-        now = datetime.now()
-        current_time = now.time()
+        import re
+        
+        # Parse check_time
+        if check_time is None:
+            current_time = datetime.now().time()
+        elif isinstance(check_time, str):
+            current_time = datetime.strptime(check_time, '%H:%M').time()
+        else:
+            current_time = check_time
         
         # Chuẩn hóa: bỏ dấu, lowercase
         hours_str = normalize_text(str(opening_hours_str))
         
         # Mở cửa 24/7
-        if 'always' in hours_str or '24' in hours_str or 'ca ngay' in hours_str or 'mo ca ngay' in hours_str:
+        if any(keyword in hours_str for keyword in ['always', '24', 'ca ngay', 'mo ca ngay']):
             return True
         
-        # Parse giờ mở và đóng cửa
+        # Parse giờ mở
         open_time = None
+        open_match = re.search(r'mo cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        if open_match:
+            hour = int(open_match.group(1))
+            minute = int(open_match.group(2)) if open_match.group(2) else 0
+            open_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
+        
+        # Parse giờ đóng
         close_time = None
+        close_match = re.search(r'dong cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        if close_match:
+            hour = int(close_match.group(1))
+            minute = int(close_match.group(2)) if close_match.group(2) else 0
+            close_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
         
-        # Pattern: "Mở cửa lúc 8:00" hoặc "Mo cua luc 8:00"
-        if 'mo cua' in hours_str:
-            import re
-            match = re.search(r'mo cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
-            if match:
-                hour = int(match.group(1))
-                minute = int(match.group(2)) if match.group(2) else 0
-                open_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
-        
-        # Pattern: "Đóng cửa lúc/vào 22:30" hoặc "Dong cua luc/vao 22:30"
-        if 'dong cua' in hours_str:
-            import re
-            match = re.search(r'dong cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
-            if match:
-                hour = int(match.group(1))
-                minute = int(match.group(2)) if match.group(2) else 0
-                close_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
-        
-        # Nếu không parse được => cho qua
+        # Nếu không parse được => CHO QUA
         if open_time is None or close_time is None:
             return True
         
-        # Kiểm tra giờ hiện tại
+        # Kiểm tra giờ
         if open_time <= close_time:
             # Trường hợp bình thường: 8:00 - 22:00
             return open_time <= current_time <= close_time
@@ -96,8 +103,8 @@ def is_open_now(opening_hours_str):
             return current_time >= open_time or current_time <= close_time
             
     except Exception as e:
-        print(f"⚠️ Lỗi parse giờ mở cửa: {opening_hours_str} - {e}")
-        return True  # Lỗi => cho qua để không bỏ sót quán
+        print(f"⚠️ Lỗi parse giờ: {opening_hours_str} -> {e}")
+        return True  # Lỗi => CHO QUA
 
 # ==================== CẬP NHẬT HÀM LỌC - GIỮ NGUYÊN DẤU ====================
 
