@@ -402,6 +402,62 @@ function getRealtimeStatus(hoursStr) {
   return hoursStr;
 }
 
+// =========================
+// 🤖 HÀM MỞ CHATBOX TỰ ĐỘNG
+// =========================
+function openChatboxAutomatically() {
+  console.log("🚨 Mở chatbox tự động sau 3 lần search thất bại");
+
+  // Tìm các elements của chatbox
+  const chatWindow = document.getElementById("chatWindow");
+  const chatbotBtn = document.getElementById("chatbotBtn");
+  const speechBubble = document.getElementById("speechBubble");
+
+  if (!chatWindow || !chatbotBtn) {
+    console.error("❌ Không tìm thấy chatbox elements!");
+    alert("🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!");
+    return;
+  }
+
+  // ✅ Mở chatbox (giống logic openChatWindow trong chatbot)
+  chatWindow.style.display = "flex";
+  chatWindow.classList.add("open");
+  chatbotBtn.style.display = "none";
+  chatbotBtn.classList.add("hidden");
+  speechBubble.style.display = "none";
+  speechBubble.classList.add("hidden");
+
+  // ✅ Tự động gửi tin nhắn gợi ý
+  setTimeout(() => {
+    const messagesArea = document.getElementById("messagesArea");
+    if (messagesArea) {
+      // Thêm tin nhắn bot
+      const autoMessage = `
+        <div class="message bot">
+          <div class="message-avatar">🍜</div>
+          <div class="message-content">
+            <div class="message-text">
+              <p>Ối! Có vẻ bạn đang gặp khó khăn tìm quán nè 😅</p>
+              <p>Để mình giúp bạn nhé! Bạn muốn ăn gì, ở khu vực nào, ngân sách bao nhiêu? Cứ nói mình nghe nha~ 💕</p>
+            </div>
+            <div class="message-time">${new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}</div>
+          </div>
+        </div>
+      `;
+      messagesArea.innerHTML += autoMessage;
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+
+      // Focus vào input để user nhập liền
+      const messageInput = document.getElementById("messageInput");
+      if (messageInput) {
+        messageInput.focus();
+      }
+    }
+  }, 500);
+}
 
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
@@ -412,8 +468,8 @@ function displayPlaces(places, shouldZoom = true) {
 
   if (!places || places.length === 0) {
     alert("Không tìm thấy quán nào!");
-    return;
-  }
+    return false;
+}
 
   places.forEach((p) => {
     const lat = parseFloat(p.lat);
@@ -911,6 +967,7 @@ setTimeout(() => {
     const group = new L.featureGroup(markers);
     map.fitBounds(group.getBounds().pad(0.2));
   }
+  return true;
 }
 
 // =========================
@@ -1141,10 +1198,11 @@ if (radius !== "") {
     alert("Không thể tải dữ liệu từ server!");
   }
 }
-
 // =======================================================
 // ✅ NÚT TÌM KIẾM
 // =======================================================
+let notFoundCount = 0;
+
 document.getElementById("btnSearch").addEventListener("click", async () => {
   const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
@@ -1156,17 +1214,17 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   const budget = document.getElementById("budget").value;
   const radius = document.getElementById("radius").value;
 
-  // ✅ CÓ ĐỊA ĐIỂM → Tìm địa điểm trước, rồi filter quán (không zoom đến quán)
+  let result = true; // kết quả tìm kiếm (true = có quán, false = không)
+
+  // =============================
+  // 📌 CASE 1 — Có nhập địa điểm
+  // =============================
   if (gpsInputValue && gpsInputValue !== "Vị trí hiện tại của tôi") {
     const coords = await geocodeAddress(gpsInputValue);
-    if (!coords) return; // Nếu không tìm thấy địa điểm thì dừng
+    if (!coords) return;
 
-    // Xóa marker cũ (nếu có)
-    if (window.startMarker) {
-      map.removeLayer(window.startMarker);
-    }
+    if (window.startMarker) map.removeLayer(window.startMarker);
 
-    // Tạo marker mới
     window.startMarker = L.marker([coords.lat, coords.lon], {
       icon: L.icon({
         iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
@@ -1178,23 +1236,41 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
       .bindPopup(`📍 ${gpsInputValue}`)
       .openPopup();
 
-    // Lưu tọa độ xuất phát
     window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
 
-    // Zoom đến địa điểm
     map.setView([coords.lat, coords.lon], 15);
 
-    // Nếu có query/filter → Tìm quán NHƯNG KHÔNG ZOOM đến quán
+    // Có filter → tìm quán
     if (query || selectedFlavors.length > 0 || budget || radius) {
-      await fetchPlaces(query, selectedFlavors, budget, radius, false); // ✅ Thêm param false = không zoom
+      result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
     }
-  } 
-  // ✅ KHÔNG CÓ ĐỊA ĐIỂM → Tìm quán bình thường (zoom như cũ)
+  }
+
+  // =============================
+  // 📌 CASE 2 — Không nhập địa điểm
+  // =============================
   else {
-    fetchPlaces(query, selectedFlavors, budget, radius, true); // ✅ true = zoom bình thường
+    result = await fetchPlaces(query, selectedFlavors, budget, radius, true);
+  }
+
+  // =============================
+  // 🚨 XỬ LÝ ĐẾM SỐ LẦN KHÔNG TÌM THẤY
+  // =============================
+  if (!result) {
+    notFoundCount++;
+
+    console.log("⚠️ Không tìm thấy quán:", notFoundCount, "lần");
+
+    if (notFoundCount >= 3) {
+      notFoundCount = 0; // reset
+
+      // 🔥 BẬT CHATBOX TỰ ĐỘNG
+      openChatboxAutomatically();
+    }
+  } else {
+    notFoundCount = 0; // reset nếu tìm thấy quán
   }
 });
-
 // =======================================================
 // ✅ MULTI-SELECT KHẨU VỊ
 // =======================================================
