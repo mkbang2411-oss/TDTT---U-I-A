@@ -1,0 +1,237 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset = "UTF-8">
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="{% static 'banner.css' %}">
+    <link rel="stylesheet" href="{% static 'button.css' %}">
+    <link rel="stylesheet" href="{% static 'weblogin.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" href="{% static 'style.css' %}" />
+    
+    <style>
+        .text-box{
+            border-radius: 15px;
+            padding: 15px 55px;
+            text-align: center;
+            width: 150px;
+            height: 25px;
+            left: 100px;
+            right: 100px;
+            display: flex;
+            margin: 50px auto;
+            padding-top: 1px;
+            padding-right: 80px;
+            padding-left: 100px;
+            flex-direction: column;
+            align-items: center;
+        }
+        .text-box h1{
+            color: #BC2A12;
+            font-family: "Haetenschweiler Regular", sans-serif;
+            font-size: 35px;
+            margin: 0;
+            text-align: center;
+            /* Điều chỉnh margin-top để có không gian cho lỗi (nếu có) */
+            margin-top: 100px; 
+        }
+        .login-form{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .login-form label{
+            color: #BC2A12;
+            font-weight: bold;
+            height: 15px;
+            margin-top: 15px;
+            margin-left: -150px;
+            width: 100%;
+        }
+        /* Áp dụng style của bạn cho các trường input của Django */
+        .login-form input[type="email"],
+        .login-form input[type="password"] {
+            width: 220px;
+            padding: 8px 10px;
+            border: 2px solid #BC2A12;
+            border-radius: 5px;
+            outline: #BC2A12;
+            font-size: 10px;
+            /* Thêm margin để các trường không dính sát nhau */
+            margin-bottom: 5px;
+        }
+        .login-form .Sign-up-button {
+            background-color: #FED57E;
+            border: 3.5px solid #fed57e;
+            border-radius: 15px;
+            color: white;
+            width: 70px;
+            height: 30px;
+            font-size: 15px;
+            text-align: center;
+            cursor: pointer; /* Thêm con trỏ chuột */
+        }
+        .login-form .Sign-up-button:hover{
+            background-color: #BC2A12;
+            color: white;
+        }
+        .SignIn-text{
+            color: #BC2A12;
+            margin-top: 10px; /* Thêm khoảng cách */
+        }
+        .SignIn-text a{
+            color: #FFBE0A
+        }
+        .SignIn-text a:hover{
+            color:#BC2A12;
+        }
+
+        /* Style để hiển thị lỗi của Django */
+        .django-error {
+            color: #BC2A12; /* Màu đỏ đậm */
+            font-size: 13px;
+            font-weight: bold;
+            margin: 5px 0 10px 0;
+            padding: 10px;
+            background-color: #fdd; /* Nền hồng nhạt */
+            border: 1px solid #BC2A12;
+            border-radius: 5px;
+            list-style-type: none; /* Ẩn dấu chấm của list lỗi */
+            text-align: left;
+            width: 240px; /* Cho chiều rộng bằng input */
+        }
+        .django-error ul {
+            margin: 0;
+            padding: 0;
+        }
+        .django-error li {
+            margin: 2px 0;
+        }
+
+    </style>
+</head>
+
+<div id="toast" class="toast"></div>
+
+<style>
+    .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 10px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 9999;
+    font-size: 15px;
+    }
+    .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    }
+    .toast.success {
+    background: #4caf50;
+    }
+    .toast.error {
+    background: #e53935;
+    }
+</style>
+
+<script>
+    function showToast(message, type = "success") {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.className = `toast show ${type}`;
+        setTimeout(() => toast.className = "toast", 3000);
+    }
+</script>
+
+<body>   
+    <header class="banner">   
+        <div class="background">
+            <img src="{% static 'Picture/background.png' %}" class="bg" alt="UIA Logo">
+            <img src="{% static 'Picture/UIAaa.png' %}" class="uia"  alt="UIA">
+        </div>
+    </header>
+
+    <div class="text-box">
+        <h1>SIGN UP</h1>
+        
+        <form class="login-form" method="POST" action="{% url 'account_signup' %}">
+            
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="django-error" id="non-field-errors">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <label for="{{ form.email.id_for_label }}">Email:</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <div class="django-error" id="email-errors">
+                    {{ form.email.errors }}
+                </div>
+            {% endif %}
+
+            <label for="{{ form.password1.id_for_label }}"> Password:</label>
+            {{ form.password1 }}
+            {% if form.password1.errors %}
+                <div class="django-error" id="pass1-errors">
+                    {{ form.password1.errors }}
+                </div>
+            {% endif %}
+
+            <label for="{{ form.password2.id_for_label }}">Confirm Password:</label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+                <div class="django-error" id="pass2-errors">
+                    {{ form.password2.errors }}
+                </div>
+            {% endif %}
+            
+            <button type="submit" class="Sign-up-button">Done</button> 
+            
+            <div class="SignIn-text">
+                Already have an account? <br>
+                <a href="{% url 'account_login' %}">Sign In</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let errorMessages = [];
+            
+            // Tìm tất cả các div lỗi của Django
+            const errorDivs = document.querySelectorAll('.django-error');
+            
+            errorDivs.forEach(div => {
+                // Lấy nội dung text và loại bỏ khoảng trắng thừa
+                const text = div.textContent.trim();
+                if (text) {
+                    errorMessages.push(text);
+                }
+            });
+
+            // Nếu có lỗi, hiển thị lỗi đầu tiên bằng Toast
+            if (errorMessages.length > 0) {
+                // Nối các lỗi lại nếu muốn, hoặc chỉ hiển thị lỗi đầu tiên
+                showToast(errorMessages[0], "error");
+            }
+        });
+    </script>
+</body>
+</html>

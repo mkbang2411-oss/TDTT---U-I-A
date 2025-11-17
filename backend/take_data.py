@@ -2,16 +2,18 @@ from serpapi import GoogleSearch
 import pandas as pd
 import os
 import time
+from requests.exceptions import ChunkedEncodingError
+import requests
 
 # ⚙️ Cấu hình
-SERP_API_KEY = "919519991034d358c7da2ae6f11bc21ded6a8e50a6193c568000e4ef8c9d8e2a"  # Nhớ điền key thật của bạn
+SERP_API_KEY = "a3ce5e1007e887b80f0c3114d9bd93854917de1e7caae81e7887148f233072a4"
 CSV_FILE = "Data.csv"
 
 
-def get_places(query: str, lat: float, lon: float):
-    """Gọi SerpAPI để lấy danh sách quán gần vị trí chỉ định."""
+def get_places(query: str, lat: float, lon: float, retries=3, wait=5):
+    """Gọi SerpAPI với retry khi gặp lỗi ChunkedEncoding"""
     if not SERP_API_KEY:
-        print("⚠️ Chưa có SERP_API_KEY. Hãy đặt biến môi trường hoặc sửa trong code.")
+        print("⚠️ Chưa có SERP_API_KEY.")
         return []
 
     params = {
@@ -23,13 +25,23 @@ def get_places(query: str, lat: float, lon: float):
         "api_key": SERP_API_KEY
     }
 
-    search = GoogleSearch(params)
-    results = search.get_dict()
-    return results.get("local_results", [])
+    for attempt in range(retries):
+        try:
+            search = GoogleSearch(params)
+            results = search.get_dict()
+            return results.get("local_results", [])
+        except (ChunkedEncodingError, requests.exceptions.RequestException) as e:
+            print(f"⚠️ Lỗi khi crawl ({lat}, {lon}): {e}")
+            if attempt < retries - 1:
+                print(f"⏳ Thử lại sau {wait} giây...")
+                time.sleep(wait)
+            else:
+                print("❌ Bỏ qua quận/huyện này.")
+                return []
 
 
 def parse_place_data(places: list):
-    """Chuyển đổi dữ liệu từ SerpAPI thành DataFrame"""
+    """Chuyển đổi dữ liệu từ SerpAPI thành DataFrame chuẩn các cột"""
     if not places:
         return pd.DataFrame()
 
@@ -38,40 +50,32 @@ def parse_place_data(places: list):
         if "gps_coordinates" not in p:
             continue
 
-        # ❌ Không cần lấy hình ảnh nữa
-        image_url = ""
-
-        # 🍜 Thực đơn
-        menu_items = ""
-        if "menu_items" in p and isinstance(p["menu_items"], list):
-            menu_items = ", ".join([i.get("title", "") for i in p["menu_items"]])
-
-        # 💰 Giá
+        menu_items = ", ".join([i.get("title", "") for i in p.get("menu_items", [])]) if "menu_items" in p else ""
         price = p.get("price", p.get("price_level", ""))
+        gio_mo_cua = p.get("open_state") or p.get("hours") or "Không rõ giờ mở cửa"
 
-        # 🕒 Giờ mở cửa
-        gio_mo_cua = ""
-        if "open_state" in p and p["open_state"]:
-            gio_mo_cua = p["open_state"]
-        elif "hours" in p and p["hours"]:
-            gio_mo_cua = p["hours"]
-        else:
-            gio_mo_cua = "Không rõ giờ mở cửa"
         records.append({
-            "data_id": p.get("data_id", ""),
             "ten_quan": p.get("title", ""),
             "dia_chi": p.get("address", ""),
             "so_dien_thoai": p.get("phone", ""),
             "rating": p.get("rating", ""),
             "gio_mo_cua": gio_mo_cua,
+            "lat": p["gps_coordinates"]["latitude"],
+            "lon": p["gps_coordinates"]["longitude"],
             "gia_trung_binh": price,
             "thuc_don": menu_items,
-            "hinh_anh": image_url,
-            "lat": p["gps_coordinates"]["latitude"],
-            "lon": p["gps_coordinates"]["longitude"]
+            "hinh_anh": "",
+            "data_id": p.get("data_id", ""),
+            "khau_vi": "",
+            "mo_ta": ""
         })
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+    return df[[
+        "ten_quan", "dia_chi", "so_dien_thoai", "rating", "gio_mo_cua",
+        "lat", "lon", "gia_trung_binh", "thuc_don", "hinh_anh", "data_id",
+        "khau_vi", "mo_ta"
+    ]]
 
 
 def save_places_to_csv(df_new: pd.DataFrame, CSV_FILE: str = CSV_FILE):
@@ -112,27 +116,33 @@ def crawl_and_save_places(query: str, lat: float, lon: float):
     return df_new.to_dict(orient="records")
 
 
-# ✅ Cho phép chạy thủ công để test CLI
 if __name__ == "__main__":
+    # Tọa độ trung tâm quận/huyện TP.HCM
     DISTRICTS = {
-        #"Quận 1": (10.7769, 106.7009),
-        #"Quận 3": (10.7840, 106.6945),
-        "Quận 5": (10.7520, 106.6620),
-        #"Bình Thạnh": (10.8050, 106.6960),
-        "Phú Nhuận": (10.7990, 106.6800),
-        "Tân Bình": (10.8010, 106.6520),
-        "Gò Vấp": (10.8340, 106.6800),
-        "Quận 10": (10.7735, 106.6670),
-        #"Thủ Đức": (10.8490, 106.7600)
+        "Quận 1": (10.77566, 106.70042),
+        "Quận 3": (10.78353, 106.68710),
+        "Quận 4": (10.76073, 106.70755),
+        "Quận 5": (10.75669, 106.66370),
+        "Quận 6": (10.74805, 106.63550),
+        "Quận 7": (10.73861, 106.72639),
+        "Quận 8": (10.72464, 106.62863),
+        "Quận 10": (10.77347, 106.66700),
+        "Quận 11": (10.76287, 106.65015),
+        "Quận 12": (10.86752, 106.64113),
+        "Bình Thạnh": (10.81058, 106.70915),
+        "Gò Vấp": (10.83806, 106.66750),
+        "Phú Nhuận": (10.79919, 106.68026),
+        "Tân Bình": (10.80203, 106.64931),
+        "Tân Phú": (10.78640, 106.62883),
+        "Thành phố Thủ Đức": (10.84941, 106.75371)
     }
 
     query = input("🔍 Nhập từ khóa muốn tìm (vd: phở, trà sữa, cơm tấm): ").strip()
-    print(f"🚀 Bắt đầu crawl '{query}' ...\n")
+    print(f"🚀 Bắt đầu crawl '{query}' toàn TP.HCM ...\n")
 
-    for name, (lat, lon) in DISTRICTS.items():
-        print(f"📍 {name} ({lat}, {lon})")
-        data = crawl_and_save_places(query, lat, lon)
-        print(f"✅ {name}: {len(data)} kết quả.\n")
-        time.sleep(5)
+    for district, (lat, lon) in DISTRICTS.items():
+        print(f"📍 {district}: Crawling tại tâm quận/huyện ...")
+        crawl_and_save_places(query=query, lat=lat, lon=lon)
+        time.sleep(1)  # tránh spam API
 
-    print("🎉 Hoàn tất! Dữ liệu lưu trong Data.csv")
+    print("🎉 Hoàn tất crawl toàn TP.HCM! Dữ liệu lưu trong Data.csv")

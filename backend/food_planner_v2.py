@@ -45,141 +45,481 @@ def clean_value(value):
         return value
     return value
 
-def is_open_now(opening_hours_str):
-    """Kiểm tra quán có đang mở cửa không"""
+def is_open_now(opening_hours_str, check_time=None):
+    """
+    Kiểm tra quán có đang mở cửa không
+    
+    Args:
+        opening_hours_str: Chuỗi giờ mở cửa từ CSV
+        check_time: Giờ cần check (string 'HH:MM' hoặc time object). Nếu None thì dùng giờ hiện tại
+    """
     if not opening_hours_str or pd.isna(opening_hours_str):
-        return True
+        return True  # Không có thông tin => cho qua
     
     try:
-        now = datetime.now()
-        current_time = now.time()
+        import re
         
-        hours_str = str(opening_hours_str).lower()
+        # Parse check_time
+        if check_time is None:
+            current_time = datetime.now().time()
+        elif isinstance(check_time, str):
+            current_time = datetime.strptime(check_time, '%H:%M').time()
+        else:
+            current_time = check_time
         
-        if 'always' in hours_str or '24' in hours_str or 'ca ngay' in hours_str or 'mo ca ngay' in hours_str:
+        # Chuẩn hóa: bỏ dấu, lowercase
+        hours_str = normalize_text(str(opening_hours_str))
+        
+        # Mở cửa 24/7
+        if any(keyword in hours_str for keyword in ['always', '24', 'ca ngay', 'mo ca ngay']):
             return True
         
-        if 'dong cua luc' in hours_str:
-            parts = hours_str.split('dong cua luc')
-            if len(parts) > 1:
-                time_part = parts[1].strip().split()[0]
-                try:
-                    close_time = datetime.strptime(time_part, '%H:%M').time()
-                    open_time = datetime.strptime('06:00', '%H:%M').time()
-                    
-                    if open_time <= close_time:
-                        return open_time <= current_time <= close_time
-                    else:
-                        return current_time >= open_time or current_time <= close_time
-                except:
-                    pass
+        # Parse giờ mở
+        open_time = None
+        open_match = re.search(r'mo cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        if open_match:
+            hour = int(open_match.group(1))
+            minute = int(open_match.group(2)) if open_match.group(2) else 0
+            open_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
         
-        return True
-    except:
-        return True
+        # Parse giờ đóng
+        close_time = None
+        close_match = re.search(r'dong cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        if close_match:
+            hour = int(close_match.group(1))
+            minute = int(close_match.group(2)) if close_match.group(2) else 0
+            close_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
+        
+        # Nếu không parse được => CHO QUA
+        if open_time is None or close_time is None:
+            return True
+        
+        # Kiểm tra giờ
+        if open_time <= close_time:
+            # Trường hợp bình thường: 8:00 - 22:00
+            return open_time <= current_time <= close_time
+        else:
+            # Trường hợp qua đêm: 22:00 - 02:00
+            return current_time >= open_time or current_time <= close_time
+            
+    except Exception as e:
+        print(f"⚠️ Lỗi parse giờ: {opening_hours_str} -> {e}")
+        return True  # Lỗi => CHO QUA
 
-# ==================== THEME MAPPING ====================
+# ==================== CẬP NHẬT HÀM LỌC - GIỮ NGUYÊN DẤU ====================
+
+def normalize_text_with_accent(text):
+    """Chuẩn hóa text NHƯNG GIỮ NGUYÊN DẤU tiếng Việt"""
+    if not text or not isinstance(text, str):
+        return ""
+    text = text.lower().strip()
+    # Chỉ chuẩn hóa khoảng trắng, KHÔNG loại bỏ dấu
+    text = ' '.join(text.split())
+    return text
+
+# ==================== TỪ ĐIỂN CHỦ ĐỀ MỞ RỘNG - CÓ DẤU ĐẦY ĐỦ ====================
 
 THEME_CATEGORIES = {
     'street_food': {
         'name': 'Ẩm thực đường phố',
-        'keywords': ['banh mi', 'pho', 'bun', 'com tam', 'xoi', 'che', 'street', 'via he'],
+        'keywords': [
+            # Món ăn
+            'bánh mì', 'bánh mỳ', 'banh mi',
+            'phở', 'pho',
+            'bún', 'bún bò', 'bún chả', 'bún riêu', 'bún đậu', 'bún mắm',
+            'bún thịt nướng', 'bún ốc',
+            'cơm tấm', 'cơm sườn', 'cơm gà', 'cơm chiên',
+            'xôi', 'xôi gà', 'xôi thịt',
+            'chè', 'chè khúc', 'chè thái',
+            'street', 'vỉa hè', 'quán vỉa hè', 'đường phố',
+            'hủ tiếu', 'hủ tíu', 'mì quảng',
+            'cao lầu', 'bánh xèo', 'bánh căn',
+            'gỏi cuốn', 'nem', 'chả giò', 'nem rán',
+            'bánh cuốn', 'bánh bèo', 'bánh bột lọc',
+            'cháo', 'cháo lòng', 'cháo vịt'
+            # KHÔNG CÓ thương hiệu vì tên quán đã có keyword rồi
+        ],
         'icon': '🍜'
     },
     'seafood': {
         'name': 'Hải sản',
-        'keywords': ['hai san', 'seafood', 'fish', 'cua', 'tom', 'oc', 'ngao'],
+        'keywords': [
+            'hải sản', 'seafood',
+            'fish', 'cá',
+            'cua', 'ghẹ',
+            'tôm', 'shrimp',
+            'ốc', 'snail',
+            'ngao', 'sò', 'nghêu',
+            'mực', 'squid',
+            'cá hồi', 'salmon',
+            'hàu', 'oyster',
+            'tôm hùm', 'lobster',
+            'cá thu', 'cá ngừ', 'cá basa',
+            'lẩu hải sản', 'nướng hải sản',
+            'buffet hải sản'
+        ],
         'icon': '🦞'
     },
     'coffee_chill': {
         'name': 'Cà phê chill',
-        'keywords': ['cafe', 'coffee', 'ca phe', 'tra', 'tea', 'milk tea', 'tra sua'],
+        'keywords': [
+            # Món uống
+            'cà phê', 'cafe', 'coffee', 'ca phe',
+            'cà phê sữa', 'cà phê đá', 'cà phê phin',
+            'cà phê sữa đá', 'cà phê đen',
+            'bạc xỉu', 'nâu đá', 'Akafe',
+            'espresso', 'cappuccino', 'latte', 'americano',
+            'mocha', 'macchiato', 'flat white','tea',
+            'trà sữa', 'milk tea',
+            'trà đào', 'trà chanh', 'trà atiso',
+            'trà sen', 'trà hoa', 'trà ô long',
+            'trà xanh', 'trà đen', 'trà gừng',
+            'sinh tố', 'smoothie', 'juice',
+            'nước ép', 'nước trái cây',
+            'soda', 'soda cream', 'limonada',
+            'matcha', 'chocolate', 'frappe',
+            # Không gian
+            'acoustic', 'chill', 'cozy',
+            'book cafe', 'quán sách',
+            # Thương hiệu KHÔNG có keyword trong tên
+            'highlands', 'starbucks',
+            'phúc long', 'trung nguyên',
+            'gong cha', 'royaltea', 'ding tea',
+            'tocotoco', 'koi thé', 'koi the',
+            'bobapop', 'alley', 'tiger sugar',
+            'passio', 'phindi',
+            'angfarm', 'runam',
+            'effoc', 'vinacafe'
+        ],
         'icon': '☕'
     },
     'luxury_dining': {
         'name': 'Nhà hàng sang trọng',
-        'keywords': ['nha hang', 'restaurant', 'fine dining', 'buffet'],
+        'keywords': [
+            'nhà hàng', 'restaurant', 'nha hang',
+            'fine dining', 'luxury', 'sang trọng', 'sang trong',
+            'buffet','resort', 'rooftop',
+            'steakhouse', 'bít tết', 'beefsteak', 'bit tet',
+            'sky bar', 'lounge',
+            'five star', 'cao cấp', 'cao cap',
+            # Thương hiệu khách sạn/nhà hàng cao cấp
+            'marriott', 'sheraton', 'hilton',
+            'intercontinental', 'hyatt', 'sofitel',
+            'pullman', 'novotel', 'renaissance',
+            'reverie', 'vinpearl',
+            'bistro', 'grill', 'prime',
+            'dining', 'banquet', 'yen tiec', 'yến tiệc'
+        ],
         'icon': '🍽️'
     },
     'asian_fusion': {
         'name': 'Ẩm thực châu Á',
-        'keywords': ['sushi', 'ramen', 'korean', 'han quoc', 'nhat ban', 'thai', 'trung hoa'],
+        'keywords': [
+            # Nhật - Món ăn
+            'sushi', 'ramen', 'nhật bản',
+            'japanese', 'tempura', 'takoyaki',
+            'udon', 'soba', 'teriyaki',
+            'sashimi', 'donburi', 'bento',
+            'yakiniku', 'okonomiyaki',
+            'katsu', 'tonkatsu', 'gyoza',
+            'miso', 'wasabi', 'edamame',
+            # Nhật - Thương hiệu KHÔNG có keyword
+            'omakase', 'ichiban',
+            'tokyo', 'osaka', 'hokkaido',
+            'izakaya',
+            # Hàn - Món ăn
+            'hàn quốc', 'korean',
+            'kimchi', 'bibimbap', 'bulgogi',
+            'gimbap', 'tteokbokki', 'samgyeopsal',
+            'bbq hàn', 'korean bbq',
+            'jjigae', 'ramyeon',
+            'kimbap', 'japchae', 'galbi',
+            # Hàn - Thương hiệu
+            'gogi', 'king bbq', 'sumo bbq',
+            'seoul', 'busan', 'gangnam',
+            # Thái
+            'thái', 'thai', 'thailand',
+            'tom yum', 'pad thai', 'somtum',
+            'tom kha', 'green curry',
+            'massaman', 'panang', 'bangkok',
+            # Trung
+            'trung hoa', 'trung quốc', 'chinese',
+            'dimsum', 'dim sum', 'lẩu tứ xuyên',
+            'mì vằn thắn', 'hủ tiếu xào',
+            'há cảo', 'xíu mại', 'sủi cảo',
+            'bắc kinh', 'quảng đông', 'thượng hải',
+            'hongkong', 'canton'
+        ],
         'icon': '🍱'
     },
     'vegetarian': {
         'name': 'Món chay',
-        'keywords': ['chay', 'vegetarian', 'vegan', 'healthy'],
+        'keywords': [
+            'chay', 'vegetarian', 'vegan',
+            'healthy', 'organic', 'sạch',
+            'salad', 'rau củ', 'rau sạch',
+            'cơm chay', 'bún chay', 'phở chay',
+            'đậu hũ', 'tofu',
+            'nấm', 'mushroom',
+            'chay thanh tịnh', 'an lạc',
+            'chay tịnh', 'món chay',
+            'thực dưỡng', 'thuần chay'
+        ],
         'icon': '🥗'
     },
     'dessert_bakery': {
         'name': 'Tráng miệng & Bánh ngọt',
-        'keywords': ['banh', 'cake', 'dessert', 'kem', 'ice cream', 'bakery', 'banh kem'],
+        'keywords': [
+            # Bánh
+            'bánh', 'cake', 'bakery',
+            'bánh kem', 'bánh sinh nhật',
+            'bánh ngọt', 'bánh ngon',
+            'bánh mì ngọt', 'croissant', 'tiramisu',
+            'macaron', 'cupcake', 'donut',
+            'bánh bông lan', 'bánh flan',
+            'bánh su kem', 'eclair',
+            'mousse', 'cheesecake',
+            'bánh tart', 'bánh pie',
+            'bánh cookie', 'bánh quy',
+            'mochi', 'bánh trung thu',
+            # Kem
+            'kem', 'ice cream', 'gelato',
+            'kem tươi', 'kem que', 'kem ly',
+            'kem ý', 'kem trang trí',
+            'frosty', 'sundae', 'smoothie bowl',
+            # Thương hiệu
+            'abc bakery', 'tous les jours',
+            'breadtalk', 'givral', 'kinh đô',
+            'paris gateaux', 'brodard',
+            'baskin robbins', 'swensen',
+            'dairy queen'
+        ],
         'icon': '🍰'
     },
     'spicy_food': {
         'name': 'Đồ cay',
-        'keywords': ['cay', 'spicy', 'hot pot', 'lau', 'mi cay'],
+        'keywords': [
+            'cay', 'spicy', 'hot',
+            'lẩu', 'lẩu cay', 'hot pot', 'hotpot',
+            'lẩu thái', 'lẩu tứ xuyên', 'Lẩu',
+            'lẩu ếch', 'lẩu gà',
+            'mì cay', 'mì cay hàn quốc',
+            'tokbokki', 'tteokbokki',
+            'gà cay', 'gà rán cay',
+            'ớt', 'chili',
+            'kim chi', 'kimchi',
+            'bún bò huế', 'mực xào cay',
+            'đồ cay hàn', 'đồ cay thái'
+        ],
         'icon': '🌶️'
+    },
+    # 🔥 THÊM KEY MỚI CHO "KHU ẨM THỰC"
+    'food_street': {
+        'name': 'Khu ẩm thực',
+        'keywords': [],  # Không cần keywords vì xét trực tiếp cột mo_ta
+        'icon': '🏪'
+    },
+    
+    # 🔥 THÊM LUÔN CHO MICHELIN (nếu chưa có)
+    'michelin': {
+        'name': 'Michelin',
+        'keywords': [],  # Xét trực tiếp cột mo_ta
+        'icon': '⭐'
     }
+}
+
+# ==================== TỪ ĐIỂN KEYWORD CHO TỪNG BỮA ĂN ====================
+MEAL_TYPE_KEYWORDS = {
+    'breakfast': [
+        # Món Việt sáng
+        'phở', 'bún', 'bánh mì', 'cháo', 'xôi', 'hủ tiếu', 'bánh cuốn', 
+        'bánh bèo', 'cơm tấm', 'mì quảng'
+    ],
+    
+    'morning_drink': [
+        # Đồ uống
+        'cafe', 'coffee', 'cà phê', 'trà', 'tea', 'sinh tố', 'juice', 
+        'nước', 'nước ép', 'smoothie', 'sữa', 'milk', 'trà sữa',
+        'matcha', 'latte', 'cappuccino', 'espresso',
+        # Từ theme coffee_chill
+        'highlands', 'starbucks', 'phúc long', 'trung nguyên',
+        'gong cha', 'royaltea', 'ding tea', 'tocotoco', 'koi thé',
+        'bobapop', 'alley', 'tiger sugar', 'passio', 'phindi'
+    ],
+    
+    'lunch': [
+        # Món chính
+        'cơm', 'bún', 'mì', 'phở', 'hủ tiếu', 'cơm tấm', 'miến',
+        'bánh mì', 'bánh xèo', 'cao lầu', 'mì quảng'
+    ],
+    
+    'afternoon_drink': [
+        # Đồ uống
+        'cafe', 'coffee', 'cà phê', 'trà', 'tea', 'trà sữa', 'milk tea', 
+        'sinh tố', 'nước', 'juice', 'smoothie', 'soda',
+        'matcha', 'chocolate', 'frappe',
+        # Bánh nhẹ
+        'bánh', 'cake', 'tiramisu', 'macaron', 'cupcake', 'donut',
+        # Từ theme
+        'highlands', 'starbucks', 'phúc long', 'trung nguyên',
+        'gong cha', 'royaltea', 'tocotoco', 'koi thé', 'passio'
+    ],
+    
+    'dinner': [
+        # Món tối đa dạng
+        'cơm', 'lẩu', 'nướng', 'hải sản', 'bún', 'mì', 'phở',
+        'cơm tấm', 'nem', 'gỏi', 'cháo', 'hotpot', 'bbq',
+        'sushi', 'ramen', 'dimsum', 'steak', 'bò', 'gà', 'cá', 'tôm', 'buffet'
+    ],
+    
+    'dessert': [
+        # Tráng miệng
+        'bánh', 'kem', 'chè', 'cake', 'ice cream', 'dessert',
+        'bánh ngọt', 'bánh kem', 'tiramisu', 'macaron', 'cupcake',
+        'gelato', 'frosty', 'sundae', 'mousse', 'cheesecake',
+        'donut', 'cookie', 'brownie', 'tart', 'pie', 'mochi',
+        # 🔥 Bakery Tiếng Anh
+        'bakery', 'patisserie', 'confectionery', 'pastry'
+    ],
+    
+    # 🔥 CHO KHOẢNG THỜI GIAN NGẮN
+    'meal': [
+        # Bữa chính đa dạng
+        'cơm', 'bún', 'phở', 'mì', 'hủ tiếu', 'cơm tấm', 'bánh mì',
+        'bánh xèo', 'nem', 'gỏi', 'cháo', 'xôi', 'cao lầu'
+    ],
+    
+    'meal1': [
+        # Bữa chính 1
+        'cơm', 'bún', 'phở', 'mì', 'hủ tiếu', 'cơm tấm', 'bánh mì',
+        'bánh xèo', 'miến', 'cao lầu', 'mì quảng'
+    ],
+    
+    'meal2': [
+        # Bữa phụ nhẹ hơn
+        'cơm', 'bún', 'phở', 'mì', 'bánh mì', 'nem', 'gỏi cuốn',
+        'bánh xèo', 'bánh', 'xôi', 'chè'
+    ],
+    
+    'drink': [
+        # Đồ uống tổng hợp
+        'cafe', 'coffee', 'cà phê', 'trà', 'tea', 'nước', 'sinh tố',
+        'juice', 'smoothie', 'trà sữa', 'milk tea', 'soda', 'nước ép',
+        'matcha', 'chocolate', 'latte', 'cappuccino',
+        # Từ theme
+        'highlands', 'starbucks', 'phúc long', 'trung nguyên',
+        'gong cha', 'royaltea', 'tocotoco', 'koi thé', 'passio'
+    ]
 }
 
 # ==================== FIND PLACES WITH ADVANCED FILTERS ====================
 
 def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top_n=30):
-    """Tìm quán với bộ lọc nâng cao"""
+    """Tìm quán với bộ lọc nâng cao - CHỈ LỌC THEO THEME"""
     if excluded_ids is None:
         excluded_ids = set()
     
     results = []
     radius_km = filters.get('radius_km', 5)
     theme = filters.get('theme')
-    user_tastes = filters.get('tastes', [])
-    categories = filters.get('categories', [])
+    # 🔥 BỎ: user_tastes = filters.get('tastes', [])
+
+    # XỬ LÝ THEME - CÓ THỂ LÀ STRING HOẶC LIST
+    if theme:
+        if isinstance(theme, str):
+            theme_list = [theme]
+        else:
+            theme_list = theme if theme else []
+    else:
+        theme_list = []
     
-    for _, row in df.iterrows():
+    food_street_count = 0
+    skipped_rows = 0
+    
+    for idx, row in df.iterrows():
         try:
-            data_id = clean_value(row['data_id'])
+            data_id = clean_value(row.get('data_id', ''))
             
             if data_id in excluded_ids:
                 continue
             
-            place_lat = float(row['lat'])
-            place_lon = float(row['lon'])
+            # Parse tọa độ
+            lat_str = str(row.get('lat', '')).strip().strip('"').strip()
+            lon_str = str(row.get('lon', '')).strip().strip('"').strip()
+            
+            if not lat_str or not lon_str or lat_str == 'nan' or lon_str == 'nan':
+                continue
+                
+            place_lat = float(lat_str)
+            place_lon = float(lon_str)
+            
             distance = calculate_distance(user_lat, user_lon, place_lat, place_lon)
             
+            # Lọc bán kính
             if distance > radius_km:
                 continue
             
-            if not is_open_now(row.get('gio_mo_cua', '')):
+            # Lọc giờ mở cửa
+            gio_mo_cua = row.get('gio_mo_cua', '')
+            if not is_open_now(gio_mo_cua):
                 continue
             
-            name_normalized = normalize_text(str(row['ten_quan']))
+            name_normalized = normalize_text_with_accent(str(row.get('ten_quan', '')))
             
-            if theme and theme in THEME_CATEGORIES:
-                theme_keywords = THEME_CATEGORIES[theme]['keywords']
-                if not any(normalize_text(kw) in name_normalized for kw in theme_keywords):
+            # LỌC THEO THEME
+            if theme:
+                match_found = False
+                
+                for single_theme in theme_list:
+                    if single_theme == 'food_street':
+                        mo_ta = str(row.get('mo_ta', '')).strip()
+                        if mo_ta == 'Khu ẩm thực':
+                            match_found = True
+                            food_street_count += 1
+                            break
+                    
+                    elif single_theme == 'michelin':
+                        mo_ta = str(row.get('mo_ta', '')).strip()
+                        if mo_ta == 'Michelin':
+                            match_found = True
+                            break
+                    
+                    else:
+                        # Xử lý theme bình thường
+                        theme_keywords = THEME_CATEGORIES[single_theme]['keywords']
+                        
+                        for keyword in theme_keywords:
+                            keyword_normalized = normalize_text_with_accent(keyword)
+                            
+                            search_text = ' ' + name_normalized + ' '
+                            search_keyword = ' ' + keyword_normalized + ' '
+                            
+                            if search_keyword in search_text:
+                                match_found = True
+                                break
+                        
+                        if match_found:
+                            break
+                        
+                        # XÉT cột khau_vi cho spicy_food & dessert_bakery
+                        if not match_found and single_theme in ['spicy_food', 'dessert_bakery']:
+                            khau_vi = str(row.get('khau_vi', '')).strip().lower()
+                            
+                            if khau_vi:
+                                if single_theme == 'spicy_food' and 'cay' in khau_vi:
+                                    match_found = True
+                                    break
+                                elif single_theme == 'dessert_bakery' and 'ngọt' in khau_vi:
+                                    match_found = True
+                                    break
+                
+                if not match_found:
                     continue
             
-            if categories:
-                category_match = False
-                for cat in categories:
-                    if normalize_text(cat) in name_normalized:
-                        category_match = True
-                        break
-                if not category_match:
-                    continue
-            
-            if user_tastes:
-                taste_col = row.get('khau_vi', '')
-                if taste_col and not pd.isna(taste_col):
-                    taste_normalized = normalize_text(str(taste_col))
-                    taste_match = any(normalize_text(t) in taste_normalized for t in user_tastes)
-                    if not taste_match:
-                        continue
-            
+            # THÊM VÀO RESULTS
             results.append({
-                'ten_quan': clean_value(row['ten_quan']),
-                'dia_chi': clean_value(row['dia_chi']),
+                'ten_quan': clean_value(row.get('ten_quan', '')),
+                'dia_chi': clean_value(row.get('dia_chi', '')),
                 'so_dien_thoai': clean_value(row.get('so_dien_thoai', '')),
                 'rating': float(clean_value(row.get('rating', 0))) if pd.notna(row.get('rating')) else 0,
                 'gio_mo_cua': clean_value(row.get('gio_mo_cua', '')),
@@ -194,10 +534,87 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
             })
             
         except Exception as e:
+            skipped_rows += 1
             continue
     
+    # Sắp xếp: Khoảng cách → Rating
     results.sort(key=lambda x: (x['distance'], -x['rating']))
     return results[:top_n]
+
+# ==================== MEAL TO THEME MAPPING ====================
+
+MEAL_THEME_MAP = {
+    # BUỔI SÁNG - Ưu tiên đồ ăn sáng Việt Nam
+    'breakfast': {
+        'preferred': ['street_food'],  # Ưu tiên phở, bánh mì, bún
+        'fallback': ['asian_fusion', 'luxury_dining']
+    },
+    
+    # ĐỒ UỐNG SÁNG - Cafe/trà
+    'morning_drink': {
+        'preferred': ['coffee_chill'],
+        'fallback': ['dessert_bakery']
+    },
+    
+    # BỮA TRƯA - Cơm/bún/mì
+    'lunch': {
+        'preferred': ['street_food'],
+        'fallback': ['asian_fusion', 'seafood', 'spicy_food', 'luxury_dining']
+    },
+    
+    # TRÀ CHIỀU - Cafe/trà sữa
+    'afternoon_drink': {
+        'preferred': ['coffee_chill', 'dessert_bakery'],
+        'fallback': ['coffee_chill']
+    },
+    
+    # BỮA TỐI - Đa dạng hơn
+    'dinner': {
+        'preferred': ['seafood', 'asian_fusion', 'spicy_food', 'luxury_dining'],
+        'fallback': ['street_food']
+    },
+    
+    # TRÁNG MIỆNG - Bánh/kem
+    'dessert': {
+        'preferred': ['dessert_bakery', 'coffee_chill'],
+        'fallback': ['street_food']
+    },
+    
+    # BỮA PHỤ (cho plan ngắn)
+    'meal': {
+        'preferred': ['street_food'],
+        'fallback': ['asian_fusion']
+    },
+    'meal1': {
+        'preferred': ['street_food'],
+        'fallback': ['asian_fusion']
+    },
+    'meal2': {
+        'preferred': ['street_food', 'asian_fusion'],
+        'fallback': ['coffee_chill']
+    },
+    'drink': {
+        'preferred': ['coffee_chill'],
+        'fallback': ['dessert_bakery']
+    }
+}
+
+def get_theme_for_meal(meal_key, user_selected_themes):
+    """
+    Chọn theme phù hợp cho từng bữa ăn
+    
+    Logic:
+    1. Nếu user CHỌN theme → LUÔN DÙNG theme đó (không tự động đổi)
+    2. Nếu KHÔNG → dùng theme mặc định theo bữa
+    """
+    # 🔥 NẾU USER ĐÃ CHỌN THEME → DÙNG LUÔN, KHÔNG ĐỔI
+    if user_selected_themes:
+        # Nếu chọn nhiều theme → dùng theme đầu tiên
+        return user_selected_themes[0]
+    
+    # 🔥 NẾU USER KHÔNG CHỌN THEME → Tự động chọn theo bữa
+    meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
+    return meal_map['preferred'][0]
 
 # ==================== GENERATE SMART PLAN ====================
 
@@ -233,7 +650,7 @@ def generate_meal_schedule(time_start_str, time_end_str):
             'afternoon_drink': {
                 'time': '15:00',
                 'title': 'Trà chiều',
-                'categories': ['tra sua', 'cafe', 'banh'],
+                'categories': ['tra sua', 'cafe', 'coffee'],
                 'icon': '☕'
             },
             'dinner': {
@@ -288,31 +705,68 @@ def generate_meal_schedule(time_start_str, time_end_str):
     
     return plan
 
-def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00'):
+def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00', radius_km=None):
     """Tạo kế hoạch ăn uống thông minh"""
-    df = pd.read_csv(csv_file)
     
+    if radius_km is None or radius_km <= 0:
+        return {{
+            'error': True,
+            'message': 'Vui lòng chọn bán kính tìm kiếm'
+        }}
+    
+    df = pd.read_csv(csv_file)
     plan = generate_meal_schedule(start_time, end_time)
     
     current_lat, current_lon = user_lat, user_lon
     used_place_ids = set()
     
-    base_filters = {
-        'theme': theme,
-        'tastes': user_tastes if user_tastes else [],
-        'radius_km': 5
-    }
+    # 🔥 PARSE USER THEMES
+    user_selected_themes = []
+    if theme:
+        if isinstance(theme, str):
+            user_selected_themes = [t.strip() for t in theme.split(',')]
+        elif isinstance(theme, list):
+            user_selected_themes = theme
+    
+    places_found = 0
+    keys_to_remove = []  # 🔥 THÊM LIST ĐỂ LƯU KEY CẦN XÓA
     
     for key, meal in plan.items():
-        filters = base_filters.copy()
-        filters['categories'] = meal.get('categories', [])
+        # 🔥 CHỌN THEME PHÙ HỢP CHO TỪNG BỮA
+        meal_theme = get_theme_for_meal(key, user_selected_themes)
+        
+        filters = {
+            'theme': meal_theme,
+            'tastes': user_tastes if user_tastes else [],
+            'radius_km': radius_km
+        }
         
         places = find_places_advanced(
             current_lat, current_lon, df, 
             filters, excluded_ids=used_place_ids, top_n=20
         )
         
+        # 🔥 LỌC CHẶT THEO KEYWORD - KHÔNG CÓ THÌ BỎ BỮA
+        if places and key in MEAL_TYPE_KEYWORDS:
+            meal_keywords = MEAL_TYPE_KEYWORDS[key]
+            filtered_places = []
+            
+            for place in places:
+                name_normalized = normalize_text_with_accent(place['ten_quan'])
+                
+                for kw in meal_keywords:
+                    kw_normalized = normalize_text_with_accent(kw)
+                    search_text = ' ' + name_normalized + ' '
+                    search_keyword = ' ' + kw_normalized + ' '
+                    
+                    if search_keyword in search_text:
+                        filtered_places.append(place)
+                        break
+            
+            places = filtered_places  # 🔥 LUÔN THAY THẾ
+        
         if places:
+            places_found += 1
             weights = [1.0 / (i + 1) for i in range(len(places))]
             best_place = random.choices(places, weights=weights, k=1)[0]
             
@@ -339,6 +793,20 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
             
             current_lat = best_place['lat']
             current_lon = best_place['lon']
+        else:
+            # 🔥 KHÔNG CÓ QUÁN PHÙ HỢP → ĐÁNH DẤU XÓA
+            print(f"⚠️ Không tìm được quán phù hợp cho {{key}} ({{meal['title']}}), bỏ bữa này")
+            keys_to_remove.append(key)  # 🔥 THÊM VÀO LIST THAY VÌ XÓA NGAY
+    
+    # 🔥 XÓA CÁC BỮA KHÔNG TÌM ĐƯỢC QUÁN SAU KHI DUYỆT XONG
+    for key in keys_to_remove:
+        del plan[key]
+    
+    if places_found == 0:
+        return {
+            'error': True,
+            'message': f'Không tìm thấy quán nào trong bán kính {{radius_km}} km'
+        }
     
     return plan
 
@@ -1101,6 +1569,8 @@ def get_food_planner_html():
     box-shadow: 0 3px 8px rgba(0,0,0,0.15);
     cursor: pointer;
     transition: transform 0.15s ease;
+    flex-shrink: 0;  /* 🔥 THÊM DÒNG NÀY */
+    min-width: 44px;  /* 🔥 ĐẢM BẢO KHÔNG BỊ NÉN NHỎ HƠN */
 }
 
 .action-btn:hover {
@@ -1456,11 +1926,23 @@ def get_food_planner_html():
                         <div class="time-inputs">
                             <div class="time-input-group">
                                 <label>Từ</label>
-                                <input type="time" id="startTime" value="07:00">
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="number" id="startHour" min="0" max="23" value="07" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                    <span style="font-weight: bold;">:</span>
+                                    <input type="number" id="startMinute" min="0" max="59" value="00" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                </div>
                             </div>
                             <div class="time-input-group">
                                 <label>Đến</label>
-                                <input type="time" id="endTime" value="21:00">
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="number" id="endHour" min="0" max="23" value="21" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                    <span style="font-weight: bold;">:</span>
+                                    <input type="number" id="endMinute" min="0" max="59" value="00" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1538,7 +2020,9 @@ const themes = {
     'asian_fusion': { name: 'Ẩm thực châu Á', icon: '🍱' },
     'vegetarian': { name: 'Món chay', icon: '🥗' },
     'dessert_bakery': { name: 'Tráng miệng & Bánh', icon: '🍰' },
-    'spicy_food': { name: 'Đồ cay', icon: '🌶️' }
+    'spicy_food': { name: 'Đồ cay', icon: '🌶️' },
+    'food_street': { name: 'Khu ẩm thực', icon: '🏪' },
+    'michelin': { name: 'Michelin', icon: '⭐' }
 };
 
 // Meal icons
@@ -1949,14 +2433,33 @@ async function generateAutoPlan() {
             throw new Error('Trình duyệt không hỗ trợ GPS');
         }
         
-        const startTime = document.getElementById('startTime').value;
-        const endTime = document.getElementById('endTime').value;
+        const startHour = document.getElementById('startHour').value.padStart(2, '0');
+        const startMinute = document.getElementById('startMinute').value.padStart(2, '0');
+        const startTime = `${startHour}:${startMinute}`;
+
+        const endHour = document.getElementById('endHour').value.padStart(2, '0');
+        const endMinute = document.getElementById('endMinute').value.padStart(2, '0');
+        const endTime = `${endHour}:${endMinute}`;
+        
+        // 🔥 ƯU TIÊN LẤY TỪ WINDOW (ĐÃ LƯU TRONG script.js)
+        const radius = window.currentRadius || document.getElementById('radius')?.value || '';
+        
+        // 🔥 KIỂM TRA BÁN KÍNH
+        if (!radius || radius === '') {
+            resultDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>⚠️ Chưa chọn bán kính</h3>
+                    <p>Vui lòng chọn bán kính tìm kiếm trước khi tạo kế hoạch</p>
+                </div>
+            `;
+            return;
+        }
         
         const selectedFlavors = getSelectedFlavors();
         const tastesParam = selectedFlavors.join(',');
         
         const randomSeed = Date.now();
-        let url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${startTime}&end_time=${endTime}`;
+        let url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${startTime}&end_time=${endTime}&radius_km=${radius}`; // 🔥 THÊM RADIUS
         
         if (selectedThemes.length > 0) {
             url += `&theme=${selectedThemes.join(',')}`;
@@ -1968,11 +2471,26 @@ async function generateAutoPlan() {
         
         const response = await fetch(url);
         
+        // 🔥 XỬ LÝ LỖI TỪ SERVER
         if (!response.ok) {
-            throw new Error('Không thể tạo kế hoạch');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || 'Không thể tạo kế hoạch');
         }
         
-        currentPlan = await response.json();
+        const data = await response.json();
+        
+        // 🔥 KIỂM TRA LỖI TRONG RESPONSE
+        if (data.error) {
+            resultDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>😔 ${data.message || 'Không tìm thấy quán'}</h3>
+                    <p>Hãy thử tăng bán kính tìm kiếm hoặc thay đổi bộ lọc</p>
+                </div>
+            `;
+            return;
+        }
+        
+        currentPlan = data;
         currentPlanId = null;
         window.currentPlanName = null;
 
@@ -2171,10 +2689,6 @@ function displayPlanVertical(plan, editMode = false) {
                                 <span>⭐</span>
                                 <strong>${place.rating ? parseFloat(place.rating).toFixed(1) : 'N/A'}</strong>
                             </div>
-                            <div class="meta-item-vertical">
-                                <span>🚗</span>
-                                <strong>${place.distance} km</strong>
-                            </div>
                             ${place.gia_trung_binh ? `
                                 <div class="meta-item-vertical">
                                     <span>💰</span>
@@ -2183,14 +2697,10 @@ function displayPlanVertical(plan, editMode = false) {
                             ` : ''}
                         </div>
                         ${place.khau_vi ? `
-                            <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                            <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
                                 👅 Khẩu vị: ${place.khau_vi}
                             </div>
                         ` : ''}
-                        <div class="travel-info-vertical">
-                            🚗 <strong>Nên khởi hành lúc ${place.suggest_leave}</strong><br>
-                            ⏱️ Di chuyển khoảng ${place.travel_time} phút
-                        </div>
                     </div>
                 </div>
             </div>
@@ -2327,8 +2837,16 @@ function checkRouteOverlap(coords1, coords2, threshold = 0.0001) {
 
 // ========== DRAW ROUTE ON MAP ==========
 let routeLayers = [];
+let currentRouteAbortController = null;
 
 function clearRoutes() {
+    // 🔥 HỦY TẤT CẢ REQUESTS ĐANG CHẠY
+    if (currentRouteAbortController) {
+        currentRouteAbortController.abort();
+        currentRouteAbortController = null;
+        console.log('⚠️ Đã hủy tất cả requests vẽ đường cũ');
+    }
+
     if (typeof map !== 'undefined' && routeLayers.length > 0) {
         routeLayers.forEach(layer => {
             map.removeLayer(layer);
@@ -2410,7 +2928,10 @@ function drawRouteOnMap(plan) {
         return;
     }
     
-    clearRoutes();
+    // 🔥 HỦY REQUESTS CŨ VÀ TẠO MỚI
+    clearRoutes(); // Xóa routes cũ + hủy requests cũ
+    currentRouteAbortController = new AbortController();
+    const signal = currentRouteAbortController.signal;
     
     const drawnSegments = [];
     const waypoints = [];
@@ -2463,7 +2984,9 @@ function drawRouteOnMap(plan) {
     try {
         const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
         
-        const response = await fetch(url);
+        // 🔥 THÊM: Truyền signal vào fetch
+        const response = await fetch(url, { signal });
+
         const data = await response.json();
         
         if (data.code === 'Ok' && data.routes && data.routes[0]) {
@@ -2608,6 +3131,12 @@ function drawRouteOnMap(plan) {
         }
         
     } catch (error) {
+        // 🔥 BỎ QUA NẾU REQUEST BỊ HỦY
+        if (error.name === 'AbortError') {
+            console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
+            return;
+        }
+    
         console.error('Lỗi vẽ route:', error);
         const color = getRouteColor(index, totalRoutes);
         
@@ -2627,14 +3156,29 @@ function drawRouteOnMap(plan) {
     
     // Vẽ từng đoạn route
     (async function drawAllRoutes() {
-        for (let i = 0; i < waypoints.length - 1; i++) {
-            await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+        try {
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                // 🔥 KIỂM TRA NẾU ĐÃ BỊ HỦY THÌ DỪNG NGAY
+                if (signal.aborted) {
+                    console.log('⚠️ Đã dừng vẽ tất cả routes do bị hủy');
+                    return;
+                }
+                
+                await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+            }
+            
+            // 🔥 CHỈ FIT BOUNDS NẾU CHƯA BỊ HỦY
+            if (!signal.aborted) {
+                const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+                
+                console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường`);
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('Lỗi trong drawAllRoutes:', error);
+            }
         }
-        
-        const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
-        map.fitBounds(bounds, { padding: [50, 50] });
-        
-        console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường`);
     })();
 }
 
@@ -3707,5 +4251,125 @@ document.addEventListener('keydown', function(e) {
     };
     document.head.appendChild(script);
 })();
+// ========== CYCLIC TIME INPUT ==========
+document.addEventListener('DOMContentLoaded', function() {
+    function setupCyclicInput(id, maxValue) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        
+        let lastValue = parseInt(input.value) || 0;
+        let isSpinnerClick = false; // 🔥 BIẾN ĐÁNH DẤU
+        
+        // 🔥 BẮT SPINNER CLICK - DÙNG INPUT EVENT
+        let spinnerTimeout;
+        input.addEventListener('input', function(e) {
+            // Chỉ xử lý khi có thay đổi từ spinner
+            if (document.activeElement === this) {
+                clearTimeout(spinnerTimeout);
+                spinnerTimeout = setTimeout(() => {
+                    let val = parseInt(this.value);
+                    
+                    if (isNaN(val)) {
+                        this.value = '00';
+                        lastValue = 0;
+                        return;
+                    }
+                    
+                    // 🔥 CYCLE LOGIC
+                    if (val > maxValue) {
+                        this.value = 0;
+                        lastValue = 0;
+                    } else if (val < 0) {
+                        this.value = maxValue;
+                        lastValue = maxValue;
+                    } else {
+                        lastValue = val;
+                    }
+                    
+                    this.value = this.value.toString().padStart(2, '0');
+                }, 50);
+            }
+        });
+        
+        // Theo dõi mọi thay đổi
+        const observer = new MutationObserver(() => {
+            if (!isSpinnerClick) checkAndCycle();
+        });
+        
+        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
+        
+        input.addEventListener('input', function() {
+            if (!isSpinnerClick) checkAndCycle();
+        });
+        input.addEventListener('change', checkAndCycle);
+        
+        function checkAndCycle() {
+            let val = parseInt(input.value);
+            
+            if (isNaN(val)) {
+                input.value = '00';
+                lastValue = 0;
+                return;
+            }
+            
+            if (val > maxValue) {
+                input.value = 0;
+                lastValue = 0;
+            } else if (val < 0) {
+                input.value = maxValue;
+                lastValue = maxValue;
+            } else {
+                lastValue = val;
+            }
+        }
+        
+        // Xử lý blur để format
+        input.addEventListener('blur', function() {
+            let val = parseInt(this.value) || 0;
+            if (val > maxValue) val = 0;
+            if (val < 0) val = maxValue;
+            this.value = val.toString().padStart(2, '0');
+            lastValue = val;
+        });
+        
+        // Xử lý phím mũi tên
+        input.addEventListener('keydown', function(e) {
+            const currentValue = parseInt(this.value) || 0;
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
+                this.value = this.value.toString().padStart(2, '0');
+                lastValue = parseInt(this.value);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
+                this.value = this.value.toString().padStart(2, '0');
+                lastValue = parseInt(this.value);
+            }
+        });
+        
+        // Xử lý scroll chuột
+        input.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const currentValue = parseInt(this.value) || 0;
+            
+            if (e.deltaY < 0) {
+                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
+            } else {
+                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
+            }
+            
+            this.value = this.value.toString().padStart(2, '0');
+            lastValue = parseInt(this.value);
+        });
+    }
+    
+    // Áp dụng cho tất cả input
+    setupCyclicInput('startHour', 23);
+    setupCyclicInput('endHour', 23);
+    setupCyclicInput('startMinute', 59);
+    setupCyclicInput('endMinute', 59);
+});
 </script>
 '''

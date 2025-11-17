@@ -178,28 +178,6 @@ body {
   justify-content: center;
 }
 
-/* 👁️‍🗨️ Nút ẩn đường đi (giống GPS) */
-#gpsHideRouteBtn {
-  font-size: 16px;              /* nhỏ lại cho đồng bộ */
-  padding: 8px 8px;            /* bằng với .gps-btn */
-  background-color: #0078ff;    /* cùng màu GPS */
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  height: 36px;
-  width: 36px;            /* ép chiều cao giống GPS */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s ease, transform 0.1s ease;
-}
-
-#gpsHideRouteBtn:hover {
-  background-color: #005fd1;   /* hover giống GPS */
-  transform: translateY(-1px);
-}
-
 
 
 /* ==========================================
@@ -1097,6 +1075,102 @@ body {
     background-color: #ffffff;        /* đổi màu nền khi hover */
     transform: scale(1.02);           /* phóng to nhẹ */
     box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+}
+
+/* NÚT YÊU THÍCH & LƯU QUÁN */
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  margin: 15px 0;
+  justify-content: center;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  color: #333;
+  min-width: 100px;
+}
+
+.action-btn i {
+  font-size: 24px;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: #f5f5f5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Trạng thái active - khi đã nhấn */
+.action-btn.active {
+  border-color: #ff6b6b;
+  background: #fff5f5;
+}
+
+/* Icon yêu thích */
+#favoriteBtn i {
+  color: #999;
+}
+
+#favoriteBtn.active i {
+  color: #ff6b6b;
+  animation: heartBeat 0.3s ease;
+}
+
+/* Icon lưu quán */
+#saveBtn i {
+  color: #999;
+}
+
+#saveBtn.active i {
+  color: #4CAF50;
+  animation: bookmarkPop 0.3s ease;
+}
+
+/* Animation cho trái tim */
+@keyframes heartBeat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.3); }
+  50% { transform: scale(1.1); }
+  75% { transform: scale(1.25); }
+}
+
+/* Animation cho bookmark */
+@keyframes bookmarkPop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Responsive cho mobile */
+@media (max-width: 480px) {
+  .action-buttons {
+    gap: 10px;
+  }
+  
+  .action-btn {
+    padding: 10px 15px;
+    min-width: 80px;
+    font-size: 12px;
+  }
+  
+  .action-btn i {
+    font-size: 20px;
+  }
+}
+
+.michelin-glow {
+  filter: drop-shadow(0 0 6px red) drop-shadow(0 0 12px red);
 }
 
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/

@@ -81,7 +81,7 @@ const icons = {
     iconAnchor: [13, 26],
   }), 
   khu_am_thuc: L.icon({
-  iconUrl: "icons/star.png", // 👉 Bạn đặt file này trong thư mục /icons
+  iconUrl: "icons/street_food.png", // 👉 Bạn đặt file này trong thư mục /icons
   iconSize: [26, 26],
   iconAnchor: [13, 26],
   }),
@@ -90,6 +90,11 @@ const icons = {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   }),
+  michelin: L.icon({
+  iconUrl: "icons/star.png", // đặt file PNG vào thư mục /icons
+  iconSize: [26, 26],
+  iconAnchor: [13, 26],
+}),
 };
 
 // =========================
@@ -397,18 +402,74 @@ function getRealtimeStatus(hoursStr) {
   return hoursStr;
 }
 
+// =========================
+// 🤖 HÀM MỞ CHATBOX TỰ ĐỘNG
+// =========================
+function openChatboxAutomatically() {
+  console.log("🚨 Mở chatbox tự động sau 3 lần search thất bại");
+
+  // Tìm các elements của chatbox
+  const chatWindow = document.getElementById("chatWindow");
+  const chatbotBtn = document.getElementById("chatbotBtn");
+  const speechBubble = document.getElementById("speechBubble");
+
+  if (!chatWindow || !chatbotBtn) {
+    console.error("❌ Không tìm thấy chatbox elements!");
+    alert("🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!");
+    return;
+  }
+
+  // ✅ Mở chatbox (giống logic openChatWindow trong chatbot)
+  chatWindow.style.display = "flex";
+  chatWindow.classList.add("open");
+  chatbotBtn.style.display = "none";
+  chatbotBtn.classList.add("hidden");
+  speechBubble.style.display = "none";
+  speechBubble.classList.add("hidden");
+
+  // ✅ Tự động gửi tin nhắn gợi ý
+  setTimeout(() => {
+    const messagesArea = document.getElementById("messagesArea");
+    if (messagesArea) {
+      // Thêm tin nhắn bot
+      const autoMessage = `
+        <div class="message bot">
+          <div class="message-avatar">🍜</div>
+          <div class="message-content">
+            <div class="message-text">
+              <p>Ối! Có vẻ bạn đang gặp khó khăn tìm quán nè 😅</p>
+              <p>Để mình giúp bạn nhé! Bạn muốn ăn gì, ở khu vực nào, ngân sách bao nhiêu? Cứ nói mình nghe nha~ 💕</p>
+            </div>
+            <div class="message-time">${new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}</div>
+          </div>
+        </div>
+      `;
+      messagesArea.innerHTML += autoMessage;
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+
+      // Focus vào input để user nhập liền
+      const messageInput = document.getElementById("messageInput");
+      if (messageInput) {
+        messageInput.focus();
+      }
+    }
+  }, 500);
+}
 
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
-function displayPlaces(places) {
+function displayPlaces(places, shouldZoom = true) {
   markers.forEach((m) => map.removeLayer(m));
   markers = [];
 
   if (!places || places.length === 0) {
     alert("Không tìm thấy quán nào!");
-    return;
-  }
+    return false;
+}
 
   places.forEach((p) => {
     const lat = parseFloat(p.lat);
@@ -416,13 +477,23 @@ function displayPlaces(places) {
     if (isNaN(lat) || isNaN(lon)) return;
 
     let icon;
-if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
-  icon = icons.khu_am_thuc; // 👉 icon riêng cho khu ẩm thực
-} else {
-  const category = detectCategory(p.ten_quan);
-  icon = icons[category] || icons.default;
+
+if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+    icon = icons.michelin; // ⭐ ICON RIÊNG MICHELIN
 }
+else if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
+    icon = icons.khu_am_thuc;
+}
+else {
+    const category = detectCategory(p.ten_quan);
+    icon = icons[category] || icons.default;
+}
+
     const marker = L.marker([lat, lon], { icon }).addTo(map);
+
+    if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+    marker._icon.classList.add("michelin-glow");
+    }
 
       // 🟢 TOOLTIP khi rê chuột vào marker
   const tooltipHTML = `
@@ -434,7 +505,7 @@ if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
           : ""
       }
       <div style="font-size:13px;margin-top:4px;">
-        <i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}<br>
+        <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
         <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
       </div>
     </div>
@@ -478,22 +549,42 @@ if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
       }
 
       const tongquanHTML = `
-        <h2>${p.ten_quan || "Không tên"}</h2>
-        ${
-          p.hinh_anh
-            ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin-bottom:10px;">`
-            : ""
-        }
-         ${p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")
+  <div class="place-header" style="display:flex;align-items:center;justify-content:space-between;">
+    <h2 style="margin:0;">${p.ten_quan || "Không tên"}</h2>
+    <!-- ❤️ Nút yêu thích bên phải tên -->
+    <button id="favoriteBtn" class="action-btn" style="padding:8px 10px;min-width:auto;border:none;background:none;">
+      <i class="fa-regular fa-heart" style="font-size:22px;"></i>
+    </button>
+  </div>
+
+  ${
+    p.hinh_anh
+      ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin:10px 0;">`
+      : ""
+  }
+
+  ${p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")
     ? `<p style="color:#ff6600;font-weight:bold;">🔥 Đây là khu ẩm thực sầm uất, có nhiều món ăn và hoạt động về đêm.</p>`
     : ""}
-        <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
-        <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
-        <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-        <p><i class="fa-regular fa-clock"></i> ${getRealtimeStatus(p.gio_mo_cua) || "Không rõ"}</p>
-        <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
-        <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
-      `;
+
+  <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
+  <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
+  <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
+  <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+  <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
+  <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
+
+    <!-- 🔖 Nút lưu quán (đang ẩn bằng CSS) -->
+  <div style="margin-top:10px;display:flex;justify-content:center;">
+    <button id="saveBtn" class="action-btn" style="display:none;">
+      <i class="fa-regular fa-bookmark"></i>
+      <span>Lưu quán</span>
+    </button>
+  </div>
+`;
+
+
+
 
       const thucdonHTML = `
   ${
@@ -565,15 +656,38 @@ if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
 `;
       sidebarContent.innerHTML = contentHTML;
       sidebar.classList.add("show");
+
+      // 👉 Sau khi render xong, gắn sự kiện cho nút
+const favoriteBtn = document.getElementById("favoriteBtn");
+const saveBtn = document.getElementById("saveBtn");
+
+let clickCount = 0; // Đếm số lần click để xử lý chẵn/lẻ
+
+favoriteBtn.addEventListener("click", () => {
+  clickCount++;
+  if (clickCount % 2 === 1) {
+    favoriteBtn.classList.add("active");
+    favoriteBtn.querySelector("i").classList.replace("fa-regular", "fa-solid");
+  } else {
+    favoriteBtn.classList.remove("active");
+    favoriteBtn.querySelector("i").classList.replace("fa-solid", "fa-regular");
+  }
+});
+
+saveBtn.addEventListener("click", () => {
+  clickCount++;
+  if (clickCount % 2 === 1) {
+    saveBtn.classList.add("active");
+    saveBtn.querySelector("i").classList.replace("fa-regular", "fa-solid");
+  } else {
+    saveBtn.classList.remove("active");
+    saveBtn.querySelector("i").classList.replace("fa-solid", "fa-regular");
+  }
+});
       // NÚT ĐÓNG SIDEBAR
       const closeBtn = document.getElementById("closeSidebar");
       closeBtn.addEventListener("click", () => {
   sidebar.classList.add("hidden"); // 👉 Ẩn sidebar
-
-  if (routeControl) {
-    map.removeControl(routeControl);
-    routeControl = null;
-  }
 });
 
       // =========================
@@ -589,40 +703,70 @@ if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
         const gpsInput = document.getElementById("gpsInput");
         const inputValue = gpsInput ? gpsInput.value.trim() : "";
 
-        // 🔹 Nếu người dùng đã định vị GPS trước đó
-        if (inputValue === "Vị trí hiện tại của tôi" && window.currentUserCoords) {
-          const { lat: userLat, lon: userLon } = window.currentUserCoords;
+        // ✅ Nếu đang chỉ đường cho cùng quán này → XÓA ĐƯỜNG (toggle off)
+        if (routeControl && currentPlaceId === place_id) {
+          map.removeControl(routeControl);
+          routeControl = null;
+          currentPlaceId = null;
 
-          // Xóa route cũ nếu có
-          if (routeControl) {
-            map.removeControl(routeControl);
-            routeControl = null;
+          // ✅ XÓA THÔNG TIN QUÃNG ĐƯỜNG
+          const infoEl = tongquanTab.querySelector(".route-info");
+          if (infoEl) {
+            infoEl.remove();
           }
+          
+          return; // Dừng lại, không vẽ lại
+        }
 
-          drawRoute(userLat, userLon, lat, lon, tongquanTab);
+        // ✅ Nếu có đường cũ (dù quán nào) → XÓA trước khi vẽ mới
+        if (routeControl) {
+          map.removeControl(routeControl);
+          routeControl = null;
+          currentPlaceId = null;
+        }
+
+        // 🔹 Kiểm tra xem có vị trí xuất phát không
+        if (!inputValue && !window.currentUserCoords) {
+          alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
           return;
         }
 
+        let userLat, userLon;
+
+        // 🔹 Nếu người dùng đã định vị GPS trước đó
+        if (inputValue === "Vị trí hiện tại của tôi" && window.currentUserCoords) {
+          userLat = window.currentUserCoords.lat;
+          userLon = window.currentUserCoords.lon;
+        } 
         // 🔹 Nếu người dùng nhập địa chỉ chữ → dùng geocode
-        if (inputValue) {
+        else if (inputValue) {
           const coords = await geocodeAddress(inputValue);
           if (!coords) return;
-
-          const userLat = coords.lat;
-          const userLon = coords.lon;
-
-          if (routeControl) {
-            map.removeControl(routeControl);
-            routeControl = null;
-          }
-
-          drawRoute(userLat, userLon, lat, lon, tongquanTab);
-        } 
-        else {
-          // 🔹 Nếu không nhập gì và chưa có GPS
-           alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+          userLat = coords.lat;
+          userLon = coords.lon;
         }
+        // 🔹 Nếu không nhập gì nhưng có GPS đã lưu
+        else if (window.currentUserCoords) {
+          userLat = window.currentUserCoords.lat;
+          userLon = window.currentUserCoords.lon;
+        }
+        else {
+          alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+          return;
+        }
+
+        // ✅ Vẽ đường mới
+        drawRoute(userLat, userLon, lat, lon, tongquanTab);
+        currentPlaceId = place_id; // Lưu ID quán hiện tại
       });
+
+      // Khi mở quán mới → luôn xóa route cũ để tránh tự zoom lỗi
+if (routeControl) {
+  map.removeControl(routeControl);
+  routeControl = null;
+  currentPlaceId = null;
+}
+
 
 sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
 
@@ -706,8 +850,13 @@ function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
 
   routeControl.on("routesfound", (e) => {
     const route = e.routes[0];
-    const bounds = L.latLngBounds(route.coordinates);
+    const coords = route.coordinates;
+
+// Nếu route hợp lệ mới fitBounds
+if (coords && coords.length > 1) {
+    const bounds = L.latLngBounds(coords);
     map.fitBounds(bounds, { padding: [50, 50] });
+}
 
     const distanceKm = (route.summary.totalDistance / 1000).toFixed(1);
     const durationMin = Math.ceil(route.summary.totalTime / 60);
@@ -813,8 +962,12 @@ setTimeout(() => {
     markers.push(marker);
   });
 
-  const group = new L.featureGroup(markers);
-  map.fitBounds(group.getBounds().pad(0.2));
+  // ✅ Chỉ zoom đến quán nếu shouldZoom = true
+  if (shouldZoom && markers.length > 0) {
+    const group = new L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.2));
+  }
+  return true;
 }
 
 // =========================
@@ -833,16 +986,39 @@ setTimeout(() => {
 // ✅ HÀM TÁCH GIÁ
 // =======================================================
 function parsePriceRange(priceStr) {
-  if (!priceStr || priceStr.toLowerCase().includes("không")) return null;
+  if (!priceStr) return null;
 
-  let cleaned = priceStr.toLowerCase().replace(/\s/g, ""); // bỏ khoảng trắng
+  let s = priceStr.toLowerCase().trim();
+
+  // ❌ Nếu chứa “không”, bỏ qua
+  if (s.includes("không")) return null;
+
+  // 👉 Nếu dạng “Trên …”
+  if (s.includes("trên") || s.includes("tren") || s.startsWith(">")) {
+    // Lấy ra số đầu tiên
+    let num = s.replace(/[^\d\.]/g, ""); // giữ lại số và dấu .
+    let value = parseInt(num.replace(/\./g, "")); // bỏ dấu chấm ngăn cách
+
+    if (s.includes("k") || s.includes("nghìn") || s.includes("nghin"))
+      value *= 1000;
+
+    if (s.includes("triệu") || s.includes("million"))
+      value *= 1000000;
+
+    return [value, Infinity]; // giá từ X trở lên
+  }
+
+  // ==========================================
+  // ⬇️ XỬ LÝ BÌNH THƯỜNG: "20k - 30k", "50.000 - 70.000"
+  // ==========================================
+
+  let cleaned = s.replace(/\s/g, "");
 
   let multiplier = 1;
 
-  // nếu có N / nghìn / k → nhân 1000
-  if (/n|k|nghin/.test(cleaned)) multiplier = 1000;
+  // nếu có kí hiệu nghìn
+  if (/k|n|nghin|nghìn/.test(cleaned)) multiplier = 1000;
 
-  // loại bỏ chữ cái và dấu ₫
   cleaned = cleaned.replace(/[^\d\-]/g, "");
 
   const parts = cleaned.split("-");
@@ -852,6 +1028,7 @@ function parsePriceRange(priceStr) {
 
   return [minP, maxP];
 }
+
 
 
 
@@ -885,7 +1062,13 @@ function distance(lat1, lon1, lat2, lon2) {
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU
 // =======================================================
-async function fetchPlaces(query = "", flavors = [], budget = "", radius = "") {
+async function fetchPlaces(
+  query = "",
+  flavors = [],
+  budget = "",
+  radius = "",
+  shouldZoom = true
+) {
   try {
     const res = await fetch("/api/places");
     let data = await res.json();
@@ -954,82 +1137,163 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "") {
       filtered = filtered.filter((p) => {
         if (!p.khau_vi) return false;
         const norm = normalize(p.khau_vi);
-        return flavors.some(f => norm.includes(normalize(f)));
+        return flavors.some((f) => norm.includes(normalize(f)));
       });
     }
 
     // ========== 3️⃣ Lọc giá ==========
-   if (budget !== "") {
-  const [budgetMin, budgetMax] = budget.split("-").map(n => parseInt(n));
+    if (budget !== "") {
+      const [budgetMin, budgetMaxRaw] = budget.split("-").map((n) => n.trim());
+      const budgetMinNum = parseInt(budgetMin);
+      const budgetMax =
+        budgetMaxRaw === "Infinity" ? Infinity : parseInt(budgetMaxRaw);
 
-  filtered = filtered.filter((p) => {
-    const range = parsePriceRange(p.gia_trung_binh);
-    if (!range) return false;
+      filtered = filtered.filter((p) => {
+        const range = parsePriceRange(p.gia_trung_binh);
+        if (!range) return false;
 
-    const [minP, maxP] = range;
+        const [minP, maxP] = range;
 
-    // ✅ Kiểm tra giao nhau giữa 2 khoảng
-    return minP >= budgetMin && maxP <= budgetMax;
-  });
-}
+        // ⭐ TH1: "300.000 trở lên"
+        if (budgetMax === Infinity) {
+          return minP >= budgetMinNum;
+        }
 
+        // ⭐ TH2: khoảng giá bình thường → chỉ cần giao nhau
+        return maxP >= budgetMinNum && minP <= budgetMax;
+      });
+    }
 
+    // ========== 4️⃣ Lọc bán kính ==========
+    if (radius !== "") {
+      const r = parseFloat(radius); // km
 
-// ========== 4️⃣ Lọc bán kính ==========
-if (radius !== "") {
-  const r = parseFloat(radius); // km
-
-  if (!window.currentUserCoords || !window.currentUserCoords.lat || !window.currentUserCoords.lon) {
-    alert("Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!");
-  } else {
-    const userLat = parseFloat(window.currentUserCoords.lat);
-    const userLon = parseFloat(window.currentUserCoords.lon);
-
-    filtered = filtered.filter((p) => {
-      if (!p.lat || !p.lon) return false;
-
-      const plat = parseFloat(p.lat.toString().replace(",", "."));
-      const plon = parseFloat(p.lon.toString().replace(",", "."));
-      if (isNaN(plat) || isNaN(plon)) return false;
-
-      const d = distance(userLat, userLon, plat, plon);
-
-      // ==== 🔹 Debug khoảng cách từng quán ====
-      if (d > r) {
-        console.warn(`❌ ${p.ten_quan} cách ${d.toFixed(2)} km, vượt radius ${r} km`);
+      if (
+        !window.currentUserCoords ||
+        !window.currentUserCoords.lat ||
+        !window.currentUserCoords.lon
+      ) {
+        alert(
+          "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
+        );
+        // không filter theo radius nữa, dùng filtered hiện tại
       } else {
-        console.log(`✅ ${p.ten_quan} cách ${d.toFixed(2)} km, trong radius ${r} km`);
+        const userLat = parseFloat(window.currentUserCoords.lat);
+        const userLon = parseFloat(window.currentUserCoords.lon);
+
+        filtered = filtered.filter((p) => {
+          if (!p.lat || !p.lon) return false;
+
+          const plat = parseFloat(p.lat.toString().replace(",", "."));
+          const plon = parseFloat(p.lon.toString().replace(",", "."));
+          if (isNaN(plat) || isNaN(plon)) return false;
+
+          const d = distance(userLat, userLon, plat, plon);
+
+          // Debug tuỳ bạn cần hay không
+          // if (d > r) {
+          //   console.warn(`❌ ${p.ten_quan} cách ${d.toFixed(2)} km, vượt radius ${r} km`);
+          // } else {
+          //   console.log(`✅ ${p.ten_quan} cách ${d.toFixed(2)} km, trong radius ${r} km`);
+          // }
+
+          return d <= r;
+        });
       }
+    }
 
-      return d <= r; // lọc quán theo radius
-    });
-  }
-}
-
-
-
-
-    displayPlaces(filtered);
+    // 🟢 Quan trọng: trả về true/false từ displayPlaces
+    const ok = displayPlaces(filtered, shouldZoom);
+    return ok; // <-- để btnSearch biết là có quán hay không
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
     alert("Không thể tải dữ liệu từ server!");
+    return false; // xem như thất bại
   }
 }
 
-// =======================================================
-// ✅ NÚT TÌM KIẾM
-// =======================================================
-document.getElementById("btnSearch").addEventListener("click", () => {
+let notFoundCount = 0;
+// =============================
+// 🔍 NÚT TÌM KIẾM
+// =============================
+document.getElementById("btnSearch").addEventListener("click", async () => {
+  const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
 
   const selectedFlavors = Array.from(
     document.querySelectorAll("#flavorDropdown input:checked")
-  ).map(c => c.value);
+  ).map((c) => c.value);
 
   const budget = document.getElementById("budget").value;
   const radius = document.getElementById("radius").value;
 
-  fetchPlaces(query, selectedFlavors, budget, radius);
+  let result = true; // true = có quán, false = không
+  // 👉 TRUE nếu đây chỉ là filter bằng 3 thanh phụ
+ const isFilterOnlySearch =
+  (!gpsInputValue || gpsInputValue === "Vị trí hiện tại của tôi") && !query;
+
+  // =============================
+  // 📌 CASE 1 — Có nhập địa điểm (khác "Vị trí hiện tại của tôi")
+  // =============================
+  if (gpsInputValue && gpsInputValue !== "Vị trí hiện tại của tôi") {
+    const coords = await geocodeAddress(gpsInputValue);
+    if (!coords) return;
+
+    if (window.startMarker) map.removeLayer(window.startMarker);
+
+    window.startMarker = L.marker([coords.lat, coords.lon], {
+      icon: L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+      }),
+    })
+      .addTo(map)
+      .bindPopup(`📍 ${gpsInputValue}`)
+      .openPopup();
+
+    window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
+
+    map.setView([coords.lat, coords.lon], 15);
+
+    // Có filter → mới tìm quán
+    if (query || selectedFlavors.length > 0 || budget || radius) {
+      result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
+    }
+  }
+
+  // =============================
+  // 📌 CASE 2 — Không nhập địa điểm
+  //      (hoặc "Vị trí hiện tại của tôi")
+  // =============================
+  else {
+    result = await fetchPlaces(query, selectedFlavors, budget, radius, true);
+  }
+
+  // =============================
+  // 🚨 ĐẾM 3 LẦN THẤT BẠI LIÊN TIẾP (CHỈ TÍNH MAIN SEARCH)
+  // =============================
+  if (!isFilterOnlySearch) {
+  if (result === false) {
+    // ❌ Tìm kiếm chính thất bại
+    notFoundCount++;
+    console.log(
+      "⚠️ Không tìm thấy quán (main search):",
+      notFoundCount,
+      "lần liên tiếp"
+    );
+
+    if (notFoundCount >= 3) {
+      notFoundCount = 0;
+      openChatboxAutomatically();
+    }
+  } else if (result === true) {
+    // ✅ Tìm kiếm chính thành công → reset chuỗi thất bại
+    notFoundCount = 0;
+  }
+}
+
+  // Nếu là filter-only search → không đụng tới notFoundCount
 });
 
 // =======================================================
@@ -1074,6 +1338,25 @@ checkboxes.forEach(cb => {
 // ✅ TẢI LẦN ĐẦU
 // =======================================================
 fetchPlaces();
+
+// ========== LƯU BÁN KÍNH VÀO GLOBAL STATE ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const radiusInput = document.getElementById('radius');
+    
+    if (radiusInput) {
+        // Lưu giá trị ban đầu
+        window.currentRadius = radiusInput.value;
+        console.log('✅ Khởi tạo bán kính:', window.currentRadius, 'km');
+        
+        // Cập nhật khi thay đổi
+        radiusInput.addEventListener('change', function() {
+            window.currentRadius = this.value;
+            console.log('🎯 Đã cập nhật bán kính:', window.currentRadius, 'km');
+        });
+    } else {
+        console.error('⚠️ Không tìm thấy input #radius');
+    }
+});
 
 // =========================
 // 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
@@ -1200,41 +1483,6 @@ async function geocodeAddress(address) {
   }
 }
 
-
-// =========================
-// ↩ NÚT ENTER: tìm theo địa điểm người nhập
-// =========================
-document.getElementById("gpsEnterBtn").addEventListener("click", async () => {
-  const input = document.getElementById("gpsInput").value.trim();
-  if (!input) {
-    alert("Vui lòng nhập địa điểm!");
-    return;
-  }
-
-  const coords = await geocodeAddress(input);
-  if (coords) {
-
-    if (window.startMarker) {
-      map.removeLayer(window.startMarker);
-    }
-
-     window.startMarker = L.marker([coords.lat, coords.lon], {
-      icon: L.icon({
-        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-      }),
-    })
-      .addTo(map)
-      .bindPopup(`📍 ${input}`)
-      .openPopup();
-    //lưu địa điểm xuất phát mới cho an toàn
-    window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
-
-    map.setView([coords.lat, coords.lon], 15);
-  }
-});
-
 // =========================
 // 📍 NÚT GPS: tự động định vị bản thân
 // =========================
@@ -1304,30 +1552,5 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && isUsingGpsInput) {
     e.preventDefault();
     document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
-  }
-});
-
-// =========================
-// 👁️‍🗨️ NÚT ẨN / HIỆN ĐƯỜNG ĐI
-// =========================
-const gpsHideRouteBtn = document.getElementById("gpsHideRouteBtn");
-
-let hiddenRoute = null; // lưu tuyến đường bị ẩn
-
-gpsHideRouteBtn.addEventListener("click", () => {
-  if (routeControl) {
-    hiddenRoute = routeControl;
-    map.removeControl(routeControl);
-    routeControl = null;
-    showToast("👁️‍🗨️ Đã ẩn đường đi", "success");
-  } 
-  else if (hiddenRoute) {
-    hiddenRoute.addTo(map);
-    routeControl = hiddenRoute;
-    hiddenRoute = null;
-    showToast("✅ Đã hiện lại đường đi", "success");
-  } 
-  else {
-    showToast("⚠️ Chưa có tuyến đường nào để ẩn/hiện!", "error");
   }
 });
