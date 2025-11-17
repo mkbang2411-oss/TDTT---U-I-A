@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset = "UTF-8">
+    <title>Sign Out</title>
+    
+    <link rel="stylesheet" href="{% static 'banner.css' %}">
+    
+    <style>
+        .text-box{
+            border-radius: 15px;
+            padding: 15px 55px;
+            text-align: center;
+            width: 150px;
+            height: auto; /* Thay đổi nhỏ: cho phép chiều cao tự động */
+            left: 100px;
+            right: 100px;
+            display: flex;
+            margin: 120px auto;
+            padding-top: 50px;
+            padding-right: 70px;
+            padding-left: 70px;
+            padding-bottom: 50px; /* Thêm padding dưới */
+            flex-direction: column;
+            align-items: center;
+        }
+        .text-box h1{
+            color: #bc2a12;
+            font-family: "Haetenschweiler Regular", sans-serif;
+            font-size: 35px;
+            margin: 0;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        /* Đây là form đăng xuất mới */
+        .logout-form{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px; /* Tăng khoảng cách */
+            margin-top: 20px;
+        }
+        .logout-form p {
+            color: #BC2A12;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        /* Dùng lại style nút bấm từ login */
+        .logout-form .Sign-out-button {
+            background-color: #FED57E;
+            border: 3px solid #FED57E;
+            border-radius: 15px;
+            color: white;
+            width: 120px; /* Làm nút to hơn */
+            height: 35px;
+            font-size: 15px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .logout-form .Sign-out-button:hover{
+            background-color: #BC2A12;
+            color: white;
+        }
+    </style>
+</head>
+    <body>      
+        <div class="background">
+            <img src="{% static 'Picture/background.png' %}" class="bg" alt="UIA Logo">
+            <img src="{% static 'Picture/UIAaa.png' %}" class="uia"  alt="UIA">
+        </div>
+
+        <div class="text-box">
+            <h1>ĐĂNG XUẤT</h1>
+
+            <form class="logout-form" method="POST" action="{% url 'account_logout' %}">
+                
+                {% csrf_token %}
+
+                <p>Bạn có chắc chắn muốn đăng xuất?</p>
+
+                <button type="submit" class="Sign-out-button">Đăng Xuất</button> 
+            </form>
+        </div>
+
+        </body>
+</html>

@@ -967,74 +967,74 @@ def get_chatbot_html(gemini_api_key):
         
         <script>
             const GEMINI_API_KEY = '{gemini_api_key}';
-            
+
             console.log('🚀 Chatbot script loaded');
-            
+
             // ===== TÍNH NĂNG MỚI 1: DANH SÁCH TỪ TỤC TIỂU =====
             const profanityWords = {{
                 vi: [
                     // --- nhóm chửi tục tiếng Việt gốc ---
-                    'địt', 'đụ', 'đjt', 'djt', 'đmm', 'dm', 'đm', 'dmm', 'đcm', 'dcm', 'clgt', 
-                    'vcl', 'vl', 'vãi', 'vãi lồn', 'vãi loz', 'vãi lon', 'vailon', 'vailoz', 
-                    'cl', 'clm', 'clo', 'cln', 'clmm', 'cldm', 'cmm', 'cmn', 'ccmm', 'đéo', 'đếch', 
+                    'địt', 'đụ', 'đjt', 'djt', 'đmm', 'dm', 'đm', 'dmm', 'đcm', 'dcm', 'clgt',
+                    'vcl', 'vl', 'vãi', 'vãi lồn', 'vãi loz', 'vãi lon', 'vailon', 'vailoz',
+                    'cl', 'clm', 'clo', 'cln', 'clmm', 'cldm', 'cmm', 'cmn', 'ccmm', 'đéo', 'đếch',
                     'đek', 'dek', 'đekm', 'dmj', 'dmz', 'vlz', 'vkl', 'vch', 'vđ', 'vđm', 'vđmm',
-                    
+
                     // --- nhóm xúc phạm, nhục mạ ---
-                    'ngu', 'ngu học', 'óc chó', 'não phẳng', 'não cá vàng', 'khùng', 'ngáo', 'điên', 
-                    'khốn nạn', 'mất dạy', 'vô học', 'láo', 'bố láo', 'láo toét', 'chó má', 'súc vật', 
+                    'ngu', 'ngu học', 'óc chó', 'não phẳng', 'não cá vàng', 'khùng', 'ngáo', 'điên',
+                    'khốn nạn', 'mất dạy', 'vô học', 'láo', 'bố láo', 'láo toét', 'chó má', 'súc vật',
                     'thằng ngu', 'con ngu', 'đồ điên', 'đồ chó', 'rảnh háng', 'bố đời', 'đồ rẻ rách',
-                    
+
                     // --- nhóm tục tả sinh lý ---
                     'lồn', 'buồi', 'cu', 'chim to', 'chim nhỏ', 'bướm', 'nứng', 'cặc', 'đỉ',
-                    'đĩ', 'điếm', 'cave', 'gái gọi', 'đi khách', 'dâm', 'râm', 'râm dục', 'biến thái', 
+                    'đĩ', 'điếm', 'cave', 'gái gọi', 'đi khách', 'dâm', 'râm', 'râm dục', 'biến thái',
                     'thủ dâm', 'dương vật', 'âm đạo', 'âm vật', 'hiếp', 'hiếp dâm', 'giao cấu',
-                    
+
                     // --- nhóm chửi liên quan gia đình ---
-                    'mẹ mày', 'bố mày', 'cha mày', 'má mày', 'ông nội mày', 'bà nội mày', 
+                    'mẹ mày', 'bố mày', 'cha mày', 'má mày', 'ông nội mày', 'bà nội mày',
                     'tổ cha', 'tổ sư', 'con mẹ mày', 'con chó', 'đồ chó', 'con đĩ mẹ mày',
-                    
+
                     // --- nhóm viết tắt & kiểu chat Việt hóa ---
-                    'vl', 'vkl', 'vcc', 'vklm', 'cmn', 'cmnr', 'cmnl', 'vcđ', 'vđc', 'vcml', 
+                    'vl', 'vkl', 'vcc', 'vklm', 'cmn', 'cmnr', 'cmnl', 'vcđ', 'vđc', 'vcml',
                     'dkm', 'vml', 'vclm', 'vcmm', 'dmnr', 'dcmj', 'dmj', 'ccmnr', 'vchz', 'vlz', 'cc',
-                    
+
                     // --- nhóm không dấu / né lọc ---
-                    'dit', 'ditme', 'dit me', 'ditmemay', 'du', 'djtme', 'dmme', 'dmmay', 'vclon', 
-                    'vai lon', 'vai loz', 'vai lonz', 'dmml', 'dcmm', 'dcmay', 'vlon', 'vailon', 
+                    'dit', 'ditme', 'dit me', 'ditmemay', 'du', 'djtme', 'dmme', 'dmmay', 'vclon',
+                    'vai lon', 'vai loz', 'vai lonz', 'dmml', 'dcmm', 'dcmay', 'vlon', 'vailon',
                     'vailoz', 'vailonzz', 'ditconme', 'dmconcho', 'cac', 'loz', 'lol',
-                    
+
                     // --- nhóm “tiếng Anh Việt hóa” mà người Việt hay dùng để chửi ---
                     'fuck', 'fuk', 'fukk', 'fucc', 'fucck', 'fuking', 'fucking', 'fck', 'fcku', 'fcking',
-                    'phắc', 'phẹc', 'phâk', 'phúc kiu', 'phẹc kiu', 'phắc kiu', 'phuck', 
-                    'sịt', 'sít', 'sịt mẹ', 'shit', 'shjt', 'sh1t', 'shet', 'sịt lờ', 
+                    'phắc', 'phẹc', 'phâk', 'phúc kiu', 'phẹc kiu', 'phắc kiu', 'phuck',
+                    'sịt', 'sít', 'sịt mẹ', 'shit', 'shjt', 'sh1t', 'shet', 'sịt lờ',
                     'bít', 'bitch', 'b1tch', 'btch', 'biatch', 'bich', 'bịt', 'bitchass',
                     'đem', 'đem mờn', 'đem men', 'đem mai', 'damn', 'daemn', 'damm',
                     'sặc', 'sắc', 'suck', 'sux', 'suk', 'suck my', 'suckyou', 'sucku',
                     'wtf', 'wth', 'wtfff', 'wtfuk', 'wdf', 'omfg', 'omg', 'holyshit', 'holy fuck',
                     'bullshit', 'bullshjt', 'bullsh1t', 'bulsit', 'bs', 'bsht', 'crap', 'crp',
-                    'hell', 'go to hell', 'dumbass', 'dipshit', 'moron', 'loser', 
+                    'hell', 'go to hell', 'dumbass', 'dipshit', 'moron', 'loser',
                     'jerk', 'mf', 'mofo', 'motherfucker', 'sonofabitch', 'son of a bitch', 'retard', 'idiot',
                     'porn', 'p0rn', 'sex', 'sexy', 'horny', 'nude', 'naked', 'gay', 'say get', 'sex', 'sẽ',
                 ],
                 en: [
-                    'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'dick', 'pussy', 'cock', 
-                    'motherfucker', 'fck', 'wtf', 'stfu', 'bullshit', 'ass', 'piss', 'slut', 
-                    'whore', 'retard', 'idiot', 'jerk', 'damn', 'fucking', 'moron', 
-                    'fuk', 'fucc', 'phuc', 'fcku', 'fckn', 'fckoff', 'shjt', 'b1tch', 'btch', 
-                    'azz', 'azzhole', 'a$$', 'd1ck', 'p0rn', 'porn', 'suck', 'sux', 'fux', 
-                    'fuxk', 'phuk', 'phuck', 'mf', 'mofo', 'wtfff', 'omfg', 'fml', 'fk', 
-                    'fkin', 'cum', 'cumming', 'orgasm', 'jerkoff', 'wank', 'nsfw', 
+                    'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'dick', 'pussy', 'cock',
+                    'motherfucker', 'fck', 'wtf', 'stfu', 'bullshit', 'ass', 'piss', 'slut',
+                    'whore', 'retard', 'idiot', 'jerk', 'damn', 'fucking', 'moron',
+                    'fuk', 'fucc', 'phuc', 'fcku', 'fckn', 'fckoff', 'shjt', 'b1tch', 'btch',
+                    'azz', 'azzhole', 'a$$', 'd1ck', 'p0rn', 'porn', 'suck', 'sux', 'fux',
+                    'fuxk', 'phuk', 'phuck', 'mf', 'mofo', 'wtfff', 'omfg', 'fml', 'fk',
+                    'fkin', 'cum', 'cumming', 'orgasm', 'jerkoff', 'wank', 'nsfw',
                     'horny', 'nude', 'sex', 'sexy', 'dumbass', 'dipshit', 'crap', 'hell'
                 ],
                 // 🇨🇳 Tiếng Trung (tục phổ biến, bao gồm Hán tự, pinyin, số viết tắt)
                 zh: [
                     // --- Hán tự ---
                     '他妈的', '他媽的', '操你妈', '操你', '你妈的', '你媽的', '去你妈的',
-                    '傻逼', '煞笔', '沙雕', '妈的', '媽的', '滚开', '滚蛋', '狗屎', 
+                    '傻逼', '煞笔', '沙雕', '妈的', '媽的', '滚开', '滚蛋', '狗屎',
                     '废物', '垃圾', '贱人', '王八蛋', '混蛋', '猪头', '变态', '禽兽',
                     '他奶奶的', '日你妈', '日了狗', '傻屌', '脑残', '白痴', '蠢货', '废柴',
 
                     // --- Pinyin / Latin ---
-                    'tamade', 'caonima', 'caoni', 'nimade', 'qunimade', 
+                    'tamade', 'caonima', 'caoni', 'nimade', 'qunimade',
                     'shabi', 'shapi', 'shadiao', 'mada', 'gunni', 'gundan',
                     'feiw', 'laji', 'jianren', 'wangbad', 'hundan',
                     'zhutou', 'biantai', 'qingshou', 'rinima', 'rilougou',
@@ -1049,7 +1049,7 @@ def get_chatbot_html(gemini_api_key):
                 ko: [
                     '씨발', '시발', '씹새끼', '썅', '병신', '미친놈', '미친년',
                     '개새끼', '개년', '개자식', '좆같아', '좆나', '존나', '존나게',
-                    '지랄하네', '닥쳐라', '꺼져라', '죽어라', '씨팔', '씹할놈', 
+                    '지랄하네', '닥쳐라', '꺼져라', '죽어라', '씨팔', '씹할놈',
                     '새끼야', '병신같이', '염병하네', '개같은', '개호로새끼',
                     '호로새끼', '니미럴', '느금마', '니애미', '돌아이', '변태놈',
                     '섹스중독자', '개변태', '매춘부',
@@ -1071,13 +1071,13 @@ def get_chatbot_html(gemini_api_key):
                     'キチガイ', 'スケベ', 'いやらしい',
 
                     // --- Latin / Romaji / Slang ---
-                    'kuso', 'baka', 'aho', 'shine', 'shineya', 'damare', 'urusai', 
-                    'busu', 'debu', 'kimoi', 'hentai', 'fuzakenna', 'zakenna', 
+                    'kuso', 'baka', 'aho', 'shine', 'shineya', 'damare', 'urusai',
+                    'busu', 'debu', 'kimoi', 'hentai', 'fuzakenna', 'zakenna',
                     'kutabare', 'bakayarou', 'doaho', 'kuzu', 'saitei', 'saiaku',
                     'kichigai', 'sukebe', 'iyarashii', 'fakku', 'shitto', 'dame', 'yarou'
                 ]
             }};
-            
+
             const warningMessages = {{
                 vi: [
                     "Xin lỗi nha 🥺 Mình là chatbot AI thân thiện, nên mong bạn nói chuyện lịch sự một chút nè 💖\nHy vọng tụi mình sẽ có khoảng thời gian trò chuyện vui vẻ và tôn trọng nhau hơn nha~ Nếu bạn muốn mình gợi ý món ăn thì đừng chần chừ, hãy nhắn mình ngay nhé, mình sẽ hỗ trợ bạn hết mình!",
@@ -1171,7 +1171,7 @@ def get_chatbot_html(gemini_api_key):
 
                 return 'en';
             }}
-            
+
             function normalizeText(text) {{
                 if (!text) return '';
                 return text
@@ -1298,7 +1298,7 @@ def get_chatbot_html(gemini_api_key):
 
             function containsProfanity(text, langHint = null) {{
                 console.log('🔍 [PROFANITY CHECK] Input:', text);
-                
+
                 if (!text || typeof text !== 'string')
                     return {{ found: false, lang: null, match: null }};
 
@@ -1314,29 +1314,29 @@ def get_chatbot_html(gemini_api_key):
                     'button','butter','shut','shuttle','cut','hut','nut','gut',
                     'clock','flock','block','rock','shock','stock','lock','dock',
                     'assume','assure','ассоciate','passive','classic','massive',
-                    
+
                     // Tiếng Việt - các từ có chứa "đ" nhưng không phải tục
                     'địa điểm','đi đâu','đến đó','đây đó','đi chơi','đi ăn',
                     'đi làm','đang đói','đang đi','đang ở','đúng đó',
-                    
+
                     // Tiếng Trung - chào hỏi
                     '你好','您好','哈喽','嗨','早上好','下午好','晚上好',
-                    
+
                     // Tiếng Nhật
                     'こんにちは','こんばんは','おはよう','やあ','もしもし',
-                    
+
                     // Tiếng Hàn
                     '안녕하세요','안녕','여보세요','하이','헬로',
-                    
+
                     // Tiếng Pháp/Tây Ban Nha/Đức/Ý
                     'bonjour','salut','hola','ciao','hallo','buenos','buenas'
                 ];
-                
+
                 const compact = raw.replace(/\s+/g, '').toLowerCase().trim();
-                
+
                 // ✅ CHECK WHITELIST TRƯỚC (cả raw và compact)
-                if (safeWordsWhitelist.some(w => 
-                    raw.toLowerCase().includes(w) || 
+                if (safeWordsWhitelist.some(w =>
+                    raw.toLowerCase().includes(w) ||
                     compact === w.replace(/\s+/g, '').toLowerCase()
                 )) {{
                     console.log('✅ [WHITELIST] Safe word detected → PASS');
@@ -1348,7 +1348,7 @@ def get_chatbot_html(gemini_api_key):
 
                 const detectedLang = langHint || detectLanguage(raw) || 'vi';
                 console.log('🌍 [LANG DETECT]', detectedLang);
-                
+
                 const sets = window._profanitySets || {{}};
                 let langSet = sets[detectedLang] || sets.vi || new Set();
                 const detected = detectedLang.toLowerCase();
@@ -1366,7 +1366,7 @@ def get_chatbot_html(gemini_api_key):
                     for (const w of words) {{
                         const norm = normalizeToken(w);
                         console.log(`  🔎 Checking word: "${{w}}" → normalized: "${{norm}}"`);
-                        
+
                         // chỉ xét nếu từ có ít nhất 2 ký tự chữ
                         if (norm.length < 2) {{
                             console.log(`    ⚠️  Too short → SKIP`);
@@ -1386,7 +1386,7 @@ def get_chatbot_html(gemini_api_key):
                         const hasRepeatedChars = /(.)\1{{2,}}/.test(norm); // "fckkkk", "shiiit"
                         const lacksVowels = !/[aeiouàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ]{{2}}/i.test(norm); // "dmkjsd"
                         const isShort = norm.length < 6;
-                        
+
                         const shouldCheckSubstring = hasRepeatedChars || lacksVowels || isShort;
 
                         if (shouldCheckSubstring) {{
@@ -1394,7 +1394,7 @@ def get_chatbot_html(gemini_api_key):
                             // dò chuỗi con liên tục (để bắt đcmkajsd)
                             const minLen = 3; // ✅ TĂNG TỪ 2 → 3 để tránh "he", "ll"
                             const maxLen = Math.max(...Array.from(langSet, x => x.length));
-                            
+
                             for (let i = 0; i < norm.length; i++) {{
                                 for (let j = i + minLen; j <= i + maxLen && j <= norm.length; j++) {{
                                     const sub = norm.slice(i, j);
@@ -1408,7 +1408,7 @@ def get_chatbot_html(gemini_api_key):
                         }} else {{
                             console.log(`    ⏭️  Word looks normal → SKIP substring check`);
                         }}
-                        
+
                         console.log(`    ✅ Word "${{w}}" is clean`);
                     }}
                 }}
@@ -1423,14 +1423,14 @@ def get_chatbot_html(gemini_api_key):
                         if (mRaw) {{
                             const match = mRaw[0];
                             console.log(`🎯 [CJK REGEX MATCH] "${{match}}"`);
-                            
+
                             const idx = raw.indexOf(match);
                             const before = raw[idx - 1] || '';
                             const after = raw[idx + match.length] || '';
                             const isIsolated =
                                 (!before || /[^\p{{L}}\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}\p{{Script=Hangul}}]/u.test(before)) &&
                                 (!after  || /[^\p{{L}}\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}\p{{Script=Hangul}}]/u.test(after));
-                            
+
                             if (isIsolated) {{
                                 console.log(`❌ [PROFANITY DETECTED] CJK Match: "${{match}}"`);
                                 return {{ found: true, lang: detectedLang, match }};
@@ -1444,7 +1444,7 @@ def get_chatbot_html(gemini_api_key):
                 console.log('✅ [FINAL RESULT] Text is clean');
                 return {{ found: false, lang: detectedLang, match: null }};
             }}
-            
+
             function censorProfanity(text) {{
                 if (!text) return text;
 
@@ -1472,19 +1472,19 @@ def get_chatbot_html(gemini_api_key):
 
                 return out;
             }}
-            
+
             // ===== TÍNH NĂNG MỚI 3: HỌC SỞ THÍCH USER =====
             let userPreferences = {{
                 likes: [],
                 dislikes: [],
                 allergies: []
             }};
-            
+
             function extractPreferences(userMessage, botReply) {{
                 const lowerMsg = userMessage.toLowerCase();
-                
-                if (lowerMsg.includes('thích') || lowerMsg.includes('yêu') || 
-                    lowerMsg.includes('ngon') || lowerMsg.includes('like') || 
+
+                if (lowerMsg.includes('thích') || lowerMsg.includes('yêu') ||
+                    lowerMsg.includes('ngon') || lowerMsg.includes('like') ||
                     lowerMsg.includes('love')) {{
                     const dishes = extractDishNames(userMessage + ' ' + botReply);
                     dishes.forEach(dish => {{
@@ -1493,9 +1493,9 @@ def get_chatbot_html(gemini_api_key):
                         }}
                     }});
                 }}
-                
-                if (lowerMsg.includes('không thích') || lowerMsg.includes('ghét') || 
-                    lowerMsg.includes('không ăn') || lowerMsg.includes('hate') || 
+
+                if (lowerMsg.includes('không thích') || lowerMsg.includes('ghét') ||
+                    lowerMsg.includes('không ăn') || lowerMsg.includes('hate') ||
                     lowerMsg.includes("don't like")) {{
                     const dishes = extractDishNames(userMessage);
                     dishes.forEach(dish => {{
@@ -1504,8 +1504,8 @@ def get_chatbot_html(gemini_api_key):
                         }}
                     }});
                 }}
-                
-                if (lowerMsg.includes('dị ứng') || lowerMsg.includes('allergic') || 
+
+                if (lowerMsg.includes('dị ứng') || lowerMsg.includes('allergic') ||
                     lowerMsg.includes('không ăn được')) {{
                     const ingredients = extractIngredients(userMessage);
                     ingredients.forEach(ing => {{
@@ -1514,14 +1514,14 @@ def get_chatbot_html(gemini_api_key):
                         }}
                     }});
                 }}
-                
+
                 console.log('📊 User Preferences:', userPreferences);
             }}
-            
+
             function extractDishNames(text) {{
                 const dishKeywords = ['phở', 'bún', 'cơm', 'mì', 'bánh', 'chè', 'gỏi', 'nem', 'chả', 'canh', 'lẩu', 'pizza', 'burger', 'pasta', 'salad', 'soup'];
                 const dishes = [];
-                
+
                 dishKeywords.forEach(keyword => {{
                     if (text.toLowerCase().includes(keyword)) {{
                         const index = text.toLowerCase().indexOf(keyword);
@@ -1531,23 +1531,23 @@ def get_chatbot_html(gemini_api_key):
                         }}
                     }}
                 }});
-                
+
                 return dishes;
             }}
-            
+
             function extractIngredients(text) {{
                 const ingredients = ['tôm', 'cua', 'cá', 'hải sản', 'sữa', 'trứng', 'đậu', 'lạc', 'hạt', 'seafood', 'milk', 'egg', 'peanut', 'nut'];
                 const found = [];
-                
+
                 ingredients.forEach(ing => {{
                     if (text.toLowerCase().includes(ing)) {{
                         found.push(ing);
                     }}
                 }});
-                
+
                 return found;
             }}
-            
+
             const teaseMessages = [
                 "Xin chào nè~ Muốn ăn gì để mình gợi ý cho 😋",
                 "Hôm nay mình chill cà phê không nè~ ☕",
@@ -1571,7 +1571,7 @@ def get_chatbot_html(gemini_api_key):
                 "Đừng ngại, nhắn với mình đi nè 😄",
                 "Trong một vở kịch buồn...em diễn trọn cả hai vai💔",
                 "Anh hen em pickleball, ta von nhau pickleball...😻",
-                "Thơm phứcccc, yéhaaaaa😽", 
+                "Thơm phứcccc, yéhaaaaa😽",
                 "别害羞，来跟我聊聊吧 🌟",
                 "放心啦，随时都可以找我聊天 💌",
                 "遠慮しないで、話しかけてね 🌸",
@@ -1649,7 +1649,7 @@ def get_chatbot_html(gemini_api_key):
                 "Xin chào cưng! 🍰 Ăn gì hôm nay để mình giúp bạn no bụng và cười toe toét luôn?",
                 "Hey hey! 🌈 Mình sẽ gợi ý món ngon cực đáng yêu, ăn xong bạn happy luôn nha~"
             ];
-            
+
             const suggestionQuestions = [
                 "Tui muốn ăn đồ nóng hổi 🔥",
                 "Gợi ý món lạ một chút đi ✨",
@@ -1695,7 +1695,7 @@ def get_chatbot_html(gemini_api_key):
                 "Hôm nay ăn gì mà kiểu luxury, sang chảnh 🥂",
                 "Muốn món gì mà vừa ăn vừa feel like travel ✈️"
             ];
-            
+
             // Lấy các elements
             const chatbotBtn = document.getElementById('chatbotBtn');
             const chatWindow = document.getElementById('chatWindow');
@@ -1710,16 +1710,17 @@ def get_chatbot_html(gemini_api_key):
             const chatHistorySidebar = document.getElementById('chatHistorySidebar');
             const historyCloseBtn = document.getElementById('historyCloseBtn');
             const historyList = document.getElementById('historyList');
-            
+
             console.log('🔍 Elements:', {{
                 chatbotBtn: !!chatbotBtn,
                 chatWindow: !!chatWindow,
                 speechBubble: !!speechBubble,
                 closeBtn: !!closeBtn
             }});
-            
+
             let conversationHistory = [];
             let suggestedDishes = [];
+            let currentConversationID = null; // Biến này sẽ lưu ID từ database
             let lastInteractionTime = Date.now();
             let hasShownInitialSuggestions = false;
             let inactivityTimer = null;
@@ -1754,12 +1755,12 @@ def get_chatbot_html(gemini_api_key):
             // Create new chat session
             function createNewSession() {{
                 const now = new Date();
-                const dateStr = now.toLocaleDateString('vi-VN', {{ 
-                    day: '2-digit', 
-                    month: '2-digit', 
-                    year: 'numeric' 
+                const dateStr = now.toLocaleDateString('vi-VN', {{
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
                 }});
-                
+
                 currentSessionId = Date.now().toString();
                 const newSession = {{
                     id: currentSessionId,
@@ -1768,7 +1769,7 @@ def get_chatbot_html(gemini_api_key):
                     createdAt: now.toISOString(),
                     updatedAt: now.toISOString()
                 }};
-                
+
                 chatSessions.unshift(newSession);
                 saveChatHistory();
                 renderHistoryList(currentSessionId);
@@ -1778,7 +1779,7 @@ def get_chatbot_html(gemini_api_key):
             // Save current session
             function saveCurrentSession() {{
                 if (!currentSessionId) return;
-                
+
                 const session = chatSessions.find(s => s.id === currentSessionId);
                 if (session) {{
                     session.messages = conversationHistory.map(h => ({{
@@ -1795,31 +1796,31 @@ def get_chatbot_html(gemini_api_key):
             function loadSession(sessionId) {{
                 const session = chatSessions.find(s => s.id === sessionId);
                 if (!session) return;
-                
+
                 // Save current session before switching
                 if (currentSessionId && currentSessionId !== sessionId) {{
                     saveCurrentSession();
                 }}
-                
+
                 currentSessionId = sessionId;
                 conversationHistory = session.messages.map(m => ({{
                     role: m.role,
                     text: m.text
                 }}));
-                
+
                 // Clear and reload messages
                 messagesArea.innerHTML = '';
                 conversationHistory.forEach(msg => {{
                     addMessage(msg.role, msg.text, false); // false = don't save to history
                 }});
-                
+
                 renderHistoryList();
             }}
 
             // Render history list
             function renderHistoryList(highlightNewId = null) {{
                 historyList.innerHTML = '';
-                
+
                 chatSessions.forEach(session => {{
                     const item = document.createElement('div');
                     item.className = 'history-item';
@@ -1830,7 +1831,7 @@ def get_chatbot_html(gemini_api_key):
                     // 🎯 Hiệu ứng trượt vào cho chat mới
                     if (session.id === highlightNewId) {{
                         item.classList.add('new-item-slide');
-                        
+
                         // Scroll đến item mới
                         setTimeout(() => {{
                             item.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
@@ -1844,7 +1845,7 @@ def get_chatbot_html(gemini_api_key):
                             <button class="history-item-delete" title="Xóa">🗑️</button>
                         </div>
                     `;
-                    
+
                     // ✅ FIX: Click vào toàn bộ item để load session
                     item.addEventListener('click', (e) => {{
                         // Chỉ load nếu KHÔNG click vào button
@@ -1854,21 +1855,23 @@ def get_chatbot_html(gemini_api_key):
                     }});
 
                     // Click edit button
-                    
+
                     // Click edit button
                     const editBtn = item.querySelector('.history-item-edit');
                     editBtn.addEventListener('click', (e) => {{
                         e.stopPropagation();
-                        
+
                         const input = document.createElement('input');
                         input.type = 'text';
                         input.className = 'history-item-input';
                         input.value = session.name;
-                        
+
+                        const nameSpan = item.querySelector('.history-item-name');
+
                         nameSpan.replaceWith(input);
                         input.focus();
                         input.select();
-                        
+
                         const saveEdit = () => {{
                             const newName = input.value.trim();
                             if (newName) {{
@@ -1877,7 +1880,7 @@ def get_chatbot_html(gemini_api_key):
                             }}
                             renderHistoryList();
                         }};
-                        
+
                         input.addEventListener('blur', saveEdit);
                         input.addEventListener('keypress', (e) => {{
                             if (e.key === 'Enter') {{
@@ -1885,32 +1888,32 @@ def get_chatbot_html(gemini_api_key):
                             }}
                         }});
                     }});
-                    
+
                     historyList.appendChild(item);
 
                     // Click delete button
                     const deleteBtn = item.querySelector('.history-item-delete');
                     deleteBtn.addEventListener('click', (e) => {{
                         e.stopPropagation();
-                        
+
                         // Confirm before delete
-                        const confirmMsg = session.id === currentSessionId 
-                            ? 'Bạn đang xóa đoạn chat hiện tại. Xác nhận xóa?' 
+                        const confirmMsg = session.id === currentSessionId
+                            ? 'Bạn đang xóa đoạn chat hiện tại. Xác nhận xóa?'
                             : `Xóa đoạn chat "${{session.name}}"?`;
-                        
+
                         if (confirm(confirmMsg)) {{
                             // Remove from array
                             const index = chatSessions.findIndex(s => s.id === session.id);
                             if (index !== -1) {{
                                 chatSessions.splice(index, 1);
                             }}
-                            
+
                             // If deleting current session, switch to another or create new
                             if (session.id === currentSessionId) {{
                                 messagesArea.innerHTML = '';
                                 conversationHistory = [];
                                 suggestedDishes = [];
-                                
+
                                 if (chatSessions.length > 0) {{
                                     // Load first available session
                                     loadSession(chatSessions[0].id);
@@ -1922,10 +1925,10 @@ def get_chatbot_html(gemini_api_key):
                                     renderSuggestions();
                                 }}
                             }}
-                            
+
                             saveChatHistory();
                             renderHistoryList();
-                            
+
                             console.log('🗑️ Deleted chat session:', session.name);
                         }}
                     }});
@@ -1945,21 +1948,21 @@ def get_chatbot_html(gemini_api_key):
                 currentSessionId = chatSessions[0].id;
                 renderHistoryList();
             }}
-            
+
             function updateBubbleText() {{
                 bubbleText.textContent = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
             }}
-            
+
             function getRandomSuggestions() {{
                 const shuffled = [...suggestionQuestions].sort(() => Math.random() - 0.5);
                 return shuffled.slice(0, 5);
             }}
-            
+
             function renderSuggestions() {{
                 suggestionsArea.classList.remove('hidden');
                 suggestionsArea.innerHTML = '';
                 const suggestions = getRandomSuggestions();
-                
+
                 suggestions.slice(0, 2).forEach(suggestion => {{
                     const chip = document.createElement('div');
                     chip.className = 'suggestion-chip';
@@ -1971,7 +1974,7 @@ def get_chatbot_html(gemini_api_key):
                     }};
                     suggestionsArea.appendChild(chip);
                 }});
-                
+
                 const moreBtn = document.createElement('div');
                 moreBtn.className = 'more-suggestions-btn';
                 moreBtn.textContent = '...';
@@ -1991,19 +1994,19 @@ def get_chatbot_html(gemini_api_key):
                 }};
                 suggestionsArea.appendChild(moreBtn);
             }}
-            
+
             function resetInactivityTimer() {{
                 lastInteractionTime = Date.now();
                 if (inactivityTimer) clearTimeout(inactivityTimer);
-                
+
                 if (hasShownInitialSuggestions) {{
                     inactivityTimer = setTimeout(() => {{
                         renderSuggestions();
                     }}, 30000);
                 }}
             }}
-            
-            function openChatWindow() {{
+
+            async function openChatWindow() {{
                 console.log('🎯 openChatWindow called');
                 console.log('Before:', {{
                     windowClasses: chatWindow.className,
@@ -2011,7 +2014,7 @@ def get_chatbot_html(gemini_api_key):
                     bubbleClasses: speechBubble.className,
                     windowDisplay: window.getComputedStyle(chatWindow).display
                 }});
-                
+
                 // Force remove hidden và thêm open
                 chatWindow.style.display = 'flex';
                 chatWindow.classList.add('open');
@@ -2019,14 +2022,34 @@ def get_chatbot_html(gemini_api_key):
                 chatbotBtn.classList.add('hidden');
                 speechBubble.style.display = 'none';
                 speechBubble.classList.add('hidden');
-                
+
                 console.log('After:', {{
                     windowClasses: chatWindow.className,
                     btnClasses: chatbotBtn.className,
                     bubbleClasses: speechBubble.className,
                     windowDisplay: window.getComputedStyle(chatWindow).display
                 }});
-                
+
+                if (messagesArea.children.length === 0) {{
+                    // 1. Gọi API tải lịch sử
+                    const historyData = await loadHistoryFromServer();
+
+                    if (historyData) {{
+                        // 2A. Nếu CÓ lịch sử (User cũ)
+                        currentConversationID = historyData.conversation_id;
+
+                        historyData.messages.forEach(msg => {{
+                            addMessage(msg.sender, msg.content);
+                        }});
+
+                        renderSuggestions();
+                        hasShownInitialSuggestions = true;
+                        resetInactivityTimer();
+
+                    }} else {{
+                        // 2B. Nếu KHÔNG có lịch sử (User mới)
+                        setTimeout(() => {{
+                        const randomWelcome = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
                 // 🔥 CHỈ TẠO CHAT MỚI Ở LẦN MỞ ĐẦU TIÊN SAU KHI LOAD TRANG
                 if (isFirstLoad) {{
                     isFirstLoad = false; // Đánh dấu đã mở lần đầu
@@ -2034,22 +2057,26 @@ def get_chatbot_html(gemini_api_key):
                     messagesArea.innerHTML = '';
                     conversationHistory = [];
                     suggestedDishes = [];
-                    
+
                     setTimeout(() => {{
                         const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];  // ✅ ĐÚNG - dùng welcomeMessages
                         addMessage('bot', randomWelcome);
+                        saveMessageToServer('ai', randomWelcome);
                         renderSuggestions();
                         hasShownInitialSuggestions = true;
                         resetInactivityTimer();
-                    }}, 300);
-                }}
+                        }}, 300);
+                    }}
+                }},0);
                 // Nếu không phải lần đầu, giữ nguyên chat hiện tại (không làm gì)
+                }}
+                }}
             }}
-            
+
             // Khởi động bubble text
             updateBubbleText();
             setInterval(updateBubbleText, 8000);
-            
+
             // Sự kiện mở chatbot - BẤM NÚT
             if (chatbotBtn) {{
                 chatbotBtn.addEventListener('click', (e) => {{
@@ -2060,7 +2087,7 @@ def get_chatbot_html(gemini_api_key):
                 }});
                 console.log('✅ Button event listener attached');
             }}
-            
+
             // Sự kiện mở chatbot - BẤM BUBBLE
             if (speechBubble) {{
                 speechBubble.addEventListener('click', (e) => {{
@@ -2069,19 +2096,19 @@ def get_chatbot_html(gemini_api_key):
                     e.stopPropagation();
                     openChatWindow();
                 }});
-                
+
                 // Thêm cả mousedown để đảm bảo
                 speechBubble.addEventListener('mousedown', (e) => {{
                     console.log('🖱️ Speech bubble mousedown');
                 }});
-                
+
                 // Thêm cả touchstart cho mobile
                 speechBubble.addEventListener('touchstart', (e) => {{
                     console.log('📱 Speech bubble touched');
                     e.preventDefault();
                     openChatWindow();
                 }}, {{ passive: false }});
-                
+
                 console.log('✅ Bubble event listeners attached');
 
                 // Event: Click avatar to toggle history
@@ -2113,18 +2140,18 @@ def get_chatbot_html(gemini_api_key):
                         console.log('🖱️ New chat button clicked');
                         e.preventDefault();
                         e.stopPropagation();
-                        
+
                         // Lưu chat hiện tại trước khi tạo mới
                         if (currentSessionId) {{
                             saveCurrentSession();
                         }}
-                        
+
                         // 🎯 Tạo chat mới với hiệu ứng
                         const newSession = createNewSession();
                         messagesArea.innerHTML = '';
                         conversationHistory = [];
                         suggestedDishes = [];
-                        
+
                         // 🎉 Hiệu ứng nút bấm
                         historyNewBtn.style.transform = 'rotate(135deg) scale(1.15)';
                         historyNewBtn.style.background = 'rgba(255, 255, 255, 0.5)';
@@ -2135,7 +2162,7 @@ def get_chatbot_html(gemini_api_key):
                             historyNewBtn.style.background = '';
                             historyNewBtn.style.boxShadow = '';
                         }}, 400);
-                        
+
                         // Gửi tin chào mừng
                         setTimeout(() => {{
                             const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
@@ -2157,38 +2184,37 @@ def get_chatbot_html(gemini_api_key):
                         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
 
                         oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.15);      
+                        oscillator.stop(audioContext.currentTime + 0.15);
 
                         console.log('✅ Created new chat session with animation');
                     }});
                     console.log('✅ New chat button event listener attached');
                 }}
-
             }}
-            
+
             // Sự kiện đóng chatbot
             if (closeBtn) {{
                 closeBtn.addEventListener('click', (e) => {{
                     console.log('🖱️ Close button clicked');
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     // Save current session before closing
                     saveCurrentSession();
-                    
+
                     chatWindow.classList.remove('open');
                     chatWindow.style.display = 'none';
                     chatbotBtn.style.display = 'flex';
                     chatbotBtn.classList.remove('hidden');
                     speechBubble.style.display = 'block';
                     speechBubble.classList.remove('hidden');
-                    
+
                     // Close history sidebar if open
                     chatHistorySidebar.classList.remove('open');
                 }});
                 console.log('✅ Close button event listener attached');
             }}
-            
+
             function sendMessage() {{
                 const text = messageInput.value.trim();
                 if (!text) return;
@@ -2199,6 +2225,7 @@ def get_chatbot_html(gemini_api_key):
                 if (result.found) {{
                     const censored = censorProfanity(text);   // ✨ Gọi hàm mã hóa ở đây
                     addMessage('user', censored);             // ✅ Hiển thị bản đã che, không text gốc
+                    saveMessageToServer('user', censored);    // 💾 Lưu bản đã che vào server
 
                     const warningList = warningMessages[result.lang] || warningMessages['en'];
                     const randomMsg = warningList[Math.floor(Math.random() * warningList.length)];
@@ -2207,6 +2234,7 @@ def get_chatbot_html(gemini_api_key):
 
                     setTimeout(() => {{
                         addMessage('bot', randomMsg);
+                        saveMessageToServer('ai', randomMsg);
                         renderSuggestions();
                     }}, 400);
 
@@ -2216,22 +2244,23 @@ def get_chatbot_html(gemini_api_key):
 
                 // ✅ Không có từ tục -> gửi bình thường
                 addMessage('user', text);
+                saveMessageToServer('user', text);
                 messageInput.value = '';
                 sendBtn.disabled = true;
                 showTyping();
                 callGeminiAPI(text);
                 resetInactivityTimer();
             }}
-            
+
             sendBtn.addEventListener('click', sendMessage);
-            messageInput.addEventListener('keypress', (e) => {{ 
-                if (e.key === 'Enter') sendMessage(); 
+            messageInput.addEventListener('keypress', (e) => {{
+                if (e.key === 'Enter') sendMessage();
             }});
-            messageInput.addEventListener('input', () => {{ 
+            messageInput.addEventListener('input', () => {{
                 sendBtn.disabled = !messageInput.value.trim();
                 resetInactivityTimer();
             }});
-            
+
             function addMessage(type, text, saveToHistory = true) {{
                 hideTyping();
                 const time = new Date().toLocaleTimeString('vi-VN', {{ hour: '2-digit', minute: '2-digit' }});
@@ -2310,7 +2339,7 @@ def get_chatbot_html(gemini_api_key):
                     saveCurrentSession();
                 }}
             }}
-            
+
             function showTyping() {{
                 const div = document.createElement('div');
                 div.id = 'typing';
@@ -2326,12 +2355,76 @@ def get_chatbot_html(gemini_api_key):
                 messagesArea.appendChild(div);
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             }}
-            
+
             function hideTyping() {{
                 const typing = document.getElementById('typing');
                 if (typing) typing.remove();
             }}
-            
+
+            async function saveMessageToServer(sender, content) {{
+                const saveUrl = 'http://127.0.0.1:8000/api/save-chat/';
+
+                try {{
+                    const response = await fetch(saveUrl, {{
+                        method: 'POST',
+                        // Gửi cookie (session) để Django biết bạn là ai
+                        credentials: 'include',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            sender: sender,
+                            content: content,
+                            conversation_id: currentConversationID // Gửi ID hiện tại (sẽ là null ở tin đầu)
+                        }})
+                    }});
+
+                    if (!response.ok) {{
+                        console.error('Lỗi khi lưu chat:', response.statusText);
+                        return;
+                    }}
+
+                    const data = await response.json();
+
+                    if (data.status === 'success' && data.conversation_id) {{
+                        // Lưu lại ID conversation để các tin nhắn sau dùng
+                        currentConversationID = data.conversation_id;
+                        console.log('✅ Đã lưu tin nhắn. Conversation ID:', currentConversationID);
+                    }}
+                }} catch (error) {{
+                    console.error('Lỗi fetch khi lưu chat:', error);
+                }}
+            }}
+
+            async function loadHistoryFromServer() {{
+                const loadUrl = 'http://127.0.0.1:8000/api/load-chat/';
+                try {{
+                    const response = await fetch(loadUrl, {{
+                        method: 'GET',
+                        credentials: 'include'
+                    }});
+
+                    if (!response.ok) {{
+                        console.error('Lỗi khi tải lịch sử chat:', response.statusText);
+                        return null;
+                    }}
+
+                    const data = await response.json();
+
+                    if (data.status === 'success' && data.messages.length > 0) {{
+                        console.log('✅ Tải lịch sử chat thành công:', data.messages.length, 'tin nhắn');
+                        return data;
+                    }} else {{
+                        console.log('💡 Không có lịch sử chat cũ.');
+                        return null;
+                    }}
+
+                }} catch (error) {{
+                    console.error('Lỗi fetch khi tải lịch sử:', error);
+                    return null;
+                }}
+            }}
+
             function cleanMarkdown(text) {{
                 // Xóa các ký hiệu Markdown như **bold**, *italic*
                 text = text
@@ -2357,19 +2450,19 @@ def get_chatbot_html(gemini_api_key):
                 text = newLines.join('\n').trim();
                 return text;
             }}
-            
+
             async function callGeminiAPI(userMessage) {{
                 console.log('🔥 Bắt đầu gọi Gemini API...');
                 console.log('📝 User message:', userMessage);
-                
-                const historyContext = conversationHistory.slice(-6).map(h => 
+
+                const historyContext = conversationHistory.slice(-6).map(h =>
                     `${{h.role === 'user' ? 'Người dùng' : 'UIAboss'}}: ${{h.text}}`
                 ).join('\n');
-                
-                const suggestedDishesContext = suggestedDishes.length > 0 
-                    ? `\nCác món ĐÃ GỢI Ý (KHÔNG được gợi ý lại): ${{suggestedDishes.join(', ')}}` 
+
+                const suggestedDishesContext = suggestedDishes.length > 0
+                    ? `\nCác món ĐÃ GỢI Ý (KHÔNG được gợi ý lại): ${{suggestedDishes.join(', ')}}`
                     : '';
-                
+
                 const preferencesContext = `
             User Preferences (IMPORTANT - Use this to personalize recommendations):
             - Likes: ${{userPreferences.likes.length > 0 ? userPreferences.likes.join(', ') : 'Not learned yet'}}
@@ -2378,9 +2471,9 @@ def get_chatbot_html(gemini_api_key):
 
             NEVER suggest dishes that user dislikes or is allergic to!
             NEVER suggest dishes that are already in the suggested list above!`;
-                
+
                 const lowerMsg = userMessage.toLowerCase().trim();
-                
+
                 // Kiểm tra xem có phải câu chào hỏi/vô nghĩa không (mở rộng cho nhiều ngôn ngữ)
                 const greetingPatterns = [
                     // Tiếng Việt
@@ -2406,15 +2499,15 @@ def get_chatbot_html(gemini_api_key):
                     // Tiếng Indonesia/Malay
                     /^(halo|hai|selamat pagi|selamat siang|selamat malam)$/i
                 ];
-                
+
                 const isGreeting = greetingPatterns.some(pattern => pattern.test(lowerMsg)) ||
                     lowerMsg.length === 0 || // Tin nhắn rỗng
                     lowerMsg.length <= 2 || // Quá ngắn (1-2 ký tự)
                     /^[a-z]{{4,}}$/i.test(lowerMsg) && !/[aeiou]{{2}}/i.test(lowerMsg) || // Random keyboard không có nguyên âm liên tiếp
                     /^(.)\1{{3,}}$/.test(lowerMsg) || // Ký tự lặp lại (aaaa, bbbb)
                     /^[^\w\s]+$/.test(lowerMsg); // Chỉ toàn ký tự đặc biệt (!@#$%^)
-                
-                const isUndecided = 
+
+                const isUndecided =
                     lowerMsg.includes('không biết ăn gì') ||
                     lowerMsg.includes('không biết ăn') ||
                     lowerMsg.includes('chưa nghĩ ra') ||
@@ -2426,13 +2519,13 @@ def get_chatbot_html(gemini_api_key):
                     lowerMsg.includes('不知道吃啥') ||
                     lowerMsg.includes('何を食べるか分からない') || // Tiếng Nhật
                     lowerMsg.includes('뭐 먹을지 모르겠어'); // Tiếng Hàn
-                
+
                 let contextPrompt = '';
-                
+
                 // Nếu là câu chào hoặc vô nghĩa -> không gợi ý món ngay
                 if (isGreeting) {{
                     contextPrompt = `
-            IMPORTANT: User just sent a greeting or unclear/random message. 
+            IMPORTANT: User just sent a greeting or unclear/random message.
             DO NOT suggest dishes immediately!
             Instead:
             1. Greet them warmly back (in their language)
@@ -2450,20 +2543,20 @@ def get_chatbot_html(gemini_api_key):
                     try {{
                         const currentHour = new Date().getHours();
                         const currentMonth = new Date().getMonth() + 1;
-                        
+
                         let timeOfDay = '';
                         if (currentHour >= 5 && currentHour < 11) timeOfDay = 'morning (breakfast time)';
                         else if (currentHour >= 11 && currentHour < 14) timeOfDay = 'lunch time';
                         else if (currentHour >= 14 && currentHour < 17) timeOfDay = 'afternoon (snack time)';
                         else if (currentHour >= 17 && currentHour < 21) timeOfDay = 'dinner time';
                         else timeOfDay = 'late night (light meal time)';
-                        
+
                         let season = '';
                         if (currentMonth >= 3 && currentMonth <= 5) season = 'Spring';
                         else if (currentMonth >= 6 && currentMonth <= 8) season = 'Summer (hot)';
                         else if (currentMonth >= 9 && currentMonth <= 11) season = 'Autumn (cool)';
                         else season = 'Winter (cold)';
-                        
+
                         contextPrompt = `
             CONTEXT FOR RECOMMENDATION:
             - Current time: ${{timeOfDay}}
@@ -2475,13 +2568,13 @@ def get_chatbot_html(gemini_api_key):
             2. Suitable for ${{season}} weather
             3. Popular in Vietnamese cuisine
             4. NOT in the already suggested list above`;
-                        
+
                     }} catch (e) {{
                         console.log('Could not get context info:', e);
                     }}
                 }}
-                
-                const prompt = `You are UIAboss, a friendly and attentive customer service staff at a Vietnamese restaurant. 
+
+                const prompt = `You are UIAboss, a friendly and attentive customer service staff at a Vietnamese restaurant.
 
             === PRIORITY CHECK #1: TOPIC RESTRICTION ===
             CRITICAL - CHECK THIS FIRST BEFORE ANYTHING ELSE:
@@ -2541,20 +2634,20 @@ def get_chatbot_html(gemini_api_key):
             User just said: ${{userMessage}}
 
             Respond naturally, caringly and helpfully in the SAME LANGUAGE the user used.`;
-                
+
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${{GEMINI_API_KEY}}`;
-                
+
                 try {{
                     const res = await fetch(apiUrl, {{
                         method: 'POST',
                         headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{
                             contents: [{{
-                                parts: [{{ text: prompt }}] 
-                            }}] 
+                                parts: [{{ text: prompt }}]
+                            }}]
                         }})
                     }});
-                    
+
                     if (!res.ok) {{
                         const errorText = await res.text();
                         console.error('❌ API Error Response:', errorText);
@@ -2562,16 +2655,16 @@ def get_chatbot_html(gemini_api_key):
                         sendBtn.disabled = false;
                         return;
                     }}
-                    
+
                     const data = await res.json();
                     let botReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    
+
                     if (botReply) {{
                         botReply = cleanMarkdown(botReply);
                         console.log('💬 Bot reply (cleaned):', botReply);
-                        
+
                         extractPreferences(userMessage, botReply);
-                        
+
                         // Extract và lưu các món đã gợi ý (chỉ khi KHÔNG phải greeting/vô nghĩa)
                         if (!isGreeting) {{
                             const dishMatches = botReply.match(/\d+\.\s*([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]+(?:\s+[a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđA-Z]+)*)/g);
@@ -2586,8 +2679,10 @@ def get_chatbot_html(gemini_api_key):
                                 console.log('📋 Danh sách món đã gợi ý:', suggestedDishes);
                             }}
                         }}
-                        
+
                         addMessage('bot', botReply);
+                        saveMessageToServer('ai', botReply);
+
                         suggestionsArea.classList.add('hidden');
                         resetInactivityTimer();
                     }} else {{

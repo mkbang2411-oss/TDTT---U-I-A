@@ -14,9 +14,14 @@ def home(request):
 
 # Danh sách URL của project
 urlpatterns = [
-    path('', home, name='home'),
+    path('', home, name='home'),  # Trang chủ
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),  # Dùng django-allauth
 
     path('api/reviews/<str:place_id>', account_views.reviews_api, name='reviews_api'),
+
+    path('api/check-auth/', account_views.check_auth_status, name='check_auth_status'),
+    path('api/save-chat/', account_views.save_chat_message, name='save_chat_message'),
+    path('api/load-chat/', account_views.load_chat_history, name='load_chat_history'),
+
 ]

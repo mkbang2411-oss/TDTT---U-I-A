@@ -21,5 +21,9 @@ def main():
 if __name__ == '__main__':
     main()
 
-#  pip 
-# .\TDTT---U-I-A\venv\Scripts\python.exe .\TDTT---U-I-A\user_management\manage.py runserver
+#  
+# cd TDTT---U-I-A
+# .\venv\Scripts\Activate.ps1
+# pip install -r requirements.txt
+# cd user_management
+# python manage.py runserver

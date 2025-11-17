@@ -148,14 +148,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5000",
 ]
 
-# (Tùy chọn) Nếu bạn muốn app 5000 gửi cookie (phiên đăng nhập)
-# đến app 8000, bạn phải thêm dòng này:
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:5000",
+    "http://localhost:5000",
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 # Cho phép trình duyệt gửi các header này
 CORS_ALLOW_HEADERS = [
     'content-type',
     'x-csrftoken',  # Cho phép header CSRF
+    'x-requested-with',
 ]
 
 # Cấu hình hành vi đăng nhập

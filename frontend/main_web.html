@@ -41,7 +41,8 @@
     }
     
     /* Ẩn/hiện phần tử theo trạng thái */
-    .guest-only { display: block; }
+    /* .guest-only { display: block; } */
+    .guest-only,
     .user-only { display: none; }
     
     body.logged-in .guest-only { display: none; }
@@ -57,18 +58,18 @@
             <img src="Picture/background.png" class="bg" alt="UIA Logo">
             <img src="Picture/UIAaa.png" class="uia" alt="UIA">
             
-            <!-- Nút Sign Up/Sign In - CHỈ HIỆN KHI CHƯA ĐĂNG NHẬP -->
-            <div class="guest-only">
-                <a href="SignUp.html" class="button-SignUp">Đăng Kí</a>
-                <a href="SignIn.html" class="button-SignIn">Đăng Nhập</a>
-            </div>
-            
             <!-- Nút Account - CHỈ HIỆN KHI ĐÃ ĐĂNG NHẬP -->
-            <div class="user-only">
-                <a href="Account.html" class="account-button">
-                    <img src="Picture/user.png" alt="Account">
-                </a>
-            </div>
+                <div class="user-only">
+                    <a href="Account.html" class="account-button">
+                        <img src="Picture/user.png" alt="Account">
+                    </a>
+                </div>
+            
+            <!-- Nút Sign Up/Sign In - CHỈ HIỆN KHI CHƯA ĐĂNG NHẬP -->
+                <div class="guest-only">
+                    <a href="http://127.0.0.1:8000/accounts/signup" class="button-SignUp">Đăng Kí</a>
+                    <a href="http://127.0.0.1:8000/accounts/login" class="button-SignIn">Đăng Nhập</a>
+                </div>
         </div>
     </header>
 
@@ -169,46 +170,41 @@
     
     <!-- 🔐 Script kiểm tra đăng nhập -->
     <script>
-        // Kiểm tra trạng thái đăng nhập khi load trang
-        function checkLoginStatus() {
-            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-            const username = localStorage.getItem('username');
-            
-            if (isLoggedIn) {
-                document.body.classList.add('logged-in');
-                console.log(`✅ Đã đăng nhập: ${username}`);
-            } else {
-                document.body.classList.remove('logged-in');
-                console.log('👤 Chế độ khách');
-            }
-        }
+        window.addEventListener('DOMContentLoaded', (event) => {
+    
+            // Lấy các phần tử nút
+            const guestButtons = document.querySelector('.guest-only');
+            const userButton = document.querySelector('.user-only');
 
-        // Hàm đăng nhập (gọi từ trang SignIn.html)
-        function login(username) {
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('username', username);
-            showToast(`Chào mừng ${username}!`, 'success');
-            checkLoginStatus();
-        }
-
-        // Hàm đăng xuất
-        function logout() {
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('username');
-            showToast('Đã đăng xuất!', 'success');
-            checkLoginStatus();
-        }
-
-        // Toast notification
-        function showToast(message, type = "success") {
-            const toast = document.getElementById("toast");
-            toast.textContent = message;
-            toast.className = `toast show ${type}`;
-            setTimeout(() => toast.className = "toast", 3000);
-        }
-
-        // Chạy kiểm tra khi load trang
-        window.addEventListener('DOMContentLoaded', checkLoginStatus);
+            // Gọi API trên server Django
+            fetch('http://127.0.0.1:8000/api/check-auth/', {
+                method: 'GET',
+                // BẮT BUỘC: Gửi cookie (session) cùng với yêu cầu
+                credentials: 'include' 
+            })
+            .then(response => response.json())
+            .then(data => {
+                // data sẽ là: {is_authenticated: true} hoặc {is_authenticated: false}
+                if (data.is_authenticated) {
+                    // Đã đăng nhập
+                    if (guestButtons) guestButtons.style.display = 'none'; // Ẩn nút Đăng nhập
+                    if (userButton) userButton.style.display = 'block';  // Hiện nút Account
+                    
+                    // Tùy chọn: Chào mừng người dùng
+                    console.log('Chào mừng, ' + data.username);
+                } else {
+                    // Chưa đăng nhập
+                    if (guestButtons) guestButtons.style.display = 'block'; // Hiện nút Đăng nhập
+                    if (userButton) userButton.style.display = 'none';   // Ẩn nút Account
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi khi kiểm tra xác thực:', error);
+                // Mặc định hiển thị là chưa đăng nhập nếu API lỗi
+                if (guestButtons) guestButtons.style.display = 'block';
+                if (userButton) userButton.style.display = 'none';
+            });
+        });
     </script>
     
     <div id="insert-chatbot-and-map"></div>
