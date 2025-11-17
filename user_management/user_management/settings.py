@@ -159,7 +159,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Cấu hình hành vi đăng nhập
-LOGIN_REDIRECT_URL = 'http://127.0.0.1:5000/weblogin.html'
+LOGIN_REDIRECT_URL = 'http://127.0.0.1:5000/'
 LOGOUT_REDIRECT_URL = 'http://127.0.0.1:5000/'
 
 # Cấu hình email
