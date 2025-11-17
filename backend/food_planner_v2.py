@@ -402,26 +402,90 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
             
             name_normalized = normalize_text_with_accent(str(row.get('ten_quan', '')))
             
-            # 🔥 LỌC THEO CHỦ ĐỀ
-            if theme:
-                if idx >= 477 and idx <= 492:
-                    print(f"   ✓ Vào if theme")
+            if categories:
+                name_normalized_full = name_normalized
                 
-                # 🔥 XỬ LÝ NHIỀU CHỦ ĐỀ
-                themes_list = [t.strip() for t in theme.split(',')]
+                # 🔥 PHÁT HIỆN LOẠI QUÁN - CÂN BẰNG
+                # Tiệm bánh/kem - ƯU TIÊN TỪ KHÓA MẠNH
+                is_strong_dessert = any(kw in name_normalized_full for kw in [
+                    'banh kem', 'banh bong lan', 'banh sinh nhat', 'castella', 
+                    'patisserie', 'bakery', 'tiem banh', 'kem trai dua',
+                    'ice cream', 'gelato'
+                ])
                 
-                if idx >= 477 and idx <= 492:
-                    print(f"   themes_list = {themes_list}")
+                # Quán nước - ƯU TIÊN TỪ KHÓA MẠNH
+                is_strong_drink = any(kw in name_normalized_full for kw in [
+                    'cafe', 'coffee', 'ca phe', 'tra sua', 'milk tea',
+                    'highlands', 'starbucks', 'phuc long', 'trung nguyen', 
+                    'cong ca phe', 'tea house', 'tea'
+                ])
                 
-                match_found = False
+                # Quán ăn
+                is_food_shop = any(kw in name_normalized_full for kw in [
+                    'pho', 'bun', 'com', 'quan an', 'nha hang', 'restaurant'
+                ])
                 
-                for single_theme in themes_list:
-                    if idx >= 477 and idx <= 492:
-                        print(f"   Đang check single_theme = '{single_theme}'")
+                # 🔥 KIỂM TRA CATEGORY
+                is_food_category = any(normalize_text(cat) in ['pho', 'bun', 'com tam', 'mi', 'banh mi'] for cat in categories)
+                is_drink_category = any(normalize_text(cat) in ['tra sua', 'cafe', 'coffee', 'tra', 'tea', 'milk tea'] for cat in categories)
+                is_dessert_category = any(normalize_text(cat) in ['banh kem', 'kem', 'ice cream', 'banh'] for cat in categories)
+                
+                # ❌ LOẠI BỎ RÕ RÀNG
+                # Đồ uống: KHÔNG NHẬN tiệm bánh có từ khóa mạnh
+                if is_drink_category and is_strong_dessert:
+                    continue
+                
+                # Bữa ăn: KHÔNG NHẬN tiệm bánh/cafe thuần
+                if is_food_category:
+                    if is_strong_dessert:
+                        continue
+                    if is_strong_drink and not is_food_shop:
+                        continue
+                
+                # ✅ KIỂM TRA MATCH - LỎNG HƠN
+                category_match = False
+                for cat in categories:
+                    cat_norm = normalize_text(cat)
                     
-                    if single_theme not in THEME_CATEGORIES:
-                        if idx >= 477 and idx <= 492:
-                            print(f"   ✗ '{single_theme}' không có trong THEME_CATEGORIES!")
+                    if cat_norm in ['pho', 'bun', 'com tam', 'mi', 'banh mi']:
+                        if cat_norm in name_normalized_full or is_food_shop:
+                            category_match = True
+                            break
+                    
+                    elif cat_norm in ['tra sua', 'cafe', 'coffee', 'tra', 'tea', 'milk tea']:
+                        # ✅ Chấp nhận nếu có từ khóa liên quan ĐỒ UỐNG
+                        has_drink = any(kw in name_normalized_full for kw in [
+                            'cafe', 'coffee', 'ca phe', 'tra sua', 'tra da', 
+                            'tea house', 'nuoc ep', 'sinh to', 'juice'
+                        ])
+                        # ❌ NHƯNG PHẢI KHÔNG PHẢI TIỆM BÁNH MẠNH
+                        if has_drink and not is_strong_dessert:
+                            category_match = True
+                            break
+                    
+                    elif cat_norm in ['banh kem', 'kem', 'ice cream', 'banh']:
+                        # ✅ Chấp nhận nếu có từ khóa liên quan TRÁNG MIỆNG
+                        has_dessert = any(kw in name_normalized_full for kw in [
+                            'banh', 'kem', 'dessert', 'ngot', 'sweet', 'cake', 'trang mieng'
+                        ])
+                        if has_dessert:
+                            category_match = True
+                            break
+                    
+                    else:
+                        if cat_norm in name_normalized_full:
+                            category_match = True
+                            break
+                
+                if not category_match:
+                    continue
+            
+            if user_tastes:
+                taste_col = row.get('khau_vi', '')
+                if taste_col and not pd.isna(taste_col):
+                    taste_normalized = normalize_text(str(taste_col))
+                    taste_match = any(normalize_text(t) in taste_normalized for t in user_tastes)
+                    if not taste_match:
                         continue
                     
                     if single_theme == 'food_street':
@@ -556,7 +620,7 @@ def generate_meal_schedule(time_start_str, time_end_str):
             'afternoon_drink': {
                 'time': '15:00',
                 'title': 'Trà chiều',
-                'categories': ['tra sua', 'cafe', 'banh'],
+                'categories': ['tra sua', 'cafe', 'coffee'],
                 'icon': '☕'
             },
             'dinner': {
@@ -1799,11 +1863,23 @@ def get_food_planner_html():
                         <div class="time-inputs">
                             <div class="time-input-group">
                                 <label>Từ</label>
-                                <input type="time" id="startTime" value="07:00">
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="number" id="startHour" min="0" max="23" value="07" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                    <span style="font-weight: bold;">:</span>
+                                    <input type="number" id="startMinute" min="0" max="59" value="00" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                </div>
                             </div>
                             <div class="time-input-group">
                                 <label>Đến</label>
-                                <input type="time" id="endTime" value="21:00">
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="number" id="endHour" min="0" max="23" value="21" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                    <span style="font-weight: bold;">:</span>
+                                    <input type="number" id="endMinute" min="0" max="59" value="00" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2294,8 +2370,13 @@ async function generateAutoPlan() {
             throw new Error('Trình duyệt không hỗ trợ GPS');
         }
         
-        const startTime = document.getElementById('startTime').value;
-        const endTime = document.getElementById('endTime').value;
+        const startHour = document.getElementById('startHour').value.padStart(2, '0');
+        const startMinute = document.getElementById('startMinute').value.padStart(2, '0');
+        const startTime = `${startHour}:${startMinute}`;
+
+        const endHour = document.getElementById('endHour').value.padStart(2, '0');
+        const endMinute = document.getElementById('endMinute').value.padStart(2, '0');
+        const endTime = `${endHour}:${endMinute}`;
         
         // 🔥 ƯU TIÊN LẤY TỪ WINDOW (ĐÃ LƯU TRONG script.js)
         const radius = window.currentRadius || document.getElementById('radius')?.value || '';
@@ -2545,10 +2626,6 @@ function displayPlanVertical(plan, editMode = false) {
                                 <span>⭐</span>
                                 <strong>${place.rating ? parseFloat(place.rating).toFixed(1) : 'N/A'}</strong>
                             </div>
-                            <div class="meta-item-vertical">
-                                <span>🚗</span>
-                                <strong>${place.distance} km</strong>
-                            </div>
                             ${place.gia_trung_binh ? `
                                 <div class="meta-item-vertical">
                                     <span>💰</span>
@@ -2557,14 +2634,10 @@ function displayPlanVertical(plan, editMode = false) {
                             ` : ''}
                         </div>
                         ${place.khau_vi ? `
-                            <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                            <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
                                 👅 Khẩu vị: ${place.khau_vi}
                             </div>
                         ` : ''}
-                        <div class="travel-info-vertical">
-                            🚗 <strong>Nên khởi hành lúc ${place.suggest_leave}</strong><br>
-                            ⏱️ Di chuyển khoảng ${place.travel_time} phút
-                        </div>
                     </div>
                 </div>
             </div>
@@ -2701,8 +2774,16 @@ function checkRouteOverlap(coords1, coords2, threshold = 0.0001) {
 
 // ========== DRAW ROUTE ON MAP ==========
 let routeLayers = [];
+let currentRouteAbortController = null;
 
 function clearRoutes() {
+    // 🔥 HỦY TẤT CẢ REQUESTS ĐANG CHẠY
+    if (currentRouteAbortController) {
+        currentRouteAbortController.abort();
+        currentRouteAbortController = null;
+        console.log('⚠️ Đã hủy tất cả requests vẽ đường cũ');
+    }
+
     if (typeof map !== 'undefined' && routeLayers.length > 0) {
         routeLayers.forEach(layer => {
             map.removeLayer(layer);
@@ -2784,7 +2865,10 @@ function drawRouteOnMap(plan) {
         return;
     }
     
-    clearRoutes();
+    // 🔥 HỦY REQUESTS CŨ VÀ TẠO MỚI
+    clearRoutes(); // Xóa routes cũ + hủy requests cũ
+    currentRouteAbortController = new AbortController();
+    const signal = currentRouteAbortController.signal;
     
     const drawnSegments = [];
     const waypoints = [];
@@ -2837,7 +2921,9 @@ function drawRouteOnMap(plan) {
     try {
         const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
         
-        const response = await fetch(url);
+        // 🔥 THÊM: Truyền signal vào fetch
+        const response = await fetch(url, { signal });
+
         const data = await response.json();
         
         if (data.code === 'Ok' && data.routes && data.routes[0]) {
@@ -2982,6 +3068,12 @@ function drawRouteOnMap(plan) {
         }
         
     } catch (error) {
+        // 🔥 BỎ QUA NẾU REQUEST BỊ HỦY
+        if (error.name === 'AbortError') {
+            console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
+            return;
+        }
+    
         console.error('Lỗi vẽ route:', error);
         const color = getRouteColor(index, totalRoutes);
         
@@ -3001,14 +3093,29 @@ function drawRouteOnMap(plan) {
     
     // Vẽ từng đoạn route
     (async function drawAllRoutes() {
-        for (let i = 0; i < waypoints.length - 1; i++) {
-            await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+        try {
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                // 🔥 KIỂM TRA NẾU ĐÃ BỊ HỦY THÌ DỪNG NGAY
+                if (signal.aborted) {
+                    console.log('⚠️ Đã dừng vẽ tất cả routes do bị hủy');
+                    return;
+                }
+                
+                await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+            }
+            
+            // 🔥 CHỈ FIT BOUNDS NẾU CHƯA BỊ HỦY
+            if (!signal.aborted) {
+                const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+                
+                console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường`);
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('Lỗi trong drawAllRoutes:', error);
+            }
         }
-        
-        const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
-        map.fitBounds(bounds, { padding: [50, 50] });
-        
-        console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường`);
     })();
 }
 
@@ -4081,5 +4188,125 @@ document.addEventListener('keydown', function(e) {
     };
     document.head.appendChild(script);
 })();
+// ========== CYCLIC TIME INPUT ==========
+document.addEventListener('DOMContentLoaded', function() {
+    function setupCyclicInput(id, maxValue) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        
+        let lastValue = parseInt(input.value) || 0;
+        let isSpinnerClick = false; // 🔥 BIẾN ĐÁNH DẤU
+        
+        // 🔥 BẮT SPINNER CLICK - DÙNG INPUT EVENT
+        let spinnerTimeout;
+        input.addEventListener('input', function(e) {
+            // Chỉ xử lý khi có thay đổi từ spinner
+            if (document.activeElement === this) {
+                clearTimeout(spinnerTimeout);
+                spinnerTimeout = setTimeout(() => {
+                    let val = parseInt(this.value);
+                    
+                    if (isNaN(val)) {
+                        this.value = '00';
+                        lastValue = 0;
+                        return;
+                    }
+                    
+                    // 🔥 CYCLE LOGIC
+                    if (val > maxValue) {
+                        this.value = 0;
+                        lastValue = 0;
+                    } else if (val < 0) {
+                        this.value = maxValue;
+                        lastValue = maxValue;
+                    } else {
+                        lastValue = val;
+                    }
+                    
+                    this.value = this.value.toString().padStart(2, '0');
+                }, 50);
+            }
+        });
+        
+        // Theo dõi mọi thay đổi
+        const observer = new MutationObserver(() => {
+            if (!isSpinnerClick) checkAndCycle();
+        });
+        
+        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
+        
+        input.addEventListener('input', function() {
+            if (!isSpinnerClick) checkAndCycle();
+        });
+        input.addEventListener('change', checkAndCycle);
+        
+        function checkAndCycle() {
+            let val = parseInt(input.value);
+            
+            if (isNaN(val)) {
+                input.value = '00';
+                lastValue = 0;
+                return;
+            }
+            
+            if (val > maxValue) {
+                input.value = 0;
+                lastValue = 0;
+            } else if (val < 0) {
+                input.value = maxValue;
+                lastValue = maxValue;
+            } else {
+                lastValue = val;
+            }
+        }
+        
+        // Xử lý blur để format
+        input.addEventListener('blur', function() {
+            let val = parseInt(this.value) || 0;
+            if (val > maxValue) val = 0;
+            if (val < 0) val = maxValue;
+            this.value = val.toString().padStart(2, '0');
+            lastValue = val;
+        });
+        
+        // Xử lý phím mũi tên
+        input.addEventListener('keydown', function(e) {
+            const currentValue = parseInt(this.value) || 0;
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
+                this.value = this.value.toString().padStart(2, '0');
+                lastValue = parseInt(this.value);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
+                this.value = this.value.toString().padStart(2, '0');
+                lastValue = parseInt(this.value);
+            }
+        });
+        
+        // Xử lý scroll chuột
+        input.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const currentValue = parseInt(this.value) || 0;
+            
+            if (e.deltaY < 0) {
+                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
+            } else {
+                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
+            }
+            
+            this.value = this.value.toString().padStart(2, '0');
+            lastValue = parseInt(this.value);
+        });
+    }
+    
+    // Áp dụng cho tất cả input
+    setupCyclicInput('startHour', 23);
+    setupCyclicInput('endHour', 23);
+    setupCyclicInput('startMinute', 59);
+    setupCyclicInput('endMinute', 59);
+});
 </script>
 '''

@@ -1,27 +1,213 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
-body {
-  margin: 0;
-  font-family: "Montserrat", sans-serif;
-}
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+  body {
+    margin: 0;
+    font-family: "Montserrat", sans-serif;
+  }
 
+/* Background xoay 90 độ */
 .background-left{
-    position: absolute;
-    width: 500px;
-    height: 100px;
-    left: 10px;
-    transform: scale(1.5);    
-    transform: rotate(90deg);
-    height: 1984px;
-    width: 683px;
-    left: -1120px;
-    top: -650px;
+  position: absolute;
+  width: 500px;
+  height: 100px;
+  left: 10px;
+  transform: scale(1.5) rotate(90deg); /* Gộp 2 transform */
+  height: 1984px;
+  width: 683px;
+  left: -1550px;
+  top: -650px;
+  z-index: 1;
 }
 
-/*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
-input,
-button,
-select,
-textarea {
-    font-family: "Montserrat", sans-serif !important;
+/* Sidebar content - KHÔNG xoay */
+.sidebar-content {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 300px;
+  height: 100vh;
+  z-index: 10;
+  padding: 20px;
 }
+
+.logo{
+  text-align: left;
+  padding: 20px 0;
+  margin-bottom: 200px;
+  position: relative;
+  margin-left: -100px;
+ 
+}
+.logo img {
+  width: 400px;
+  height: auto;
+  display: block;
+  top: 20px;
+  margin-left: 10px;
+}
+.avatar{
+  position: absolute;
+  left: -290px;
+  top: 5px;
+}
+.Sign-out{
+  position: fixed;
+  top: 500px;
+  left: 390px;
+}
+.button-SignOut{
+  display: inline-block;
+  padding: 12px 30px;
+  background-color: #fed57e;
+  color: white;
+  text-decoration: none;
+  border-radius: 25px;
+  font-weight: bold;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+.button-SignOut:hover{
+  color: #bc2a21;
+}
+.Account{
+  position: fixed;
+  color: #bc2a21;
+  top: 100px;
+  left: 350px;
+  font-weight: bold;
+  font-size: 50px;
+  margin-left: 5px;
+}
+
+.Menu{
+  margin-top: 20px;
+  position: relative;
+  left: -30px;
+  top: -20px;
+}
+
+.Menu_Account,
+.Menu_Favorite{
+  padding: 20px;
+  margin: 15px 0;
+  cursor: pointer;
+  margin-top: -10px;
+  transition: all 0.3s;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  color: white;
+  
+}
+.Menu_Account{
+  margin-top: -150px;
+  margin-left: -25px;
+}
+.Menu_Favorite{
+  margin-left: -25px;
+}
+.Menu_Account:hover,
+.Menu_Favorite:hover{
+  background: rgba(255, 255, 255, 0.3); /* NỀN KHI HOVER */
+  transform: translateX(10px); /* DI CHUYỂN KHI HOVER */
+}
+
+.Menu_Account.active,
+.Menu_Favorite.active{
+  background: rgba(255, 255, 255, 0.4); /* NỀN KHI ACTIVE */
+  border-left: 5px solid white; /* VIỀN TRÁI */
+}
+/* Main content */
+.main-content {
+  margin-left: 650px; /* Cách sidebar */
+  padding: 20px;
+  position: relative;
+  z-index: 5;
+  margin-top: 250px;
+}
+.form-group {
+  display: flex;
+  flex-direction: row; /* Thêm dòng này để chắc chắn nằm ngang */
+  gap: 40px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.input-box input {
+  width: 100%;
+  padding: 10px 20px; /* Padding trong khung */
+  border: 2px solid #ddd; /* Viền khung */
+  border-radius: 10px; /* Bo góc */
+  font-size: 16px;
+  box-sizing: border-box;
+  background: #f9f9f9; /* Màu nền */
+  transition: all 0.3s;
+  
+  /* THÊM SHADOW */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.input-box label{
+  display: block;
+  margin-bottom: 10px;
+  font-size: 20px;
+  color: #333;
+    /* THÊM HIỆU ỨNG */
+  letter-spacing: 1px; /* Khoảng cách chữ */
+  position: relative;
+  padding-left: 10px;
+
+}
+/* THÊM ĐƯỜNG KẺ BÊN TRÁI LABEL */
+.input-box label::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 20px;
+    background: #d32f2f; /* Màu đỏ */
+    border-radius: 2px;
+}
+/* ẨN/HIỆN TRANG - THÊM VÀO TRƯỚC DÒNG CUỐI */
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+.Favorite{
+  position: fixed;
+  color: #bc2a21;
+  top: 100px;
+  left: 350px;
+  font-weight: bold;
+  font-size: 50px;
+  margin-left: 5px;
+}
+.Back{
+  position: relative;
+  left: 80px;
+}
+.Button_back{
+  display: inline-block;
+  transition: all 0.3 ease;
+}
+.Button_back:hover{
+  transform: scale(1.2);
+}
+.Button_back img{
+  transition: all 0.3s ease;
+}
+.Button_back:hover img{
+  filter: brightness(1.3);
+}
+
+  /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
+  input,
+  button,
+  select,
+  textarea {
+      font-family: "Montserrat", sans-serif !important;
+  }
 
