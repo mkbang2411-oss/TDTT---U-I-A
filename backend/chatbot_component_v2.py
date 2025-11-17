@@ -596,6 +596,41 @@ def get_chatbot_html(gemini_api_key):
                 justify-content: space-between;
                 align-items: center;
                 flex-shrink: 0;
+                gap: 8px;
+            }}
+
+            .history-header-right {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-shrink: 0;
+            }}
+
+            .history-new-btn {{
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                cursor: pointer;
+                padding: 4px;
+                font-size: 18px;
+                border-radius: 50%;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+                font-weight: bold;
+                flex-shrink: 0;
+            }}
+
+            .history-new-btn:hover {{
+                background: rgba(255,255,255,0.3);
+                transform: rotate(90deg) scale(1.1);
+            }}
+
+            .history-new-btn:active {{
+                transform: rotate(90deg) scale(0.95);
             }}
 
             .history-close {{
@@ -612,6 +647,7 @@ def get_chatbot_html(gemini_api_key):
                 align-items: center;
                 justify-content: center;
                 transition: all 0.2s ease;
+                flex-shrink: 0;
             }}
 
             .history-close:hover {{
@@ -753,6 +789,47 @@ def get_chatbot_html(gemini_api_key):
                 flex-shrink: 0;
             }}
 
+            .history-item.new-item-slide {{
+                animation: slideInNewItem 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            }}
+
+            @keyframes slideInNewItem {{
+                0% {{
+                    opacity: 0;
+                    transform: translateX(-100%);
+                }}
+                60% {{
+                    opacity: 1;
+                    transform: translateX(10px);
+                }}
+                100% {{
+                    opacity: 1;
+                    transform: translateX(0);
+                }}
+            }}
+
+            /* Hiệu ứng glow sáng sau khi trượt xong */
+            .history-item.new-item-glow {{
+                animation: glowPulse 1.5s ease-in-out;
+            }}
+
+            @keyframes glowPulse {{
+                0%, 100% {{
+                    background: #FFF8F3;
+                    box-shadow: none;
+                }}
+                25%, 75% {{
+                    background: linear-gradient(135deg, #FFE5D9 0%, #FFF8F3 100%);
+                    box-shadow: 0 0 20px rgba(255, 107, 53, 0.4), 0 0 40px rgba(255, 107, 53, 0.2);
+                    border-color: #FF6B35;
+                }}
+                50% {{
+                    background: linear-gradient(135deg, #FFCCB3 0%, #FFE5D9 100%);
+                    box-shadow: 0 0 30px rgba(255, 107, 53, 0.6), 0 0 60px rgba(255, 107, 53, 0.3);
+                    border-color: #FF8C61;
+                }}
+            }}
+
             @keyframes slideInFromLeft {{
                 from {{
                     opacity: 0;
@@ -842,7 +919,10 @@ def get_chatbot_html(gemini_api_key):
         <div class="chat-history-sidebar" id="chatHistorySidebar">
             <div class="history-header">
                 <span>📋 Lịch sử chat</span>
-                <button class="history-close" id="historyCloseBtn">✕</button>
+                <div class="history-header-right">
+                    <button class="history-new-btn" id="historyNewBtn" title="Tạo chat mới">+</button>
+                    <button class="history-close" id="historyCloseBtn">✕</button>
+                </div>
             </div>
             <div class="history-list" id="historyList"></div>
         </div>
@@ -1647,6 +1727,7 @@ def get_chatbot_html(gemini_api_key):
             // Chat History Management
             let chatSessions = [];
             let currentSessionId = null;
+            let isFirstLoad = true;
 
             // Load chat history from localStorage
             function loadChatHistory() {{
@@ -1690,7 +1771,7 @@ def get_chatbot_html(gemini_api_key):
                 
                 chatSessions.unshift(newSession);
                 saveChatHistory();
-                renderHistoryList();
+                renderHistoryList(currentSessionId);
                 return newSession;
             }}
 
@@ -1736,7 +1817,7 @@ def get_chatbot_html(gemini_api_key):
             }}
 
             // Render history list
-            function renderHistoryList() {{
+            function renderHistoryList(highlightNewId = null) {{
                 historyList.innerHTML = '';
                 
                 chatSessions.forEach(session => {{
@@ -1745,18 +1826,34 @@ def get_chatbot_html(gemini_api_key):
                     if (session.id === currentSessionId) {{
                         item.classList.add('active');
                     }}
-                    
+
+                    // 🎯 Hiệu ứng trượt vào cho chat mới
+                    if (session.id === highlightNewId) {{
+                        item.classList.add('new-item-slide');
+                        
+                        // Scroll đến item mới
+                        setTimeout(() => {{
+                            item.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+                        }}, 100);
+                    }}
+
                     item.innerHTML = `
                         <span class="history-item-name">${{session.name}}</span>
-                        <button class="history-item-edit" title="Đổi tên">✏️</button>
-                        <button class="history-item-delete" title="Xóa">🗑️</button>
+                        <div class="history-item-actions">
+                            <button class="history-item-edit" title="Đổi tên">✏️</button>
+                            <button class="history-item-delete" title="Xóa">🗑️</button>
+                        </div>
                     `;
                     
-                    // Click to load session
-                    const nameSpan = item.querySelector('.history-item-name');
-                    nameSpan.addEventListener('click', () => {{
-                        loadSession(session.id);
+                    // ✅ FIX: Click vào toàn bộ item để load session
+                    item.addEventListener('click', (e) => {{
+                        // Chỉ load nếu KHÔNG click vào button
+                        if (!e.target.closest('.history-item-edit') && !e.target.closest('.history-item-delete')) {{
+                            loadSession(session.id);
+                        }}
                     }});
+
+                    // Click edit button
                     
                     // Click edit button
                     const editBtn = item.querySelector('.history-item-edit');
@@ -1930,19 +2027,23 @@ def get_chatbot_html(gemini_api_key):
                     windowDisplay: window.getComputedStyle(chatWindow).display
                 }});
                 
-                // ✅ LUÔN tạo chat mới mỗi khi mở
-                createNewSession();
-                messagesArea.innerHTML = ''; // Xóa tin cũ
-                conversationHistory = [];
-                suggestedDishes = [];
-                
-                setTimeout(() => {{
-                    const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
-                    addMessage('bot', randomWelcome);
-                    renderSuggestions();
-                    hasShownInitialSuggestions = true;
-                    resetInactivityTimer();
-                }}, 300);
+                // 🔥 CHỈ TẠO CHAT MỚI Ở LẦN MỞ ĐẦU TIÊN SAU KHI LOAD TRANG
+                if (isFirstLoad) {{
+                    isFirstLoad = false; // Đánh dấu đã mở lần đầu
+                    createNewSession();
+                    messagesArea.innerHTML = '';
+                    conversationHistory = [];
+                    suggestedDishes = [];
+                    
+                    setTimeout(() => {{
+                        const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];  // ✅ ĐÚNG - dùng welcomeMessages
+                        addMessage('bot', randomWelcome);
+                        renderSuggestions();
+                        hasShownInitialSuggestions = true;
+                        resetInactivityTimer();
+                    }}, 300);
+                }}
+                // Nếu không phải lần đầu, giữ nguyên chat hiện tại (không làm gì)
             }}
             
             // Khởi động bubble text
@@ -2004,6 +2105,65 @@ def get_chatbot_html(gemini_api_key):
                     }});
                     console.log('✅ History close button event listener attached');
                 }}
+
+                // Event: New chat button (nút +)
+                const historyNewBtn = document.getElementById('historyNewBtn');
+                if (historyNewBtn) {{
+                    historyNewBtn.addEventListener('click', (e) => {{
+                        console.log('🖱️ New chat button clicked');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Lưu chat hiện tại trước khi tạo mới
+                        if (currentSessionId) {{
+                            saveCurrentSession();
+                        }}
+                        
+                        // 🎯 Tạo chat mới với hiệu ứng
+                        const newSession = createNewSession();
+                        messagesArea.innerHTML = '';
+                        conversationHistory = [];
+                        suggestedDishes = [];
+                        
+                        // 🎉 Hiệu ứng nút bấm
+                        historyNewBtn.style.transform = 'rotate(135deg) scale(1.15)';
+                        historyNewBtn.style.background = 'rgba(255, 255, 255, 0.5)';
+                        historyNewBtn.style.boxShadow = '0 0 15px rgba(255, 255, 255, 0.6)';
+
+                        setTimeout(() => {{
+                            historyNewBtn.style.transform = '';
+                            historyNewBtn.style.background = '';
+                            historyNewBtn.style.boxShadow = '';
+                        }}, 400);
+                        
+                        // Gửi tin chào mừng
+                        setTimeout(() => {{
+                            const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+                            addMessage('bot', randomWelcome);
+                            renderSuggestions();
+                        }}, 200);
+
+                        // 🔊 Sound effect (optional)
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+
+                        oscillator.frequency.value = 800; // Tần số cao = âm thanh "ting"
+                        oscillator.type = 'sine';
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.15);      
+
+                        console.log('✅ Created new chat session with animation');
+                    }});
+                    console.log('✅ New chat button event listener attached');
+                }}
+
             }}
             
             // Sự kiện đóng chatbot
