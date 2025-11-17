@@ -45,38 +45,66 @@ def clean_value(value):
         return value
     return value
 
-def is_open_now(opening_hours_str):
-    """Kiểm tra quán có đang mở cửa không"""
+def is_open_now(opening_hours_str, check_time=None):
+    """
+    Kiểm tra quán có đang mở cửa không
+    
+    Args:
+        opening_hours_str: Chuỗi giờ mở cửa từ CSV
+        check_time: Giờ cần check (string 'HH:MM' hoặc time object). Nếu None thì dùng giờ hiện tại
+    """
     if not opening_hours_str or pd.isna(opening_hours_str):
-        return True
+        return True  # Không có thông tin => cho qua
     
     try:
-        now = datetime.now()
-        current_time = now.time()
+        import re
         
-        hours_str = str(opening_hours_str).lower()
+        # Parse check_time
+        if check_time is None:
+            current_time = datetime.now().time()
+        elif isinstance(check_time, str):
+            current_time = datetime.strptime(check_time, '%H:%M').time()
+        else:
+            current_time = check_time
         
-        if 'always' in hours_str or '24' in hours_str or 'ca ngay' in hours_str or 'mo ca ngay' in hours_str:
+        # Chuẩn hóa: bỏ dấu, lowercase
+        hours_str = normalize_text(str(opening_hours_str))
+        
+        # Mở cửa 24/7
+        if any(keyword in hours_str for keyword in ['always', '24', 'ca ngay', 'mo ca ngay']):
             return True
         
-        if 'dong cua luc' in hours_str:
-            parts = hours_str.split('dong cua luc')
-            if len(parts) > 1:
-                time_part = parts[1].strip().split()[0]
-                try:
-                    close_time = datetime.strptime(time_part, '%H:%M').time()
-                    open_time = datetime.strptime('06:00', '%H:%M').time()
-                    
-                    if open_time <= close_time:
-                        return open_time <= current_time <= close_time
-                    else:
-                        return current_time >= open_time or current_time <= close_time
-                except:
-                    pass
+        # Parse giờ mở
+        open_time = None
+        open_match = re.search(r'mo cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        if open_match:
+            hour = int(open_match.group(1))
+            minute = int(open_match.group(2)) if open_match.group(2) else 0
+            open_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
         
-        return True
-    except:
-        return True
+        # Parse giờ đóng
+        close_time = None
+        close_match = re.search(r'dong cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        if close_match:
+            hour = int(close_match.group(1))
+            minute = int(close_match.group(2)) if close_match.group(2) else 0
+            close_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
+        
+        # Nếu không parse được => CHO QUA
+        if open_time is None or close_time is None:
+            return True
+        
+        # Kiểm tra giờ
+        if open_time <= close_time:
+            # Trường hợp bình thường: 8:00 - 22:00
+            return open_time <= current_time <= close_time
+        else:
+            # Trường hợp qua đêm: 22:00 - 02:00
+            return current_time >= open_time or current_time <= close_time
+            
+    except Exception as e:
+        print(f"⚠️ Lỗi parse giờ: {opening_hours_str} -> {e}")
+        return True  # Lỗi => CHO QUA
 
 # ==================== CẬP NHẬT HÀM LỌC - GIỮ NGUYÊN DẤU ====================
 
@@ -304,79 +332,38 @@ THEME_CATEGORIES = {
 # ==================== FIND PLACES WITH ADVANCED FILTERS ====================
 
 def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top_n=30):
-    """Tìm quán với bộ lọc nâng cao - XÉT THEO TỪ"""
+    """Tìm quán với bộ lọc nâng cao - CHỈ LỌC THEO THEME"""
     if excluded_ids is None:
         excluded_ids = set()
     
     results = []
     radius_km = filters.get('radius_km', 5)
     theme = filters.get('theme')
-    user_tastes = filters.get('tastes', [])
-    categories = filters.get('categories', [])
+    # 🔥 BỎ: user_tastes = filters.get('tastes', [])
+
+    # XỬ LÝ THEME - CÓ THỂ LÀ STRING HOẶC LIST
+    if theme:
+        if isinstance(theme, str):
+            theme_list = [theme]
+        else:
+            theme_list = theme if theme else []
+    else:
+        theme_list = []
     
-    # 🔥 DEBUG: KIỂM TRA TRƯỚC KHI LỌC
-    if theme and 'food_street' in theme:
-        print(f"\n{'='*70}")
-        print(f"🔍 KIỂM TRA TOÀN BỘ QUÁN 'KHU ẨM THỰC' TRONG CSV")
-        print(f"📍 Vị trí user: ({user_lat:.6f}, {user_lon:.6f})")
-        print(f"🎯 Bán kính: {radius_km} km")
-        print(f"{'='*70}\n")
-        
-        food_street_all = df[df['mo_ta'].str.strip() == 'Khu ẩm thực']
-        print(f"📊 Tổng: {len(food_street_all)} quán có mo_ta='Khu ẩm thực'\n")
-        
-        for idx, row in food_street_all.iterrows():
-            ten_quan = row['ten_quan']
-            
-            # Parse tọa độ
-            try:
-                lat_str = str(row['lat']).strip().strip('"').strip()
-                lon_str = str(row['lon']).strip().strip('"').strip()
-                lat = float(lat_str)
-                lon = float(lon_str)
-            except Exception as e:
-                print(f"❌ [{idx}] {ten_quan}")
-                print(f"   LỖI PARSE: {e}")
-                print(f"   lat='{row['lat']}', lon='{row['lon']}'")
-                print()
-                continue
-            
-            # Tính khoảng cách
-            dist = calculate_distance(user_lat, user_lon, lat, lon)
-            
-            # Kiểm tra giờ mở cửa
-            gio_mo_cua = row.get('gio_mo_cua', '')
-            is_open = is_open_now(gio_mo_cua)
-            
-            # Log kết quả
-            status = "✅" if (dist <= radius_km and is_open) else "❌"
-            print(f"{status} [{idx}] {ten_quan}")
-            print(f"   📍 Khoảng cách: {dist:.2f} km {'(OK)' if dist <= radius_km else '(QUÁ XA)'}")
-            print(f"   ⏰ {gio_mo_cua} {'(MỞ CỬA)' if is_open else '(ĐÓNG CỬA)'}")
-            print()
-        
-        print(f"{'='*70}\n")
-    
-    # 🔥 BẮT ĐẦU LỌC THỰC TẾ
     food_street_count = 0
     skipped_rows = 0
     
-    print(f"📦 TỔNG SỐ ROW TRONG CSV: {len(df)}")
-    print(f"📦 ROW CUỐI CÙNG: {df.index[-1]}\n")
-    
     for idx, row in df.iterrows():
-        # 🔥 BỌC TOÀN BỘ LOGIC TRONG TRY-CATCH
         try:
             data_id = clean_value(row.get('data_id', ''))
             
             if data_id in excluded_ids:
                 continue
             
-            # 🔥 Parse tọa độ an toàn
+            # Parse tọa độ
             lat_str = str(row.get('lat', '')).strip().strip('"').strip()
             lon_str = str(row.get('lon', '')).strip().strip('"').strip()
             
-            # 🔥 KIỂM TRA TRƯỚC KHI CONVERT
             if not lat_str or not lon_str or lat_str == 'nan' or lon_str == 'nan':
                 continue
                 
@@ -385,73 +372,37 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
             
             distance = calculate_distance(user_lat, user_lon, place_lat, place_lon)
             
-            # Kiểm tra bán kính
+            # Lọc bán kính
             if distance > radius_km:
                 continue
             
-            # Kiểm tra giờ mở cửa
+            # Lọc giờ mở cửa
             gio_mo_cua = row.get('gio_mo_cua', '')
             if not is_open_now(gio_mo_cua):
                 continue
             
-            # 🔥 IN RA TRƯỚC KHI CHECK THEME
-            if idx >= 477 and idx <= 492:
-                print(f"\n→ Row {idx} ({row.get('ten_quan', '')}): ĐÃ QUA LỌC DISTANCE & TIME")
-                print(f"   theme = '{theme}'")
-                print(f"   mo_ta = '{row.get('mo_ta', '')}'")
-            
             name_normalized = normalize_text_with_accent(str(row.get('ten_quan', '')))
             
-            # 🔥 LỌC THEO CHỦ ĐỀ
+            # LỌC THEO THEME
             if theme:
-                if idx >= 477 and idx <= 492:
-                    print(f"   ✓ Vào if theme")
-                
-                # 🔥 XỬ LÝ NHIỀU CHỦ ĐỀ
-                themes_list = [t.strip() for t in theme.split(',')]
-                
-                if idx >= 477 and idx <= 492:
-                    print(f"   themes_list = {themes_list}")
-                
                 match_found = False
                 
-                for single_theme in themes_list:
-                    if idx >= 477 and idx <= 492:
-                        print(f"   Đang check single_theme = '{single_theme}'")
-                    
-                    if single_theme not in THEME_CATEGORIES:
-                        if idx >= 477 and idx <= 492:
-                            print(f"   ✗ '{single_theme}' không có trong THEME_CATEGORIES!")
-                        continue
-                    
+                for single_theme in theme_list:
                     if single_theme == 'food_street':
-                        if idx >= 477 and idx <= 492:
-                            print(f"   ✓ Vào if food_street")
-                        
                         mo_ta = str(row.get('mo_ta', '')).strip()
-                        
-                        if idx >= 477 and idx <= 492:
-                            print(f"   mo_ta = '{mo_ta}'")
-                            print(f"   mo_ta == 'Khu ẩm thực' ? {mo_ta == 'Khu ẩm thực'}")
-                            print(f"   repr(mo_ta) = {repr(mo_ta)}")
-                            print(f"   len(mo_ta) = {len(mo_ta)}")
-                        
                         if mo_ta == 'Khu ẩm thực':
                             match_found = True
                             food_street_count += 1
-                            if idx >= 477 and idx <= 492:
-                                print(f"   ✅ MATCHED!")
                             break
                     
                     elif single_theme == 'michelin':
                         mo_ta = str(row.get('mo_ta', '')).strip()
-                        
                         if mo_ta == 'Michelin':
                             match_found = True
                             break
                     
                     else:
-                        # Xử lý BÌNH THƯỜNG CHO CÁC CHỦ ĐỀ KHÁC
+                        # Xử lý theme bình thường
                         theme_keywords = THEME_CATEGORIES[single_theme]['keywords']
                         
                         for keyword in theme_keywords:
@@ -463,29 +414,26 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                             if search_keyword in search_text:
                                 match_found = True
                                 break
-
-                        # XÉT CỘT khau_vi
+                        
+                        if match_found:
+                            break
+                        
+                        # XÉT cột khau_vi cho spicy_food & dessert_bakery
                         if not match_found and single_theme in ['spicy_food', 'dessert_bakery']:
                             khau_vi = str(row.get('khau_vi', '')).strip().lower()
                             
                             if khau_vi:
                                 if single_theme == 'spicy_food' and 'cay' in khau_vi:
                                     match_found = True
+                                    break
                                 elif single_theme == 'dessert_bakery' and 'ngọt' in khau_vi:
                                     match_found = True
-                
-                if idx >= 477 and idx <= 492:
-                    print(f"   match_found = {match_found}")
+                                    break
                 
                 if not match_found:
-                    if idx >= 477 and idx <= 492:
-                        print(f"   ✗ KHÔNG MATCH → CONTINUE\n")
                     continue
             
             # THÊM VÀO RESULTS
-            if idx >= 477 and idx <= 492:
-                print(f"   ✅ THÊM VÀO RESULTS!\n")
-            
             results.append({
                 'ten_quan': clean_value(row.get('ten_quan', '')),
                 'dia_chi': clean_value(row.get('dia_chi', '')),
@@ -503,24 +451,93 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
             })
             
         except Exception as e:
-            # 🔥 BẤT KỲ LỖI GÌ CŨNG CHỈ BỎ QUA, KHÔNG DỪNG
             skipped_rows += 1
             continue
     
-    # 🔥 LOGGING KẾT QUẢ CUỐI
-    if theme and 'food_street' in theme:
-        print(f"\n{'='*60}")
-        print(f"📊 TỔNG KẾT: Tìm thấy {food_street_count} quán 'Khu ẩm thực'")
-        print(f"⚠️ Bỏ qua {skipped_rows} dòng lỗi")
-        print(f"📦 Tổng kết quả trả về: {len(results)} quán")
-        if results:
-            print(f"\n🏆 TOP 5 GẦN NHẤT:")
-            for i, r in enumerate(results[:5], 1):
-                print(f"   {i}. {r['ten_quan']} - {r['distance']:.2f} km - ⭐{r['rating']}")
-        print(f"{'='*60}\n")
-    
+    # Sắp xếp: Khoảng cách → Rating
     results.sort(key=lambda x: (x['distance'], -x['rating']))
     return results[:top_n]
+
+# ==================== MEAL TO THEME MAPPING ====================
+
+MEAL_THEME_MAP = {
+    # BUỔI SÁNG - Ưu tiên đồ ăn sáng Việt Nam
+    'breakfast': {
+        'preferred': ['street_food'],  # Ưu tiên phở, bánh mì, bún
+        'fallback': ['asian_fusion', 'luxury_dining']
+    },
+    
+    # ĐỒ UỐNG SÁNG - Cafe/trà
+    'morning_drink': {
+        'preferred': ['coffee_chill'],
+        'fallback': ['dessert_bakery']
+    },
+    
+    # BỮA TRƯA - Cơm/bún/mì
+    'lunch': {
+        'preferred': ['street_food'],
+        'fallback': ['asian_fusion', 'seafood', 'spicy_food', 'luxury_dining']
+    },
+    
+    # TRÀ CHIỀU - Cafe/trà sữa
+    'afternoon_drink': {
+        'preferred': ['coffee_chill', 'dessert_bakery'],
+        'fallback': ['coffee_chill']
+    },
+    
+    # BỮA TỐI - Đa dạng hơn
+    'dinner': {
+        'preferred': ['seafood', 'asian_fusion', 'spicy_food', 'luxury_dining'],
+        'fallback': ['street_food']
+    },
+    
+    # TRÁNG MIỆNG - Bánh/kem
+    'dessert': {
+        'preferred': ['dessert_bakery', 'coffee_chill'],
+        'fallback': ['street_food']
+    },
+    
+    # BỮA PHỤ (cho plan ngắn)
+    'meal': {
+        'preferred': ['street_food'],
+        'fallback': ['asian_fusion']
+    },
+    'meal1': {
+        'preferred': ['street_food'],
+        'fallback': ['asian_fusion']
+    },
+    'meal2': {
+        'preferred': ['street_food', 'asian_fusion'],
+        'fallback': ['coffee_chill']
+    },
+    'drink': {
+        'preferred': ['coffee_chill'],
+        'fallback': ['dessert_bakery']
+    }
+}
+
+def get_theme_for_meal(meal_key, user_selected_themes):
+    """
+    Chọn theme phù hợp cho từng bữa ăn
+    
+    Logic:
+    1. Nếu user CHỌN theme → tìm theme phù hợp với bữa
+    2. Nếu KHÔNG → dùng theme mặc định
+    """
+    meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
+    
+    # 🔥 NẾU USER ĐÃ CHỌN THEME
+    if user_selected_themes:
+        # Ưu tiên theme user chọn + phù hợp với bữa
+        for theme in meal_map['preferred']:
+            if theme in user_selected_themes:
+                return theme
+        
+        # Nếu không có theme nào phù hợp → dùng theme đầu tiên user chọn
+        return user_selected_themes[0]
+    
+    # 🔥 NẾU USER KHÔNG CHỌN THEME → Dùng mặc định
+    return meal_map['preferred'][0]
 
 # ==================== GENERATE SMART PLAN ====================
 
@@ -556,7 +573,7 @@ def generate_meal_schedule(time_start_str, time_end_str):
             'afternoon_drink': {
                 'time': '15:00',
                 'title': 'Trà chiều',
-                'categories': ['tra sua', 'cafe', 'banh'],
+                'categories': ['tra sua', 'cafe', 'coffee'],
                 'icon': '☕'
             },
             'dinner': {
@@ -611,10 +628,9 @@ def generate_meal_schedule(time_start_str, time_end_str):
     
     return plan
 
-def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00', radius_km=None):  # 🔥 THÊM THAM SỐ radius_km
+def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00', radius_km=None):
     """Tạo kế hoạch ăn uống thông minh"""
     
-    # 🔥 KIỂM TRA BÁN KÍNH NGAY ĐẦU HÀM
     if radius_km is None or radius_km <= 0:
         return {
             'error': True,
@@ -622,23 +638,31 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
         }
     
     df = pd.read_csv(csv_file)
-    
     plan = generate_meal_schedule(start_time, end_time)
     
     current_lat, current_lon = user_lat, user_lon
     used_place_ids = set()
     
-    base_filters = {
-        'theme': theme,
-        'tastes': user_tastes if user_tastes else [],
-        'radius_km': radius_km  # 🔥 DÙNG BÁN KÍNH TỪ THAM SỐ, KHÔNG CỐ ĐỊNH 5
-    }
+    # 🔥 PARSE USER THEMES
+    user_selected_themes = []
+    if theme:
+        if isinstance(theme, str):
+            user_selected_themes = [t.strip() for t in theme.split(',')]
+        elif isinstance(theme, list):
+            user_selected_themes = theme
     
-    places_found = 0  # 🔥 THÊM BIẾN ĐẾM
+    places_found = 0
     
     for key, meal in plan.items():
-        filters = base_filters.copy()
-        filters['categories'] = meal.get('categories', [])
+        # 🔥 CHỌN THEME PHÙ HỢP CHO TỪNG BỮA
+        meal_theme = get_theme_for_meal(key, user_selected_themes)
+        
+        filters = {
+            'theme': meal_theme,  # ← CHỈ 1 THEME DUY NHẤT
+            'tastes': user_tastes if user_tastes else [],
+            'radius_km': radius_km
+            # 🔥 BỎ CATEGORIES
+        }
         
         places = find_places_advanced(
             current_lat, current_lon, df, 
@@ -646,7 +670,7 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
         )
         
         if places:
-            places_found += 1  # 🔥 TĂNG BIẾN ĐẾM
+            places_found += 1
             weights = [1.0 / (i + 1) for i in range(len(places))]
             best_place = random.choices(places, weights=weights, k=1)[0]
             
@@ -674,7 +698,6 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
             current_lat = best_place['lat']
             current_lon = best_place['lon']
     
-    # 🔥 KIỂM TRA SAU KHI TÌM XONG
     if places_found == 0:
         return {
             'error': True,
@@ -1799,11 +1822,23 @@ def get_food_planner_html():
                         <div class="time-inputs">
                             <div class="time-input-group">
                                 <label>Từ</label>
-                                <input type="time" id="startTime" value="07:00">
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="number" id="startHour" min="0" max="23" value="07" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                    <span style="font-weight: bold;">:</span>
+                                    <input type="number" id="startMinute" min="0" max="59" value="00" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                </div>
                             </div>
                             <div class="time-input-group">
                                 <label>Đến</label>
-                                <input type="time" id="endTime" value="21:00">
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="number" id="endHour" min="0" max="23" value="21" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                    <span style="font-weight: bold;">:</span>
+                                    <input type="number" id="endMinute" min="0" max="59" value="00" 
+                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2294,8 +2329,13 @@ async function generateAutoPlan() {
             throw new Error('Trình duyệt không hỗ trợ GPS');
         }
         
-        const startTime = document.getElementById('startTime').value;
-        const endTime = document.getElementById('endTime').value;
+        const startHour = document.getElementById('startHour').value.padStart(2, '0');
+        const startMinute = document.getElementById('startMinute').value.padStart(2, '0');
+        const startTime = `${startHour}:${startMinute}`;
+
+        const endHour = document.getElementById('endHour').value.padStart(2, '0');
+        const endMinute = document.getElementById('endMinute').value.padStart(2, '0');
+        const endTime = `${endHour}:${endMinute}`;
         
         // 🔥 ƯU TIÊN LẤY TỪ WINDOW (ĐÃ LƯU TRONG script.js)
         const radius = window.currentRadius || document.getElementById('radius')?.value || '';
@@ -2545,10 +2585,6 @@ function displayPlanVertical(plan, editMode = false) {
                                 <span>⭐</span>
                                 <strong>${place.rating ? parseFloat(place.rating).toFixed(1) : 'N/A'}</strong>
                             </div>
-                            <div class="meta-item-vertical">
-                                <span>🚗</span>
-                                <strong>${place.distance} km</strong>
-                            </div>
                             ${place.gia_trung_binh ? `
                                 <div class="meta-item-vertical">
                                     <span>💰</span>
@@ -2557,14 +2593,10 @@ function displayPlanVertical(plan, editMode = false) {
                             ` : ''}
                         </div>
                         ${place.khau_vi ? `
-                            <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                            <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
                                 👅 Khẩu vị: ${place.khau_vi}
                             </div>
                         ` : ''}
-                        <div class="travel-info-vertical">
-                            🚗 <strong>Nên khởi hành lúc ${place.suggest_leave}</strong><br>
-                            ⏱️ Di chuyển khoảng ${place.travel_time} phút
-                        </div>
                     </div>
                 </div>
             </div>
@@ -2701,8 +2733,16 @@ function checkRouteOverlap(coords1, coords2, threshold = 0.0001) {
 
 // ========== DRAW ROUTE ON MAP ==========
 let routeLayers = [];
+let currentRouteAbortController = null;
 
 function clearRoutes() {
+    // 🔥 HỦY TẤT CẢ REQUESTS ĐANG CHẠY
+    if (currentRouteAbortController) {
+        currentRouteAbortController.abort();
+        currentRouteAbortController = null;
+        console.log('⚠️ Đã hủy tất cả requests vẽ đường cũ');
+    }
+
     if (typeof map !== 'undefined' && routeLayers.length > 0) {
         routeLayers.forEach(layer => {
             map.removeLayer(layer);
@@ -2784,7 +2824,10 @@ function drawRouteOnMap(plan) {
         return;
     }
     
-    clearRoutes();
+    // 🔥 HỦY REQUESTS CŨ VÀ TẠO MỚI
+    clearRoutes(); // Xóa routes cũ + hủy requests cũ
+    currentRouteAbortController = new AbortController();
+    const signal = currentRouteAbortController.signal;
     
     const drawnSegments = [];
     const waypoints = [];
@@ -2837,7 +2880,9 @@ function drawRouteOnMap(plan) {
     try {
         const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
         
-        const response = await fetch(url);
+        // 🔥 THÊM: Truyền signal vào fetch
+        const response = await fetch(url, { signal });
+
         const data = await response.json();
         
         if (data.code === 'Ok' && data.routes && data.routes[0]) {
@@ -2982,6 +3027,12 @@ function drawRouteOnMap(plan) {
         }
         
     } catch (error) {
+        // 🔥 BỎ QUA NẾU REQUEST BỊ HỦY
+        if (error.name === 'AbortError') {
+            console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
+            return;
+        }
+    
         console.error('Lỗi vẽ route:', error);
         const color = getRouteColor(index, totalRoutes);
         
@@ -3001,14 +3052,29 @@ function drawRouteOnMap(plan) {
     
     // Vẽ từng đoạn route
     (async function drawAllRoutes() {
-        for (let i = 0; i < waypoints.length - 1; i++) {
-            await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+        try {
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                // 🔥 KIỂM TRA NẾU ĐÃ BỊ HỦY THÌ DỪNG NGAY
+                if (signal.aborted) {
+                    console.log('⚠️ Đã dừng vẽ tất cả routes do bị hủy');
+                    return;
+                }
+                
+                await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+            }
+            
+            // 🔥 CHỈ FIT BOUNDS NẾU CHƯA BỊ HỦY
+            if (!signal.aborted) {
+                const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+                
+                console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường`);
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('Lỗi trong drawAllRoutes:', error);
+            }
         }
-        
-        const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
-        map.fitBounds(bounds, { padding: [50, 50] });
-        
-        console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường`);
     })();
 }
 
@@ -4081,5 +4147,125 @@ document.addEventListener('keydown', function(e) {
     };
     document.head.appendChild(script);
 })();
+// ========== CYCLIC TIME INPUT ==========
+document.addEventListener('DOMContentLoaded', function() {
+    function setupCyclicInput(id, maxValue) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        
+        let lastValue = parseInt(input.value) || 0;
+        let isSpinnerClick = false; // 🔥 BIẾN ĐÁNH DẤU
+        
+        // 🔥 BẮT SPINNER CLICK - DÙNG INPUT EVENT
+        let spinnerTimeout;
+        input.addEventListener('input', function(e) {
+            // Chỉ xử lý khi có thay đổi từ spinner
+            if (document.activeElement === this) {
+                clearTimeout(spinnerTimeout);
+                spinnerTimeout = setTimeout(() => {
+                    let val = parseInt(this.value);
+                    
+                    if (isNaN(val)) {
+                        this.value = '00';
+                        lastValue = 0;
+                        return;
+                    }
+                    
+                    // 🔥 CYCLE LOGIC
+                    if (val > maxValue) {
+                        this.value = 0;
+                        lastValue = 0;
+                    } else if (val < 0) {
+                        this.value = maxValue;
+                        lastValue = maxValue;
+                    } else {
+                        lastValue = val;
+                    }
+                    
+                    this.value = this.value.toString().padStart(2, '0');
+                }, 50);
+            }
+        });
+        
+        // Theo dõi mọi thay đổi
+        const observer = new MutationObserver(() => {
+            if (!isSpinnerClick) checkAndCycle();
+        });
+        
+        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
+        
+        input.addEventListener('input', function() {
+            if (!isSpinnerClick) checkAndCycle();
+        });
+        input.addEventListener('change', checkAndCycle);
+        
+        function checkAndCycle() {
+            let val = parseInt(input.value);
+            
+            if (isNaN(val)) {
+                input.value = '00';
+                lastValue = 0;
+                return;
+            }
+            
+            if (val > maxValue) {
+                input.value = 0;
+                lastValue = 0;
+            } else if (val < 0) {
+                input.value = maxValue;
+                lastValue = maxValue;
+            } else {
+                lastValue = val;
+            }
+        }
+        
+        // Xử lý blur để format
+        input.addEventListener('blur', function() {
+            let val = parseInt(this.value) || 0;
+            if (val > maxValue) val = 0;
+            if (val < 0) val = maxValue;
+            this.value = val.toString().padStart(2, '0');
+            lastValue = val;
+        });
+        
+        // Xử lý phím mũi tên
+        input.addEventListener('keydown', function(e) {
+            const currentValue = parseInt(this.value) || 0;
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
+                this.value = this.value.toString().padStart(2, '0');
+                lastValue = parseInt(this.value);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
+                this.value = this.value.toString().padStart(2, '0');
+                lastValue = parseInt(this.value);
+            }
+        });
+        
+        // Xử lý scroll chuột
+        input.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const currentValue = parseInt(this.value) || 0;
+            
+            if (e.deltaY < 0) {
+                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
+            } else {
+                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
+            }
+            
+            this.value = this.value.toString().padStart(2, '0');
+            lastValue = parseInt(this.value);
+        });
+    }
+    
+    // Áp dụng cho tất cả input
+    setupCyclicInput('startHour', 23);
+    setupCyclicInput('endHour', 23);
+    setupCyclicInput('startMinute', 59);
+    setupCyclicInput('endMinute', 59);
+});
 </script>
 '''

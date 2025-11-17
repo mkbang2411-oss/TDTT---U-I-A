@@ -9,6 +9,81 @@
 <body>
     <div class="background-left">
         <img src="Picture/background.png" width="850" height="200" alt="UIA Logo">
+        
     </div>
+    
+
+    <!--Side bar bên phải-->
+    <div class="sidebar-content">
+            <div class="logo">
+                <img src="Picture/UIAaa.png" width="500" height="200" alt="UIA Logo">
+            </div>
+            <div class="Menu">
+                <div class="Menu_Account" onclick="showPage('Account_Page')"> Tài Khoản</div>
+                <div class="Menu_Favorite" onclick="showPage('Favorite_Page')"> Yêu Thích</div>
+            </div>
+            <div class="Back">
+                <a href="main_web.html" class="Button_back">
+                    <img src="Picture/đ.png" width="50" height="50" alt="Back">
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <!--Account-->
+        <div id="Account_Page" class="page active">
+            <div class="Account">
+                <p>Tài Khoản</p>
+            </div>
+            <div class="avatar">
+                <img src="Picture/avatar.jpg" width="200" height="200" alt="Avatar">
+            </div>
+            <div class="Sign-out">
+                <a href="main_web.html" class="button-SignOut">Đăng Xuất</a>
+            </div>
+            <div class="account_Info">
+                <div class="form-group">
+                    <div class="input-box">
+                        <label>Email</label>
+                        <input type="email" placeholder="abc@gmail.com">
+                    </div>
+                    <div class="input-box">
+                        <label>Mật khẩu</label>
+                        <input type="password" placeholder="***">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--Favorite-->
+        <div id="Favorite_Page" class="page">
+            <div class="Favorite">
+                <p>Yêu Thích</p>
+            </div>
+        </div>
+    </div>
+    <!-- JAVASCRIPT -->
+    <script>
+        function showPage(pageId) {
+            // Ẩn tất cả các trang
+            var pages = document.querySelectorAll('.page');
+            pages.forEach(function(page) {
+                page.classList.remove('active');
+            });
+            
+            // Hiện trang được chọn
+            document.getElementById(pageId).classList.add('active');
+            
+            // Đổi active cho menu
+            document.querySelectorAll('.Menu > div').forEach(function(menu) {
+                menu.classList.remove('active');
+            });
+            
+            if(pageId === 'Account_Page') {
+                document.querySelector('.Menu_Account').classList.add('active');
+            } else if(pageId === 'Favorite_Page') {
+                document.querySelector('.Menu_Favorite').classList.add('active');
+            }
+        }
+    </script>
 </body>
 </html>
