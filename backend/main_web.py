@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import os, json
 from food_planner_v2 import generate_food_plan, get_food_planner_html
+from music_player_component import get_music_player_html
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/")
 
@@ -139,9 +140,11 @@ def serve_index():
     
     # Lấy food planner HTML
     food_planner_html = get_food_planner_html()
+
+    music_player_html = get_music_player_html()
     
     # Inject cả 2 vào trước </body>
-    html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}</body>")
+    html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}\n{music_player_html}</body>")
     
     return html_content
 
