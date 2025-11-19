@@ -513,7 +513,10 @@ else {
     icon = icons[category] || icons.default;
 }
 
-    const marker = L.marker([lat, lon], { icon }).addTo(map);
+    const marker = L.marker([lat, lon], { 
+      icon,
+      placeData: p // ✅ Lưu thông tin quán vào marker
+    }).addTo(map);
 
     if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
     marker._icon.classList.add("michelin-glow");
@@ -989,6 +992,65 @@ setTimeout(() => {
     const group = new L.featureGroup(markers);
     map.fitBounds(group.getBounds().pad(0.2));
   }
+
+function updateMarkersVisibility() {
+    const currentZoom = map.getZoom();
+    markers.forEach((marker) => {
+      const icon = marker._icon; // Lấy DOM element của icon
+      
+      if (currentZoom <= 15) {
+        // Ẩn marker với hiệu ứng
+        if (icon) {
+          icon.classList.remove('showing');
+          icon.classList.add('hiding');
+        }
+        marker.closeTooltip();
+        marker.unbindTooltip();
+        
+        // Sau khi hiệu ứng xong (0.5s) thì setOpacity = 0
+        setTimeout(() => {
+          marker.setOpacity(0);
+        }, 500);
+        
+      } else {
+        // Hiện marker với hiệu ứng
+        marker.setOpacity(1);
+        
+        if (icon) {
+          icon.classList.remove('hiding');
+          icon.classList.add('showing');
+        }
+        
+        // Bind lại tooltip
+        const place = marker.options.placeData;
+        if (place) {
+          const tooltipHTML = `
+            <div style="text-align:center;min-width:180px;">
+              <strong>${place.ten_quan || "Không tên"}</strong><br>
+              ${place.hinh_anh ? `<img src="${place.hinh_anh}" style="width:100px;height:70px;object-fit:cover;border-radius:6px;margin-top:4px;">` : ""}
+              <div style="font-size:13px;margin-top:4px;">
+                <i class="fa-regular fa-clock"></i> ${place.gio_mo_cua || "Không rõ"}<br>
+                <i class="fa-solid fa-coins"></i> ${place.gia_trung_binh || "Không có"}
+              </div>
+            </div>
+          `;
+          marker.bindTooltip(tooltipHTML, {
+            direction: "top",
+            offset: [0, -10],
+            opacity: 0.95,
+            sticky: true,
+            className: "custom-tooltip"
+          });
+        }
+      }
+    });
+  }
+
+  // ✅ Lắng nghe sự kiện zoom để ẩn/hiện markers
+  map.off('zoomend', updateMarkersVisibility); // Xóa listener cũ
+  map.on('zoomend', updateMarkersVisibility);  // Thêm listener mới
+  updateMarkersVisibility(); // Cập nhật ngay lập tức
+
   return true;
 }
 
@@ -1277,7 +1339,7 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
     window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
 
-    map.setView([coords.lat, coords.lon], 15);
+    map.setView([coords.lat, coords.lon], 16);
 
     // Có filter → mới tìm quán
     if (query || selectedFlavors.length > 0 || budget || radius) {
@@ -1617,7 +1679,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
         .bindPopup("📍 Bạn đang ở đây (tọa độ thật)")
         .openPopup();
 
-      map.setView([userLat, userLon], 15);
+      map.setView([userLat, userLon], 16);
     },
     (err) => {
       alert("Không thể lấy vị trí của bạn: " + err.message);

@@ -1182,6 +1182,21 @@ body {
     filter: drop-shadow(0 0 6px red) drop-shadow(0 0 12px red);
 }
 
+/* Hiệu ứng mượt cho markers khi ẩn/hiện */
+.leaflet-marker-icon {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.leaflet-marker-icon.hiding {
+  opacity: 0 !important;
+  transform: scale(0.5);
+}
+
+.leaflet-marker-icon.showing {
+  opacity: 1 !important;
+  transform: scale(1);
+}
+
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,
 button,
