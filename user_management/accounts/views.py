@@ -3,6 +3,8 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from allauth.socialaccount.models import SocialAccount
+from .models import ChatConversation, ChatMessage
+from django.shortcuts import render
 import json
 from datetime import datetime
 
@@ -123,3 +125,149 @@ def reviews_api(request: HttpRequest, place_id: str):
     
     # === 3. Nếu là method khác (PUT, DELETE...) ===
     return JsonResponse({"success": False, "message": "Method không được hỗ trợ"}, status=405)
+
+# ==========================================================
+@csrf_exempt # (Lưu ý: Dùng @csrf_exempt chỉ để demo, bạn nên dùng CSRF token chuẩn)
+def handle_chat_message(request):
+    if request.method == 'POST':
+        # 1. Lấy dữ liệu từ người dùng (ví dụ: JSON)
+        user_message_content = request.POST.get('message')
+        # (Tạm thời) Lấy hoặc tạo cuộc trò chuyện cho user đã đăng nhập
+        # Trong thực tế, bạn sẽ lấy ID cuộc trò chuyện từ request
+        conversation, created = ChatConversation.objects.get_or_create(user=request.user)
+
+        # 2. Lưu tin nhắn của người dùng vào CSDL
+        user_message = ChatMessage.objects.create(
+            conversation=conversation,
+            sender='user',
+            content=user_message_content
+        )
+
+        # 3. Gọi AI để lấy phản hồi (Đây là logic AI của bạn)
+        # ai_response_content = get_ai_response(user_message_content)
+        ai_response_content = f"Đây là phản hồi AI cho: '{user_message_content}'" # (Giả lập)
+
+        # 4. Lưu tin nhắn của AI vào CSDL
+        ai_message = ChatMessage.objects.create(
+            conversation=conversation,
+            sender='ai',
+            content=ai_response_content
+        )
+
+        # 5. Gửi phản hồi của AI trở lại frontend
+        return JsonResponse({
+            'user_message': user_message.content,
+            'ai_message': ai_message.content,
+            'timestamp': ai_message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+def load_chat_history(request, conversation_id):
+    try:
+        # Lấy cuộc trò chuyện (và đảm bảo nó thuộc về user này)
+        conversation = ChatConversation.objects.get(id=conversation_id, user=request.user)
+        
+        # Lấy tất cả tin nhắn thuộc về cuộc trò chuyện đó
+        # (Chúng ta đã dùng related_name='messages' trong model)
+        messages = conversation.messages.all() 
+        
+        # Bây giờ bạn có thể render các 'messages' này ra template
+        return render(request, 'chat.html', {'messages': messages, 'conversation': conversation})
+
+    except ChatConversation.DoesNotExist:
+        # Xử lý lỗi không tìm thấy
+        pass
+
+def check_auth_status(request):
+    """
+    Một API view để kiểm tra trạng thái đăng nhập.
+    """
+    if request.user.is_authenticated:
+        # Nếu đã đăng nhập
+        return JsonResponse({
+            'is_authenticated': True,
+            'username': request.user.username  # Gửi kèm tên user nếu muốn
+        })
+    else:
+        # Nếu chưa đăng nhập
+        return JsonResponse({'is_authenticated': False})
+    
+@csrf_exempt # Bỏ qua kiểm tra CSRF cho API này
+@login_required # Đảm bảo chỉ user đã đăng nhập mới gọi được
+def save_chat_message(request):
+    if request.method == 'POST':
+        try:
+            # Lấy dữ liệu JSON từ JavaScript gửi lên
+            data = json.loads(request.body)
+            content = data.get('content')
+            sender = data.get('sender') # Sẽ là 'user' hoặc 'ai'
+            conversation_id = data.get('conversation_id')
+
+            if not content or not sender:
+                return JsonResponse({'status': 'error', 'message': 'Thiếu content hoặc sender'}, status=400)
+
+            # 1. Tìm hoặc Tạo Cuộc Trò Chuyện (ChatConversation)
+            conversation = None
+            if conversation_id:
+                try:
+                    # Tìm conversation cũ nếu JS gửi ID lên
+                    conversation = ChatConversation.objects.get(id=conversation_id, user=request.user)
+                except ChatConversation.DoesNotExist:
+                    pass # Không tìm thấy, sẽ tạo mới bên dưới
+
+            if conversation is None:
+                # Tạo conversation mới nếu không có ID hoặc ID không hợp lệ
+                conversation = ChatConversation.objects.create(user=request.user)
+                # Đặt tiêu đề (ví dụ: 50 ký tự đầu của tin nhắn đầu tiên)
+                if sender == 'user':
+                     conversation.title = content[:50]
+                     conversation.save()
+
+            # 2. Lưu Tin Nhắn (ChatMessage)
+            ChatMessage.objects.create(
+                conversation=conversation,
+                sender=sender,
+                content=content
+            )
+
+            # 3. Trả về ID của conversation để JS lưu lại
+            return JsonResponse({'status': 'success', 'conversation_id': conversation.id})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Chỉ hỗ trợ POST'}, status=405)
+
+@login_required # Chỉ user đăng nhập mới được load
+def load_chat_history(request):
+    if request.method == 'GET':
+        try:
+            # 1. Tìm conversation MỚI NHẤT của user này
+            conversation = ChatConversation.objects.filter(user=request.user).order_by('-created_at').first() #
+            
+            if conversation:
+                # 2. Nếu có, lấy tất cả tin nhắn của conversation đó
+                messages = conversation.messages.all().order_by('timestamp') #
+                
+                # 3. Chuyển đổi thành một list để gửi về cho JS
+                message_list = []
+                for msg in messages:
+                    message_list.append({
+                        'sender': msg.sender,
+                        'content': msg.content
+                    })
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'conversation_id': conversation.id,
+                    'messages': message_list
+                })
+            else:
+                # User này chưa chat bao giờ
+                return JsonResponse({'status': 'no_history'})
+                
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Chỉ hỗ trợ GET'}, status=405)

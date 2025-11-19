@@ -1084,7 +1084,14 @@ function distance(lat1, lon1, lat2, lon2) {
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU
 // =======================================================
-async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", shouldZoom = true) {  try {
+async function fetchPlaces(
+  query = "",
+  flavors = [],
+  budget = "",
+  radius = "",
+  shouldZoom = true
+) {
+  try {
     const res = await fetch("/api/places");
     let data = await res.json();
 
@@ -1152,94 +1159,103 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
       filtered = filtered.filter((p) => {
         if (!p.khau_vi) return false;
         const norm = normalize(p.khau_vi);
-        return flavors.some(f => norm.includes(normalize(f)));
+        return flavors.some((f) => norm.includes(normalize(f)));
       });
     }
 
     // ========== 3️⃣ Lọc giá ==========
-   if (budget !== "") {
-  const [budgetMin, budgetMax] = budget.split("-").map(n => {
-    return n === "Infinity" ? Infinity : parseInt(n);
-  });
+    if (budget !== "") {
+      const [budgetMin, budgetMaxRaw] = budget.split("-").map((n) => n.trim());
+      const budgetMinNum = parseInt(budgetMin);
+      const budgetMax =
+        budgetMaxRaw === "Infinity" ? Infinity : parseInt(budgetMaxRaw);
 
-  filtered = filtered.filter((p) => {
-    const range = parsePriceRange(p.gia_trung_binh);
-    if (!range) return false;
+      filtered = filtered.filter((p) => {
+        const range = parsePriceRange(p.gia_trung_binh);
+        if (!range) return false;
 
-    const [minP, maxP] = range;
+        const [minP, maxP] = range;
 
-    // ⭐ TH1: "300.000 trở lên"
-    if (budgetMax === Infinity) {
-      return minP >= budgetMin;   // chỉ lấy quán có giá bắt đầu từ budgetMin
+        // ⭐ TH1: "300.000 trở lên"
+        if (budgetMax === Infinity) {
+          return minP >= budgetMinNum;
+        }
+
+        // ⭐ TH2: khoảng giá bình thường → chỉ cần giao nhau
+        return maxP >= budgetMinNum && minP <= budgetMax;
+      });
     }
 
-    // ⭐ TH2: khoảng giá bình thường
-    return maxP >= budgetMin && minP <= budgetMax; // giao nhau
-  });
-}
+    // ========== 4️⃣ Lọc bán kính ==========
+    if (radius !== "") {
+      const r = parseFloat(radius); // km
 
-
-
-// ========== 4️⃣ Lọc bán kính ==========
-if (radius !== "") {
-  const r = parseFloat(radius); // km
-
-  if (!window.currentUserCoords || !window.currentUserCoords.lat || !window.currentUserCoords.lon) {
-    alert("Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!");
-  } else {
-    const userLat = parseFloat(window.currentUserCoords.lat);
-    const userLon = parseFloat(window.currentUserCoords.lon);
-
-    filtered = filtered.filter((p) => {
-      if (!p.lat || !p.lon) return false;
-
-      const plat = parseFloat(p.lat.toString().replace(",", "."));
-      const plon = parseFloat(p.lon.toString().replace(",", "."));
-      if (isNaN(plat) || isNaN(plon)) return false;
-
-      const d = distance(userLat, userLon, plat, plon);
-
-      // ==== 🔹 Debug khoảng cách từng quán ====
-      if (d > r) {
-        console.warn(`❌ ${p.ten_quan} cách ${d.toFixed(2)} km, vượt radius ${r} km`);
+      if (
+        !window.currentUserCoords ||
+        !window.currentUserCoords.lat ||
+        !window.currentUserCoords.lon
+      ) {
+        alert(
+          "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
+        );
+        // không filter theo radius nữa, dùng filtered hiện tại
       } else {
-        console.log(`✅ ${p.ten_quan} cách ${d.toFixed(2)} km, trong radius ${r} km`);
+        const userLat = parseFloat(window.currentUserCoords.lat);
+        const userLon = parseFloat(window.currentUserCoords.lon);
+
+        filtered = filtered.filter((p) => {
+          if (!p.lat || !p.lon) return false;
+
+          const plat = parseFloat(p.lat.toString().replace(",", "."));
+          const plon = parseFloat(p.lon.toString().replace(",", "."));
+          if (isNaN(plat) || isNaN(plon)) return false;
+
+          const d = distance(userLat, userLon, plat, plon);
+
+          // Debug tuỳ bạn cần hay không
+          // if (d > r) {
+          //   console.warn(`❌ ${p.ten_quan} cách ${d.toFixed(2)} km, vượt radius ${r} km`);
+          // } else {
+          //   console.log(`✅ ${p.ten_quan} cách ${d.toFixed(2)} km, trong radius ${r} km`);
+          // }
+
+          return d <= r;
+        });
       }
+    }
 
-      return d <= r; // lọc quán theo radius
-    });
-  }
-}
-
-
-
-
-    displayPlaces(filtered, shouldZoom);
+    // 🟢 Quan trọng: trả về true/false từ displayPlaces
+    const ok = displayPlaces(filtered, shouldZoom);
+    return ok; // <-- để btnSearch biết là có quán hay không
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
     alert("Không thể tải dữ liệu từ server!");
+    return false; // xem như thất bại
   }
 }
-// =======================================================
-// ✅ NÚT TÌM KIẾM
-// =======================================================
-let notFoundCount = 0;
 
+let notFoundCount = 0;
+// =============================
+// 🔍 NÚT TÌM KIẾM
+// =============================
 document.getElementById("btnSearch").addEventListener("click", async () => {
   const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
 
   const selectedFlavors = Array.from(
     document.querySelectorAll("#flavorDropdown input:checked")
-  ).map(c => c.value);
+  ).map((c) => c.value);
 
   const budget = document.getElementById("budget").value;
   const radius = document.getElementById("radius").value;
 
-  let result = true; // kết quả tìm kiếm (true = có quán, false = không)
+  let result = true; // true = có quán, false = không
+  // 👉 TRUE nếu đây chỉ là filter bằng 3 thanh phụ
+ const isFilterOnlySearch =
+  (!gpsInputValue || gpsInputValue === "Vị trí hiện tại của tôi") && !query;
 
   // =============================
-  // 📌 CASE 1 — Có nhập địa điểm
+  // 📌 CASE 1 — Có nhập địa điểm (khác "Vị trí hiện tại của tôi")
   // =============================
   if (gpsInputValue && gpsInputValue !== "Vị trí hiện tại của tôi") {
     const coords = await geocodeAddress(gpsInputValue);
@@ -1262,7 +1278,7 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
     map.setView([coords.lat, coords.lon], 15);
 
-    // Có filter → tìm quán
+    // Có filter → mới tìm quán
     if (query || selectedFlavors.length > 0 || budget || radius) {
       result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
     }
@@ -1270,29 +1286,38 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
   // =============================
   // 📌 CASE 2 — Không nhập địa điểm
+  //      (hoặc "Vị trí hiện tại của tôi")
   // =============================
   else {
     result = await fetchPlaces(query, selectedFlavors, budget, radius, true);
   }
 
   // =============================
-  // 🚨 XỬ LÝ ĐẾM SỐ LẦN KHÔNG TÌM THẤY
+  // 🚨 ĐẾM 3 LẦN THẤT BẠI LIÊN TIẾP (CHỈ TÍNH MAIN SEARCH)
   // =============================
-  if (!result) {
+  if (!isFilterOnlySearch) {
+  if (result === false) {
+    // ❌ Tìm kiếm chính thất bại
     notFoundCount++;
-
-    console.log("⚠️ Không tìm thấy quán:", notFoundCount, "lần");
+    console.log(
+      "⚠️ Không tìm thấy quán (main search):",
+      notFoundCount,
+      "lần liên tiếp"
+    );
 
     if (notFoundCount >= 3) {
-      notFoundCount = 0; // reset
-
-      // 🔥 BẬT CHATBOX TỰ ĐỘNG
+      notFoundCount = 0;
       openChatboxAutomatically();
     }
-  } else {
-    notFoundCount = 0; // reset nếu tìm thấy quán
+  } else if (result === true) {
+    // ✅ Tìm kiếm chính thành công → reset chuỗi thất bại
+    notFoundCount = 0;
   }
+}
+
+  // Nếu là filter-only search → không đụng tới notFoundCount
 });
+
 // =======================================================
 // ✅ MULTI-SELECT KHẨU VỊ
 // =======================================================

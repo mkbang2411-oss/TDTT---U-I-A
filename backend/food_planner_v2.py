@@ -169,8 +169,7 @@ THEME_CATEGORIES = {
             'cà phê sữa đá', 'cà phê đen',
             'bạc xỉu', 'nâu đá', 'Akafe',
             'espresso', 'cappuccino', 'latte', 'americano',
-            'mocha', 'macchiato', 'flat white',
-            'trà', 'tea',
+            'mocha', 'macchiato', 'flat white','tea',
             'trà sữa', 'milk tea',
             'trà đào', 'trà chanh', 'trà atiso',
             'trà sen', 'trà hoa', 'trà ô long',
@@ -327,6 +326,90 @@ THEME_CATEGORIES = {
         'keywords': [],  # Xét trực tiếp cột mo_ta
         'icon': '⭐'
     }
+}
+
+# ==================== TỪ ĐIỂN KEYWORD CHO TỪNG BỮA ĂN ====================
+MEAL_TYPE_KEYWORDS = {
+    'breakfast': [
+        # Món Việt sáng
+        'phở', 'bún', 'bánh mì', 'cháo', 'xôi', 'hủ tiếu', 'bánh cuốn', 
+        'bánh bèo', 'cơm tấm', 'mì quảng'
+    ],
+    
+    'morning_drink': [
+        # Đồ uống
+        'cafe', 'coffee', 'cà phê', 'trà', 'tea', 'sinh tố', 'juice', 
+        'nước', 'nước ép', 'smoothie', 'sữa', 'milk', 'trà sữa',
+        'matcha', 'latte', 'cappuccino', 'espresso',
+        # Từ theme coffee_chill
+        'highlands', 'starbucks', 'phúc long', 'trung nguyên',
+        'gong cha', 'royaltea', 'ding tea', 'tocotoco', 'koi thé',
+        'bobapop', 'alley', 'tiger sugar', 'passio', 'phindi'
+    ],
+    
+    'lunch': [
+        # Món chính
+        'cơm', 'bún', 'mì', 'phở', 'hủ tiếu', 'cơm tấm', 'miến',
+        'bánh mì', 'bánh xèo', 'cao lầu', 'mì quảng'
+    ],
+    
+    'afternoon_drink': [
+        # Đồ uống
+        'cafe', 'coffee', 'cà phê', 'trà', 'tea', 'trà sữa', 'milk tea', 
+        'sinh tố', 'nước', 'juice', 'smoothie', 'soda',
+        'matcha', 'chocolate', 'frappe',
+        # Bánh nhẹ
+        'bánh', 'cake', 'tiramisu', 'macaron', 'cupcake', 'donut',
+        # Từ theme
+        'highlands', 'starbucks', 'phúc long', 'trung nguyên',
+        'gong cha', 'royaltea', 'tocotoco', 'koi thé', 'passio'
+    ],
+    
+    'dinner': [
+        # Món tối đa dạng
+        'cơm', 'lẩu', 'nướng', 'hải sản', 'bún', 'mì', 'phở',
+        'cơm tấm', 'nem', 'gỏi', 'cháo', 'hotpot', 'bbq',
+        'sushi', 'ramen', 'dimsum', 'steak', 'bò', 'gà', 'cá', 'tôm', 'buffet'
+    ],
+    
+    'dessert': [
+        # Tráng miệng
+        'bánh', 'kem', 'chè', 'cake', 'ice cream', 'dessert',
+        'bánh ngọt', 'bánh kem', 'tiramisu', 'macaron', 'cupcake',
+        'gelato', 'frosty', 'sundae', 'mousse', 'cheesecake',
+        'donut', 'cookie', 'brownie', 'tart', 'pie', 'mochi',
+        # 🔥 Bakery Tiếng Anh
+        'bakery', 'patisserie', 'confectionery', 'pastry'
+    ],
+    
+    # 🔥 CHO KHOẢNG THỜI GIAN NGẮN
+    'meal': [
+        # Bữa chính đa dạng
+        'cơm', 'bún', 'phở', 'mì', 'hủ tiếu', 'cơm tấm', 'bánh mì',
+        'bánh xèo', 'nem', 'gỏi', 'cháo', 'xôi', 'cao lầu'
+    ],
+    
+    'meal1': [
+        # Bữa chính 1
+        'cơm', 'bún', 'phở', 'mì', 'hủ tiếu', 'cơm tấm', 'bánh mì',
+        'bánh xèo', 'miến', 'cao lầu', 'mì quảng'
+    ],
+    
+    'meal2': [
+        # Bữa phụ nhẹ hơn
+        'cơm', 'bún', 'phở', 'mì', 'bánh mì', 'nem', 'gỏi cuốn',
+        'bánh xèo', 'bánh', 'xôi', 'chè'
+    ],
+    
+    'drink': [
+        # Đồ uống tổng hợp
+        'cafe', 'coffee', 'cà phê', 'trà', 'tea', 'nước', 'sinh tố',
+        'juice', 'smoothie', 'trà sữa', 'milk tea', 'soda', 'nước ép',
+        'matcha', 'chocolate', 'latte', 'cappuccino',
+        # Từ theme
+        'highlands', 'starbucks', 'phúc long', 'trung nguyên',
+        'gong cha', 'royaltea', 'tocotoco', 'koi thé', 'passio'
+    ]
 }
 
 # ==================== FIND PLACES WITH ADVANCED FILTERS ====================
@@ -521,22 +604,16 @@ def get_theme_for_meal(meal_key, user_selected_themes):
     Chọn theme phù hợp cho từng bữa ăn
     
     Logic:
-    1. Nếu user CHỌN theme → tìm theme phù hợp với bữa
-    2. Nếu KHÔNG → dùng theme mặc định
+    1. Nếu user CHỌN theme → LUÔN DÙNG theme đó (không tự động đổi)
+    2. Nếu KHÔNG → dùng theme mặc định theo bữa
     """
-    meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
-    
-    # 🔥 NẾU USER ĐÃ CHỌN THEME
+    # 🔥 NẾU USER ĐÃ CHỌN THEME → DÙNG LUÔN, KHÔNG ĐỔI
     if user_selected_themes:
-        # Ưu tiên theme user chọn + phù hợp với bữa
-        for theme in meal_map['preferred']:
-            if theme in user_selected_themes:
-                return theme
-        
-        # Nếu không có theme nào phù hợp → dùng theme đầu tiên user chọn
+        # Nếu chọn nhiều theme → dùng theme đầu tiên
         return user_selected_themes[0]
     
-    # 🔥 NẾU USER KHÔNG CHỌN THEME → Dùng mặc định
+    # 🔥 NẾU USER KHÔNG CHỌN THEME → Tự động chọn theo bữa
+    meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
     return meal_map['preferred'][0]
 
 # ==================== GENERATE SMART PLAN ====================
@@ -632,10 +709,10 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
     """Tạo kế hoạch ăn uống thông minh"""
     
     if radius_km is None or radius_km <= 0:
-        return {
+        return {{
             'error': True,
             'message': 'Vui lòng chọn bán kính tìm kiếm'
-        }
+        }}
     
     df = pd.read_csv(csv_file)
     plan = generate_meal_schedule(start_time, end_time)
@@ -652,22 +729,41 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
             user_selected_themes = theme
     
     places_found = 0
+    keys_to_remove = []  # 🔥 THÊM LIST ĐỂ LƯU KEY CẦN XÓA
     
     for key, meal in plan.items():
         # 🔥 CHỌN THEME PHÙ HỢP CHO TỪNG BỮA
         meal_theme = get_theme_for_meal(key, user_selected_themes)
         
         filters = {
-            'theme': meal_theme,  # ← CHỈ 1 THEME DUY NHẤT
+            'theme': meal_theme,
             'tastes': user_tastes if user_tastes else [],
             'radius_km': radius_km
-            # 🔥 BỎ CATEGORIES
         }
         
         places = find_places_advanced(
             current_lat, current_lon, df, 
             filters, excluded_ids=used_place_ids, top_n=20
         )
+        
+        # 🔥 LỌC CHẶT THEO KEYWORD - KHÔNG CÓ THÌ BỎ BỮA
+        if places and key in MEAL_TYPE_KEYWORDS:
+            meal_keywords = MEAL_TYPE_KEYWORDS[key]
+            filtered_places = []
+            
+            for place in places:
+                name_normalized = normalize_text_with_accent(place['ten_quan'])
+                
+                for kw in meal_keywords:
+                    kw_normalized = normalize_text_with_accent(kw)
+                    search_text = ' ' + name_normalized + ' '
+                    search_keyword = ' ' + kw_normalized + ' '
+                    
+                    if search_keyword in search_text:
+                        filtered_places.append(place)
+                        break
+            
+            places = filtered_places  # 🔥 LUÔN THAY THẾ
         
         if places:
             places_found += 1
@@ -697,11 +793,19 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
             
             current_lat = best_place['lat']
             current_lon = best_place['lon']
+        else:
+            # 🔥 KHÔNG CÓ QUÁN PHÙ HỢP → ĐÁNH DẤU XÓA
+            print(f"⚠️ Không tìm được quán phù hợp cho {{key}} ({{meal['title']}}), bỏ bữa này")
+            keys_to_remove.append(key)  # 🔥 THÊM VÀO LIST THAY VÌ XÓA NGAY
+    
+    # 🔥 XÓA CÁC BỮA KHÔNG TÌM ĐƯỢC QUÁN SAU KHI DUYỆT XONG
+    for key in keys_to_remove:
+        del plan[key]
     
     if places_found == 0:
         return {
             'error': True,
-            'message': f'Không tìm thấy quán nào trong bán kính {radius_km} km'
+            'message': f'Không tìm thấy quán nào trong bán kính {{radius_km}} km'
         }
     
     return plan
