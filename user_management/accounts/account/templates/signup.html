@@ -1,0 +1,124 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset = "UTF-8">
+    <title>Sign Up</title>
+
+    <link rel="stylesheet" href="{% static 'banner.css' %}">
+    <style>
+        .text-box{
+            border-radius: 15px;
+            padding: 15px 55px;
+            text-align: center;
+            width: 150px;
+            height: 25px;
+            left: 100px;
+            right: 100px;
+            display: flex;
+            margin: 50px auto;
+            padding-top: 1px;
+            padding-right: 80px;
+            padding-left: 100px;
+            flex-direction: column;
+            align-items: center;
+        }
+        .text-box h1{
+            color: #BC2A12;
+            font-family: "Haetenschweiler Regular", sans-serif;
+            font-size: 35px;
+            margin: 0;
+            text-align: center;
+        }
+        .login-form{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .login-form label{
+            color: #BC2A12;
+            font-weight: bold;
+            height: 15px;
+            margin-top: 15px;
+            margin-left: -150px;
+            width: 100%;
+        }
+        .login-form input{
+            width: 220px;
+            padding: 8px 10px;
+            border: 2px solid #BC2A12;
+            border-radius: 5px;
+            outline: #BC2A12;
+            font-size: 10px;
+        }
+        .login-form .Sign-up-button {
+            background-color: #FED57E;
+            border: 3.5px solid #fed57e;
+            border-radius: 15px;
+            color: white;
+            width: 70px;
+            height: 30px;
+            font-size: 15px;
+            text-align: center;
+        }
+        .login-form .Sign-up-button:hover{
+            background-color: #BC2A12;
+            color: white;
+        }
+        .django-error {
+            color: red;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 5px 0 10px 0;
+        }
+    </style>
+</head>
+    <body>      
+        <div class="background">
+            <img src="{% static 'Picture/background.png' %}" class="bg" alt="UIA Logo">
+            <img src="{% static 'Picture/UIAaa.png' %}" class="uia"  alt="UIA">
+        </div>
+        <div class="text-box">
+            <h1>SIGN UP</h1>
+
+            <form class="login-form" method="POST" action="{% url 'account_signup' %}">
+                
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="django-error">
+                        {{ form.non_field_errors.as_text }}
+                    </div>
+                {% endif %}
+
+                <label for="{{ form.email.id_for_label }}">Email:</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div class="django-error">
+                        {{ form.email.errors.as_text }}
+                    </div>
+                {% endif %}
+
+                <label for="{{ form.password1.id_for_label }}">Password:</label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}
+                    <div class="django-error">
+                        {{ form.password1.errors.as_text }}
+                    </div>
+                {% endif %}
+
+                <label for="{{ form.password2.id_for_label }}">Confirm Password:</label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                    <div class="django-error">
+                        {{ form.password2.errors.as_text }}
+                    </div>
+                {% endif %}
+
+                <button type="submit" class="Sign-up-button" >Done</button> 
+            </form>
+        </div>
+
+    </body>
+</html>

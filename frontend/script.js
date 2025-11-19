@@ -1182,7 +1182,7 @@ async function fetchPlaces(
         }
 
         // ⭐ TH2: khoảng giá bình thường → chỉ cần giao nhau
-        return maxP >= budgetMinNum && minP <= budgetMax;
+        return minP >= budgetMinNum && maxP <= budgetMax;
       });
     }
 

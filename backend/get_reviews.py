@@ -7,7 +7,7 @@ import time
 # ⚙️ Cấu hình
 SERP_API_KEY = "a3ce5e1007e887b80f0c3114d9bd93854917de1e7caae81e7887148f233072a4"  # giữ API key của bạn ở đây
 
-CSV_FILE = "Data.csv"
+CSV_FILE = "Data_with_flavor.csv"
 
 # Thư mục hiện tại (vd: D:\Food_map\backend)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

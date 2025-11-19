@@ -22,8 +22,8 @@ CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 #      - Tính từ 1, không tính dòng header
 #      - Để None nếu muốn từ đầu / đến cuối
 # ======================================================
-START_ROW = 335       # ví dụ: 2
-END_ROW   = 350      # ví dụ: 20
+START_ROW = 1655      # ví dụ: 2
+END_ROW   = 1656      # ví dụ: 20
 
 # ======================================================
 # 🔹 2. Bảng từ khóa khẩu vị
@@ -31,7 +31,7 @@ END_ROW   = 350      # ví dụ: 20
 rules = {
     "cay": [
         "sa tế", "lẩu thái", "kim chi", "curry", "cà ri",
-        "ớt hiểm", "hạt tiêu", "mì cay",
+        "ớt hiểm", "hạt tiêu", "mì cay","mỳ cay",
         "ớt", "huế", "spicy", "chili"
     ],
     "mặn": [
