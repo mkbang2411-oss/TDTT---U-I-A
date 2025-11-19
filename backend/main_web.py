@@ -161,4 +161,5 @@ if __name__ == "__main__":
     print(f"📄 File reviews.json: {os.path.exists(REVIEWS_FILE)}")
     print(f"🤖 Chatbot đã được tích hợp!")
     print(f"🍽️ Food Planner đã được tích hợp!")
+    print(f"🎵 Music player đã được tích hợp!")
     app.run(debug=True)
