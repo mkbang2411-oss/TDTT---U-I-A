@@ -1338,7 +1338,7 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
     window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
 
-    map.setView([coords.lat, coords.lon], 15);
+    map.setView([coords.lat, coords.lon], 16);
 
     // Có filter → mới tìm quán
     if (query || selectedFlavors.length > 0 || budget || radius) {
@@ -1678,7 +1678,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
         .bindPopup("📍 Bạn đang ở đây (tọa độ thật)")
         .openPopup();
 
-      map.setView([userLat, userLon], 15);
+      map.setView([userLat, userLon], 16);
     },
     (err) => {
       alert("Không thể lấy vị trí của bạn: " + err.message);
