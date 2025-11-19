@@ -145,6 +145,10 @@ def serve_index():
     
     return html_content
 
+@app.route("/account")
+def serve_account():
+    return send_from_directory("../frontend", "Account.html")
+
 @app.route("/<path:path>")
 def serve_static_files(path):
     return send_from_directory("../frontend", path)

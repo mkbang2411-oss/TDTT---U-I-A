@@ -767,16 +767,31 @@ def get_food_planner_html():
 /* ========== SIDE PANEL ========== */
 .food-planner-panel {
     position: fixed;
-    top: 0;
+    top: 0px;
     right: -550px;
     width: 550px;
     height: 100vh;
     background: white;
     z-index: 999999 !important;
     transition: right 0.3s ease;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.18);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+}
+
+.food-planner-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.food-planner-panel::-webkit-scrollbar-track {
+    background: transparent; /* Nền thanh cuộn trong suốt */
+}
+
+.food-planner-panel::-webkit-scrollbar-thumb {
+    /* Màu cam nhạt mờ, giống với chatbot: rgba(255,107,53,0.3) */
+    background: rgba(255, 44, 44, 0.3);
+    border-radius: 3px;
 }
 
 .food-planner-panel.active {

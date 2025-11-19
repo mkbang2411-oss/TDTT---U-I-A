@@ -66,7 +66,8 @@
             <!-- Nút Account - CHỈ HIỆN KHI ĐÃ ĐĂNG NHẬP -->
             <div class="user-only">
                 <a href="Account.html" class="account-button">
-                    <img src="Picture/user.png" alt="Account">
+                    <span class="account-text">Tài khoản</span>
+                    <img src="Picture/user.png" alt="Account" class="account-img">
                 </a>
             </div>
         </div>
@@ -75,8 +76,10 @@
     <div id="controls">
         <!-- 🧭 THANH NHẬP ĐỊA ĐIỂM -->
         <div class="gps-box">
+            <button id="gpsLocateBtn" class="gps-btn" title="Dùng GPS">
+                <img src="Picture/GPS.png" alt="GPS" class="gps-icon">
+            </button>
             <input id="gpsInput" type="text" placeholder="Địa điểm của bạn..." autocomplete="off" />
-            <button id="gpsLocateBtn" title="Dùng GPS" class="gps-btn">📍</button>
         </div>
 
         <!-- 🔍 THANH TÌM QUÁN ĂN -->
@@ -117,36 +120,90 @@
             </div>
         </div>
 
-        <!-- 💰 BUDGET -->
-        <div class="budget-selector">
-            <select id="budget">
-                <option value="">Ngân sách mặc định</option>
-                <option value="1-100000">1 – 100.000 ₫</option>
-                <option value="100000-200000">100.000 – 200.000 ₫</option>
-                <option value="200000-300000">200.000 – 300.000 ₫</option>
-                <option value="300000-9999999">300.000 ₫ trở lên</option>
-            </select>
+        <!-- 💰 NGÂN SÁCH -->
+        <div class="budget-selector flavor-selector" id="budgetSelector">
+            <div class="flavor-selector-btn" id="budgetBtn">
+                <span class="selected-flavors empty">Ngân sách mặc định</span>
+                <span class="arrow">▼</span>
+            </div>
+            <div class="flavor-dropdown" id="budgetDropdown">
+                <div class="flavor-option">
+                    <input type="radio" name="budget" value="" id="budget-default" checked>
+                    <label for="budget-default">Ngân sách mặc định</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="budget" value="1-100000" id="budget-1">
+                    <label for="budget-1">1 – 100.000 ₫</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="budget" value="100000-200000" id="budget-2">
+                    <label for="budget-2">100.000 – 200.000 ₫</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="budget" value="200000-300000" id="budget-3">
+                    <label for="budget-3">200.000 – 300.000 ₫</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="budget" value="300000-9999999" id="budget-4">
+                    <label for="budget-4">300.000 ₫ trở lên</label>
+                </div>
+            </div>
+            <!-- ✅ HIDDEN INPUT ĐỂ SCRIPT.JS ĐỌC ĐƯỢC -->
+            <input type="hidden" id="budget" value="">
         </div>
 
         <!-- 📏 BÁN KÍNH -->
-        <div class="radius-selector">
-            <select id="radius">
-                <option value="">Bán kính tìm kiếm</option>
-                <option value="0.5">500 m</option>
-                <option value="1">1 km</option>
-                <option value="2">2 km</option>
-                <option value="3">3 km</option>
-                <option value="5">5 km</option>
-            </select>
+        <div class="radius-selector flavor-selector" id="radiusSelector">
+            <div class="flavor-selector-btn" id="radiusBtn">
+                <span class="selected-flavors empty">Bán kính tìm kiếm</span>
+                <span class="arrow">▼</span>
+            </div>
+            <div class="flavor-dropdown" id="radiusDropdown">
+                <div class="flavor-option">
+                    <input type="radio" name="radius" value="" id="radius-default" checked>
+                    <label for="radius-default">Bán kính mặc định</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="radius" value="0.5" id="radius-05">
+                    <label for="radius-05">500 m</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="radius" value="1" id="radius-1">
+                    <label for="radius-1">1 km</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="radius" value="2" id="radius-2">
+                    <label for="radius-2">2 km</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="radius" value="3" id="radius-3">
+                    <label for="radius-3">3 km</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="radio" name="radius" value="5" id="radius-5">
+                    <label for="radius-5">5 km</label>
+                </div>
+            </div>
+            <!-- ✅ HIDDEN INPUT ĐỂ SCRIPT.JS ĐỌC ĐƯỢC -->
+            <input type="hidden" id="radius" value="">
         </div>
 
-        <button id="btnSearch">🔍 Tìm</button>
+        <button id="btnSearch">
+            <img src="Picture/find.png" style="width: 24px; height: 24px;">
+        </button>
     </div>
 
     <div id="sidebar" class="hidden">
-        <button id="closeSidebar">×</button>
+        <!-- ✅ HEADER CỐ ĐỊNH (luôn có) -->
+        <div class="sidebar-header">
+            <h2 id="sidebar-title">Thông tin chi tiết</h2>
+            <button id="closeSidebar">×</button>
+        </div>
+        
+        <!-- ✅ NỘI DUNG ĐỘNG (render từ JS) -->
         <div id="sidebar-content"></div>
-    </div>
+        </div>
+
 
     <div id="map"></div>
     

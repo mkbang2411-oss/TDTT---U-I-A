@@ -1,13 +1,22 @@
 // =========================
 // 🗺️ CẤU HÌNH MAP
 // =========================
+const vietnamBounds = [
+  [8.179066, 102.14441],   // SW
+  [23.393395, 109.46972]   // NE
+];
+
 const map = L.map("map",{
-  zoomControl: false  // ← THÊM DÒNG NÀY để tắt nút +/-
-}).setView([10.7769, 106.7009], 13);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  zoomControl: false,  // ← THÊM DÒNG NÀY để tắt nút +/-
+  maxBounds: vietnamBounds,
+  maxBoundsViscosity: 1.0
+}).setView([10.76298, 106.68246], 18);
+
+L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+  minZoom: 6.5,
   maxZoom: 19,
-  attribution:
-    '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+  attribution: '&copy; CARTO',
+  className: 'map-pastel'
 }).addTo(map);
 
 let markers = [];
@@ -22,78 +31,93 @@ const icons = {
     iconUrl: "icons/pho.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   cafe: L.icon({
     iconUrl: "icons/coffee.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   tra_sua: L.icon({
     iconUrl: "icons/tra_sua.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   bun: L.icon({
     iconUrl: "icons/bun.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   banh_mi: L.icon({
     iconUrl: "icons/banh_mi.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   banh_ngot: L.icon({
     iconUrl: "icons/banh_ngot.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   my_cay: L.icon({
     iconUrl: "icons/my_cay.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   com: L.icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/3174/3174880.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   banh_kem: L.icon({
     iconUrl: "icons/banh_kem.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   
   kem: L.icon({
     iconUrl: "icons/kem.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
 
   lau: L.icon({
     iconUrl: "icons/lau.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
     mi: L.icon({
     iconUrl: "icons/ramen.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }), 
   khu_am_thuc: L.icon({
   iconUrl: "icons/street_food.png", // 👉 Bạn đặt file này trong thư mục /icons
   iconSize: [26, 26],
   iconAnchor: [13, 26],
+  className: 'fixed-size-icon'  
   }),
   default: L.icon({
     iconUrl: "icons/default.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
   iconUrl: "icons/star.png", // đặt file PNG vào thư mục /icons
   iconSize: [26, 26],
   iconAnchor: [13, 26],
+  className: 'fixed-size-icon'  
 }),
 };
 
@@ -639,11 +663,6 @@ else {
       `;
 
       const contentHTML = `
-  <div class="sidebar-header">
-    <h2>Thông tin chi tiết</h2>
-    <button id="closeSidebar" class="close-btn">×</button>
-  </div>
-
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
     <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
@@ -656,6 +675,9 @@ else {
 `;
       sidebarContent.innerHTML = contentHTML;
       sidebar.classList.add("show");
+// ✅ Cập nhật tiêu đề header (không tạo lại header)
+document.getElementById('sidebar-title').textContent = "Thông tin chi tiết";
+
 
       // 👉 Sau khi render xong, gắn sự kiện cho nút
 const favoriteBtn = document.getElementById("favoriteBtn");
@@ -687,7 +709,7 @@ saveBtn.addEventListener("click", () => {
       // NÚT ĐÓNG SIDEBAR
       const closeBtn = document.getElementById("closeSidebar");
       closeBtn.addEventListener("click", () => {
-  sidebar.classList.add("hidden"); // 👉 Ẩn sidebar
+  sidebar.classList.remove("show"); // 👉 Ẩn sidebar
 });
 
       // =========================
@@ -1227,9 +1249,9 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
     window.startMarker = L.marker([coords.lat, coords.lon], {
       icon: L.icon({
-        iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
+          iconUrl: "Picture/home.gif",
+          iconSize: [120, 100],
+          iconAnchor: [60, 100],
       }),
     })
       .addTo(map)
@@ -1312,7 +1334,80 @@ checkboxes.forEach(cb => {
 // =======================================================
 // ✅ TẢI LẦN ĐẦU
 // =======================================================
-fetchPlaces();
+fetchPlaces("", [], "", "", false); // shouldZoom 
+
+// =========================
+// 💰 BUDGET DROPDOWN
+// =========================
+const budgetBtn = document.getElementById('budgetBtn');
+const budgetDropdown = document.getElementById('budgetDropdown');
+const budgetRadios = document.querySelectorAll('input[name="budget"]');
+const budgetHidden = document.querySelector('.budget-selector input[type="hidden"]');
+
+budgetBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    budgetDropdown.classList.toggle('show');
+    
+    // Đóng radius dropdown nếu đang mở
+    const radiusDropdown = document.getElementById('radiusDropdown');
+    if (radiusDropdown) radiusDropdown.classList.remove('show');
+});
+
+budgetRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        const label = document.querySelector(`label[for="${radio.id}"]`).textContent;
+        budgetBtn.querySelector('.selected-flavors').textContent = label;
+        budgetBtn.querySelector('.selected-flavors').classList.remove('empty');
+        
+        // ✅ Cập nhật hidden input
+        budgetHidden.value = radio.value;
+        
+        budgetDropdown.classList.remove('show');
+    });
+});
+
+// =========================
+// 📏 RADIUS DROPDOWN
+// =========================
+const radiusBtn = document.getElementById('radiusBtn');
+const radiusDropdown = document.getElementById('radiusDropdown');
+const radiusRadios = document.querySelectorAll('input[name="radius"]');
+const radiusHidden = document.querySelector('.radius-selector input[type="hidden"]');
+
+radiusBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    radiusDropdown.classList.toggle('show');
+    
+    // Đóng budget dropdown nếu đang mở
+    budgetDropdown.classList.remove('show');
+});
+
+radiusRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        const label = document.querySelector(`label[for="${radio.id}"]`).textContent;
+        radiusBtn.querySelector('.selected-flavors').textContent = label;
+        radiusBtn.querySelector('.selected-flavors').classList.remove('empty');
+        
+        // ✅ Cập nhật hidden input
+        radiusHidden.value = radio.value;
+        
+        radiusDropdown.classList.remove('show');
+    });
+});
+
+// Đóng dropdown khi click ra ngoài
+document.addEventListener('click', (e) => {
+    const budgetSelector = document.getElementById('budgetSelector');
+    const radiusSelector = document.getElementById('radiusSelector');
+    
+    if (budgetSelector && !budgetSelector.contains(e.target)) {
+        budgetDropdown.classList.remove('show');
+    }
+    if (radiusSelector && !radiusSelector.contains(e.target)) {
+        radiusDropdown.classList.remove('show');
+    }
+});
+
 
 // ========== LƯU BÁN KÍNH VÀO GLOBAL STATE ==========
 document.addEventListener('DOMContentLoaded', function() {
@@ -1387,7 +1482,7 @@ input.addEventListener("input", () => {
     div.addEventListener("click", () => {
       input.value = p.ten_quan;
       suggestionsEl.classList.remove("show");
-      fetchPlaces(p.ten_quan);
+     fetchPlaces(p.ten_quan, [], "", "", true); 
     });
     suggestionsEl.appendChild(div);
   });
@@ -1487,9 +1582,9 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
       // ✅ Thêm marker mới cho điểm xuất phát
       window.startMarker = L.marker([userLat, userLon], {
         icon: L.icon({
-          iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png",
-          iconSize: [30, 30],
-          iconAnchor: [15, 30],
+          iconUrl: "Picture/home.gif",
+          iconSize: [120, 100],
+          iconAnchor: [60, 100],
         }),
       })
         .addTo(map)
@@ -1529,3 +1624,4 @@ document.addEventListener("keydown", (e) => {
     document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
   }
 });
+
