@@ -1084,6 +1084,7 @@ function distance(lat1, lon1, lat2, lon2) {
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU
 // =======================================================
+
 async function fetchPlaces(
   query = "",
   flavors = [],
