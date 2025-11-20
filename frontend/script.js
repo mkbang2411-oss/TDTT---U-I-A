@@ -1713,3 +1713,652 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ===============================
+// 🎮 MINI GAME POPUP CONTROL
+// ===============================
+
+const miniGameBtn = document.getElementById("miniGameBtn");
+const miniGamePopup = document.getElementById("miniGamePopup");
+const closeMiniGame = document.getElementById("closeMiniGame");
+
+if (miniGameBtn) {
+    miniGameBtn.addEventListener("click", () => {
+        miniGamePopup.classList.remove("hidden");
+    });
+}
+
+if (closeMiniGame) {
+    closeMiniGame.addEventListener("click", () => {
+        miniGamePopup.classList.add("hidden");
+    });
+}
+
+// Đóng popup khi click ra ngoài
+miniGamePopup?.addEventListener("click", (e) => {
+    if (e.target === miniGamePopup) {
+        miniGamePopup.classList.add("hidden");
+    }
+});
+document.addEventListener("DOMContentLoaded", function () {
+    const canvas = document.getElementById("gameCanvas");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    // --------------------------
+    // TILE SYSTEM
+    // --------------------------
+   let tileSize = 32; // khôi phục biến này
+
+    // Map 2D (0 = floor, 1 = wall)
+   const levels = [
+    {
+        // ⭐ LEVEL 1
+        map: [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,0,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+            [1,0,1,0,1,1,1,0,1,1,1,0,1,1,1,1,0,1,1,0,1,0,1,0,1],
+            [1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,1,0,0,1,0,1,0,1,0,1],
+            [1,0,1,1,1,0,1,1,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ],
+        playerStart: { x: 1, y: 1 },
+        chestPos:    { x: 23, y: 1 },
+        food: "images/pho.png"   // món ăn mở khóa level 1
+    },
+
+    {
+        // ⭐ LEVEL 2 (mình tạo map mới cho bạn)
+        map: [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,1,1,1,0,0,0,1,0,1,1,1,0,1,0,0,0,1,0,1],
+        [1,0,1,0,1,0,0,0,1,0,1,0,1,0,0,0,0,0,1,1,1,0,1,0,1],
+        [1,0,1,0,1,1,1,0,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1,0,1],
+        [1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1,1,1,1,1,0,1,0,1],
+        [1,0,1,1,1,0,1,1,1,0,1,0,1,0,1,1,1,0,0,0,1,0,1,0,1],
+        [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,1],  // ⭐ FIXED – mở đường bên phải
+        [1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1]
+    ],
+        playerStart: { x: 1, y: 1 },
+        chestPos:    { x: 23, y: 7 },
+        food: "images/bun_bo_hue.png"  // món ăn mở khóa level 2
+    }
+    ,{
+    // ⭐ LEVEL 3 — chuẩn bị cho bot
+     map: [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,1,0,1],
+        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
+        [1,0,1,0,0,0,1,0,1,0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,1],
+        [1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,0,1,0,1],
+        [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1],
+        [1,1,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ],
+
+    playerStart: { x: 1, y: 1 },
+    chestPos:    { x: 23, y: 7 },
+    food: "images/com_tam.png",
+
+    // ➕ BOT XUẤT HIỆN Ở MAP 3
+    botStart: { x: 12, y: 5 }
+}
+];
+
+    // --------------------------
+    // LOAD TEXTURES
+    // --------------------------
+    const wallImg = new Image();
+    wallImg.src = "GameAssets/wall.png";
+
+    const floorImg = new Image();
+    floorImg.src = "GameAssets/floor.png";
+
+    // ➕ THÊM VÀO
+const playerSprites = {
+    up: new Image(),
+    down: new Image(),
+    left: new Image(),
+    right: new Image()
+};
+const playerImg = new Image();
+playerImg.src = "GameAssets/player.png";
+
+playerSprites.up.src = "GameAssets/player_up.png";
+playerSprites.down.src = "GameAssets/player_down.png";
+playerSprites.left.src = "GameAssets/player_left.png";
+playerSprites.right.src = "GameAssets/player_right.png";
+
+const botSprites = {
+    up: new Image(),
+    down: new Image(),
+    left: new Image(),
+    right: new Image()
+};
+
+botSprites.up.src = "GameAssets/bot_up.png";
+botSprites.down.src = "GameAssets/bot_down.png";
+botSprites.left.src = "GameAssets/bot_left.png";
+botSprites.right.src = "GameAssets/bot_right.png";
+
+
+const chestSprites = {
+    closed: new Image(),
+    open: new Image()
+};
+
+chestSprites.closed.src = "GameAssets/chest_closed.png";
+chestSprites.open.src   = "GameAssets/chest_open.png";
+
+
+
+//Thêm level để tăng độ khó
+let currentLevel = 0;
+let map         = levels[currentLevel].map;
+let foodReward  = levels[currentLevel].food;
+
+// cập nhật vị trí player + chest theo level
+let player = { ...levels[currentLevel].playerStart };
+const chest = { ...levels[currentLevel].chestPos, opened: false };
+
+let bot = {
+    x: levels[currentLevel].botStart?.x ?? null,
+    y: levels[currentLevel].botStart?.y ?? null,
+    pixelX: levels[currentLevel].botStart ? levels[currentLevel].botStart.x * tileSize : 0,
+    pixelY: levels[currentLevel].botStart ? levels[currentLevel].botStart.y * tileSize : 0,
+    dir: "left"
+};
+
+    // ➕ THÊM 2 BIẾN NÀY NGAY SAU ĐÓ
+    let playerPixelX = player.x * tileSize;
+    let playerPixelY = player.y * tileSize;
+
+// ➕ THÊM CỜ KIỂM TRA ĐANG DI CHUYỂN HAY KHÔNG
+    let isMoving = false;
+    // ➕ THÊM DÒNG NÀY
+let playerDir = "right"; // hướng mặc định
+let gameLoopStarted = false;
+    const foods = [
+        "images/pho.png",
+        "images/bun_bo_hue.png",
+        "images/com_tam.png"
+    ];
+    let randomFood = foods[Math.floor(Math.random() * foods.length)];
+
+       // Reset toàn bộ trạng thái game (dùng cho nút "Chơi lại")
+  // Reset toàn bộ trạng thái game (dùng cho nút "Chơi lại")
+   // Reset toàn bộ trạng thái game (dùng cho nút "Chơi lại")
+   function resetGameState() {
+    // ⭐ BẮT BUỘC: Tính lại kích thước canvas trước
+    const container = document.getElementById("miniGameInner");
+    if (!container) return;
+
+    const tilesX = levels[currentLevel].map[0].length;
+    const tilesY = levels[currentLevel].map.length;
+
+    const availableWidth  = container.clientWidth;
+    const availableHeight = container.clientHeight;
+
+    const tileW = Math.floor(availableWidth  / tilesX);
+    const tileH = Math.floor(availableHeight / tilesY);
+
+    tileSize = Math.min(tileW, tileH);
+
+    canvas.width  = tilesX * tileSize;
+    canvas.height = tilesY * tileSize;
+
+    // ⭐ SAU ĐÓ MỚI GÁN LẠI TRẠNG THÁI
+    map        = levels[currentLevel].map;
+    foodReward = levels[currentLevel].food;
+
+    // player
+    player.x = levels[currentLevel].playerStart.x;
+    player.y = levels[currentLevel].playerStart.y;
+    playerPixelX = player.x * tileSize;
+    playerPixelY = player.y * tileSize;
+
+    // chest
+    chest.x = levels[currentLevel].chestPos.x;
+    chest.y = levels[currentLevel].chestPos.y;
+    chest.opened = false;
+
+    // ⭐ RESET BOT THEO LEVEL HIỆN TẠI
+    const botStart = levels[currentLevel].botStart;
+    if (botStart) {
+        bot.x = botStart.x;
+        bot.y = botStart.y;
+        bot.pixelX = botStart.x * tileSize;
+        bot.pixelY = botStart.y * tileSize;
+        bot.dir = "left";
+    } else {
+        bot.x = null;
+        bot.y = null;
+        bot.pixelX = 0;
+        bot.pixelY = 0;
+    }
+
+    isMoving = false;
+    playerDir = "right";
+
+    const winOverlay = document.getElementById("winOverlay");
+    if (winOverlay) winOverlay.remove();
+
+    canvas.style.display = "block";
+
+    drawMap();
+}
+
+
+    // --------------------------
+    // TILE RENDERING
+    // --------------------------
+    function drawMap() {
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < map[y].length; x++) {
+
+                // Draw floor
+                ctx.drawImage(floorImg, x * tileSize, y * tileSize, tileSize, tileSize);
+
+                // Draw wall
+                if (map[y][x] === 1) {
+                    ctx.drawImage(wallImg, x * tileSize, y * tileSize, tileSize, tileSize);
+                }
+            }
+        }
+
+        // Draw player (theo hướng)
+let img = playerSprites[playerDir];
+
+if (img && img.complete) {
+    ctx.drawImage(
+        img,
+        playerPixelX,
+        playerPixelY,
+        tileSize,
+        tileSize
+    );
+} else {
+    // Fallback: vẽ tạm hình tròn nếu ảnh chưa load
+    ctx.fillStyle = "blue";
+    ctx.beginPath();
+    ctx.arc(
+        playerPixelX + tileSize / 2,
+        playerPixelY + tileSize / 2,
+        tileSize / 2 - 4,
+        0, Math.PI * 2
+    );
+    ctx.fill();
+}
+        // Draw chest (closed / open)
+let chestImg = chest.opened ? chestSprites.open : chestSprites.closed;
+// ⭐ VẼ BOT (chỉ hiện ở level có bot)
+if (bot.x !== null && bot.y !== null) {
+   let botImg = botSprites[bot.dir];
+
+if (botImg.complete) {
+    ctx.drawImage(botImg, bot.pixelX, bot.pixelY, tileSize, tileSize);
+} else {
+    // fallback khi sprite chưa load
+    ctx.fillStyle = "red";
+    ctx.fillRect(bot.pixelX, bot.pixelY, tileSize, tileSize);
+}
+}
+
+
+if (chestImg && chestImg.complete) {
+    ctx.drawImage(
+        chestImg,
+        chest.x * tileSize,
+        chest.y * tileSize,
+        tileSize,
+        tileSize
+    );
+}
+    }
+    function playChestSound() {
+    const audio = document.getElementById("chestSoundAudio");
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+}
+
+
+    // --------------------------
+    // MOVEMENT
+    // --------------------------
+    function move(dx, dy) {
+    // Nếu đang di chuyển thì bỏ qua input mới
+    if (isMoving) return;
+
+    const targetX = player.x + dx;
+    const targetY = player.y + dy;
+
+    // Kiểm tra có đi được không (0 = đường đi)
+    if (!map[targetY] || map[targetY][targetX] !== 0) {
+        return;
+    }
+
+    isMoving = true;
+
+    const startX = playerPixelX;
+    const startY = playerPixelY;
+    const endX = targetX * tileSize;
+    const endY = targetY * tileSize;
+    const duration = 150; // ms
+    let startTime = null;
+
+    function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+
+        // Nội suy vị trí
+        playerPixelX = startX + (endX - startX) * progress;
+        playerPixelY = startY + (endY - startY) * progress;
+
+        drawMap();
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            // Kết thúc di chuyển → cập nhật vị trí tile thật
+            player.x = targetX;
+            player.y = targetY;
+            isMoving = false;
+
+            // Vẽ lại lần cuối cho chuẩn
+            drawMap();
+
+            // Check win
+            // Check chest collision
+if (player.x === chest.x && player.y === chest.y) {
+    chest.opened = true;
+    drawMap();      // vẽ lại để thấy rương mở
+    playChestSound();
+    setTimeout(showFoodReward, 400); // delay nhẹ cho đẹp
+}
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+
+       function showFoodReward() {
+    const miniGameInner = document.getElementById("miniGameInner");
+    const canvas = document.getElementById("gameCanvas");
+    if (!miniGameInner || !canvas) return;
+
+    canvas.style.display = "none";
+
+    const overlay = document.createElement("div");
+    overlay.id = "winOverlay";
+
+    overlay.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        gap: 20px;
+        text-align: center;
+        min-height: 400px;
+    `;
+
+    overlay.innerHTML = `
+        <h2 style="font-size: 28px; margin: 0;">🎉 Chúc mừng bạn!</h2>
+        <p style="font-size: 18px; margin: 0;">
+            Bạn đã tìm thấy kho báu. Đây là món ăn dành cho bạn hôm nay:
+        </p>
+
+        <img 
+            src="${foodReward}" 
+            alt="Món ăn gợi ý" 
+            style="
+                width: 260px;
+                max-width: 80%;
+                border-radius: 16px;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            "
+        />
+
+        <div style="display: flex; gap: 16px; margin-top: 10px;">
+            <button 
+                id="nextLevelBtn"
+                type="button"
+                style="
+                    padding: 10px 20px;
+                    border-radius: 999px;
+                    border: none;
+                    background: #5a6ff0;
+                    color: #fff;
+                    font-size: 16px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                "
+            >
+                ➡ Level tiếp theo
+            </button>
+
+            <button 
+                id="closeGameBtn"
+                type="button"
+                style="
+                    padding: 10px 20px;
+                    border-radius: 999px;
+                    border: none;
+                    background: #ccc;
+                    color: #333;
+                    font-size: 16px;
+                    cursor: pointer;
+                "
+            >
+                ✖ Đóng
+            </button>
+        </div>
+    `;
+
+    miniGameInner.appendChild(overlay);
+
+    // 👉 NEXT LEVEL BUTTON
+    const nextLevelBtn = overlay.querySelector("#nextLevelBtn");
+    if (nextLevelBtn) {
+        nextLevelBtn.addEventListener("click", () => {
+
+            currentLevel++;
+
+            if (currentLevel >= levels.length) {
+                alert("🎉 Bạn đã hoàn thành tất cả các level!");
+                currentLevel = 0; // quay lại level 1
+            }
+
+            resetGameState();
+        });
+    }
+
+    // 👉 CLOSE BUTTON
+    const closeGameBtn = overlay.querySelector("#closeGameBtn");
+    if (closeGameBtn) {
+        closeGameBtn.addEventListener("click", () => {
+            document.getElementById("miniGamePopup").classList.add("hidden");
+            resetGameState();
+        });
+    }
+}
+
+// ===============================
+// 🔥 AUTO RESIZE GAME
+// ===============================
+function autoResizeCanvas() {
+    const container = document.getElementById("miniGameInner");
+    if (!container) return;
+
+    const tilesX = map[0].length;
+    const tilesY = map.length;
+
+    const availableWidth  = container.clientWidth;
+    const availableHeight = container.clientHeight;
+
+    const tileW = Math.floor(availableWidth  / tilesX);
+    const tileH = Math.floor(availableHeight / tilesY);
+
+    tileSize = Math.min(tileW, tileH);
+
+    canvas.width  = tilesX * tileSize;
+    canvas.height = tilesY * tileSize;
+
+    // player
+    playerPixelX = player.x * tileSize;
+    playerPixelY = player.y * tileSize;
+
+    // ⭐⭐ BOT CŨNG PHẢI SCALE THEO TILESIZE MỚI ⭐⭐
+    if (bot.x !== null && bot.y !== null) {
+        bot.pixelX = bot.x * tileSize;
+        bot.pixelY = bot.y * tileSize;
+    }
+
+    drawMap();
+}
+
+
+
+miniGameBtn.addEventListener("click", () => {
+    setTimeout(autoResizeCanvas, 30);
+});
+
+window.addEventListener("resize", () => {
+    if (!miniGamePopup.classList.contains("hidden")) {
+        autoResizeCanvas();
+    }
+});
+
+    wallImg.onload = () => {
+        floorImg.onload = () => {
+            drawMap();
+        };
+    };
+
+// 🎮 SMOOTH MOVEMENT CONTROLS
+// ----------------------------
+const keys = {
+    w: false,
+    a: false,
+    s: false,
+    d: false
+};
+
+document.addEventListener("keydown", e => {
+    const k = e.key.toLowerCase();
+    if (keys[k] !== undefined) keys[k] = true;
+});
+
+document.addEventListener("keyup", e => {
+    const k = e.key.toLowerCase();
+    if (keys[k] !== undefined) keys[k] = false;
+});
+
+// ----------------------------
+// 🎮 GAME LOOP (mượt)
+// ----------------------------
+function gameLoop() {
+
+    const speed = tileSize * 0.08;
+
+    let moveX = 0;
+    let moveY = 0;
+
+    if (keys.w) { playerDir = "up"; moveY = -speed; }
+    if (keys.s) { playerDir = "down"; moveY = speed; }
+    if (keys.a) { playerDir = "left"; moveX = -speed; }
+    if (keys.d) { playerDir = "right"; moveX = speed; }
+
+    const nextTileX = Math.floor((playerPixelX + moveX + tileSize/2) / tileSize);
+    const nextTileY = Math.floor((playerPixelY + moveY + tileSize/2) / tileSize);
+
+    if (map[nextTileY] && map[nextTileY][nextTileX] === 0) {
+        playerPixelX += moveX;
+        playerPixelY += moveY;
+
+        player.x = Math.floor((playerPixelX + tileSize/2) / tileSize);
+        player.y = Math.floor((playerPixelY + tileSize/2) / tileSize);
+    }
+
+    // ⭐⭐⭐ CHECK MỞ RƯƠNG ⭐⭐⭐
+    if (!chest.opened && player.x === chest.x && player.y === chest.y) {
+        chest.opened = true;
+        playChestSound();
+        setTimeout(showFoodReward, 350);
+    }
+
+
+    // ------------------------------------------------------
+// ⭐⭐⭐ BOT RANDOM WALK (ĐÃ SỬA) ⭐⭐⭐
+// ------------------------------------------------------
+if (bot.x !== null && bot.y !== null) {
+    const botSpeed = tileSize * 0.04;
+
+    // 1. Kiểm tra hướng nào đi được
+    const dirs = [];
+    if (map[bot.y - 1] && map[bot.y - 1][bot.x] === 0) dirs.push("up");
+    if (map[bot.y + 1] && map[bot.y + 1][bot.x] === 0) dirs.push("down");
+    if (map[bot.y] && map[bot.y][bot.x - 1] === 0) dirs.push("left");
+    if (map[bot.y] && map[bot.y][bot.x + 1] === 0) dirs.push("right");
+
+    // 2. Random đổi hướng thỉnh thoảng (2% mỗi frame)
+    if (Math.random() < 0.02 && dirs.length > 0) {
+        bot.dir = dirs[Math.floor(Math.random() * dirs.length)];
+    }
+
+    // 3. Nếu hướng hiện tại bị tường → chọn hướng mới
+    if (dirs.length > 0 && !dirs.includes(bot.dir)) {
+        bot.dir = dirs[Math.floor(Math.random() * dirs.length)];
+    }
+
+    // 4. Di chuyển theo hướng
+    let moveBX = 0, moveBY = 0;
+    if (bot.dir === "up") moveBY = -botSpeed;
+    if (bot.dir === "down") moveBY = botSpeed;
+    if (bot.dir === "left") moveBX = -botSpeed;
+    if (bot.dir === "right") moveBX = botSpeed;
+
+    // 5. Kiểm tra có va tường không
+    const nextBX = Math.floor((bot.pixelX + moveBX + tileSize/2) / tileSize);
+    const nextBY = Math.floor((bot.pixelY + moveBY + tileSize/2) / tileSize);
+
+    if (map[nextBY] && map[nextBY][nextBX] === 0) {
+        bot.pixelX += moveBX;
+        bot.pixelY += moveBY;
+
+        bot.x = Math.floor((bot.pixelX + tileSize/2) / tileSize);
+        bot.y = Math.floor((bot.pixelY + tileSize/2) / tileSize);
+    }
+}
+// ------------------------------------------------------
+
+
+    // ⭐⭐⭐ BOT CHẠM NGƯỜI → DIE ⭐⭐⭐
+if (bot.x !== null && bot.x === player.x && bot.y === player.y) {
+    alert("💀 Bạn bị bot bắt! Hãy thử lại level này.");
+    resetGameState();
+
+    // ⭐⭐ KHỞI ĐỘNG LẠI VÒNG LẶP GAME ⭐⭐
+    requestAnimationFrame(gameLoop);
+
+    return;
+}
+
+    // ⭐ Cuối cùng mới vẽ map
+    drawMap();
+    requestAnimationFrame(gameLoop);
+}
+
+
+// ⭐⭐⭐ BẮT ĐẦU VÒNG LẶP GAME (CHỈ 1 LẦN DUY NHẤT!)
+if (!gameLoopStarted) {
+    gameLoopStarted = true;
+    requestAnimationFrame(gameLoop);
+}
+
+}); // <-- Chỉ đóng DOMContentLoaded 1 lần duy nhất

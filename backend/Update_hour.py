@@ -5,11 +5,11 @@ import re
 CSV_FILE = "Data_with_flavor.csv"
 
 # Giờ mở cửa random (bạn tự chỉnh ở đây)
-OPEN_HOURS = ["7:00"]
+OPEN_HOURS = ["7:00","8:00","9:00","7:30","8:30"]
 
 # ====== TỰ CHỈNH Ở ĐÂY ======
-START_CSV = 1687      # dòng bắt đầu (giống hệt số dòng trong file CSV)
-END_CSV   = 1706      # dòng kết thúc (giống hệt số dòng trong file CSV)
+START_CSV = 1774      # dòng bắt đầu (giống hệt số dòng trong file CSV)
+END_CSV   = 1826      # dòng kết thúc (giống hệt số dòng trong file CSV)
 # ============================
 
 df = pd.read_csv(CSV_FILE)
@@ -41,7 +41,7 @@ def fix_opening_text(text):
     if text.startswith("Mở cửa lúc") or text.startswith("Mở cửa vào"):
         return text
 
-    CUSTOM_CLOSE_HOURS = ["23:00"]
+    CUSTOM_CLOSE_HOURS = ["20:00","21:00","20:30","21:30","22:00"]
 
     # 1️⃣ "Đã đóng cửa · Mở cửa vào 16:00"
     match_open = re.search(r"Mở cửa vào\s*([0-9]{1,2}:[0-9]{2})", text)

@@ -22,8 +22,8 @@ CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 #      - Tính từ 1, không tính dòng header
 #      - Để None nếu muốn từ đầu / đến cuối
 # ======================================================
-START_ROW = 1655      # ví dụ: 2
-END_ROW   = 1656      # ví dụ: 20
+START_ROW = 1825      # ví dụ: 2
+END_ROW   = 1826      # ví dụ: 20
 
 # ======================================================
 # 🔹 2. Bảng từ khóa khẩu vị

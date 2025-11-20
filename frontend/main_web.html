@@ -220,6 +220,28 @@
         <span id="closeModal">&times;</span>
         <img id="modalImg" src="" alt="Zoomed image">
     </div>
+  <!-- 🎮 MINI GAME START -->
+<button id="miniGameBtn" class="mini-game-btn">🎮 Mini Game</button>
+
+<div id="miniGamePopup" class="mini-game-popup hidden">
+    <div class="mini-game-content">
+
+        <!-- Nút đóng popup -->
+        <button id="closeMiniGame" class="close-mini-game" type="button">×</button>
+
+        <h2>Mini-game</h2>
+
+        <!-- Vùng chứa game và win screen -->
+        <div id="miniGameInner">
+            <canvas id="gameCanvas" width="800" height="800"></canvas>
+        </div>
+
+        <!-- Âm thanh mở rương -->
+        <audio id="chestSoundAudio" src="GameAssets/open_chest.mp3" hidden></audio>
+
+    </div>
+</div>
+<!-- 🎮 MINI GAME END -->
 
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
     <script src="script.js"></script>
