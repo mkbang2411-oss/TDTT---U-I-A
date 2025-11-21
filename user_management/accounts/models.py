@@ -1,5 +1,6 @@
 from django.db import models
-from django.conf import settings # Dùng để liên kết tới User model
+from django.conf import settings 
+from django.contrib.auth.models import User
 
 class ChatConversation(models.Model):
     """
@@ -34,4 +35,22 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.get_sender_display()}: {self.content[:30]}..."
     
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    # upload_to='avatars/' nghĩa là ảnh sẽ chui vào thư mục media/avatars/
+    avatar = models.ImageField(upload_to='avatars/', default='avatars/default.png', blank=True)
+
+    def __str__(self):
+        return self.user.username
     
+class FavoritePlace(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+    # Lưu ID của quán từ file CSV (nếu file CSV dùng cột data_id, hãy đảm bảo khớp kiểu dữ liệu)
+    place_id = models.CharField(max_length=100) 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'place_id') # Một người không thể like 1 quán 2 lần
+
+    def __str__(self):
+        return f"{self.user.username} - {self.place_id}"

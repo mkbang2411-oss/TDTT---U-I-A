@@ -968,6 +968,8 @@ def get_chatbot_html(gemini_api_key):
         <script>
             const GEMINI_API_KEY = '{gemini_api_key}';
 
+            const API_BASE_URL = 'http://127.0.0.1:8000/api'; 
+
             console.log('🚀 Chatbot script loaded');
 
             // ===== TÍNH NĂNG MỚI 1: DANH SÁCH TỪ TỤC TIỂU =====
@@ -1698,7 +1700,7 @@ def get_chatbot_html(gemini_api_key):
 
             // Lấy các elements
             const chatbotBtn = document.getElementById('chatbotBtn');
-            const chatWindow = document.getElementById('chatWindow');
+            //const chatWindow = document.getElementById('chatWindow');
             const closeBtn = document.getElementById('closeBtn');
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
@@ -1719,6 +1721,7 @@ def get_chatbot_html(gemini_api_key):
             }});
 
             let conversationHistory = [];
+            let conversationList = [];
             let suggestedDishes = [];
             let currentConversationID = null; // Biến này sẽ lưu ID từ database
             let lastInteractionTime = Date.now();
@@ -1730,133 +1733,257 @@ def get_chatbot_html(gemini_api_key):
             let currentSessionId = null;
             let isFirstLoad = true;
 
-            // Load chat history from localStorage
-            function loadChatHistory() {{
-                const saved = localStorage.getItem('uiaboss_chat_sessions');
-                if (saved) {{
-                    try {{
-                        chatSessions = JSON.parse(saved);
-                    }} catch (e) {{
-                        console.error('Error loading chat history:', e);
-                        chatSessions = [];
-                    }}
-                }}
-            }}
-
-            // Save chat history to localStorage
-            function saveChatHistory() {{
+            async function fetchConversationList() {{
                 try {{
-                    localStorage.setItem('uiaboss_chat_sessions', JSON.stringify(chatSessions));
-                }} catch (e) {{
-                    console.error('Error saving chat history:', e);
+                    const response = await fetch(`${{API_BASE_URL}}/conversations/`, {{ 
+                        method: 'GET',
+                        credentials: 'include'
+                    }});
+
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.status === 'success') {{
+                            conversationList = data.conversations; // Lưu vào biến toàn cục
+                            renderHistoryList(currentConversationID)
+                        }}
+                    }}
+                }} catch (error) {{
+                    console.error('Lỗi lấy danh sách chat:', error);
                 }}
             }}
 
-            // Create new chat session
-            function createNewSession() {{
-                const now = new Date();
-                const dateStr = now.toLocaleDateString('vi-VN', {{
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
+            // 2.2. Tải nội dung chi tiết của 1 đoạn chat
+            async function loadConversationDetails(id) {{
+                if (!id) {{
+                    switchToNewChat();
+                    return;
+                }}
+
+                try {{
+                    const response = await fetch(`${{API_BASE_URL}}/load-chat/?conversation_id=${{id}}`, {{
+                        method: 'GET',
+                        credentials: 'include'
+                    }});
+
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.status === 'success') {{
+                            // Cập nhật ID hiện tại
+                            currentConversationID = data.conversation_id;
+                            
+                            // Xóa màn hình cũ và render tin nhắn từ server
+                            const messagesArea = document.getElementById('messagesArea');
+                            messagesArea.innerHTML = ''; 
+
+                            conversationHistory = [];
+                            
+                            data.messages.forEach(msg => {{
+                                addMessage(msg.sender === 'user' ? 'user' : 'bot', msg.content, false); 
+
+                                conversationHistory.push({{
+                                    role: msg.sender === 'user' ? 'user' : 'bot',
+                                    text: msg.content.replace(/<[^>]*>/g, '') // Xóa HTML tag nếu có
+                                }});
+                            }});
+
+                            // Ẩn gợi ý vì đây là chat cũ
+                            const suggestionsArea = document.getElementById('suggestionsArea');
+                            suggestionsArea.classList.add('hidden');
+
+                            renderHistoryList(currentConversationID);
+                            
+                            console.log(`✅ Đã tải chat ID: ${{currentConversationID}}`);
+                        }}
+                    }}
+                }} catch (error) {{
+                    console.error('Lỗi tải nội dung chat:', error);
+                }}
+            }}
+
+            // 2.3. Lưu tin nhắn (Gửi tin nhắn mới)
+            async function sendMessageToAPI(sender, content) {{
+                try {{
+                    const response = await fetch(`${{API_BASE_URL}}/save-chat/`, {{
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            sender: sender,
+                            content: content,
+                            conversation_id: currentConversationID // Gửi ID hiện tại (null nếu là chat mới)
+                        }})
+                    }});
+
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.status === 'success') {{
+                            // LOGIC QUAN TRỌNG:
+                            // Nếu trước đó là chat mới (ID=null) và giờ Server trả về ID mới
+                            if (!currentConversationID && data.conversation_id) {{
+                                currentConversationID = data.conversation_id;
+                                console.log('🆕 Đã tạo đoạn chat mới với ID:', currentConversationID);
+                                
+                                // Cập nhật lại URL (để F5 không mất)
+                                // history.pushState({{}}, '', `?conversation_id=${{currentConversationID}}`);
+                                
+                                // Gọi lại API lấy danh sách để Sidebar cập nhật tiêu đề mới ngay lập tức
+                                fetchConversationList();
+                            }}
+                        }}
+                    }}
+                }} catch (error) {{
+                    console.error('Lỗi lưu tin nhắn:', error);
+                }}
+            }}
+
+            // 3.1. Chuyển về chế độ Chat Mới (Giao diện trắng)
+            function switchToNewChat() {{
+                console.log("🔄 Chuyển sang Chat Mới");
+                currentConversationID = null;
+                
+                // Xóa tin nhắn trên màn hình
+                const messagesArea = document.getElementById('messagesArea');
+                messagesArea.innerHTML = ''; 
+                
+                // Hiển thị lại gợi ý
+                renderSuggestions(); 
+                
+                // Gửi tin nhắn chào mừng ngẫu nhiên (Client-side only, không lưu DB vội)
+                const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+                addMessage('bot', randomWelcome, false); // false = không lưu vào mảng local cũ
+
+                // Cập nhật sidebar (bỏ highlight)
+                renderHistoryList(null);
+            }}
+
+            // 4.1. Khi bấm nút mở Chatbot
+            async function openChatWindow() {{
+                const chatWindow = document.getElementById('chatWindow');
+                const chatbotBtn = document.getElementById('chatbotBtn');
+                const speechBubble = document.getElementById('speechBubble');
+
+                chatWindow.style.display = 'flex';
+                chatWindow.classList.add('open');
+                chatbotBtn.style.display = 'none';
+                speechBubble.style.display = 'none';
+
+                // Lần đầu mở lên: Tải danh sách sidebar + Tải đoạn chat mới nhất (hoặc chat mới)
+                await fetchConversationList();
+                
+                // Logic: Nếu chưa có ID nào, load chat mới nhất của user
+                // (Bạn có thể tùy chỉnh logic này: luôn mở chat mới hay mở chat cũ)
+                if (conversationList.length > 0 && !currentConversationID) {{
+                    // Tải đoạn chat gần nhất
+                    loadConversationDetails(conversationList[0].id);
+                }} else if (!currentConversationID) {{
+                    switchToNewChat();
+                }}
+            }}
+
+            // 4.2. Khi bấm nút "Chat mới" (+) ở Sidebar
+            const historyNewBtn = document.getElementById('historyNewBtn');
+            if (historyNewBtn) {{
+                historyNewBtn.addEventListener('click', (e) => {{
+                    e.preventDefault();
+                    switchToNewChat(); // Gọi hàm chuyển giao diện
                 }});
-
-                currentSessionId = Date.now().toString();
-                const newSession = {{
-                    id: currentSessionId,
-                    name: dateStr,
-                    messages: [],
-                    createdAt: now.toISOString(),
-                    updatedAt: now.toISOString()
-                }};
-
-                chatSessions.unshift(newSession);
-                saveChatHistory();
-                renderHistoryList(currentSessionId);
-                return newSession;
             }}
 
-            // Save current session
-            function saveCurrentSession() {{
-                if (!currentSessionId) return;
+            async function renameChatAPI(id, newTitle) {{
+                try {{
+                    const response = await fetch(`${{API_BASE_URL}}/rename-chat/`, {{ 
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ conversation_id: id, new_title: newTitle }})
+                    }});
 
-                const session = chatSessions.find(s => s.id === currentSessionId);
-                if (session) {{
-                    session.messages = conversationHistory.map(h => ({{
-                        role: h.role,
-                        text: h.text,
-                        timestamp: new Date().toISOString()
-                    }}));
-                    session.updatedAt = new Date().toISOString();
-                    saveChatHistory();
+                    if (response.ok) {{
+                        console.log('✅ Đổi tên thành công');
+                        // Tải lại danh sách để cập nhật giao diện
+                        fetchConversationList(); 
+                    }} else {{
+                        console.error('Lỗi đổi tên:', response.statusText);
+                        // Nếu lỗi, vẫn vẽ lại danh sách để hủy bỏ trạng thái input
+                        renderHistoryList();
+                    }}
+                }} catch (error) {{
+                    console.error('Lỗi fetch rename:', error);
+                    renderHistoryList();
                 }}
             }}
 
-            // Load session messages
-            function loadSession(sessionId) {{
-                const session = chatSessions.find(s => s.id === sessionId);
-                if (!session) return;
+            // API: Xóa đoạn chat
+            async function deleteChatAPI(id) {{
+                try {{
+                    // Giả sử bạn sẽ tạo URL này trong Django urls.py
+                    const response = await fetch(`${{API_BASE_URL}}/delete-chat/`, {{ 
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ conversation_id: id }})
+                    }});
 
-                // Save current session before switching
-                if (currentSessionId && currentSessionId !== sessionId) {{
-                    saveCurrentSession();
+                    if (response.ok) {{
+                        console.log('🗑️ Xóa thành công ID:', id);
+                        
+                        // Nếu đang xóa đúng đoạn chat đang mở -> Chuyển về chat mới
+                        if (currentConversationID && id == currentConversationID) {{
+                            switchToNewChat();
+                        }}
+                        
+                        // Tải lại danh sách sau khi xóa
+                        fetchConversationList();
+                    }}
+                }} catch (error) {{
+                    console.error('Lỗi fetch delete:', error);
                 }}
-
-                currentSessionId = sessionId;
-                conversationHistory = session.messages.map(m => ({{
-                    role: m.role,
-                    text: m.text
-                }}));
-
-                // Clear and reload messages
-                messagesArea.innerHTML = '';
-                conversationHistory.forEach(msg => {{
-                    addMessage(msg.role, msg.text, false); // false = don't save to history
-                }});
-
-                renderHistoryList();
             }}
 
             // Render history list
-            function renderHistoryList(highlightNewId = null) {{
+           function renderHistoryList(highlightNewId = null) {{
+                const historyList = document.getElementById('historyList');
+                if (!historyList) return;
+
                 historyList.innerHTML = '';
 
-                chatSessions.forEach(session => {{
+                // Sử dụng biến toàn cục conversationList (đã lấy từ API fetchConversationList)
+                conversationList.forEach(session => {{
                     const item = document.createElement('div');
                     item.className = 'history-item';
-                    if (session.id === currentSessionId) {{
+                    
+                    // Kiểm tra Active (Lưu ý: so sánh lỏng == vì ID từ server có thể là số hoặc chuỗi)
+                    if (currentConversationID && session.id == currentConversationID) {{
                         item.classList.add('active');
                     }}
 
                     // 🎯 Hiệu ứng trượt vào cho chat mới
-                    if (session.id === highlightNewId) {{
+                    if (session.id == highlightNewId) {{
                         item.classList.add('new-item-slide');
-
-                        // Scroll đến item mới
                         setTimeout(() => {{
-                            item.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+                            item.scrollIntoView({{behavior: 'smooth', block: 'nearest'}});
                         }}, 100);
                     }}
 
+                    // Render HTML
                     item.innerHTML = `
-                        <span class="history-item-name">${{session.name}}</span>
-                        <div class="history-item-actions">
+                        <span class="history-item-name">${{session.title}}</span> <div class="history-item-actions">
                             <button class="history-item-edit" title="Đổi tên">✏️</button>
                             <button class="history-item-delete" title="Xóa">🗑️</button>
                         </div>
                     `;
 
-                    // ✅ FIX: Click vào toàn bộ item để load session
+                    // ✅ SỰ KIỆN 1: Click vào item để tải nội dung chat
                     item.addEventListener('click', (e) => {{
-                        // Chỉ load nếu KHÔNG click vào button
+                        // Chỉ load nếu KHÔNG click vào button sửa/xóa
                         if (!e.target.closest('.history-item-edit') && !e.target.closest('.history-item-delete')) {{
-                            loadSession(session.id);
+                            loadConversationDetails(session.id); // Gọi hàm API mới
                         }}
                     }});
 
-                    // Click edit button
-
-                    // Click edit button
+                    // ✅ SỰ KIỆN 2: Nút Đổi tên (Cần gọi API)
                     const editBtn = item.querySelector('.history-item-edit');
                     editBtn.addEventListener('click', (e) => {{
                         e.stopPropagation();
@@ -1864,74 +1991,46 @@ def get_chatbot_html(gemini_api_key):
                         const input = document.createElement('input');
                         input.type = 'text';
                         input.className = 'history-item-input';
-                        input.value = session.name;
+                        input.value = session.title; // Dùng title
 
                         const nameSpan = item.querySelector('.history-item-name');
-
                         nameSpan.replaceWith(input);
                         input.focus();
                         input.select();
 
-                        const saveEdit = () => {{
+                        const saveEdit = async () => {{
                             const newName = input.value.trim();
-                            if (newName) {{
-                                session.name = newName;
-                                saveChatHistory();
+                            if (newName && newName !== session.title) {{
+                                // Gọi API đổi tên (Xem hàm bên dưới)
+                                await renameChatAPI(session.id, newName);
+                            }} else {{
+                                // Nếu không đổi gì thì vẽ lại như cũ
+                                renderHistoryList(); 
                             }}
-                            renderHistoryList();
                         }};
 
                         input.addEventListener('blur', saveEdit);
                         input.addEventListener('keypress', (e) => {{
-                            if (e.key === 'Enter') {{
-                                saveEdit();
-                            }}
+                            if (e.key === 'Enter') saveEdit();
                         }});
                     }});
 
-                    historyList.appendChild(item);
-
-                    // Click delete button
+                    // ✅ SỰ KIỆN 3: Nút Xóa (Cần gọi API)
                     const deleteBtn = item.querySelector('.history-item-delete');
-                    deleteBtn.addEventListener('click', (e) => {{
+                    deleteBtn.addEventListener('click', async (e) => {{
                         e.stopPropagation();
 
-                        // Confirm before delete
-                        const confirmMsg = session.id === currentSessionId
+                        const confirmMsg = (currentConversationID && session.id == currentConversationID)
                             ? 'Bạn đang xóa đoạn chat hiện tại. Xác nhận xóa?'
-                            : `Xóa đoạn chat "${{session.name}}"?`;
+                            : `Xóa đoạn chat "${{session.title}}"?`;
 
                         if (confirm(confirmMsg)) {{
-                            // Remove from array
-                            const index = chatSessions.findIndex(s => s.id === session.id);
-                            if (index !== -1) {{
-                                chatSessions.splice(index, 1);
-                            }}
-
-                            // If deleting current session, switch to another or create new
-                            if (session.id === currentSessionId) {{
-                                messagesArea.innerHTML = '';
-                                conversationHistory = [];
-                                suggestedDishes = [];
-
-                                if (chatSessions.length > 0) {{
-                                    // Load first available session
-                                    loadSession(chatSessions[0].id);
-                                }} else {{
-                                    // Create new session if no sessions left
-                                    createNewSession();
-                                    const randomWelcome = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
-                                    addMessage('bot', randomWelcome);
-                                    renderSuggestions();
-                                }}
-                            }}
-
-                            saveChatHistory();
-                            renderHistoryList();
-
-                            console.log('🗑️ Deleted chat session:', session.name);
+                            // Gọi API xóa (Xem hàm bên dưới)
+                            await deleteChatAPI(session.id);
                         }}
                     }});
+
+                    historyList.appendChild(item);
                 }});
             }}
 
@@ -1940,14 +2039,19 @@ def get_chatbot_html(gemini_api_key):
                 chatHistorySidebar.classList.toggle('open');
             }}
 
-            // Initialize chat history
-            loadChatHistory();
-            if (chatSessions.length === 0) {{
-                createNewSession();
-            }} else {{
-                currentSessionId = chatSessions[0].id;
-                renderHistoryList();
+            async function initializeApp() {{
+                console.log("🚀 Đang khởi động ứng dụng...");
+                
+                // 1. Tải danh sách chat từ Server về (Cập nhật vào biến conversationList)
+                await fetchConversationList();
+
+                // 2. Kiểm tra danh sách vừa tải về
+                console.log("✨ Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)");
+                switchToNewChat();
             }}
+
+            // Gọi hàm khởi tạo ngay lập tức
+            initializeApp();
 
             function updateBubbleText() {{
                 bubbleText.textContent = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
@@ -2008,14 +2112,12 @@ def get_chatbot_html(gemini_api_key):
 
             async function openChatWindow() {{
                 console.log('🎯 openChatWindow called');
-                console.log('Before:', {{
-                    windowClasses: chatWindow.className,
-                    btnClasses: chatbotBtn.className,
-                    bubbleClasses: speechBubble.className,
-                    windowDisplay: window.getComputedStyle(chatWindow).display
-                }});
+                
+                // 1. Xử lý giao diện (Ẩn/Hiện)
+                const chatWindow = document.getElementById('chatWindow');
+                const chatbotBtn = document.getElementById('chatbotBtn');
+                const speechBubble = document.getElementById('speechBubble');
 
-                // Force remove hidden và thêm open
                 chatWindow.style.display = 'flex';
                 chatWindow.classList.add('open');
                 chatbotBtn.style.display = 'none';
@@ -2023,53 +2125,20 @@ def get_chatbot_html(gemini_api_key):
                 speechBubble.style.display = 'none';
                 speechBubble.classList.add('hidden');
 
-                console.log('After:', {{
-                    windowClasses: chatWindow.className,
-                    btnClasses: chatbotBtn.className,
-                    bubbleClasses: speechBubble.className,
-                    windowDisplay: window.getComputedStyle(chatWindow).display
-                }});
-
+                // 2. Kiểm tra trạng thái
+                const messagesArea = document.getElementById('messagesArea');
+                
                 if (messagesArea.children.length === 0) {{
-                    // 1. Gọi API tải lịch sử
-                    const historyData = await loadHistoryFromServer();
+                    console.log("🔄 Mở cửa sổ chat -> Đảm bảo danh sách cập nhật");
+                    
+                    // Cập nhật sidebar để user thấy lịch sử cũ nếu muốn bấm vào
+                    await fetchConversationList();
 
-                    if (historyData) {{
-                        // 2A. Nếu CÓ lịch sử (User cũ)
-                        currentConversationID = historyData.conversation_id;
-
-                        historyData.messages.forEach(msg => {{
-                            addMessage(msg.sender, msg.content);
-                        }});
-
-                        renderSuggestions();
-                        hasShownInitialSuggestions = true;
-                        resetInactivityTimer();
-
-                    }} else {{
-                        // 2B. Nếu KHÔNG có lịch sử (User mới)
-                        setTimeout(() => {{
-                        const randomWelcome = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
-                // 🔥 CHỈ TẠO CHAT MỚI Ở LẦN MỞ ĐẦU TIÊN SAU KHI LOAD TRANG
-                if (isFirstLoad) {{
-                    isFirstLoad = false; // Đánh dấu đã mở lần đầu
-                    createNewSession();
-                    messagesArea.innerHTML = '';
-                    conversationHistory = [];
-                    suggestedDishes = [];
-
-                    setTimeout(() => {{
-                        const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];  // ✅ ĐÚNG - dùng welcomeMessages
-                        addMessage('bot', randomWelcome);
-                        saveMessageToServer('ai', randomWelcome);
-                        renderSuggestions();
-                        hasShownInitialSuggestions = true;
-                        resetInactivityTimer();
-                        }}, 300);
+                    // Nếu chưa có ID (tức là chưa chọn đoạn chat nào), giữ nguyên trạng thái Chat Mới
+                    if (!currentConversationID) {{
+                        console.log("✨ Giữ trạng thái Chat Mới");
+                        switchToNewChat();
                     }}
-                }},0);
-                // Nếu không phải lần đầu, giữ nguyên chat hiện tại (không làm gì)
-                }}
                 }}
             }}
 
@@ -2141,18 +2210,8 @@ def get_chatbot_html(gemini_api_key):
                         e.preventDefault();
                         e.stopPropagation();
 
-                        // Lưu chat hiện tại trước khi tạo mới
-                        if (currentSessionId) {{
-                            saveCurrentSession();
-                        }}
+                        switchToNewChat();
 
-                        // 🎯 Tạo chat mới với hiệu ứng
-                        const newSession = createNewSession();
-                        messagesArea.innerHTML = '';
-                        conversationHistory = [];
-                        suggestedDishes = [];
-
-                        // 🎉 Hiệu ứng nút bấm
                         historyNewBtn.style.transform = 'rotate(135deg) scale(1.15)';
                         historyNewBtn.style.background = 'rgba(255, 255, 255, 0.5)';
                         historyNewBtn.style.boxShadow = '0 0 15px rgba(255, 255, 255, 0.6)';
@@ -2163,30 +2222,28 @@ def get_chatbot_html(gemini_api_key):
                             historyNewBtn.style.boxShadow = '';
                         }}, 400);
 
-                        // Gửi tin chào mừng
-                        setTimeout(() => {{
-                            const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
-                            addMessage('bot', randomWelcome);
-                            renderSuggestions();
-                        }}, 200);
+                        // 3. Âm thanh (Giữ lại nếu thích)
+                        try {{
+                            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            const oscillator = audioContext.createOscillator();
+                            const gainNode = audioContext.createGain();
 
-                        // 🔊 Sound effect (optional)
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
+                            oscillator.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
 
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
+                            oscillator.frequency.value = 800;
+                            oscillator.type = 'sine';
+                            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
 
-                        oscillator.frequency.value = 800; // Tần số cao = âm thanh "ting"
-                        oscillator.type = 'sine';
-                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                            oscillator.start(audioContext.currentTime);
+                            oscillator.stop(audioContext.currentTime + 0.15);
+                        }} catch (err) {{
+                            // Bỏ qua lỗi âm thanh nếu trình duyệt chặn hoặc không hỗ trợ
+                            console.log("Audio play failed or restricted"); 
+                        }}
 
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.15);
-
-                        console.log('✅ Created new chat session with animation');
+                        console.log('✅ Switched to new chat interface');
                     }});
                     console.log('✅ New chat button event listener attached');
                 }}
@@ -2198,9 +2255,6 @@ def get_chatbot_html(gemini_api_key):
                     console.log('🖱️ Close button clicked');
                     e.preventDefault();
                     e.stopPropagation();
-
-                    // Save current session before closing
-                    saveCurrentSession();
 
                     chatWindow.classList.remove('open');
                     chatWindow.style.display = 'none';
@@ -2215,26 +2269,30 @@ def get_chatbot_html(gemini_api_key):
                 console.log('✅ Close button event listener attached');
             }}
 
-            function sendMessage() {{
+            async function sendMessage() {{ // Thêm async
                 const text = messageInput.value.trim();
                 if (!text) return;
 
                 const lang = detectLanguage(text);
                 const result = containsProfanity(text, lang);
 
+                // --- TRƯỜNG HỢP 1: CÓ TỪ TỤC ---
                 if (result.found) {{
-                    const censored = censorProfanity(text);   // ✨ Gọi hàm mã hóa ở đây
-                    addMessage('user', censored);             // ✅ Hiển thị bản đã che, không text gốc
-                    saveMessageToServer('user', censored);    // 💾 Lưu bản đã che vào server
+                    const censored = censorProfanity(text);   
+                    addMessage('user', censored);             
+                    
+                    // [SỬA] Dùng hàm API mới
+                    await sendMessageToAPI('user', censored); 
 
                     const warningList = warningMessages[result.lang] || warningMessages['en'];
                     const randomMsg = warningList[Math.floor(Math.random() * warningList.length)];
 
                     console.warn("🚫 Blocked profanity token:", result.match, "→ censored:", censored);
 
-                    setTimeout(() => {{
+                    setTimeout(async () => {{ // Thêm async
                         addMessage('bot', randomMsg);
-                        saveMessageToServer('ai', randomMsg);
+                        // [SỬA] Dùng hàm API mới
+                        await sendMessageToAPI('ai', randomMsg); 
                         renderSuggestions();
                     }}, 400);
 
@@ -2242,13 +2300,18 @@ def get_chatbot_html(gemini_api_key):
                     return;
                 }}
 
-                // ✅ Không có từ tục -> gửi bình thường
+                // --- TRƯỜNG HỢP 2: TIN NHẮN SẠCH ---
                 addMessage('user', text);
-                saveMessageToServer('user', text);
+                
+                // [SỬA] Dùng hàm API mới (Quan trọng: await để cập nhật ID nếu là chat mới)
+                await sendMessageToAPI('user', text); 
+                
                 messageInput.value = '';
                 sendBtn.disabled = true;
                 showTyping();
-                callGeminiAPI(text);
+                
+                // Gọi AI (Trong hàm này cũng sẽ sửa đoạn lưu tin nhắn AI)
+                callGeminiAPI(text); 
                 resetInactivityTimer();
             }}
 
@@ -2335,8 +2398,6 @@ def get_chatbot_html(gemini_api_key):
                         const plainText = text.replace(/<[^>]*>/g, '');
                         conversationHistory.push({{ role: 'bot', text: plainText }});
                     }}
-                    // Save to current session
-                    saveCurrentSession();
                 }}
             }}
 
@@ -2359,70 +2420,6 @@ def get_chatbot_html(gemini_api_key):
             function hideTyping() {{
                 const typing = document.getElementById('typing');
                 if (typing) typing.remove();
-            }}
-
-            async function saveMessageToServer(sender, content) {{
-                const saveUrl = 'http://127.0.0.1:8000/api/save-chat/';
-
-                try {{
-                    const response = await fetch(saveUrl, {{
-                        method: 'POST',
-                        // Gửi cookie (session) để Django biết bạn là ai
-                        credentials: 'include',
-                        headers: {{
-                            'Content-Type': 'application/json',
-                        }},
-                        body: JSON.stringify({{
-                            sender: sender,
-                            content: content,
-                            conversation_id: currentConversationID // Gửi ID hiện tại (sẽ là null ở tin đầu)
-                        }})
-                    }});
-
-                    if (!response.ok) {{
-                        console.error('Lỗi khi lưu chat:', response.statusText);
-                        return;
-                    }}
-
-                    const data = await response.json();
-
-                    if (data.status === 'success' && data.conversation_id) {{
-                        // Lưu lại ID conversation để các tin nhắn sau dùng
-                        currentConversationID = data.conversation_id;
-                        console.log('✅ Đã lưu tin nhắn. Conversation ID:', currentConversationID);
-                    }}
-                }} catch (error) {{
-                    console.error('Lỗi fetch khi lưu chat:', error);
-                }}
-            }}
-
-            async function loadHistoryFromServer() {{
-                const loadUrl = 'http://127.0.0.1:8000/api/load-chat/';
-                try {{
-                    const response = await fetch(loadUrl, {{
-                        method: 'GET',
-                        credentials: 'include'
-                    }});
-
-                    if (!response.ok) {{
-                        console.error('Lỗi khi tải lịch sử chat:', response.statusText);
-                        return null;
-                    }}
-
-                    const data = await response.json();
-
-                    if (data.status === 'success' && data.messages.length > 0) {{
-                        console.log('✅ Tải lịch sử chat thành công:', data.messages.length, 'tin nhắn');
-                        return data;
-                    }} else {{
-                        console.log('💡 Không có lịch sử chat cũ.');
-                        return null;
-                    }}
-
-                }} catch (error) {{
-                    console.error('Lỗi fetch khi tải lịch sử:', error);
-                    return null;
-                }}
             }}
 
             function cleanMarkdown(text) {{
@@ -2681,7 +2678,7 @@ def get_chatbot_html(gemini_api_key):
                         }}
 
                         addMessage('bot', botReply);
-                        saveMessageToServer('ai', botReply);
+                        await sendMessageToAPI('ai', botReply);
 
                         suggestionsArea.classList.add('hidden');
                         resetInactivityTimer();

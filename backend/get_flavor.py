@@ -4,7 +4,6 @@ import os
 from PIL import Image
 import pytesseract
 
-# 👉 CHỈNH Ở ĐÂY:
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # ======================================================
