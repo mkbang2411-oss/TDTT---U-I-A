@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+import streamlit.components.v1 as components
+
 body {
   margin: 0;
   font-family: "Montserrat", sans-serif;
@@ -14,7 +16,14 @@ body {
 
 /* Khi sidebar mở, làm mờ map nhẹ */
 #map.dimmed {
-  filter: brightness(0.7);
+  filter: brightness(0.2);
+}
+
+/* 🎨 Tạo màu pastel cho bản đồ */
+
+/* Hoặc thử công thức này (màu hồng/xanh nhẹ hơn) */
+.map-pastel {
+  filter: hue-rotate(10deg) saturate(186%) brightness(90%) contrast(118%);
 }
 
 /* ==========================================
@@ -22,19 +31,19 @@ body {
 ========================================== */
 #controls {
     position: fixed;           /* ĐỔI: từ relative/absolute sang fixed */
-    top: 155px;                /* Đặt dưới banner (200px) + khoảng cách */
+    top: 96px;                /* Đặt dưới banner (200px) + khoảng cách */
     left: 50%;
-    background: white;
     transform: translateX(-50%);
     z-index: 1001;             /* Cao hơn map (z-index: 1) */
     background: transparent;         /* THÊM: nền trắng cho dễ nhìn */
-    border-radius: none;  /* THÊM: đổ bóng */
+    border-radius: 15px; 
     display: flex;
     gap: 20px;
     flex-wrap: nowrap;
     max-width: 90%;
-    align-items: flex-start;
+    align-items: center;
     padding: 10px;
+    z-index: 1500;
 }
 
 /* Khom đụng zô*/
@@ -55,91 +64,60 @@ body {
 #query {
   padding: 8px 10px 8px 30px;
   width: 260px;
-  border: 2px solid #ee5536;
-  border-radius: 8px;
+  border: 0px;
+  border-radius: 15px;
+  box-shadow: 0 0 5px 3px rgba(126, 124, 124, 0.3);
   outline: none;
   transition: all 0.2s ease;
 }
 #query:hover {
     background-color: #ffffff;        /* đổi màu nền khi hover */
     transform: scale(1.02);           /* phóng to nhẹ */
-    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+    box-shadow: 0 0 5px 3px rgba(255, 255, 255, 0.3); /* glow trắng */
 }
 
 #btnSearch {
-  padding: 8px 14px;
-  border: none;
-  background: #ff672f;
-  color: white;
-  border-radius: 6px;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important; /* ← BẮT BUỘC xóa */
+  background-color: transparent !important; /* ← Thêm dòng này */
   cursor: pointer;
-  font-weight: 500;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+#btnSearch img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 #btnSearch:hover {
-  background: #ff4242;
-  transform: translateY(-1px);
+  transform: scale(1.1);
 }
 
 /* ==========================================
    🧭 THANH NHẬP ĐỊA ĐIỂM (BÊN TRÊN)
 ========================================== */
 .gps-box {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-
-.search-row {
+  padding: 7px, 9px;
   display: flex;
   border-radius: 8px;
   align-items: center;
   gap: 8px;
 }
 
+
 .search-row {
-    background-color: #ffffff;        /* đổi màu nền khi hover */
-    transform: scale(1.02);           /* phóng to nhẹ */
-    box-shadow: 0 0 5px 3px rgba(255, 228, 194, 0.3); /* glow trắng */
-}
-
-#gpsInput {
-  padding: 8px 10px;
-  width: 260px; /* mặc định bằng với #query */
-  border-radius: 6px;
-  border: 2px solid #ee5536;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-#gpsInput:hover {
-    background-color: #ffffff;        /* đổi màu nền khi hover */
-    transform: scale(1.02);           /* phóng to nhẹ */
-    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
-}
-
-#gpsInput:focus {
-  border-color: #ffffff;
-  box-shadow: 0 0 3px rgba(255, 255, 255, 0.6);
-}
-
-.gps-btn {
-  padding: 8px 10px;
-  border: none;
-  background: #0078ff;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.gps-btn:hover {
-  background: #005fd1;
-  transform: translateY(-1px);
+  padding: 7px, 9px;
+  display: flex;
+  border-radius: 8px;
+  align-items: center;
+  gap: 8px;
 }
 
 .gps-box,
@@ -159,15 +137,22 @@ body {
 
 /* 👇 căn lại input GPS cho trùng cột với ô tìm quán ăn */
 #gpsInput {
+  padding: 8px 10px 8px 30px;
+  background: white;
   width: 260px;
-  padding: 8px 10px 8px 30px; /* giống #query */
-  border: 2px solid #ee5536;
-  border-radius: 6px;
+  border: 0px;
+  border-radius: 15px;
+  box-shadow: 0 0 5px 3px rgba(126, 124, 124, 0.3);
   outline: none;
   transition: all 0.2s ease;
-  box-sizing: border-box;
-  margin: 0;
 }
+
+#gpsInput:hover {
+    background-color: #ffffff;        /* đổi màu nền khi hover */
+    transform: scale(1.02);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255, 255, 255, 0.3); /* glow trắng */
+}
+
 
 /* đồng bộ chiều cao, viền, nút */
 .gps-btn,
@@ -178,62 +163,22 @@ body {
   justify-content: center;
 }
 
-
-
-/* ==========================================
-   💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE)
-========================================== */
-.suggestions {
-  position: absolute;
-  top: 110%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  max-height: 200px;
-  overflow-y: auto;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  display: none;
-  z-index: 2000;
-  opacity: 0;
-  transform: translateY(-5px);
-  transition: all 0.2s ease;
-}
-
-.suggestions.show {
-  display: block;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.suggestions div {
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.suggestions div:hover {
-  background-color: #f0f0f0;
-}
-
 /* ==========================================
    📋 SIDEBAR (THÔNG TIN CHI TIẾT)
 ========================================== */
 #sidebar {
   position: fixed;
-  bottom: 30px;
-  left: 0;
-  width: 400px;
-  height: calc(100% - 280px);
+  top: 160px;
+  left: 0px;
+  width: 27%;
+  height: calc(100% - 160px);
+  max-height: calc(100vh - 60px);
   background: #fff;
-  border-radius: 6px;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.6);
-  z-index: 4000;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.18);
   overflow-y: auto;
-  overflow-x: hidden;
+  transform: translateX(-109%);
   transition: transform 0.3s ease;
-  transform: translateX(-100%);
+  z-index: 4000;
 }
 
 #sidebar.show {
@@ -241,24 +186,36 @@ body {
   z-index: 4000;
 }
 
-#closeSidebar {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
+/* ⭐ BỔ SUNG: TÙY CHỈNH THANH CUỘN GIỐNG CHATBOT ⭐ */
+#sidebar::-webkit-scrollbar {
+    width: 6px;
 }
 
+#sidebar::-webkit-scrollbar-track {
+    background: transparent; /* Nền thanh cuộn trong suốt */
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+    /* Màu cam nhạt mờ, giống với chatbot: rgba(255,107,53,0.3) */
+    background: rgba(255, 44, 44, 0.3);
+    border-radius: 3px;
+}
+
+#sidebar.show {
+  transform: translateX(0);
+  z-index: 4000;
+}
+
+
 #sidebar-content {
-  padding: 30px 20px 20px;
+  padding: 3px 20px 20px;
 }
 
 #sidebar-content h2 {
   margin-top: 0;
   color: #222;
 }
+
 
 /* ==========================================
    ⭐ REVIEW SECTION
@@ -515,7 +472,7 @@ body {
 .tab-bar {
   display: flex;
   justify-content: space-around;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid #fcc6c6;
   margin-bottom: 15px;
   position: sticky;
   top: 0;
@@ -536,13 +493,13 @@ body {
 }
 
 .tab-btn:hover {
-  background: #f5f8ff;
-  color: #0078ff;
+  background: #ffeae5;
+  color: #ff4d00;
 }
 
 .tab-btn.active {
-  color: #0078ff;
-  border-bottom: 2px solid #0078ff;
+  color: #ff3838;
+  border-bottom: 2px solid #ff0000;
 }
 
 .tab-content {
@@ -695,13 +652,11 @@ body {
 ========================= */
 .suggestions {
   position: absolute;
-  top: 100%;
+  top: 108%;
   left: 0;
   width: 100%;
   background: white;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
   max-height: 250px;
   overflow-y: auto;
   z-index: 9999;
@@ -743,60 +698,58 @@ body {
 .route-btn {
   display: block;
   width: 100%;
-  background: #ff9800; /* 🟧 Cam tươi */
+  background: #ff9155; /* 🟧 Cam tươi */
   color: white;
   border: none;
   padding: 10px;
   margin-top: 10px;
-  border-radius: 8px;
+  border-radius: 15px;
   cursor: pointer;
   font-weight: bold;
   transition: background 0.3s ease;
 }
 
 .route-btn:hover {
-  background: #e68900; /* Cam đậm khi hover */
+  background: #ffc552; /* Cam đậm khi hover */
 }
 .sidebar-header {
+  background: linear-gradient(135deg, #de3c3c 0%, #ff5647 100%);
+  color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid #ddd;
+  padding: 18px;
+  border-bottom: 1px solid #f33f3f;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+    /* ✅ THÊM CÁC DÒNG NÀY */
+  margin: 0 !important;        /* Xóa margin */
+  width: 100%;                 /* Chiếm full width */
+  box-sizing: border-box;      /* Tính padding vào width */
+  overflow: hidden; /* Cắt phần thừa ra ngoài */
+  position: relative;
 }
 
-.close-btn {
-  background: none;
+#closeSidebar {
+  position: absolute; 
+  top: 50%;
+  right: 18px; /* Cách mép phải 18px */
+  transform: translateY(-50%); /* Căn giữa chính xác */
+  background: rgba(255,255,255,0.2);
   border: none;
-  font-size: 22px;
+  color: white;
   cursor: pointer;
-  color: #555;
-  transition: 0.2s;
+  font-size: 20px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.close-btn:hover {
-  color: #000;
-  transform: scale(1.1);
-}
-
-#sidebar {
-  position: fixed;
-  bottom: 30px;
-  left: 0;
-  width: 400px;
-  height: calc(100% - 276px);
-  background: #fff;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-  overflow-y: auto;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
-  z-index: 4000;
-}
-
-#sidebar.show {
-  transform: translateX(0);
-  z-index: 4000;
-}
 
 /* ====================== */
 /* 🖼️ ZOOM ẢNH POPUP */
@@ -858,16 +811,19 @@ body {
   width: 100%;
   padding: 8px 10px;  /* ⭐ ĐỔI từ 6px 8px → 8px 10px (giống select) */
   background: white;
-  border: 2px solid #ee5536;
-  border-radius: 8px;
+  border: opx;
+  border-radius: 15px;
   cursor: pointer;
   text-align: left;
   font-size: 13px;  /* ⭐ Đảm bảo cùng size với select */
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 36px;  /* ⭐ ĐỔI thành 36px cho đồng bộ */
+  min-height: 30px;  /* ⭐ ĐỔI thành 36px cho đồng bộ */
+  box-shadow: 0 0 5px 3px rgba(126, 124, 124, 0.3);
   box-sizing: border-box;  /* ⭐ THÊM để tính cả padding vào width */
+  outline: none;
+  transition: all 0.2s ease;
 }
 
 /* Đảm bảo text không bị tràn */
@@ -884,7 +840,7 @@ body {
 .flavor-selector-btn:hover {
     background-color: #ffffff;        /* đổi màu nền khi hover */
     transform: scale(1.02);           /* phóng to nhẹ */
-    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+    box-shadow: 0 0 5px 3px rgba(255, 255, 255, 0.3);  /* glow trắng */
 }
 
 .flavor-dropdown {
@@ -896,7 +852,7 @@ body {
   border: 1px solid #ccc;
   border-radius: 8px;
   max-height: 300px;
-  overflow-y: auto;
+  overflow-x: auto;
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   display: none;
@@ -905,6 +861,23 @@ body {
 .flavor-dropdown.show {
   display: block;
 }
+
+.flavor-dropdown::-webkit-scrollbar{
+    width: 2px !important; /* Chiều rộng cho thanh cuộn dọc */
+    height: 3px;
+}
+
+.flavor-dropdown::-webkit-scrollbar-track{
+    background: transparent;
+}
+
+.flavor-dropdown::-webkit-scrollbar-thumb{
+    background: rgba(255, 72, 48, 0.3); /* Màu cam nhạt mờ */
+    height: 2px;
+    border-radius: 40px;
+}
+/* ========================================== */
+
 
 .flavor-option {
   padding: 8px 12px;
@@ -1057,24 +1030,47 @@ body {
 .budget-selector select,
 .radius-selector select {
   color: #8c8c8c;
-  padding: 7px 10px;
-  border-radius: 8px;
-  border: 2px solid #ee5536;
+  padding: 8px 10px;
+  border-radius: 15px;
+  border: 0px;
   font-size: 13px;
   background: white;
   cursor: pointer;
+  box-shadow: 0 0 5px 3px rgba(126, 124, 124, 0.3);
+  outline: none;
+  transition: all 0.2s ease;
+  min-height: 36px;
+  box-sizing: border-box;
+
+    /* Ẩn mũi tên mặc định */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  
+/* Thêm mũi tên cam giống flavor */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%23e95d00' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 8px;
+  padding-right: 30px;
 }
 
 .budget-selector select:hover {
     background-color: #ffffff;        /* đổi màu nền khi hover */
     transform: scale(1.02);           /* phóng to nhẹ */
-    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+    box-shadow: 0 0 5px 3px rgba(255, 255, 255, 0.3);  /* glow trắng */
 }
 
 .radius-selector select:hover {
     background-color: #ffffff;        /* đổi màu nền khi hover */
     transform: scale(1.02);           /* phóng to nhẹ */
-    box-shadow: 0 0 5px 3px rgba(255, 179, 81, 0.3); /* glow trắng */
+    box-shadow: 0 0 5px 3px rgba(255, 255, 255, 0.3);  /* glow trắng */
+}
+
+
+.budget-selector select option:hover,
+.radius-selector select option:hover {
+  background: #fff5ce;
 }
 
 /* NÚT YÊU THÍCH & LƯU QUÁN */
@@ -1172,6 +1168,230 @@ body {
 .michelin-glow {
   filter: drop-shadow(0 0 6px red) drop-shadow(0 0 12px red);
 }
+
+/* 🎯 CHO PHÉP ICON SCALE THEO ZOOM */
+.fixed-size-icon {
+    transition: transform 0.4s ease; /* Thêm hiệu ứng mượt */
+}
+
+.leaflet-marker-icon.fixed-size-icon {
+    transform-origin: center bottom !important;
+}
+
+.fixed-size-icon.michelin-glow {
+    filter: drop-shadow(0 0 6px red) drop-shadow(0 0 12px red);
+}
+
+/* Hiệu ứng mượt cho markers khi ẩn/hiện */
+.leaflet-marker-icon {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.leaflet-marker-icon.hiding {
+  opacity: 0 !important;
+  transform: scale(0.5);
+}
+
+.leaflet-marker-icon.showing {
+  opacity: 1 !important;
+  transform: scale(1);
+}
+
+/* ===========================
+   🎮 MINI GAME POPUP
+=========================== */
+
+.mini-game-btn {
+    position: fixed;
+    bottom: 270px;
+    right: 20px;
+    background: #ff5722;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 999;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.mini-game-btn:hover {
+    background: #ff3d00;
+}
+
+.mini-game-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+
+.mini-game-popup.hidden {
+    display: none;
+}
+
+.mini-game-content {
+    width: 90%;         /* mở rộng popup */
+    max-width: 1200px;  /* cho popup lớn hơn nhiều */
+    height: 90%;        /* khung cao hơn */
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    position: relative;
+    animation: zoomIn 0.25s ease;
+    overflow: auto;
+}
+
+
+/* Nút đóng */
+.close-mini-game {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: #e53935;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes zoomIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.game-title {
+    text-align: center;
+    font-size: 26px;
+    margin-bottom: 10px;
+}
+
+.game-stats {
+    display: flex;
+    justify-content: space-around;
+    background: #eee;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    font-size: 17px;
+}
+
+.image-box {
+    width: 100%;
+    height: 500px;  /* tăng chiều cao */
+    background: #f2f2f2;
+    position: relative;
+    border-radius: 15px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+.blur-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(20px);
+    transition: 0.3s;
+}
+
+.blur-label {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: #fff;
+    padding: 5px 10px;
+    border-radius: 8px;
+}
+
+.hint-btn {
+    background: #ffc107;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 12px;
+}
+
+.answer-row {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+#answer-input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+}
+
+#submit-answer {
+    padding: 10px 18px;
+    background: #5a6ff0;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.hint-box {
+    background: #ffe8a3;
+    padding: 10px;
+    margin-top: 12px;
+    border-radius: 10px;
+    font-size: 15px;
+}
+
+.mini-game-content {
+    pointer-events: auto;
+}
+
+.mini-game-popup {
+    pointer-events: none;
+}
+
+.mini-game-popup * {
+    pointer-events: auto;
+}
+
+/* ===========================
+   🎮 FULL-WIDTH GAME CANVAS
+=========================== */
+
+#miniGameInner {
+    width: 100%;
+    height: calc(100% - 70px);  /* 70px = tiêu đề + padding */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+#gameCanvas {
+    display: block;
+    image-rendering: pixelated;
+}
+
+
+
 
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,

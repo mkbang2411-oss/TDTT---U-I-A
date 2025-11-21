@@ -1,13 +1,14 @@
 from serpapi import GoogleSearch
 import pandas as pd
 import os
+import csv
 import time
 from requests.exceptions import ChunkedEncodingError
 import requests
 
 # ⚙️ Cấu hình
 SERP_API_KEY = "a3ce5e1007e887b80f0c3114d9bd93854917de1e7caae81e7887148f233072a4"
-CSV_FILE = "Data.csv"
+CSV_FILE = "Data_with_flavor.csv"
 
 
 def get_places(query: str, lat: float, lon: float, retries=3, wait=5):
@@ -79,7 +80,7 @@ def parse_place_data(places: list):
 
 
 def save_places_to_csv(df_new: pd.DataFrame, CSV_FILE: str = CSV_FILE):
-    """Lưu DataFrame vào CSV, tránh trùng lặp"""
+    """Lưu DataFrame vào CSV, tránh trùng lặp, và ép tất cả cột đều nằm trong dấu nháy đôi"""
     if df_new.empty:
         print("⚠️ Không có dữ liệu mới.")
         return
@@ -88,19 +89,35 @@ def save_places_to_csv(df_new: pd.DataFrame, CSV_FILE: str = CSV_FILE):
     if folder:
         os.makedirs(folder, exist_ok=True)
 
+    # Nếu file chưa tồn tại hoặc rỗng -> tạo mới
     if not os.path.exists(CSV_FILE) or os.stat(CSV_FILE).st_size == 0:
-        df_new.to_csv(CSV_FILE, index=False)
+        df_new.to_csv(
+            CSV_FILE,
+            index=False,
+            quoting=csv.QUOTE_ALL,
+            encoding="utf-8-sig"
+        )
         print(f"💾 Tạo mới {CSV_FILE} ({len(df_new)} dòng).")
         return
 
+    # Đọc file cũ
     try:
         df_old = pd.read_csv(CSV_FILE)
     except Exception:
         df_old = pd.DataFrame()
 
+    # Gộp + bỏ trùng
     df_all = pd.concat([df_old, df_new], ignore_index=True)
     df_all.drop_duplicates(subset=["ten_quan", "dia_chi"], inplace=True)
-    df_all.to_csv(CSV_FILE, index=False)
+
+    # Ghi đè file với QUOTE_ALL
+    df_all.to_csv(
+        CSV_FILE,
+        index=False,
+        quoting=csv.QUOTE_ALL,
+        encoding="utf-8-sig"
+    )
+
     print(f"✅ Cập nhật {CSV_FILE}: tổng {len(df_all)} quán.")
 
 
@@ -119,22 +136,27 @@ def crawl_and_save_places(query: str, lat: float, lon: float):
 if __name__ == "__main__":
     # Tọa độ trung tâm quận/huyện TP.HCM
     DISTRICTS = {
-        "Quận 1": (10.77566, 106.70042),
-        "Quận 3": (10.78353, 106.68710),
-        "Quận 4": (10.76073, 106.70755),
-        "Quận 5": (10.75669, 106.66370),
-        "Quận 6": (10.74805, 106.63550),
-        "Quận 7": (10.73861, 106.72639),
-        "Quận 8": (10.72464, 106.62863),
-        "Quận 10": (10.77347, 106.66700),
-        "Quận 11": (10.76287, 106.65015),
-        "Quận 12": (10.86752, 106.64113),
-        "Bình Thạnh": (10.81058, 106.70915),
-        "Gò Vấp": (10.83806, 106.66750),
-        "Phú Nhuận": (10.79919, 106.68026),
-        "Tân Bình": (10.80203, 106.64931),
-        "Tân Phú": (10.78640, 106.62883),
-        "Thành phố Thủ Đức": (10.84941, 106.75371)
+        # "Quận 1": (10.77566, 106.70042),
+        # "Quận 3": (10.78353, 106.68710),
+        # "Quận 4": (10.76073, 106.70755),
+        # "Quận 5": (10.75669, 106.66370),
+        # "Quận 6": (10.74805, 106.63550),
+        # "Quận 7": (10.73861, 106.72639),
+        # "Quận 8": (10.72464, 106.62863),
+        # "Quận 10": (10.77347, 106.66700),
+        # "Quận 11": (10.76287, 106.65015),
+        # "Quận 12": (10.86752, 106.64113),
+        # "Bình Thạnh": (10.81058, 106.70915),
+        # "Gò Vấp": (10.83806, 106.66750),
+        # "Phú Nhuận": (10.79919, 106.68026),
+        # "Tân Bình": (10.80203, 106.64931),
+        # "Tân Phú": (10.78640, 106.62883),
+        # "Nhà Bè": (10.69534, 106.74017),
+        # "Quận 2": (10.78729, 106.74676),
+        # "Quận 9": (10.84210, 106.82872),
+        # "Thành phố Thủ Đức": (10.84941, 106.75371),
+        "Phường_Bình_Trưng": (10.7950, 106.7670),
+
     }
 
     query = input("🔍 Nhập từ khóa muốn tìm (vd: phở, trà sữa, cơm tấm): ").strip()

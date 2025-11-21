@@ -117,7 +117,7 @@ def get_chatbot_html(gemini_api_key):
                 position: fixed;
                 bottom: 30px;
                 right: 30px;
-                width: 320px;
+                width: 22%;
                 max-width: calc(100vw - 60px);
                 height: calc(100% - 240px);
                 max-height: calc(100vh - 60px);
@@ -568,7 +568,7 @@ def get_chatbot_html(gemini_api_key):
             .chat-history-sidebar {{
                 position: fixed;
                 bottom: 30px;
-                right: 365px; /* 👈 Dính sát bên trái chat window (30px margin + 320px width + 15px gap) */
+                right: 25%; /* 👈 Dính sát bên trái chat window (30px margin + 320px width + 15px gap) */
                 width: 260px;
                 height: calc(100% - 240px);
                 max-height: calc(100vh - 60px);
