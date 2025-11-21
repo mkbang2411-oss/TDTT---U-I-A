@@ -687,16 +687,11 @@ function displayPlaces(places, shouldZoom = true) {
       `;
 
       const contentHTML = `
-        <div class="sidebar-header">
-          <h2>Thông tin chi tiết</h2>
-          <button id="closeSidebar" class="close-btn">×</button>
-        </div>
-
-        <div class="tab-bar">
-          <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
-          <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
-          <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
-        </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
+    <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
+    <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
+  </div>
 
         <div id="tab-tongquan" class="tab-content active">${tongquanHTML}</div>
         <div id="tab-thucdon" class="tab-content">${thucdonHTML}</div>
@@ -706,6 +701,7 @@ function displayPlaces(places, shouldZoom = true) {
       sidebar.classList.add("show");
 // ✅ Cập nhật tiêu đề header (không tạo lại header)
 document.getElementById('sidebar-title').textContent = "Thông tin chi tiết";
+
 
       // 👉 Sau khi render xong, gắn sự kiện cho nút
       const favoriteBtn = document.getElementById("favoriteBtn");
@@ -1067,7 +1063,7 @@ function updateMarkersVisibility() {
     markers.forEach((marker) => {
       const icon = marker._icon; // Lấy DOM element của icon
       
-      if (currentZoom <= 15) {
+      if (currentZoom <= 14) {
         // Ẩn marker với hiệu ứng
         if (icon) {
           icon.classList.remove('showing');
