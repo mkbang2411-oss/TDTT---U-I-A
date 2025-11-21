@@ -23,6 +23,14 @@ let markers = [];
 let currentRouteLine = null;
 let routeControl = null;
 
+// 👉 Biến trạng thái cho nút "Quán yêu thích"
+let isFavoriteMode = false;
+let lastSearchParams = {
+  query: "",
+  flavors: [],
+  budget: "",
+  radius: ""
+};
 // =========================
 // 🍴 ICON TƯƠNG ỨNG LOẠI QUÁN
 // =========================
@@ -1120,6 +1128,39 @@ function updateMarkersVisibility() {
 }
 
 // =========================
+// 💖 HIỂN THỊ CÁC QUÁN YÊU THÍCH CỦA USER
+// =========================
+async function showFavoritePlaces() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/get-favorites/", {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      alert("Vui lòng đăng nhập để xem danh sách quán yêu thích!");
+      return false;
+    }
+
+    const data = await res.json();
+    const favorites = data.favorites || [];
+
+    if (!favorites.length) {
+      alert("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
+      return false;
+    }
+
+    displayPlaces(favorites, true);
+    return true;
+  } catch (err) {
+    console.error("Lỗi khi lấy danh sách quán yêu thích:", err);
+    alert("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
+    return false;
+  }
+}
+
+
+// =========================
 // 📡 LẤY DỮ LIỆU CSV
 // =========================
 // =========================
@@ -1378,6 +1419,19 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   const budget = document.getElementById("budget").value;
   const radius = document.getElementById("radius").value;
 
+  // 🔁 Mỗi lần tìm kiếm mới thì tắt chế độ "Quán yêu thích"
+  isFavoriteMode = false;
+  const favoriteModeBtnEl = document.getElementById("favoriteModeBtn");
+  if (favoriteModeBtnEl) favoriteModeBtnEl.classList.remove("active");
+
+  // 💾 Lưu lại tham số tìm kiếm cuối cùng
+  lastSearchParams = {
+    query: query,
+    flavors: selectedFlavors,
+    budget: budget,
+    radius: radius,
+  };
+
   let result = true; // true = có quán, false = không
   // 👉 TRUE nếu đây chỉ là filter bằng 3 thanh phụ
   const isFilterOnlySearch =
@@ -1446,6 +1500,39 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
   // Nếu là filter-only search → không đụng tới notFoundCount
 });
+
+const favoriteModeBtn = document.getElementById("favoriteModeBtn");
+
+if (favoriteModeBtn) {
+  favoriteModeBtn.addEventListener("click", async () => {
+    // 🔴 Đang tắt → bật chế độ "chỉ quán yêu thích"
+    if (!isFavoriteMode) {
+      isFavoriteMode = true;
+      favoriteModeBtn.classList.add("active");
+
+      const ok = await showFavoritePlaces();
+      // Nếu không có quán / lỗi → tắt lại nút
+      if (!ok) {
+        isFavoriteMode = false;
+        favoriteModeBtn.classList.remove("active");
+      }
+    }
+    // 🟢 Đang bật → tắt chế độ, quay về kết quả tìm kiếm gần nhất
+    else {
+      isFavoriteMode = false;
+      favoriteModeBtn.classList.remove("active");
+
+      await fetchPlaces(
+        lastSearchParams.query,
+        lastSearchParams.flavors,
+        lastSearchParams.budget,
+        lastSearchParams.radius,
+        true
+      );
+    }
+  });
+}
+
 
 // =======================================================
 // ✅ MULTI-SELECT KHẨU VỊ
