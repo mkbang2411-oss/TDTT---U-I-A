@@ -12,6 +12,8 @@
 
 &nbsp;		chạy lệnh 
 
+&nbsp;      pip -m venv venv
+
 &nbsp;		win: venv\\Scripts\\activate 
 
 &nbsp;		mac: source venv/bin/activate
