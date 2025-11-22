@@ -1071,7 +1071,7 @@ function updateMarkersVisibility() {
     markers.forEach((marker) => {
       const icon = marker._icon; // Lấy DOM element của icon
       
-      if (currentZoom <= 14) {
+      if (currentZoom <= 12) {
         // Ẩn marker với hiệu ứng
         if (icon) {
           icon.classList.remove('showing');
@@ -1246,7 +1246,7 @@ function distance(lat1, lon1, lat2, lon2) {
 }
 
 // =======================================================
-// ✅ FETCH + LỌC DỮ LIỆU
+// ✅ FETCH + LỌC DỮ LIỆU (FIXED VERSION)
 // =======================================================
 
 async function fetchPlaces(
@@ -1260,7 +1260,18 @@ async function fetchPlaces(
     const res = await fetch("/api/places");
     let data = await res.json();
 
-    function normalize(str) {
+    // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH (chỉ bỏ dấu phụ như ă, ơ, ê)
+    function normalizeKeepTone(str) {
+      return str
+        .toLowerCase()
+        .trim()
+        // Chỉ chuẩn hóa đ → d
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D");
+    }
+
+    // ⭐ NORMALIZE BỎ HOÀN TOÀN DẤU (dùng cho fuzzy search)
+    function normalizeRemoveAll(str) {
       return str
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -1270,66 +1281,111 @@ async function fetchPlaces(
         .trim();
     }
 
+    // ⭐ ESCAPE REGEX đặc biệt characters
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
     let filtered = data;
 
-    // ========== 1️⃣ Fuzzy Search ==========
+    // ========== 1️⃣ Fuzzy Search (FIXED) ==========
     if (query) {
-      let normalizedQuery = normalize(query);
+      const queryKeepTone = normalizeKeepTone(query);
+      const queryNoTone = normalizeRemoveAll(query);
 
-      // chia chữ nếu user gõ liền "bundaubac..."
-      if (!normalizedQuery.includes(" ")) {
-        const possibleMatches = data.map((p) => normalize(p.ten_quan || ""));
-        const splitVariants = [];
+      // ⭐ BƯỚC 1: Exact match GIỮ DẤU THANH trước
+      const exactMatches = data.filter((p) => {
+        const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
+        return nameKeepTone.includes(queryKeepTone);
+      });
 
-        for (let i = 1; i < normalizedQuery.length; i++) {
-          splitVariants.push(
-            normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
+      // Nếu có exact match → dùng luôn, không cần fuzzy
+      if (exactMatches.length > 0) {
+        filtered = exactMatches;
+        console.log(`✅ Exact match found: ${exactMatches.length} results`);
+      } else {
+        // ⭐ BƯỚC 2: Fuzzy search BỎ DẤU (fallback)
+        let normalizedQuery = queryNoTone;
+
+        // Chia chữ nếu user gõ liền "bundaubac..."
+        if (!normalizedQuery.includes(" ")) {
+          const possibleMatches = data.map((p) =>
+            normalizeRemoveAll(p.ten_quan || "")
           );
-        }
-        for (const variant of splitVariants) {
-          if (possibleMatches.some((name) => name.includes(variant))) {
-            normalizedQuery = variant;
-            break;
+          const splitVariants = [];
+
+          for (let i = 1; i < normalizedQuery.length; i++) {
+            splitVariants.push(
+              normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
+            );
+          }
+          for (const variant of splitVariants) {
+            if (possibleMatches.some((name) => name.includes(variant))) {
+              normalizedQuery = variant;
+              break;
+            }
           }
         }
+
+        // Fuzzy engine với threshold cao hơn một chút
+        const fuse = new Fuse(
+          data.map((p) => ({
+            ...p,
+            ten_quan_no_dau: normalizeRemoveAll(p.ten_quan || ""),
+          })),
+          {
+            keys: ["ten_quan_no_dau"],
+            threshold: 0.35, // ⭐ Giảm xuống để strict hơn
+            ignoreLocation: true,
+            includeScore: true, // ⭐ Để debug
+          }
+        );
+
+        const fuzzyResults = fuse.search(normalizedQuery);
+
+        // ⭐ Log để debug
+        console.log(
+          "🔍 Fuzzy results:",
+          fuzzyResults.map((r) => ({
+            name: r.item.ten_quan,
+            score: r.score,
+          }))
+        );
+
+        // ⭐ BƯỚC 3: Filter kết quả fuzzy - KHÔNG dùng \b (word boundary)
+        const queryWords = normalizedQuery.split(" ").filter(Boolean);
+        const escapedPhrase = escapeRegex(normalizedQuery);
+
+        filtered = fuzzyResults
+          .map((r) => r.item)
+          .filter((p) => {
+            const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+
+            // Check có chứa phrase không (không cần word boundary)
+            const hasPhrase = nameNoTone.includes(normalizedQuery);
+
+            // Check có chứa TẤT CẢ các từ không
+            const hasAllWords = queryWords.every((w) => nameNoTone.includes(w));
+
+            // Nếu query có nhiều từ → cần match phrase hoặc tất cả từ
+            // Nếu query 1 từ → cần match từ đó
+            if (queryWords.length >= 2) {
+              return hasPhrase || hasAllWords;
+            } else {
+              return hasPhrase;
+            }
+          });
+
+        console.log(`🔎 Fuzzy fallback: ${filtered.length} results`);
       }
-
-      // Fuzzy engine
-      const fuse = new Fuse(
-        data.map((p) => ({
-          ...p,
-          ten_quan_no_dau: normalize(p.ten_quan || ""),
-        })),
-        { keys: ["ten_quan_no_dau"], threshold: 0.4, ignoreLocation: true }
-      );
-
-      const fuzzyResults = fuse.search(normalizedQuery).map((r) => r.item);
-
-      const queryWords = normalizedQuery.split(" ").filter(Boolean);
-      const normalizedPhrase = normalizedQuery.trim();
-
-      filtered = fuzzyResults.filter((p) => {
-        const name = normalize(p.ten_quan || "");
-        const phraseRegex = new RegExp(`\\b${normalizedPhrase}\\b`, "i");
-        const hasFullPhrase = phraseRegex.test(name);
-
-        const hasWordMatch = queryWords.some((w) => {
-          const wordRegex = new RegExp(`\\b${w}\\b`, "i");
-          return wordRegex.test(name);
-        });
-
-        return queryWords.length >= 2
-          ? hasFullPhrase
-          : hasFullPhrase || hasWordMatch;
-      });
     }
 
     // ========== 2️⃣ Lọc khẩu vị ==========
     if (flavors.length > 0) {
       filtered = filtered.filter((p) => {
         if (!p.khau_vi) return false;
-        const norm = normalize(p.khau_vi);
-        return flavors.some((f) => norm.includes(normalize(f)));
+        const norm = normalizeRemoveAll(p.khau_vi);
+        return flavors.some((f) => norm.includes(normalizeRemoveAll(f)));
       });
     }
 
@@ -1346,19 +1402,17 @@ async function fetchPlaces(
 
         const [minP, maxP] = range;
 
-        // ⭐ TH1: "300.000 trở lên"
         if (budgetMax === Infinity) {
           return minP >= budgetMinNum;
         }
 
-        // ⭐ TH2: khoảng giá bình thường → chỉ cần giao nhau
         return minP >= budgetMinNum && maxP <= budgetMax;
       });
     }
 
     // ========== 4️⃣ Lọc bán kính ==========
     if (radius !== "") {
-      const r = parseFloat(radius); // km
+      const r = parseFloat(radius);
 
       if (
         !window.currentUserCoords ||
@@ -1368,7 +1422,6 @@ async function fetchPlaces(
         alert(
           "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
         );
-        // không filter theo radius nữa, dùng filtered hiện tại
       } else {
         const userLat = parseFloat(window.currentUserCoords.lat);
         const userLon = parseFloat(window.currentUserCoords.lon);
@@ -1381,29 +1434,19 @@ async function fetchPlaces(
           if (isNaN(plat) || isNaN(plon)) return false;
 
           const d = distance(userLat, userLon, plat, plon);
-
-          // Debug tuỳ bạn cần hay không
-          // if (d > r) {
-          //   console.warn(`❌ ${p.ten_quan} cách ${d.toFixed(2)} km, vượt radius ${r} km`);
-          // } else {
-          //   console.log(`✅ ${p.ten_quan} cách ${d.toFixed(2)} km, trong radius ${r} km`);
-          // }
-
           return d <= r;
         });
       }
     }
 
-    // 🟢 Quan trọng: trả về true/false từ displayPlaces
     const ok = displayPlaces(filtered, shouldZoom);
-    return ok; // <-- để btnSearch biết là có quán hay không
+    return ok;
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
     alert("Không thể tải dữ liệu từ server!");
-    return false; // xem như thất bại
+    return false;
   }
 }
-
 let notFoundCount = 0;
 // =============================
 // 🔍 NÚT TÌM KIẾM
