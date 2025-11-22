@@ -1891,29 +1891,18 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
 });
 
 // =========================
-// ⌨️ ENTER chỉ hoạt động khi người dùng đang tương tác với ô nhập địa điểm
+// ⌨️ ENTER chạy nút TÌM cho cả 2 ô input
 // =========================
-let isUsingGpsInput = false;
-
-// Khi người dùng click hoặc gõ trong ô nhập
-const gpsInput = document.getElementById("gpsInput");
-gpsInput.addEventListener("focus", () => (isUsingGpsInput = true));
-gpsInput.addEventListener("input", () => (isUsingGpsInput = true));
-
-// Khi người dùng click ra ngoài map hoặc sidebar → tắt chế độ nhập
-document.addEventListener("click", (e) => {
-  const gpsBox = document.querySelector(".gps-box");
-  if (!gpsBox.contains(e.target)) {
-    isUsingGpsInput = false;
-  }
-});
-
-// Khi nhấn Enter → chỉ hoạt động nếu đang trong chế độ nhập
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && isUsingGpsInput) {
-    e.preventDefault();
-    document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
-  }
+    if (e.key === "Enter") {
+        const active = document.activeElement;
+
+        // Nếu đang focus vào ô địa điểm hoặc ô tìm món → chạy Search
+        if (active && (active.id === "gpsInput" || active.id === "query")) {
+            e.preventDefault();
+            document.getElementById("btnSearch").click();
+        }
+    }
 });
 
 // =====================================================
