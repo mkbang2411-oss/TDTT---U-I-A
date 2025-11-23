@@ -2605,3 +2605,26 @@ if (!gameLoopStarted) {
 }
 
 }); // <-- Chỉ đóng DOMContentLoaded 1 lần duy nhất
+
+
+// Xử lý nút đóng sidebar
+const closeSidebarBtn = document.getElementById('closeSidebar');
+if (closeSidebarBtn) {
+    closeSidebarBtn.addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.classList.remove('show');
+        }
+    });
+}
+
+// Đóng sidebar khi click vào overlay (nếu có)
+const sidebar = document.getElementById('sidebar');
+if (sidebar) {
+    sidebar.addEventListener('click', (e) => {
+        // Chỉ đóng khi click vào chính sidebar (không phải nội dung bên trong)
+        if (e.target === sidebar) {
+            sidebar.classList.remove('show');
+        }
+    });
+}
