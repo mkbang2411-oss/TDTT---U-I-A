@@ -598,7 +598,7 @@ function displayPlaces(places, shouldZoom = true) {
   // ✅ Lắng nghe sự kiện zoom/move để lazy load
   map.off('moveend', loadMarkersInViewport);
   map.on('moveend', loadMarkersInViewport);
-
+  window.allMarkers = markers;
   return true;
 }
 
@@ -1694,7 +1694,6 @@ document.addEventListener("DOMContentLoaded", function () {
     console.error("⚠️ Không tìm thấy input #radius");
   }
 });
-
 // =========================
 // 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
 // =========================
@@ -1751,10 +1750,31 @@ input.addEventListener("input", () => {
     }
 
     div.innerHTML = `<img src="${iconUrl}" style="width:20px;height:20px;margin-right:8px;object-fit:contain;"> <div style="flex:1">${displayName}</div>`;
-    div.addEventListener("click", () => {
+    div.addEventListener("click", async () => {
       input.value = p.ten_quan;
       suggestionsEl.classList.remove("show");
-     fetchPlaces(p.ten_quan, [], "", "", true); 
+      
+      // 🔥 FIX: Gọi fetchPlaces và sau đó zoom vào quán cụ thể
+      await fetchPlaces(p.ten_quan, [], "", "", false); // shouldZoom = false để không auto-zoom toàn bộ
+      
+      // 🎯 Zoom trực tiếp vào marker của quán này
+      if (p.lat && p.lon) {
+        const lat = parseFloat(p.lat.toString().replace(",", "."));
+        const lon = parseFloat(p.lon.toString().replace(",", "."));
+        if (!isNaN(lat) && !isNaN(lon)) {
+          map.setView([lat, lon], 17); // zoom level 17 để nhìn rõ
+          
+          // Mở popup của marker này (nếu có)
+          if (window.allMarkers) {
+            const marker = window.allMarkers.find(m => 
+              m.getLatLng().lat === lat && m.getLatLng().lng === lon
+            );
+            if (marker) {
+              marker.openPopup();
+            }
+          }
+        }
+      }
     });
     suggestionsEl.appendChild(div);
   });
@@ -1767,12 +1787,6 @@ document.addEventListener("click", (e) => {
   const searchBox = document.querySelector(".search-box");
   if (!searchBox.contains(e.target)) {
     suggestionsEl.classList.remove("show");
-  }
-});
-// ✅ Xử lý đóng sidebar (luôn hoạt động, dù sidebarContent bị thay đổi)
-document.addEventListener("click", (e) => {
-  if (e.target && e.target.id === "closeSidebar") {
-    document.getElementById("sidebar").classList.remove("show");
   }
 });
 
