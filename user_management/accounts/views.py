@@ -5,7 +5,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from allauth.socialaccount.models import SocialAccount
-from .models import ChatConversation, ChatMessage
+from .models import ChatConversation, ChatMessage, GameProgress
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import UserProfile, FavoritePlace
 from django.conf import settings
@@ -490,3 +490,156 @@ def get_user_favorites_api(request):
     
     # Trả về JSON 
     return JsonResponse({'favorites': favorite_places})
+
+
+# ===============================
+# 🎮 GAME PROGRESS APIs
+# ===============================
+
+@login_required
+def get_game_progress(request):
+    """
+    API lấy tiến độ game của user hiện tại
+    GET /accounts/api/game/progress/
+    """
+    try:
+        # Import model (thêm dòng này vào đầu file nếu chưa có)
+        from .models import GameProgress
+        
+        # Lấy hoặc tạo mới GameProgress cho user
+        progress, created = GameProgress.objects.get_or_create(user=request.user)
+        
+        return JsonResponse({
+            'status': 'success',
+            'current_level': progress.current_level,
+            'completed_levels': progress.completed_levels,
+            'max_unlocked': progress.get_max_unlocked_level()
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error', 
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@login_required
+@require_POST
+def update_game_progress(request):
+    """
+    API cập nhật tiến độ game khi user hoàn thành level
+    POST /accounts/api/game/update/
+    Body: {
+        "level_completed": 0,
+        "time_taken": 45.5,      // 🆕 Thêm thời gian (giây)
+        "deaths": 2               // 🆕 Thêm số lần chết
+    }
+    """
+    try:
+        from .models import GameProgress
+        
+        data = json.loads(request.body)
+        level_completed = data.get('level_completed')
+        time_taken = data.get('time_taken', 0)      # 🆕
+        deaths = data.get('deaths', 0)               # 🆕
+        
+        if level_completed is None:
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Thiếu thông tin level_completed'
+            }, status=400)
+        
+        level_completed = int(level_completed)
+        time_taken = float(time_taken)
+        deaths = int(deaths)
+        
+        # Lấy hoặc tạo GameProgress
+        progress, created = GameProgress.objects.get_or_create(user=request.user)
+        
+        # 🆕 Tính số sao dựa trên thời gian và số lần chết
+        stars = calculate_stars(time_taken, deaths)
+        
+        # 🆕 Lưu số sao (chỉ lưu nếu cao hơn)
+        level_key = str(level_completed)
+        if level_key not in progress.level_stars or progress.level_stars[level_key] < stars:
+            progress.level_stars[level_key] = stars
+        
+        # 🆕 Lưu thời gian tốt nhất
+        if level_key not in progress.best_times or progress.best_times[level_key] > time_taken:
+            progress.best_times[level_key] = time_taken
+        
+        # 🆕 Cộng dồn số lần chết
+        progress.deaths += deaths
+        
+        # Mở khóa level vừa hoàn thành
+        progress.unlock_level(level_completed)
+        
+        # Cập nhật current_level nếu user tiến xa hơn
+        if level_completed >= progress.current_level:
+            progress.current_level = level_completed + 1
+        
+        progress.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Cập nhật tiến độ thành công',
+            'current_level': progress.current_level,
+            'completed_levels': progress.completed_levels,
+            'max_unlocked': progress.get_max_unlocked_level(),
+            'stars': stars,  # 🆕 Trả về số sao
+            'best_time': progress.best_times.get(level_key, 0)  # 🆕
+        })
+        
+    except ValueError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Dữ liệu không hợp lệ'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# 🆕 HÀM TÍNH SỐ SAO
+def calculate_stars(time_taken, deaths):
+    """
+    Tính số sao dựa trên thời gian và số lần chết
+    - 3 sao: Không chết, hoàn thành nhanh (< 60s)
+    - 2 sao: Chết ít (≤ 2 lần), thời gian vừa (< 120s)
+    - 1 sao: Hoàn thành (bất kỳ)
+    """
+    if deaths == 0 and time_taken < 60:
+        return 3
+    elif deaths <= 2 and time_taken < 120:
+        return 2
+    else:
+        return 1
+
+
+@csrf_exempt
+@login_required
+@require_POST
+def reset_game_progress(request):
+    """
+    API reset tiến độ game (dùng cho debug hoặc chức năng "Chơi lại từ đầu")
+    POST /accounts/api/game/reset/
+    """
+    try:
+        from .models import GameProgress
+        
+        progress, created = GameProgress.objects.get_or_create(user=request.user)
+        progress.current_level = 0
+        progress.completed_levels = []
+        progress.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã reset tiến độ game'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
