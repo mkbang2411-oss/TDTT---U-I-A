@@ -1,3 +1,7 @@
+// ===============================
+// 🌐 API CONFIGURATION
+// ===============================
+const API_BASE_URL = 'http://127.0.0.1:8000';
 // =========================
 // 🗺️ CẤU HÌNH MAP
 // =========================
@@ -537,24 +541,26 @@ function openChatboxAutomatically() {
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
 function displayPlaces(places, shouldZoom = true) {
-   allPlacesData = places || [];
+  allPlacesData = places || [];
   visibleMarkers.clear();
 
   if (!places || places.length === 0) {
     alert("Không tìm thấy quán nào!");
     return false;
   }
-   // ✅ Xóa cluster cũ + tạo mới
+
+  // Xóa cluster cũ
   if (markerClusterGroup) {
     map.removeLayer(markerClusterGroup);
   }
-  
+
+  // Tạo cluster mới (giữ nguyên config cũ của bạn)
   markerClusterGroup = L.markerClusterGroup({
     iconCreateFunction: function(cluster) {
       const count = cluster.getChildCount();
       let size = 'small';
       let colorClass = 'cluster-small';
-      
+
       if (count > 100) {
         size = 'large';
         colorClass = 'cluster-large';
@@ -562,7 +568,7 @@ function displayPlaces(places, shouldZoom = true) {
         size = 'medium';
         colorClass = 'cluster-medium';
       }
-      
+
       return L.divIcon({
         html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
         className: `marker-cluster marker-cluster-${size}`,
@@ -579,25 +585,39 @@ function displayPlaces(places, shouldZoom = true) {
     spiderfyDistanceMultiplier: 1.5
   });
 
-  markers = []; // Reset mảng markers
+  markers = []; // reset mảng markers
 
-  // ✅ Gọi hàm lazy load
-  loadMarkersInViewport();
-
-  // ✅ Thêm cluster vào map
+  // 👉 Gắn cluster vào map trước
   map.addLayer(markerClusterGroup);
 
-  // ✅ Chỉ zoom đến quán nếu shouldZoom = true
-    if (shouldZoom && markers.length > 0) {
-    const bounds = markerClusterGroup.getBounds();
+  // 👉 Đăng ký lazy load theo move/zoom
+  map.off("moveend", loadMarkersInViewport);
+  map.on("moveend", loadMarkersInViewport);
+
+  if (shouldZoom && places.length > 0) {
+    // 🔍 Tính bounds theo TOÀN BỘ các quán đã lọc
+    const bounds = L.latLngBounds([]);
+
+    places.forEach((p) => {
+      const lat = parseFloat(p.lat?.toString().replace(",", "."));
+      const lon = parseFloat(p.lon?.toString().replace(",", "."));
+      if (!isNaN(lat) && !isNaN(lon)) {
+        bounds.extend([lat, lon]);
+      }
+    });
+
     if (bounds.isValid()) {
+      // fit xong sẽ trigger 'moveend' ⇒ loadMarkersInViewport()
       map.fitBounds(bounds.pad(0.2));
+    } else {
+      // fallback nếu dữ liệu không có lat/lon
+      loadMarkersInViewport();
     }
+  } else {
+    // Không muốn đổi zoom ⇒ chỉ load marker trong viewport hiện tại
+    loadMarkersInViewport();
   }
 
-  // ✅ Lắng nghe sự kiện zoom/move để lazy load
-  map.off('moveend', loadMarkersInViewport);
-  map.on('moveend', loadMarkersInViewport);
   window.allMarkers = markers;
   return true;
 }
@@ -1948,8 +1968,22 @@ const miniGamePopup = document.getElementById("miniGamePopup");
 const closeMiniGame = document.getElementById("closeMiniGame");
 
 if (miniGameBtn) {
-    miniGameBtn.addEventListener("click", () => {
+    miniGameBtn.addEventListener("click", async () => {
         miniGamePopup.classList.remove("hidden");
+        
+        // 🆕 Load tiến độ game từ server
+        await loadGameProgress();
+        
+        // 🆕 Đợi DOM loaded rồi mới gọi
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                showLevelSelection();
+            });
+        } else {
+            // DOM đã sẵn sàng, gọi luôn
+            const showLevelSelectionEvent = new CustomEvent('showLevelSelection');
+            document.dispatchEvent(showLevelSelectionEvent);
+        }
     });
 }
 
@@ -1965,6 +1999,79 @@ miniGamePopup?.addEventListener("click", (e) => {
         miniGamePopup.classList.add("hidden");
     }
 });
+
+// ===============================
+// 🎮 GAME PROGRESS MANAGEMENT
+// ===============================
+
+let userGameProgress = {
+    current_level: 0,
+    completed_levels: [],
+    max_unlocked: 0
+};
+
+// Load tiến độ từ server khi mở game
+async function loadGameProgress() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/game/progress/`, {
+            credentials: 'include'  // Gửi cookies
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'success') {
+                userGameProgress = data;
+                currentLevel = data.current_level;
+                console.log('✅ Đã load game progress:', data);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Không thể load game progress:', error);
+    }
+}
+
+// Lưu tiến độ lên server khi hoàn thành level
+async function saveGameProgress(levelCompleted) {
+    try {
+        // ⏱️ TÍNH THỜI GIAN HOÀN THÀNH (giây)
+        const timeTaken = (Date.now() - levelStartTime) / 1000;
+        
+        const response = await fetch(`${API_BASE_URL}/api/game/update/`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                level_completed: levelCompleted,
+                time_taken: timeTaken,      // 🆕 Gửi thời gian
+                deaths: levelDeaths         // 🆕 Gửi số lần chết
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'success') {
+                userGameProgress = data;
+                console.log('✅ Đã lưu tiến độ:', data);
+                
+                // 🆕 Trả về số sao để hiển thị
+                return data.stars;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Không thể lưu game progress:', error);
+    }
+    return 1; // Mặc định 1 sao nếu lỗi
+}
+
+// ===============================
+// 🎮 GLOBAL GAME VARIABLES (phải ở ngoài DOMContentLoaded)
+// ===============================
+let levelStartTime = Date.now();
+let levelDeaths = 0;
+let currentLevel = 0;
+let gameLoopStarted = false;
+
 document.addEventListener("DOMContentLoaded", function () {
     const canvas = document.getElementById("gameCanvas");
     if (!canvas) return;
@@ -2083,7 +2190,6 @@ chestSprites.open.src   = "GameAssets/chest_open.png";
 
 
 //Thêm level để tăng độ khó
-let currentLevel = 0;
 let map         = levels[currentLevel].map;
 let foodReward  = levels[currentLevel].food;
 
@@ -2107,10 +2213,6 @@ let bot = {
     let isMoving = false;
     // ➕ THÊM DÒNG NÀY
 let playerDir = "right"; // hướng mặc định
-
-
-
-let gameLoopStarted = false;
     const foods = [
         "images/pho.png",
         "images/bun_bo_hue.png",
@@ -2118,10 +2220,9 @@ let gameLoopStarted = false;
     ];
     let randomFood = foods[Math.floor(Math.random() * foods.length)];
 
-       // Reset toàn bộ trạng thái game (dùng cho nút "Chơi lại")
+      
   // Reset toàn bộ trạng thái game (dùng cho nút "Chơi lại")
-   // Reset toàn bộ trạng thái game (dùng cho nút "Chơi lại")
-   function resetGameState() {
+   function resetGameState(isLevelChange = false) {  // ✅ Thêm tham số
     // ⭐ BẮT BUỘC: Tính lại kích thước canvas trước
     const container = document.getElementById("miniGameInner");
     if (!container) return;
@@ -2169,12 +2270,12 @@ let gameLoopStarted = false;
         bot.pixelX = 0;
         bot.pixelY = 0;
     }
+    
     // ⭐ RESET CÁC PHÍM
-keys.w = false;
-keys.a = false;
-keys.s = false;
-keys.d = false;
-
+    keys.w = false;
+    keys.a = false;
+    keys.s = false;
+    keys.d = false;
 
     isMoving = false;
     playerDir = "right";
@@ -2184,8 +2285,14 @@ keys.d = false;
 
     canvas.style.display = "block";
 
-    drawMap();
+    // ⏱️ CHỈ RESET DEATHS KHI CHUYỂN LEVEL
+    if (isLevelChange) {
+        levelDeaths = 0;  // ✅ Chỉ reset khi chuyển level mới
+    }
     
+    levelStartTime = Date.now();  // ✅ Luôn reset timer
+    
+    drawMap();
 }
 
 
@@ -2322,106 +2429,278 @@ if (player.x === chest.x && player.y === chest.y) {
     requestAnimationFrame(animate);
 }
 
-       function showFoodReward() {
+// ===============================
+// 🎮 LEVEL SELECTION SCREEN
+// ===============================
+function showLevelSelection() {
     const miniGameInner = document.getElementById("miniGameInner");
     const canvas = document.getElementById("gameCanvas");
     if (!miniGameInner || !canvas) return;
 
     canvas.style.display = "none";
 
-    const overlay = document.createElement("div");
-    overlay.id = "winOverlay";
-
-    overlay.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 20px;
-        gap: 20px;
-        text-align: center;
-        min-height: 400px;
-    `;
-
-    overlay.innerHTML = `
-        <h2 style="font-size: 28px; margin: 0;">🎉 Chúc mừng bạn!</h2>
-        <p style="font-size: 18px; margin: 0;">
-            Bạn đã tìm thấy kho báu. Đây là món ăn dành cho bạn hôm nay:
-        </p>
-
-        <img 
-            src="${foodReward}" 
-            alt="Món ăn gợi ý" 
-            style="
-                width: 260px;
-                max-width: 80%;
-                border-radius: 16px;
-                box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-            "
-        />
-
-        <div style="display: flex; gap: 16px; margin-top: 10px;">
-            <button 
-                id="nextLevelBtn"
-                type="button"
-                style="
-                    padding: 10px 20px;
-                    border-radius: 999px;
-                    border: none;
-                    background: #5a6ff0;
-                    color: #fff;
-                    font-size: 16px;
-                    cursor: pointer;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-                "
-            >
-                ➡ Level tiếp theo
-            </button>
-
-            <button 
-                id="closeGameBtn"
-                type="button"
-                style="
-                    padding: 10px 20px;
-                    border-radius: 999px;
-                    border: none;
-                    background: #ccc;
-                    color: #333;
-                    font-size: 16px;
-                    cursor: pointer;
-                "
-            >
-                ✖ Đóng
-            </button>
-        </div>
-    `;
-
-    miniGameInner.appendChild(overlay);
-
-    // 👉 NEXT LEVEL BUTTON
-    const nextLevelBtn = overlay.querySelector("#nextLevelBtn");
-    if (nextLevelBtn) {
-        nextLevelBtn.addEventListener("click", () => {
-
-            currentLevel++;
-
-            if (currentLevel >= levels.length) {
-                alert("🎉 Bạn đã hoàn thành tất cả các level!");
-                currentLevel = 0; // quay lại level 1
-            }
-
-            resetGameState();
-        });
+    // Xóa màn hình cũ nếu có
+    let levelSelection = document.getElementById("levelSelection");
+    if (levelSelection) {
+        levelSelection.remove();
     }
 
-    // 👉 CLOSE BUTTON
-    const closeGameBtn = overlay.querySelector("#closeGameBtn");
-    if (closeGameBtn) {
-        closeGameBtn.addEventListener("click", () => {
-            document.getElementById("miniGamePopup").classList.add("hidden");
-            resetGameState();
-        });
+    // Tạo màn hình chọn level
+    levelSelection = document.createElement("div");
+    levelSelection.id = "levelSelection";
+    levelSelection.style.cssText = `
+        padding: 20px;
+        overflow-y: auto;
+        max-height: 100%;
+    `;
+
+    levelSelection.innerHTML = `
+        <h3 style="text-align: center; margin-bottom: 20px; font-size: 24px;">🎮 Chọn Màn Chơi</h3>
+        <div id="levelGrid" style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            max-width: 600px;
+            margin: 0 auto 20px;
+        "></div>
+        <button id="startGameBtn" style="
+            display: block;
+            margin: 0 auto;
+            padding: 12px 30px;
+            background: #5a6ff0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        ">🎮 Bắt đầu chơi</button>
+    `;
+
+    miniGameInner.appendChild(levelSelection);
+
+    const levelGrid = document.getElementById("levelGrid");
+
+    // Tạo các nút level
+    levels.forEach((level, index) => {
+        const isCompleted = userGameProgress.completed_levels.includes(index);
+        const isUnlocked = index === 0 || 
+                           isCompleted || 
+                           userGameProgress.completed_levels.includes(index - 1) ||
+                           index <= userGameProgress.max_unlocked;
+
+        const levelBtn = document.createElement("button");
+        levelBtn.innerHTML = `
+            <div style="font-size: 32px; margin-bottom: 8px;">
+                ${isCompleted ? '✅' : (isUnlocked ? '🔓' : '🔒')}
+            </div>
+            <div style="font-weight: bold;">Level ${index + 1}</div>
+            ${isCompleted ? '<div style="font-size: 12px; color: #4CAF50;">Đã hoàn thành</div>' : ''}
+        `;
+        levelBtn.style.cssText = `
+            padding: 20px;
+            border: 3px solid ${isUnlocked ? '#5a6ff0' : '#ccc'};
+            background: ${isUnlocked ? '#fff' : '#f5f5f5'};
+            border-radius: 12px;
+            cursor: ${isUnlocked ? 'pointer' : 'not-allowed'};
+            transition: all 0.2s;
+            opacity: ${isUnlocked ? '1' : '0.5'};
+        `;
+
+        if (isUnlocked) {
+            levelBtn.addEventListener("click", () => {
+                currentLevel = index;
+
+                // Highlight level được chọn
+                document.querySelectorAll("#levelGrid button").forEach(btn => {
+                    btn.style.background = '#fff';
+                    btn.style.transform = 'scale(1)';
+                });
+                levelBtn.style.background = '#e3f2fd';
+                levelBtn.style.transform = 'scale(1.05)';
+            });
+
+            levelBtn.addEventListener("mouseenter", () => {
+                if (levelBtn.style.background !== 'rgb(227, 242, 253)') {
+                    levelBtn.style.background = '#f0f0f0';
+                }
+            });
+
+            levelBtn.addEventListener("mouseleave", () => {
+                if (levelBtn.style.background !== 'rgb(227, 242, 253)') {
+                    levelBtn.style.background = '#fff';
+                }
+            });
+        }
+
+        levelGrid.appendChild(levelBtn);
+    });
+
+    // Nút bắt đầu game
+    const startBtn = document.getElementById("startGameBtn");
+    if (startBtn) {
+        startBtn.onclick = () => {
+            levelSelection.remove();
+            canvas.style.display = "block";
+            resetGameState(true);
+            setTimeout(autoResizeCanvas, 30);
+        };
     }
+}
+
+// ===============================
+// 🎮 WIN SCREEN
+// ===============================
+function showFoodReward() {
+    const miniGameInner = document.getElementById("miniGameInner");
+    const canvas = document.getElementById("gameCanvas");
+    if (!miniGameInner || !canvas) return;
+
+    canvas.style.display = "none";
+    
+    // 🆕 LƯU TIẾN ĐỘ VÀ NHẬN SỐ SAO
+    saveGameProgress(currentLevel).then(stars => {
+        // ⏱️ TÍNH THỜI GIAN HIỂN THỊ
+        const timeTaken = (Date.now() - levelStartTime) / 1000;
+        const timeDisplay = timeTaken.toFixed(1) + "s";
+        
+        // ⭐ TẠO CHUỖI SAO
+        const starDisplay = '⭐'.repeat(stars || 1);
+
+        const overlay = document.createElement("div");
+        overlay.id = "winOverlay";
+
+        overlay.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            gap: 20px;
+            text-align: center;
+            min-height: 400px;
+        `;
+
+        overlay.innerHTML = `
+            <h2 style="font-size: 28px; margin: 0;">🎉 Chúc mừng bạn!</h2>
+            
+            <!-- 🆕 HIỂN THỊ SAO -->
+            <div style="font-size: 48px; margin: 10px 0;">
+                ${starDisplay}
+            </div>
+            
+            <!-- 🆕 HIỂN THỊ THỜI GIAN VÀ SỐ LẦN CHẾT -->
+            <div style="font-size: 16px; color: #666; background: #f5f5f5; padding: 12px 24px; border-radius: 12px;">
+                ⏱️ Thời gian: <strong style="color: #5a6ff0;">${timeDisplay}</strong> 
+                &nbsp;&nbsp;|&nbsp;&nbsp; 
+                💀 Chết: <strong style="color: #e53935;">${levelDeaths} lần</strong>
+            </div>
+            
+            <p style="font-size: 18px; margin: 10px 0;">
+                Đây là món ăn dành cho bạn hôm nay:
+            </p>
+
+            <img 
+                src="${foodReward}" 
+                alt="Món ăn gợi ý" 
+                style="
+                    width: 260px;
+                    max-width: 80%;
+                    border-radius: 16px;
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+                "
+            />
+
+            <div style="display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; justify-content: center;">
+                <button 
+                    id="nextLevelBtn"
+                    type="button"
+                    style="
+                        padding: 10px 20px;
+                        border-radius: 999px;
+                        border: none;
+                        background: #5a6ff0;
+                        color: #fff;
+                        font-size: 16px;
+                        cursor: pointer;
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                    "
+                >
+                    ${currentLevel + 1 < levels.length ? '➡ Level tiếp theo' : '🏆 Hoàn thành!'}
+                </button>
+
+                <button 
+                    id="selectLevelBtn"
+                    type="button"
+                    style="
+                        padding: 10px 20px;
+                        border-radius: 999px;
+                        border: none;
+                        background: #4CAF50;
+                        color: #fff;
+                        font-size: 16px;
+                        cursor: pointer;
+                    "
+                >
+                    🎮 Chọn màn khác
+                </button>
+
+                <button 
+                    id="closeGameBtn"
+                    type="button"
+                    style="
+                        padding: 10px 20px;
+                        border-radius: 999px;
+                        border: none;
+                        background: #ccc;
+                        color: #333;
+                        font-size: 16px;
+                        cursor: pointer;
+                    "
+                >
+                    ✖ Đóng
+                </button>
+            </div>
+        `;
+
+        miniGameInner.appendChild(overlay);
+
+        // 👉 NEXT LEVEL BUTTON
+        const nextLevelBtn = overlay.querySelector("#nextLevelBtn");
+        if (nextLevelBtn) {
+            nextLevelBtn.addEventListener("click", () => {
+                currentLevel++;
+
+                if (currentLevel >= levels.length) {
+                    alert("🎉 Bạn đã hoàn thành tất cả các level!");
+                    overlay.remove();
+                    showLevelSelection();
+                    return;
+                }
+
+                overlay.remove();
+                resetGameState(true);
+            });
+        }
+
+        // 👉 NÚT CHỌN MÀN KHÁC
+        const selectLevelBtn = overlay.querySelector("#selectLevelBtn");
+        if (selectLevelBtn) {
+            selectLevelBtn.addEventListener("click", () => {
+                overlay.remove();
+                showLevelSelection();
+            });
+        }
+
+        // 👉 CLOSE BUTTON
+        const closeGameBtn = overlay.querySelector("#closeGameBtn");
+        if (closeGameBtn) {
+            closeGameBtn.addEventListener("click", () => {
+                document.getElementById("miniGamePopup").classList.add("hidden");
+                overlay.remove();
+            });
+        }
+    });
 }
 
 // ===============================
@@ -2582,9 +2861,11 @@ if (bot.x !== null && bot.x === player.x && bot.y === player.y) {
     keys.s = false;
     keys.d = false;
     
+    // ⏱️ TĂNG SỐ LẦN CHẾT
+    levelDeaths++;
      
     alert("💀 Bạn bị bot bắt! Hãy thử lại level này.");
-    resetGameState();
+    resetGameState(false);  // ✅ Không reset deaths (false)
     
     // ⭐⭐ BỎ "return" ĐI, CHỈ CẦN VẼ LẠI VÀ TIẾP TỤC VÒNG LẶP
     drawMap();
@@ -2603,6 +2884,11 @@ if (!gameLoopStarted) {
     gameLoopStarted = true;
     requestAnimationFrame(gameLoop);
 }
+
+// 🆕 THÊM EVENT LISTENER ĐỂ GỌI showLevelSelection TỪ NGOÀI
+document.addEventListener('showLevelSelection', () => {
+    showLevelSelection();
+});
 
 }); // <-- Chỉ đóng DOMContentLoaded 1 lần duy nhất
 

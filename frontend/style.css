@@ -1415,6 +1415,70 @@ body {
   color: #ffffff;
 }
 
+/* Loading Spinner */
+.game-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    height: 100%;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #5a6ff0;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Level Progress */
+.level-progress {
+    width: 100%;
+    max-width: 400px;
+    margin: 20px auto;
+    background: #e0e0e0;
+    border-radius: 20px;
+    overflow: hidden;
+    height: 12px;
+}
+
+.level-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.3s ease;
+    border-radius: 20px;
+}
+
+/* Level Selection Animation */
+.level-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.level-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(90, 111, 240, 0.3);
+}
+
+.level-btn.locked {
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+
+.level-btn.completed::after {
+    content: '⭐⭐⭐';
+    display: block;
+    font-size: 10px;
+    margin-top: 5px;
+}
+
 /* =========================
    🎨 MARKER CLUSTER STYLING
    ========================= */

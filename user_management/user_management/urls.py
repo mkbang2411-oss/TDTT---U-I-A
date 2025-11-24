@@ -34,6 +34,12 @@ urlpatterns = [
     path('api/change-password/', account_views.change_password_api, name='change_password_api'),
     path('api/favorite/<str:place_id>/', account_views.toggle_favorite, name='toggle_favorite'),
     path('api/get-favorites/', account_views.get_user_favorites_api, name='get_user_favorites_api'),
+     # ===============================
+    # 🎮 GAME PROGRESS APIs
+    # ===============================
+    path('api/game/progress/', account_views.get_game_progress, name='get_game_progress'),
+    path('api/game/update/', account_views.update_game_progress, name='update_game_progress'),
+    path('api/game/reset/', account_views.reset_game_progress, name='reset_game_progress'),  # Bonus: reset tiến độ
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
