@@ -899,8 +899,8 @@ def get_music_player_html() -> str:
         opacity: 0.5;
         cursor: not-allowed;
         transform: none;
-    }
-
+    }    
+    
 </style>
 
 <div class="music-player-btn" id="musicPlayerBtn" title="🎵 UIA Playlist">
@@ -1259,6 +1259,9 @@ def get_music_player_html() -> str:
         });
 
         updateActiveUI();
+        
+        // Scroll tới bài đang phát SAU KHI đã update UI
+        scrollToActiveTrack();
     }
 
     function togglePlayForIndex(index) {
@@ -1330,18 +1333,25 @@ def get_music_player_html() -> str:
         
         // Đợi DOM render xong
         setTimeout(function() {
-            const activeItem = trackListEl.querySelector('.track-item.active');
+            const items = trackListEl.querySelectorAll('.track-item');
+            const activeItem = items[currentIndex];
+            
             if (activeItem && trackListEl) {
-                // Tính vị trí để scroll
-                const containerTop = trackListEl.scrollTop;
+                // Lấy thông tin
                 const containerHeight = trackListEl.clientHeight;
-                const itemTop = activeItem.offsetTop;
                 const itemHeight = activeItem.offsetHeight;
+                const gap = 8; // gap giữa các items (từ CSS)
                 
-                // Scroll để item ở giữa container
-                const targetScroll = itemTop - (containerHeight / 2) + (itemHeight / 2);
+                // Tính số items có thể hiển thị trong viewport
+                const itemsVisible = Math.floor(containerHeight / (itemHeight + gap));
                 
-                // Smooth scroll
+                // Tính index để scroll: muốn active item ở giữa
+                // Nếu có 2 items hiển thị được → muốn active ở vị trí thứ 1 (index 0.5)
+                const targetIndex = Math.max(0, currentIndex - Math.floor(itemsVisible / 2));
+                
+                // Scroll tới vị trí của target item
+                const targetScroll = targetIndex * (itemHeight + gap);
+                
                 trackListEl.scrollTo({
                     top: targetScroll,
                     behavior: 'smooth'
@@ -1355,10 +1365,20 @@ def get_music_player_html() -> str:
         initialized = true;
         renderTrackList();
         bindEvents();
-        scrollToActiveTrack();
         
-        // TỰ ĐỘNG PHÁT NHẠC NẾU MODE AUTO/RANDOM
-        autoPlayOnInit();
+        // Tự động phát bài GIAO HƯỞNG TÂN THỜI nếu chưa có bài nào đang chạy
+        if (currentIndex === -1 && playlistMode === "auto") {
+            let targetIndex = MUSIC_TRACKS.findIndex(function(track) {
+                return track.title.includes("GIAO HƯỞNG TÂN THỜI") ||
+                    track.file.includes("GIAO HƯỞNG TÂN THỜI");
+            });
+            
+            if (targetIndex === -1) {
+                targetIndex = 0;
+            }
+            
+            playTrack(targetIndex);
+        }
     }
 
     function autoPlayOnInit() {
@@ -1381,7 +1401,10 @@ def get_music_player_html() -> str:
             const willOpen = !musicPanel.classList.contains("open");
             if (willOpen) {
                 initMusicPlayer();
-                scrollToActiveTrack(); // Thêm dòng này
+                // Scroll tới bài đang phát khi MỞ LẠI panel
+                if (currentIndex !== -1) {
+                    scrollToActiveTrack();
+                }
             }
             musicPanel.classList.toggle("open", willOpen);
             musicBtn.classList.toggle("active", willOpen);
@@ -1549,20 +1572,7 @@ def get_music_player_html() -> str:
         if (fileName) fileName.textContent = "Chưa chọn file";
         selectedFile = null;
         if (uploadSubmitBtn) uploadSubmitBtn.disabled = true;
-    }    
-
-    // TỰ ĐỘNG CHẠY NHẠC KHI LOAD TRANG
-    window.addEventListener('load', function() {
-        if (MUSIC_TRACKS && MUSIC_TRACKS.length > 0) {
-            if (playlistMode === "auto") {
-                playTrack(0);
-            } else if (playlistMode === "random") {
-                const randomIdx = Math.floor(Math.random() * MUSIC_TRACKS.length);
-                playTrack(randomIdx);
-            }
-        }
-    });    
-    
+    }       
 })();
 </script>
 """

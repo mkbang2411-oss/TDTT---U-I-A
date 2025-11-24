@@ -9,9 +9,6 @@ venv/
 db.sqlite3
 *.sqlite3
 
-# Dữ liệu JSON (Chứa review của user)
-user_reviews.json
-
 # Các tệp rác của Python
 __pycache__/
 *.pyc

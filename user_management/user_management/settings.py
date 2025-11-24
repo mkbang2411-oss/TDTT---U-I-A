@@ -179,3 +179,9 @@ ACCOUNT_SIGNUP_REDIRECT_URL = '/accounts/login/'
 
 # Bỏ qua trang xác nhận khi đăng nhập bằng social
 SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# URL để truy cập ảnh trên trình duyệt
+MEDIA_URL = '/media/'
+
+# Đường dẫn thư mục thực tế trên máy tính để lưu file
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

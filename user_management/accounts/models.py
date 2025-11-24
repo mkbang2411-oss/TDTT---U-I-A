@@ -1,5 +1,6 @@
 from django.db import models
-from django.conf import settings # Dùng để liên kết tới User model
+from django.conf import settings 
+from django.contrib.auth.models import User
 
 class ChatConversation(models.Model):
     """
@@ -46,6 +47,7 @@ class FriendRequest(models.Model):
         ('rejected', 'Đã từ chối'),
     ]
     
+
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_requests')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_requests')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
@@ -73,3 +75,66 @@ class Friendship(models.Model):
     
     def __str__(self):
         return f"{self.user1.username} <-> {self.user2.username}"
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    # upload_to='avatars/' nghĩa là ảnh sẽ chui vào thư mục media/avatars/
+    avatar = models.ImageField(upload_to='avatars/', default='avatars/default.png', blank=True)
+
+    def __str__(self):
+        return self.user.username
+    
+class FavoritePlace(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+    # Lưu ID của quán từ file CSV (nếu file CSV dùng cột data_id, hãy đảm bảo khớp kiểu dữ liệu)
+    place_id = models.CharField(max_length=100) 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'place_id') # Một người không thể like 1 quán 2 lần
+
+    def __str__(self):
+        return f"{self.user.username} - {self.place_id}"
+    
+
+
+# 🎮 
+class GameProgress(models.Model):
+    """
+    Model lưu tiến độ chơi game của từng user
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='game_progress')
+    current_level = models.IntegerField(default=0)  # Level hiện tại đang chơi
+    completed_levels = models.JSONField(default=list)  # Danh sách các level đã hoàn thành [0, 1, 2...]
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    level_stars = models.JSONField(default=dict)  # {"0": 3, "1": 2, "2": 1}
+    deaths = models.IntegerField(default=0)  # Số lần chết
+    best_times = models.JSONField(default=dict)  # {"0": 45.5, "1": 60.2}
+    
+    class Meta:
+        verbose_name = "Game Progress"
+        verbose_name_plural = "Game Progresses"
+    
+    def __str__(self):
+        return f"{self.user.username} - Level {self.current_level}"
+    
+    def unlock_level(self, level_index):
+        """Mở khóa level mới khi hoàn thành"""
+        if level_index not in self.completed_levels:
+            self.completed_levels.append(level_index)
+            self.completed_levels.sort()  # Sắp xếp để dễ quản lý
+            self.save()
+    
+    def get_max_unlocked_level(self):
+        """Trả về level cao nhất có thể chơi (level tiếp theo sau level đã hoàn thành)"""
+        if not self.completed_levels:
+            return 0  # Nếu chưa hoàn thành level nào thì chỉ được chơi level 0
+        return max(self.completed_levels) + 1
+    
+    def is_level_unlocked(self, level_index):
+        """Kiểm tra xem level có được mở khóa chưa"""
+        if level_index == 0:
+            return True  # Level đầu tiên luôn mở
+        return level_index in self.completed_levels or level_index <= self.get_max_unlocked_level()
+

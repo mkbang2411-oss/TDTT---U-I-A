@@ -20,9 +20,50 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 }).addTo(map);
 
 let markers = [];
+let markerClusterGroup = L.markerClusterGroup({
+  iconCreateFunction: function(cluster) {
+    const count = cluster.getChildCount();
+    let size = 'small';
+    let colorClass = 'cluster-small';
+    
+    if (count > 100) {
+      size = 'large';
+      colorClass = 'cluster-large';
+    } else if (count > 50) {
+      size = 'medium';
+      colorClass = 'cluster-medium';
+    }
+    
+    return L.divIcon({
+      html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
+      className: `marker-cluster marker-cluster-${size}`,
+      iconSize: L.point(50, 50)
+    });
+  },
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  zoomToBoundsOnClick: true,
+  maxClusterRadius: 80,
+  disableClusteringAtZoom: 16,
+  animate: true,
+  animateAddingMarkers: true,
+  spiderfyDistanceMultiplier: 1.5
+});
+
+let allPlacesData = [];
+let visibleMarkers = new Set();
+let isLoadingMarkers = false;
 let currentRouteLine = null;
 let routeControl = null;
 
+// 👉 Biến trạng thái cho nút "Quán yêu thích"
+let isFavoriteMode = false;
+let lastSearchParams = {
+  query: "",
+  flavors: [],
+  budget: "",
+  radius: ""
+};
 // =========================
 // 🍴 ICON TƯƠNG ỨNG LOẠI QUÁN
 // =========================
@@ -81,7 +122,7 @@ const icons = {
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
-  
+
   kem: L.icon({
     iconUrl: "icons/kem.png",
     iconSize: [26, 26],
@@ -95,7 +136,7 @@ const icons = {
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
-    mi: L.icon({
+  mi: L.icon({
     iconUrl: "icons/ramen.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
@@ -124,8 +165,7 @@ const icons = {
 // =========================
 // 🧠 XÁC ĐỊNH LOẠI QUÁN
 // =========================
-function detectCategory(name = "") 
-{
+function detectCategory(name = "") {
   name = name.toLowerCase();
 
   // 🥣 Phở
@@ -135,10 +175,21 @@ function detectCategory(name = "")
   if (name.includes("cà phê") || name.includes("coffee")) return "cafe";
 
   // 🧋 Trà sữa
-  if (name.includes("trà sữa") || name.includes("milktea") ||name.includes("milk tea") || name.includes("bubble tea")) return "tra_sua";
+  if (
+    name.includes("trà sữa") ||
+    name.includes("milktea") ||
+    name.includes("milk tea") ||
+    name.includes("bubble tea")
+  )
+    return "tra_sua";
 
   // 🍜 Bún / Bún bò
-  if (name.includes("bún") || name.includes("bun bo") || name.includes("bò huế")) return "bun";
+  if (
+    name.includes("bún") ||
+    name.includes("bun bo") ||
+    name.includes("bò huế")
+  )
+    return "bun";
 
   // 🥖 Bánh mì
   if (name.includes("bánh mì") || name.includes("banh mi")) return "banh_mi";
@@ -164,7 +215,8 @@ function detectCategory(name = "")
     return "my_cay";
 
   // 🍚 Cơm
-  if (name.includes("cơm") || name.includes("com") || name.includes("rice")) return "com";
+  if (name.includes("cơm") || name.includes("com") || name.includes("rice"))
+    return "com";
 
   // 🎂 Bánh kem / Cake sinh nhật
   if (
@@ -206,19 +258,14 @@ function detectCategory(name = "")
   return "default";
 }
 
-
-
-
 // =========================
 // 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS
 // =========================
-function timeAgo(dateString) 
-{
+function timeAgo(dateString) {
   if (!dateString) return "";
 
   // Nếu là chuỗi kiểu "2 weeks ago" của Google thì giữ nguyên
-  if (isNaN(Date.parse(dateString)) && isNaN(Number(dateString))) 
-  {
+  if (isNaN(Date.parse(dateString)) && isNaN(Number(dateString))) {
     return dateString;
   }
 
@@ -263,22 +310,17 @@ function formatDate(dateString) {
   return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
 }
 
-
 // =========================
 // 🍪 LẤY CSRF COOKIE CỦA DJANGO
 // =========================
-function getCookie(name) 
-{
+function getCookie(name) {
   let cookieValue = null;
-  if (document.cookie && document.cookie !== '') 
-  {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) 
-    {
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
       const cookie = cookies[i].trim();
       // Kiểm tra xem cookie có bắt đầu bằng tên chúng ta muốn không
-      if (cookie.substring(0, name.length + 1) === (name + '=')) 
-      {
+      if (cookie.substring(0, name.length + 1) === name + "=") {
         cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
         break;
       }
@@ -287,16 +329,15 @@ function getCookie(name)
   return cookieValue;
 }
 
-function renderReviewSummary(googleReviews, userReviews) 
-{
-  const allReviews = [...userReviews,...googleReviews ];
+function renderReviewSummary(googleReviews, userReviews) {
+  const allReviews = [...userReviews, ...googleReviews];
   const avgRating =
-  allReviews.length > 0
-    ? (
-        allReviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
-        allReviews.length
-      ).toFixed(1)
-    : "Chưa có";
+    allReviews.length > 0
+      ? (
+          allReviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
+          allReviews.length
+        ).toFixed(1)
+      : "Chưa có";
 
   const starCount = [5, 4, 3, 2, 1].map(
     (s) => allReviews.filter((r) => r.rating === s).length
@@ -308,7 +349,9 @@ function renderReviewSummary(googleReviews, userReviews)
     <div class="review-summary">
       <div class="review-average">
         <div class="review-score">${avgRating}</div>
-        <div class="review-stars">${"⭐".repeat(Math.round(avgRating) || 0)}</div>
+        <div class="review-stars">${"⭐".repeat(
+          Math.round(avgRating) || 0
+        )}</div>
         <div class="review-total">${allReviews.length} đánh giá</div>
       </div>
 
@@ -355,11 +398,14 @@ function renderReviewList(googleReviews, userReviews) {
             <div>
               <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
               <div class="review-stars">${"⭐".repeat(r.rating || 0)}</div>
-              <div class="review-time">${formatDate(r.date) || timeAgo(r.relative_time_description)}</div>
+              <div class="review-time">${
+                formatDate(r.date) || timeAgo(r.relative_time_description)
+              }</div>
             </div>
           </div>
           <div class="review-text">${r.comment || ""}</div>
-        </div>`)
+        </div>`
+              )
               .join("")
       }
     </div>
@@ -439,7 +485,9 @@ function openChatboxAutomatically() {
 
   if (!chatWindow || !chatbotBtn) {
     console.error("❌ Không tìm thấy chatbox elements!");
-    alert("🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!");
+    alert(
+      "🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!"
+    );
     return;
   }
 
@@ -483,54 +531,164 @@ function openChatboxAutomatically() {
   }, 500);
 }
 
+
+
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
 function displayPlaces(places, shouldZoom = true) {
-  markers.forEach((m) => map.removeLayer(m));
-  markers = [];
+  allPlacesData = places || [];
+  visibleMarkers.clear();
 
   if (!places || places.length === 0) {
     alert("Không tìm thấy quán nào!");
     return false;
+  }
+
+  // Xóa cluster cũ
+  if (markerClusterGroup) {
+    map.removeLayer(markerClusterGroup);
+  }
+
+  // Tạo cluster mới (giữ nguyên config cũ của bạn)
+  markerClusterGroup = L.markerClusterGroup({
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      let size = 'small';
+      let colorClass = 'cluster-small';
+
+      if (count > 100) {
+        size = 'large';
+        colorClass = 'cluster-large';
+      } else if (count > 50) {
+        size = 'medium';
+        colorClass = 'cluster-medium';
+      }
+
+      return L.divIcon({
+        html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
+        className: `marker-cluster marker-cluster-${size}`,
+        iconSize: L.point(50, 50)
+      });
+    },
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    maxClusterRadius: 80,
+    disableClusteringAtZoom: 16,
+    animate: true,
+    animateAddingMarkers: true,
+    spiderfyDistanceMultiplier: 1.5
+  });
+
+  markers = []; // reset mảng markers
+
+  // 👉 Gắn cluster vào map trước
+  map.addLayer(markerClusterGroup);
+
+  // 👉 Đăng ký lazy load theo move/zoom
+  map.off("moveend", loadMarkersInViewport);
+  map.on("moveend", loadMarkersInViewport);
+
+  if (shouldZoom && places.length > 0) {
+    // 🔍 Tính bounds theo TOÀN BỘ các quán đã lọc
+    const bounds = L.latLngBounds([]);
+
+    places.forEach((p) => {
+      const lat = parseFloat(p.lat?.toString().replace(",", "."));
+      const lon = parseFloat(p.lon?.toString().replace(",", "."));
+      if (!isNaN(lat) && !isNaN(lon)) {
+        bounds.extend([lat, lon]);
+      }
+    });
+
+    if (bounds.isValid()) {
+      // fit xong sẽ trigger 'moveend' ⇒ loadMarkersInViewport()
+      map.fitBounds(bounds.pad(0.2));
+    } else {
+      // fallback nếu dữ liệu không có lat/lon
+      loadMarkersInViewport();
+    }
+  } else {
+    // Không muốn đổi zoom ⇒ chỉ load marker trong viewport hiện tại
+    loadMarkersInViewport();
+  }
+
+  window.allMarkers = markers;
+  return true;
 }
 
-  places.forEach((p) => {
+// =========================
+// 🚀 HÀM LAZY LOADING
+// =========================
+function loadMarkersInViewport() {
+  if (isLoadingMarkers) return;
+  isLoadingMarkers = true;
+
+  const bounds = map.getBounds();
+  const zoom = map.getZoom();
+  
+  let maxMarkersToLoad = zoom > 14 ? 200 : zoom > 12 ? 100 : 50;
+  let loadedCount = 0;
+
+  allPlacesData.forEach((p) => {
+    const placeId = p.data_id || p.ten_quan;
+    if (visibleMarkers.has(placeId)) return;
+    if (loadedCount >= maxMarkersToLoad) return;
+
     const lat = parseFloat(p.lat);
     const lon = parseFloat(p.lon);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    let icon;
+    if (!bounds.contains([lat, lon])) return;
 
-if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
-    icon = icons.michelin; // ⭐ ICON RIÊNG MICHELIN
+    const marker = createMarker(p, lat, lon);
+    markers.push(marker);
+    markerClusterGroup.addLayer(marker); // ← THÊM VÀO CLUSTER
+    visibleMarkers.add(placeId);
+    loadedCount++;
+  });
+
+  isLoadingMarkers = false;
+  console.log(`✅ Đã load ${loadedCount} markers`);
 }
-else if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
+
+// =========================
+function createMarker(p, lat, lon) {
+  // 🎯 Chọn icon phù hợp
+  let icon;
+
+  if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+    icon = icons.michelin;
+  } else if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
     icon = icons.khu_am_thuc;
-}
-else {
+  } else {
     const category = detectCategory(p.ten_quan);
     icon = icons[category] || icons.default;
-}
+  }
 
-    const marker = L.marker([lat, lon], { 
-      icon,
-      placeData: p // ✅ Lưu thông tin quán vào marker
-    }).addTo(map);
+  // 🎯 Tạo marker (KHÔNG dùng .addTo(map) nữa)
+  const marker = L.marker([lat, lon], { 
+    icon,
+    placeData: p // ✅ Lưu thông tin quán vào marker
+  });
 
-    if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
-    marker._icon.classList.add("michelin-glow");
-    }
+  // ⭐ Thêm hiệu ứng glow cho Michelin
+  if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+    setTimeout(() => {
+      if (marker._icon) {
+        marker._icon.classList.add("michelin-glow");
+      }
+    }, 100);
+  }
 
-      // 🟢 TOOLTIP khi rê chuột vào marker
+  // 🟢 TOOLTIP khi rê chuột vào marker
   const tooltipHTML = `
     <div style="text-align:center;min-width:180px;">
       <strong>${p.ten_quan || "Không tên"}</strong><br>
-      ${
-        p.hinh_anh
-          ? `<img src="${p.hinh_anh}" style="width:100px;height:70px;object-fit:cover;border-radius:6px;margin-top:4px;">`
-          : ""
-      }
+      ${p.hinh_anh 
+        ? `<img src="${p.hinh_anh}" style="width:100px;height:70px;object-fit:cover;border-radius:6px;margin-top:4px;">` 
+        : ""}
       <div style="font-size:13px;margin-top:4px;">
         <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
         <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
@@ -538,521 +696,484 @@ else {
     </div>
   `;
 
-  // Gắn tooltip vào marker
   marker.bindTooltip(tooltipHTML, {
-    direction: "top",   // vị trí tooltip
-    offset: [0, -10],   // đẩy tooltip lên một chút
+    direction: "top",
+    offset: [0, -10],
     opacity: 0.95,
-    sticky: true,       // theo chuột
-    className: "custom-tooltip" // dùng để CSS đẹp hơn
+    sticky: true,
+    className: "custom-tooltip"
   });
 
-    marker.on("click", async () => {
-      map.setView([lat, lon], 17, { animate: true });
-      const sidebar = document.getElementById("sidebar");
-      const sidebarContent = document.getElementById("sidebar-content");
-    
-      const place_id = p.data_id || p.ten_quan;
-      let googleReviews = [];
-      let userReviews = [];
-      let currentUser = null; // Biến lưu thông tin user
+  // 🎯 SỰ KIỆN CLICK VÀO MARKER
+  marker.on("click", async () => {
+    const place_id = p.data_id || p.ten_quan;
+    map.setView([lat, lon], 17, { animate: true });
+    const sidebar = document.getElementById("sidebar");
+    const sidebarContent = document.getElementById("sidebar-content");
 
-      try {
-        const res = await fetch(`http://127.0.0.1:8000/api/reviews/${place_id}`, {
-            credentials: 'include' //gửi cookie đăng nhập
-        });
-        
-        if (res.ok) {
-          const responseData = await res.json();
-          
-          const reviewData = responseData.reviews; // Lấy object reviews
-          currentUser = responseData.user;       // Lấy object user
-          
-          googleReviews = reviewData.google || [];
-          userReviews = reviewData.user || [];
-        }
-      } catch (err) {
-        console.error("❌ Lỗi khi tải review:", err);
+    let googleReviews = [];
+    let userReviews = [];
+    let currentUser = null;
+    let isFavorite = false;
+
+    // 📡 Tải reviews từ API
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/reviews/${place_id}`, {
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const responseData = await res.json();
+        const reviewData = responseData.reviews;
+        currentUser = responseData.user;
+        isFavorite = responseData.is_favorite;
+        googleReviews = reviewData.google || [];
+        userReviews = reviewData.user || [];
       }
+    } catch (err) {
+      console.error("❌ Lỗi khi tải review:", err);
+    }
 
-      const tongquanHTML = `
-  <div class="place-header" style="display:flex;align-items:center;justify-content:space-between;">
-    <h2 style="margin:0;">${p.ten_quan || "Không tên"}</h2>
-    <!-- ❤️ Nút yêu thích bên phải tên -->
-    <button id="favoriteBtn" class="action-btn" style="padding:8px 10px;min-width:auto;border:none;background:none;">
-      <i class="fa-regular fa-heart" style="font-size:22px;"></i>
-    </button>
-  </div>
+    // 📝 TAB TỔNG QUAN
+    const tongquanHTML = `
+      <div class="place-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <h2 style="margin:0;">${p.ten_quan || "Không tên"}</h2>
+        <!-- ❤️ Nút yêu thích -->
+        <button id="favoriteBtn" class="action-btn" style="padding:8px 10px;min-width:auto;border:none;background:none;">
+          <i class="fa-regular fa-heart" style="font-size:22px;"></i>
+        </button>
+      </div>
 
-  ${
-    p.hinh_anh
-      ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin:10px 0;">`
-      : ""
-  }
+      ${p.hinh_anh 
+        ? `<img src="${p.hinh_anh}" style="width:100%;border-radius:10px;margin:10px 0;">` 
+        : ""}
 
-  ${p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")
-    ? `<p style="color:#ff6600;font-weight:bold;">🔥 Đây là khu ẩm thực sầm uất, có nhiều món ăn và hoạt động về đêm.</p>`
-    : ""}
+      ${p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")
+        ? `<p style="color:#ff6600;font-weight:bold;">🔥 Đây là khu ẩm thực sầm uất, có nhiều món ăn và hoạt động về đêm.</p>`
+        : ""}
 
-  <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
-  <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
-  <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-  <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
-  <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
-  <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
+      <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
+      <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
+      <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
+      <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
+      <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
+      <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
 
-    <!-- 🔖 Nút lưu quán (đang ẩn bằng CSS) -->
-  <div style="margin-top:10px;display:flex;justify-content:center;">
-    <button id="saveBtn" class="action-btn" style="display:none;">
-      <i class="fa-regular fa-bookmark"></i>
-      <span>Lưu quán</span>
-    </button>
-  </div>
-`;
+      <!-- 🔖 Nút lưu quán (ẩn) -->
+      <div style="margin-top:10px;display:flex;justify-content:center;">
+        <button id="saveBtn" class="action-btn" style="display:none;">
+          <i class="fa-regular fa-bookmark"></i>
+          <span>Lưu quán</span>
+        </button>
+      </div>
+    `;
 
+    // 📝 TAB THỰC ĐƠN
+    const thucdonHTML = `
+      ${p.thuc_don
+        ? p.thuc_don.split(/[;,]+/).map(img => 
+            `<img src="${img.trim()}" class="menu-img" alt="Thực đơn">`
+          ).join("")
+        : "<p>Không có hình thực đơn.</p>"}
+    `;
 
-
-
-      const thucdonHTML = `
-  ${
-    p.thuc_don
-      ? p.thuc_don
-          .split(/[;,]+/)
-          .map((img) => `<img src="${img.trim()}" class="menu-img" alt="Thực đơn">`)
-          .join("")
-      : "<p>Không có hình thực đơn.</p>"
-  }
-`;
-
-      let reviewFormHTML = "";
-      // Nếu user TỒN TẠI và ĐÃ ĐĂNG NHẬP
-      if (currentUser && currentUser.is_logged_in) {
-          reviewFormHTML = `
-            <div class="review-form logged-in">
-              <h3 class="form-title">📝 Thêm đánh giá của bạn</h3>
-              <div class="form-header">
-                <img src="${currentUser.avatar}" class="user-avatar-form" alt="Avatar">
-                <span class="user-name">${currentUser.username}</span>
-              </div>
-              <div class="star-rating" id="starRating">
-                <span class="star" data-value="1">★</span>
-                <span class="star" data-value="2">★</span>
-                <span class="star" data-value="3">★</span>
-                <span class="star" data-value="4">★</span>
-                <span class="star" data-value="5">★</span>
-              </div>
-              <textarea id="reviewComment" placeholder="Cảm nhận của bạn..."></textarea>
-              <button id="submitReview">Gửi đánh giá</button>
-            </div>
-          `;
-      } 
-      // Nếu CHƯA ĐĂNG NHẬP
-      else {
-          reviewFormHTML = `
-            <div class="review-form">
-              <h3>📝 Thêm đánh giá của bạn</h3>
-              <p>Vui lòng <a href="http://127.0.0.1:8000/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
-            </div>
-          `;
-      }
-
-      // Nó sẽ tự động dùng reviewFormHTML vừa tạo
-      const danhgiaHTML = `
-        <div class="review-section">
-          ${renderReviewSummary(googleReviews, userReviews)} 
-          ${reviewFormHTML}
-          ${renderReviewList(googleReviews, userReviews)}
+    // 📝 TAB ĐÁNH GIÁ - Form nhập review
+    let reviewFormHTML = "";
+    if (currentUser && currentUser.is_logged_in) {
+      reviewFormHTML = `
+        <div class="review-form logged-in">
+          <h3 class="form-title">📝 Thêm đánh giá của bạn</h3>
+          <div class="form-header">
+            <img src="${currentUser.avatar}" class="user-avatar-form" alt="Avatar">
+            <span class="user-name">${currentUser.username}</span>
+          </div>
+          <div class="star-rating" id="starRating">
+            <span class="star" data-value="1">★</span>
+            <span class="star" data-value="2">★</span>
+            <span class="star" data-value="3">★</span>
+            <span class="star" data-value="4">★</span>
+            <span class="star" data-value="5">★</span>
+          </div>
+          <textarea id="reviewComment" placeholder="Cảm nhận của bạn..."></textarea>
+          <button id="submitReview">Gửi đánh giá</button>
         </div>
       `;
-
-      const contentHTML = `
-  <div class="tab-bar">
-    <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
-    <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
-    <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
-  </div>
-
-  <div id="tab-tongquan" class="tab-content active">${tongquanHTML}</div>
-  <div id="tab-thucdon" class="tab-content">${thucdonHTML}</div>
-  <div id="tab-danhgia" class="tab-content">${danhgiaHTML}</div>
-`;
-      sidebarContent.innerHTML = contentHTML;
-      sidebar.classList.add("show");
-// ✅ Cập nhật tiêu đề header (không tạo lại header)
-document.getElementById('sidebar-title').textContent = "Thông tin chi tiết";
-
-
-      // 👉 Sau khi render xong, gắn sự kiện cho nút
-const favoriteBtn = document.getElementById("favoriteBtn");
-const saveBtn = document.getElementById("saveBtn");
-
-let clickCount = 0; // Đếm số lần click để xử lý chẵn/lẻ
-
-favoriteBtn.addEventListener("click", () => {
-  clickCount++;
-  if (clickCount % 2 === 1) {
-    favoriteBtn.classList.add("active");
-    favoriteBtn.querySelector("i").classList.replace("fa-regular", "fa-solid");
-  } else {
-    favoriteBtn.classList.remove("active");
-    favoriteBtn.querySelector("i").classList.replace("fa-solid", "fa-regular");
-  }
-});
-
-saveBtn.addEventListener("click", () => {
-  clickCount++;
-  if (clickCount % 2 === 1) {
-    saveBtn.classList.add("active");
-    saveBtn.querySelector("i").classList.replace("fa-regular", "fa-solid");
-  } else {
-    saveBtn.classList.remove("active");
-    saveBtn.querySelector("i").classList.replace("fa-solid", "fa-regular");
-  }
-});
-      // NÚT ĐÓNG SIDEBAR
-      const closeBtn = document.getElementById("closeSidebar");
-      closeBtn.addEventListener("click", () => {
-  sidebar.classList.remove("show"); // 👉 Ẩn sidebar
-});
-
-      // =========================
-      // 🚗 NÚT TÌM ĐƯỜNG ĐI
-      // =========================
-      const tongquanTab = sidebarContent.querySelector("#tab-tongquan");
-      const routeBtn = document.createElement("button");
-      routeBtn.textContent = "📍 Tìm đường đi";
-      routeBtn.className = "route-btn";
-      tongquanTab.appendChild(routeBtn);
-      
-      routeBtn.addEventListener("click", async () => {
-        const gpsInput = document.getElementById("gpsInput");
-        const inputValue = gpsInput ? gpsInput.value.trim() : "";
-
-        // ✅ Nếu đang chỉ đường cho cùng quán này → XÓA ĐƯỜNG (toggle off)
-        if (routeControl && currentPlaceId === place_id) {
-          map.removeControl(routeControl);
-          routeControl = null;
-          currentPlaceId = null;
-
-          // ✅ XÓA THÔNG TIN QUÃNG ĐƯỜNG
-          const infoEl = tongquanTab.querySelector(".route-info");
-          if (infoEl) {
-            infoEl.remove();
-          }
-          
-          return; // Dừng lại, không vẽ lại
-        }
-
-        // ✅ Nếu có đường cũ (dù quán nào) → XÓA trước khi vẽ mới
-        if (routeControl) {
-          map.removeControl(routeControl);
-          routeControl = null;
-          currentPlaceId = null;
-        }
-
-        // 🔹 Kiểm tra xem có vị trí xuất phát không
-        if (!inputValue && !window.currentUserCoords) {
-          alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
-          return;
-        }
-
-        let userLat, userLon;
-
-        // 🔹 Nếu người dùng đã định vị GPS trước đó
-        if (inputValue === "Vị trí hiện tại của tôi" && window.currentUserCoords) {
-          userLat = window.currentUserCoords.lat;
-          userLon = window.currentUserCoords.lon;
-        } 
-        // 🔹 Nếu người dùng nhập địa chỉ chữ → dùng geocode
-        else if (inputValue) {
-          const coords = await geocodeAddress(inputValue);
-          if (!coords) return;
-          userLat = coords.lat;
-          userLon = coords.lon;
-        }
-        // 🔹 Nếu không nhập gì nhưng có GPS đã lưu
-        else if (window.currentUserCoords) {
-          userLat = window.currentUserCoords.lat;
-          userLon = window.currentUserCoords.lon;
-        }
-        else {
-          alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
-          return;
-        }
-
-        // ✅ Vẽ đường mới
-        drawRoute(userLat, userLon, lat, lon, tongquanTab);
-        currentPlaceId = place_id; // Lưu ID quán hiện tại
-      });
-
-      // Khi mở quán mới → luôn xóa route cũ để tránh tự zoom lỗi
-if (routeControl) {
-  map.removeControl(routeControl);
-  routeControl = null;
-  currentPlaceId = null;
-}
-
-
-sidebar.classList.remove("hidden"); // 👉 Hiện sidebar
-
-        // =========================
-        // ✓ NÚT CHỌN QUÁN CHO FOOD PLANNER
-        // =========================
-        if (window.foodPlannerState && 
-            typeof window.foodPlannerState.isWaitingForPlaceSelection === 'function' &&
-            window.foodPlannerState.isWaitingForPlaceSelection()) {
-          
-          const selectPlaceBtn = document.createElement("button");
-          selectPlaceBtn.textContent = "✓ Chọn quán này";
-          selectPlaceBtn.className = "route-btn";
-          selectPlaceBtn.style.marginTop = "10px";
-          selectPlaceBtn.style.background = "linear-gradient(135deg, #4caf50 0%, #45a049 100%)";
-          selectPlaceBtn.style.color = "white";
-          selectPlaceBtn.style.border = "none";
-          selectPlaceBtn.style.fontWeight = "600";
-          selectPlaceBtn.style.fontSize = "14px";
-          selectPlaceBtn.style.padding = "10px 20px";
-          selectPlaceBtn.style.borderRadius = "8px";
-          selectPlaceBtn.style.cursor = "pointer";
-          tongquanTab.appendChild(selectPlaceBtn);
-          
-          selectPlaceBtn.addEventListener("click", () => {
-
-          const placeData = {
-            ten_quan: p.ten_quan,
-            dia_chi: p.dia_chi,
-            rating: parseFloat(p.rating) || 0,
-            lat: lat,
-            lon: lon,
-            data_id: p.data_id || p.ten_quan,
-            hinh_anh: p.hinh_anh || '',
-            gia_trung_binh: p.gia_trung_binh || '',
-            khau_vi: p.khau_vi || ''
-          };
-          
-          console.log("Chon quan:", placeData.ten_quan);
-          
-          if (typeof window.foodPlannerState.selectPlace === 'function') {
-            const success = window.foodPlannerState.selectPlace(placeData);
-            if (success) {
-              sidebar.classList.remove("show");
-              alert("Da chon quan: " + placeData.ten_quan);
-            } else {
-              alert("Khong the chon quan. Vui long thu lai!");
-            }
-          }
-        });
-      }
-
-function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
-  routeControl = L.Routing.control({
-    waypoints: [L.latLng(userLat, userLon), L.latLng(destLat, destLon)],
-    lineOptions: {
-      styles: [
-        { color: "white", weight: 5, opacity: 1 },     // viền trắng ngoài cho nổi bật
-        { color: "#34A853", weight: 6, opacity: 1 }    // xanh lá chuẩn Google Maps
-      ],
-    },
-    show: false,
-    addWaypoints: false,
-    routeWhileDragging: false,
-    createMarker: (i, wp) => {
-      return L.marker(wp.latLng, {
-        icon: i === 0
-          ? L.icon({
-              iconUrl: "Picture/home.gif",
-              iconSize: [120, 100],
-              iconAnchor: [60, 100],
-            })
-          : L.icon({
-              iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-              iconSize: [30, 30],
-              iconAnchor: [15, 30],
-            }),
-      });
-    },
-  }).addTo(map);
-
-  routeControl.on("routesfound", (e) => {
-    const route = e.routes[0];
-    const coords = route.coordinates;
-
-// Nếu route hợp lệ mới fitBounds
-if (coords && coords.length > 1) {
-    const bounds = L.latLngBounds(coords);
-    map.fitBounds(bounds, { padding: [50, 50] });
-}
-
-    const distanceKm = (route.summary.totalDistance / 1000).toFixed(1);
-    const durationMin = Math.ceil(route.summary.totalTime / 60);
-
-    let infoEl = tongquanTab.querySelector(".route-info");
-    if (!infoEl) {
-      infoEl = document.createElement("p");
-      infoEl.className = "route-info";
-      tongquanTab.appendChild(infoEl);
+    } else {
+      reviewFormHTML = `
+        <div class="review-form">
+          <h3>📝 Thêm đánh giá của bạn</h3>
+          <p>Vui lòng <a href="http://127.0.0.1:8000/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
+        </div>
+      `;
     }
-    infoEl.innerHTML = `🛣️ Quãng đường: ${distanceKm} km<br>⏱️ Thời gian: ${durationMin} phút`;
-  });
-}
 
+    const danhgiaHTML = `
+      <div class="review-section">
+        ${renderReviewSummary(googleReviews, userReviews)} 
+        ${reviewFormHTML}
+        ${renderReviewList(googleReviews, userReviews)}
+      </div>
+    `;
 
-// Gắn sự kiện sau khi phần tử đã render vào DOM
-setTimeout(() => {
-  const closeBtn = document.getElementById("closeSidebar");
-  if (closeBtn) {
-    closeBtn.onclick = () => {
-      sidebar.classList.remove("show");
-    };
-  }
-}, 0);
+    // 📝 NỘI DUNG SIDEBAR HOÀN CHỈNH
+    const contentHTML = `
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
+        <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
+        <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
+      </div>
 
-      // 🎯 Chuyển tab
-      const tabs = sidebarContent.querySelectorAll(".tab-btn");
-      const tabContents = sidebarContent.querySelectorAll(".tab-content");
-      tabs.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          tabs.forEach((b) => b.classList.remove("active"));
-          tabContents.forEach((c) => c.classList.remove("active"));
-          btn.classList.add("active");
-          document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+      <div id="tab-tongquan" class="tab-content active">${tongquanHTML}</div>
+      <div id="tab-thucdon" class="tab-content">${thucdonHTML}</div>
+      <div id="tab-danhgia" class="tab-content">${danhgiaHTML}</div>
+    `;
+
+    sidebarContent.innerHTML = contentHTML;
+    sidebar.classList.add("show");
+    document.getElementById('sidebar-title').textContent = "Thông tin chi tiết";
+
+    // ❤️ XỬ LÝ NÚT YÊU THÍCH
+    const favoriteBtn = document.getElementById("favoriteBtn");
+    if (isFavorite) {
+      favoriteBtn.classList.add("active");
+      const icon = favoriteBtn.querySelector("i");
+      icon.classList.replace("fa-regular", "fa-solid");
+      icon.style.color = "red";
+    }
+
+    favoriteBtn.addEventListener("click", async () => {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/api/favorite/${place_id}/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          credentials: "include",
+        });
+
+        if (response.status === 403 || response.status === 401) {
+          alert("Vui lòng đăng nhập để lưu quán!");
+          window.location.href = "/accounts/login/";
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.status === "added") {
+          favoriteBtn.classList.add("active");
+          favoriteBtn.querySelector("i").classList.remove("fa-regular");
+          favoriteBtn.querySelector("i").classList.add("fa-solid");
+          favoriteBtn.querySelector("i").style.color = "red";
+          alert("❤️ Đã thêm vào yêu thích!");
+        } else if (data.status === "removed") {
+          favoriteBtn.classList.remove("active");
+          favoriteBtn.querySelector("i").classList.remove("fa-solid");
+          favoriteBtn.querySelector("i").classList.add("fa-regular");
+          favoriteBtn.querySelector("i").style.color = "";
+          alert("💔 Đã xóa khỏi yêu thích!");
+        }
+      } catch (error) {
+        console.error("Lỗi:", error);
+        alert("Có lỗi xảy ra, vui lòng thử lại.");
+      }
+    });
+
+    // 🔖 XỬ LÝ NÚT LƯU QUÁN (nếu cần)
+    const saveBtn = document.getElementById("saveBtn");
+    if (saveBtn) {
+      let clickCount = 0;
+      saveBtn.addEventListener("click", () => {
+        clickCount++;
+        if (clickCount % 2 === 1) {
+          saveBtn.classList.add("active");
+          saveBtn.querySelector("i").classList.replace("fa-regular", "fa-solid");
+        } else {
+          saveBtn.classList.remove("active");
+          saveBtn.querySelector("i").classList.replace("fa-solid", "fa-regular");
+        }
+      });
+    }
+
+    // 🎯 XỬ LÝ CHUYỂN TAB
+    const tabs = sidebarContent.querySelectorAll(".tab-btn");
+    const tabContents = sidebarContent.querySelectorAll(".tab-content");
+    tabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tabs.forEach((b) => b.classList.remove("active"));
+        tabContents.forEach((c) => c.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+      });
+    });
+
+    // ⭐ XỬ LÝ ĐÁNH GIÁ SAO
+    let selectedRating = 0;
+    document.querySelectorAll("#starRating .star").forEach((star) => {
+      star.addEventListener("click", () => {
+        selectedRating = parseInt(star.dataset.value);
+        document.querySelectorAll("#starRating .star").forEach((s, i) => {
+          s.classList.toggle("active", i < selectedRating);
         });
       });
+    });
 
-      // ⭐ Gửi đánh giá
-      let selectedRating = 0;
-      document.querySelectorAll("#starRating .star").forEach((star) => {
-        star.addEventListener("click", () => {
-          selectedRating = parseInt(star.dataset.value);
-          document.querySelectorAll("#starRating .star").forEach((s, i) => {
-            s.classList.toggle("active", i < selectedRating);
-          });
-        });
-      });
-
-      document.getElementById("submitReview").addEventListener("click", async () => 
-      {
-        // 1. Chỉ lấy rating và comment
-        const review = 
-        {
+    // 📤 GỬI ĐÁNH GIÁ
+    const submitBtn = document.getElementById("submitReview");
+    if (submitBtn) {
+      submitBtn.addEventListener("click", async () => {
+        const review = {
           rating: selectedRating,
           comment: document.getElementById("reviewComment").value.trim(),
         };
 
-        // 2. Cập nhật validation (bỏ 'ten')
-        if (!review.comment || review.rating === 0) 
-        {
-          // (Giả sử bạn có hàm showToast, nếu không thì dùng alert)
-           alert("Vui lòng nhập nội dung và chọn số sao!");
-          // showToast("Vui lòng nhập nội dung và chọn số sao!", "error");
+        if (!review.comment || review.rating === 0) {
+          alert("Vui lòng nhập nội dung và chọn số sao!");
           return;
         }
-        
+
         try {
-          // 3. Gọi API Django (port 8000) với CSRF và credentials
           const response = await fetch(`http://127.0.0.1:8000/api/reviews/${place_id}`, {
             method: "POST",
-            headers: { 
+            headers: {
               "Content-Type": "application/json",
-              "X-CSRFToken": getCookie('csrftoken') // Lấy token từ hàm helper
+              "X-CSRFToken": getCookie("csrftoken"),
             },
-            body: JSON.stringify(review), // Chỉ gửi rating và comment
-            credentials: 'include' // RẤT QUAN TRỌNG: để gửi cookie đăng nhập
+            body: JSON.stringify(review),
+            credentials: "include",
           });
 
           const result = await response.json();
 
-          if (response.ok && result.success) 
-          {
-            // showToast(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!", "success");
+          if (response.ok && result.success) {
             alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
-            
-            // Tải lại sidebar để xem review mới
-            marker.fire("click"); 
-
+            marker.fire("click"); // Reload sidebar
           } else {
-            // Báo lỗi nếu API trả về lỗi (vd: chưa đăng nhập, lỗi 403)
-            // showToast(result.message || "Lỗi khi gửi đánh giá. Bạn đã đăng nhập chưa?", "error");
             alert(result.message || "Lỗi khi gửi đánh giá. Bạn đã đăng nhập chưa?");
           }
-
         } catch (err) {
           console.error("Lỗi fetch API:", err);
-          // showToast("Lỗi kết nối. Không thể gửi đánh giá.", "error");
           alert("Lỗi kết nối. Không thể gửi đánh giá.");
         }
       });
+    }
+
+    // 🚗 NÚT TÌM ĐƯỜNG ĐI
+    const tongquanTab = sidebarContent.querySelector("#tab-tongquan");
+    const routeBtn = document.createElement("button");
+
+    // ✅ Kiểm tra xem có đang chỉ đường đến quán này không
+    const isCurrentPlaceRouted = (routeControl && currentPlaceId === place_id);
+
+    if (isCurrentPlaceRouted) {
+      // ✅ Đang chỉ đường đến quán này → Hiển thị nút "Tắt chỉ đường"
+      routeBtn.textContent = "📍 Tắt chỉ đường";
+      routeBtn.style.background = "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)";
+    } else {
+      // ✅ Chưa chỉ đường hoặc đang chỉ đường quán khác → Hiển thị "Tìm đường đi"
+      routeBtn.textContent = "🔍 Tìm đường đi";
+      routeBtn.style.background = "";
+    }
+
+    routeBtn.className = "route-btn";
+    tongquanTab.appendChild(routeBtn);
+
+    routeBtn.addEventListener("click", async () => {
+      const gpsInput = document.getElementById("gpsInput");
+      const inputValue = gpsInput ? gpsInput.value.trim() : "";
+
+      // ✅ TRƯỜNG HỢP 1: Đang chỉ đường đến quán này → Tắt đường đi
+      if (routeControl && currentPlaceId === place_id) {
+        map.removeControl(routeControl);
+        routeControl = null;
+        currentPlaceId = null;
+
+        const infoEl = tongquanTab.querySelector(".route-info");
+        if (infoEl) infoEl.remove();
+
+        // Đổi lại nút
+        routeBtn.textContent = "🔍 Tìm đường đi";
+        routeBtn.style.background = "";
+        return;
+      }
+
+      // ✅ TRƯỜNG HỢP 2: Chưa có đường hoặc đang chỉ quán khác → Xóa đường cũ và vẽ đường mới
+
+      // Kiểm tra vị trí xuất phát
+      if (!inputValue && !window.currentUserCoords) {
+        alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+        return;
+      }
+
+      let userLat, userLon;
+
+      if (inputValue === "Vị trí hiện tại của tôi" && window.currentUserCoords) {
+        userLat = window.currentUserCoords.lat;
+        userLon = window.currentUserCoords.lon;
+      } else if (inputValue) {
+        const coords = await geocodeAddress(inputValue);
+        if (!coords) return;
+        userLat = coords.lat;
+        userLon = coords.lon;
+      } else if (window.currentUserCoords) {
+        userLat = window.currentUserCoords.lat;
+        userLon = window.currentUserCoords.lon;
+      } else {
+        alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+        return;
+      }
+
+      // ✅ Xóa đường cũ nếu có (đang chỉ quán khác)
+      if (routeControl) {
+        map.removeControl(routeControl);
+        routeControl = null;
+      }
+
+      // ✅ Vẽ đường mới
+      drawRoute(userLat, userLon, lat, lon, tongquanTab);
+      currentPlaceId = place_id;
+
+      // ✅ Đổi nút thành "Tắt chỉ đường"
+      routeBtn.textContent = "📍 Tắt chỉ đường";
+      routeBtn.style.background = "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)";
     });
 
-    markers.push(marker);
+    sidebar.classList.remove("hidden");
+
+    // ✓ NÚT CHỌN QUÁN CHO FOOD PLANNER
+    if (window.foodPlannerState && 
+        typeof window.foodPlannerState.isWaitingForPlaceSelection === "function" &&
+        window.foodPlannerState.isWaitingForPlaceSelection()) {
+      
+      const selectPlaceBtn = document.createElement("button");
+      selectPlaceBtn.textContent = "✓ Chọn quán này";
+      selectPlaceBtn.className = "route-btn";
+      selectPlaceBtn.style.marginTop = "10px";
+      selectPlaceBtn.style.background = "linear-gradient(135deg, #4caf50 0%, #45a049 100%)";
+      selectPlaceBtn.style.color = "white";
+      selectPlaceBtn.style.border = "none";
+      selectPlaceBtn.style.fontWeight = "600";
+      selectPlaceBtn.style.fontSize = "14px";
+      selectPlaceBtn.style.padding = "10px 20px";
+      selectPlaceBtn.style.borderRadius = "8px";
+      selectPlaceBtn.style.cursor = "pointer";
+      tongquanTab.appendChild(selectPlaceBtn);
+
+      selectPlaceBtn.addEventListener("click", () => {
+        const placeData = {
+          ten_quan: p.ten_quan,
+          dia_chi: p.dia_chi,
+          rating: parseFloat(p.rating) || 0,
+          lat: lat,
+          lon: lon,
+          data_id: p.data_id || p.ten_quan,
+          hinh_anh: p.hinh_anh || "",
+          gia_trung_binh: p.gia_trung_binh || "",
+          khau_vi: p.khau_vi || "",
+        };
+
+        if (typeof window.foodPlannerState.selectPlace === "function") {
+          const success = window.foodPlannerState.selectPlace(placeData);
+          if (success) {
+            sidebar.classList.remove("show");
+            alert("Đã chọn quán: " + placeData.ten_quan);
+          } else {
+            alert("Không thể chọn quán. Vui lòng thử lại!");
+          }
+        }
+      });
+    }
+
+    // 🚗 HÀM VẼ ĐƯỜNG ĐI
+    function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
+      routeControl = L.Routing.control({
+        waypoints: [L.latLng(userLat, userLon), L.latLng(destLat, destLon)],
+        lineOptions: {
+          styles: [
+            { color: "white", weight: 5, opacity: 1 },
+            { color: "#34A853", weight: 6, opacity: 1 }
+          ],
+        },
+        show: false,
+        addWaypoints: false,
+        routeWhileDragging: false,
+        containerClassName: 'hidden-routing-control',
+        createMarker: (i, wp) => {
+          return L.marker(wp.latLng, {
+            icon: i === 0
+              ? L.icon({
+                  iconUrl: "Picture/home.gif",
+                  iconSize: [120, 100],
+                  iconAnchor: [60, 100],
+                })
+              : L.icon({
+                  iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+                  iconSize: [30, 30],
+                  iconAnchor: [15, 30],
+                }),
+          });
+        },
+      }).addTo(map);
+
+      routeControl.on("routesfound", (e) => {
+        const route = e.routes[0];
+        const coords = route.coordinates;
+
+        if (coords && coords.length > 1) {
+          const bounds = L.latLngBounds(coords);
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+        const distanceKm = (route.summary.totalDistance / 1000).toFixed(1);
+        const durationMin = Math.ceil(route.summary.totalTime / 60);
+
+        let infoEl = tongquanTab.querySelector(".route-info");
+        if (!infoEl) {
+          infoEl = document.createElement("p");
+          infoEl.className = "route-info";
+          tongquanTab.appendChild(infoEl);
+        }
+        infoEl.innerHTML = `🛣️ Quãng đường: ${distanceKm} km<br>⏱️ Thời gian: ${durationMin} phút`;
+      });
+    }
   });
 
-  // ✅ Chỉ zoom đến quán nếu shouldZoom = true
-  if (shouldZoom && markers.length > 0) {
-    const group = new L.featureGroup(markers);
-    map.fitBounds(group.getBounds().pad(0.2));
-  }
-
-function updateMarkersVisibility() {
-    const currentZoom = map.getZoom();
-    markers.forEach((marker) => {
-      const icon = marker._icon; // Lấy DOM element của icon
-      
-      if (currentZoom <= 15) {
-        // Ẩn marker với hiệu ứng
-        if (icon) {
-          icon.classList.remove('showing');
-          icon.classList.add('hiding');
-        }
-        marker.closeTooltip();
-        marker.unbindTooltip();
-        
-        // Sau khi hiệu ứng xong (0.5s) thì setOpacity = 0
-        setTimeout(() => {
-          marker.setOpacity(0);
-        }, 500);
-        
-      } else {
-        // Hiện marker với hiệu ứng
-        marker.setOpacity(1);
-        
-        if (icon) {
-          icon.classList.remove('hiding');
-          icon.classList.add('showing');
-        }
-        
-        // Bind lại tooltip
-        const place = marker.options.placeData;
-        if (place) {
-          const tooltipHTML = `
-            <div style="text-align:center;min-width:180px;">
-              <strong>${place.ten_quan || "Không tên"}</strong><br>
-              ${place.hinh_anh ? `<img src="${place.hinh_anh}" style="width:100px;height:70px;object-fit:cover;border-radius:6px;margin-top:4px;">` : ""}
-              <div style="font-size:13px;margin-top:4px;">
-                <i class="fa-regular fa-clock"></i> ${place.gio_mo_cua || "Không rõ"}<br>
-                <i class="fa-solid fa-coins"></i> ${place.gia_trung_binh || "Không có"}
-              </div>
-            </div>
-          `;
-          marker.bindTooltip(tooltipHTML, {
-            direction: "top",
-            offset: [0, -10],
-            opacity: 0.95,
-            sticky: true,
-            className: "custom-tooltip"
-          });
-        }
-      }
-    });
-  }
-
-  // ✅ Lắng nghe sự kiện zoom để ẩn/hiện markers
-  map.off('zoomend', updateMarkersVisibility); // Xóa listener cũ
-  map.on('zoomend', updateMarkersVisibility);  // Thêm listener mới
-  updateMarkersVisibility(); // Cập nhật ngay lập tức
-
-  return true;
+  // ✅ RETURN marker
+  return marker;
 }
+
+// =========================
+// 💖 HIỂN THỊ CÁC QUÁN YÊU THÍCH CỦA USER
+// =========================
+async function showFavoritePlaces() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/get-favorites/", {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      alert("Vui lòng đăng nhập để xem danh sách quán yêu thích!");
+      return false;
+    }
+
+    const data = await res.json();
+    const favorites = data.favorites || [];
+
+    if (!favorites.length) {
+      alert("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
+      return false;
+    }
+
+    displayPlaces(favorites, true);
+    return true;
+  } catch (err) {
+    console.error("Lỗi khi lấy danh sách quán yêu thích:", err);
+    alert("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
+    return false;
+  }
+}
+
 
 // =========================
 // 📡 LẤY DỮ LIỆU CSV
@@ -1086,8 +1207,7 @@ function parsePriceRange(priceStr) {
     if (s.includes("k") || s.includes("nghìn") || s.includes("nghin"))
       value *= 1000;
 
-    if (s.includes("triệu") || s.includes("million"))
-      value *= 1000000;
+    if (s.includes("triệu") || s.includes("million")) value *= 1000000;
 
     return [value, Infinity]; // giá từ X trở lên
   }
@@ -1113,9 +1233,6 @@ function parsePriceRange(priceStr) {
   return [minP, maxP];
 }
 
-
-
-
 // =======================================================
 // ✅ HÀM TÍNH KHOẢNG CÁCH (Km)
 // =======================================================
@@ -1127,25 +1244,26 @@ function distance(lat1, lon1, lat2, lon2) {
   const plat2 = parseFloat(lat2);
   const plon2 = parseFloat(lon2);
 
-  if (isNaN(plat1) || isNaN(plon1) || isNaN(plat2) || isNaN(plon2)) return Infinity;
+  if (isNaN(plat1) || isNaN(plon1) || isNaN(plat2) || isNaN(plon2))
+    return Infinity;
 
-  const dLat = (plat2 - plat1) * Math.PI / 180;
-  const dLon = (plon2 - plon1) * Math.PI / 180;
+  const dLat = ((plat2 - plat1) * Math.PI) / 180;
+  const dLon = ((plon2 - plon1) * Math.PI) / 180;
 
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(plat1 * Math.PI / 180) *
-    Math.cos(plat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+    Math.cos((plat1 * Math.PI) / 180) *
+      Math.cos((plat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // km
 }
 
+// =======================================================
+// ✅ FETCH + LỌC DỮ LIỆU (FIXED VERSION)
+// =======================================================
 
-// =======================================================
-// ✅ FETCH + LỌC DỮ LIỆU
-// =======================================================
 async function fetchPlaces(
   query = "",
   flavors = [],
@@ -1157,7 +1275,18 @@ async function fetchPlaces(
     const res = await fetch("/api/places");
     let data = await res.json();
 
-    function normalize(str) {
+    // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH (chỉ bỏ dấu phụ như ă, ơ, ê)
+    function normalizeKeepTone(str) {
+      return str
+        .toLowerCase()
+        .trim()
+        // Chỉ chuẩn hóa đ → d
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D");
+    }
+
+    // ⭐ NORMALIZE BỎ HOÀN TOÀN DẤU (dùng cho fuzzy search)
+    function normalizeRemoveAll(str) {
       return str
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -1167,61 +1296,111 @@ async function fetchPlaces(
         .trim();
     }
 
+    // ⭐ ESCAPE REGEX đặc biệt characters
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
     let filtered = data;
 
-    // ========== 1️⃣ Fuzzy Search ==========
+    // ========== 1️⃣ Fuzzy Search (FIXED) ==========
     if (query) {
-      let normalizedQuery = normalize(query);
+      const queryKeepTone = normalizeKeepTone(query);
+      const queryNoTone = normalizeRemoveAll(query);
 
-      // chia chữ nếu user gõ liền "bundaubac..."
-      if (!normalizedQuery.includes(" ")) {
-        const possibleMatches = data.map((p) => normalize(p.ten_quan || ""));
-        const splitVariants = [];
+      // ⭐ BƯỚC 1: Exact match GIỮ DẤU THANH trước
+      const exactMatches = data.filter((p) => {
+        const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
+        return nameKeepTone.includes(queryKeepTone);
+      });
 
-        for (let i = 1; i < normalizedQuery.length; i++) {
-          splitVariants.push(
-            normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
+      // Nếu có exact match → dùng luôn, không cần fuzzy
+      if (exactMatches.length > 0) {
+        filtered = exactMatches;
+        console.log(`✅ Exact match found: ${exactMatches.length} results`);
+      } else {
+        // ⭐ BƯỚC 2: Fuzzy search BỎ DẤU (fallback)
+        let normalizedQuery = queryNoTone;
+
+        // Chia chữ nếu user gõ liền "bundaubac..."
+        if (!normalizedQuery.includes(" ")) {
+          const possibleMatches = data.map((p) =>
+            normalizeRemoveAll(p.ten_quan || "")
           );
-        }
-        for (const variant of splitVariants) {
-          if (possibleMatches.some((name) => name.includes(variant))) {
-            normalizedQuery = variant;
-            break;
+          const splitVariants = [];
+
+          for (let i = 1; i < normalizedQuery.length; i++) {
+            splitVariants.push(
+              normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
+            );
+          }
+          for (const variant of splitVariants) {
+            if (possibleMatches.some((name) => name.includes(variant))) {
+              normalizedQuery = variant;
+              break;
+            }
           }
         }
+
+        // Fuzzy engine với threshold cao hơn một chút
+        const fuse = new Fuse(
+          data.map((p) => ({
+            ...p,
+            ten_quan_no_dau: normalizeRemoveAll(p.ten_quan || ""),
+          })),
+          {
+            keys: ["ten_quan_no_dau"],
+            threshold: 0.35, // ⭐ Giảm xuống để strict hơn
+            ignoreLocation: true,
+            includeScore: true, // ⭐ Để debug
+          }
+        );
+
+        const fuzzyResults = fuse.search(normalizedQuery);
+
+        // ⭐ Log để debug
+        console.log(
+          "🔍 Fuzzy results:",
+          fuzzyResults.map((r) => ({
+            name: r.item.ten_quan,
+            score: r.score,
+          }))
+        );
+
+        // ⭐ BƯỚC 3: Filter kết quả fuzzy - KHÔNG dùng \b (word boundary)
+        const queryWords = normalizedQuery.split(" ").filter(Boolean);
+        const escapedPhrase = escapeRegex(normalizedQuery);
+
+        filtered = fuzzyResults
+          .map((r) => r.item)
+          .filter((p) => {
+            const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+
+            // Check có chứa phrase không (không cần word boundary)
+            const hasPhrase = nameNoTone.includes(normalizedQuery);
+
+            // Check có chứa TẤT CẢ các từ không
+            const hasAllWords = queryWords.every((w) => nameNoTone.includes(w));
+
+            // Nếu query có nhiều từ → cần match phrase hoặc tất cả từ
+            // Nếu query 1 từ → cần match từ đó
+            if (queryWords.length >= 2) {
+              return hasPhrase || hasAllWords;
+            } else {
+              return hasPhrase;
+            }
+          });
+
+        console.log(`🔎 Fuzzy fallback: ${filtered.length} results`);
       }
-
-      // Fuzzy engine
-      const fuse = new Fuse(
-        data.map((p) => ({ ...p, ten_quan_no_dau: normalize(p.ten_quan || "") })),
-        { keys: ["ten_quan_no_dau"], threshold: 0.4, ignoreLocation: true }
-      );
-
-      const fuzzyResults = fuse.search(normalizedQuery).map((r) => r.item);
-
-      const queryWords = normalizedQuery.split(" ").filter(Boolean);
-      const normalizedPhrase = normalizedQuery.trim();
-
-      filtered = fuzzyResults.filter((p) => {
-        const name = normalize(p.ten_quan || "");
-        const phraseRegex = new RegExp(`\\b${normalizedPhrase}\\b`, "i");
-        const hasFullPhrase = phraseRegex.test(name);
-
-        const hasWordMatch = queryWords.some((w) => {
-          const wordRegex = new RegExp(`\\b${w}\\b`, "i");
-          return wordRegex.test(name);
-        });
-
-        return queryWords.length >= 2 ? hasFullPhrase : hasFullPhrase || hasWordMatch;
-      });
     }
 
     // ========== 2️⃣ Lọc khẩu vị ==========
     if (flavors.length > 0) {
       filtered = filtered.filter((p) => {
         if (!p.khau_vi) return false;
-        const norm = normalize(p.khau_vi);
-        return flavors.some((f) => norm.includes(normalize(f)));
+        const norm = normalizeRemoveAll(p.khau_vi);
+        return flavors.some((f) => norm.includes(normalizeRemoveAll(f)));
       });
     }
 
@@ -1238,19 +1417,17 @@ async function fetchPlaces(
 
         const [minP, maxP] = range;
 
-        // ⭐ TH1: "300.000 trở lên"
         if (budgetMax === Infinity) {
           return minP >= budgetMinNum;
         }
 
-        // ⭐ TH2: khoảng giá bình thường → chỉ cần giao nhau
         return minP >= budgetMinNum && maxP <= budgetMax;
       });
     }
 
     // ========== 4️⃣ Lọc bán kính ==========
     if (radius !== "") {
-      const r = parseFloat(radius); // km
+      const r = parseFloat(radius);
 
       if (
         !window.currentUserCoords ||
@@ -1260,7 +1437,6 @@ async function fetchPlaces(
         alert(
           "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
         );
-        // không filter theo radius nữa, dùng filtered hiện tại
       } else {
         const userLat = parseFloat(window.currentUserCoords.lat);
         const userLon = parseFloat(window.currentUserCoords.lon);
@@ -1273,29 +1449,19 @@ async function fetchPlaces(
           if (isNaN(plat) || isNaN(plon)) return false;
 
           const d = distance(userLat, userLon, plat, plon);
-
-          // Debug tuỳ bạn cần hay không
-          // if (d > r) {
-          //   console.warn(`❌ ${p.ten_quan} cách ${d.toFixed(2)} km, vượt radius ${r} km`);
-          // } else {
-          //   console.log(`✅ ${p.ten_quan} cách ${d.toFixed(2)} km, trong radius ${r} km`);
-          // }
-
           return d <= r;
         });
       }
     }
 
-    // 🟢 Quan trọng: trả về true/false từ displayPlaces
     const ok = displayPlaces(filtered, shouldZoom);
-    return ok; // <-- để btnSearch biết là có quán hay không
+    return ok;
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
     alert("Không thể tải dữ liệu từ server!");
-    return false; // xem như thất bại
+    return false;
   }
 }
-
 let notFoundCount = 0;
 // =============================
 // 🔍 NÚT TÌM KIẾM
@@ -1311,10 +1477,23 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   const budget = document.getElementById("budget").value;
   const radius = document.getElementById("radius").value;
 
+  // 🔁 Mỗi lần tìm kiếm mới thì tắt chế độ "Quán yêu thích"
+  isFavoriteMode = false;
+  const favoriteModeBtnEl = document.getElementById("favoriteModeBtn");
+  if (favoriteModeBtnEl) favoriteModeBtnEl.classList.remove("active");
+
+  // 💾 Lưu lại tham số tìm kiếm cuối cùng
+  lastSearchParams = {
+    query: query,
+    flavors: selectedFlavors,
+    budget: budget,
+    radius: radius,
+  };
+
   let result = true; // true = có quán, false = không
   // 👉 TRUE nếu đây chỉ là filter bằng 3 thanh phụ
- const isFilterOnlySearch =
-  (!gpsInputValue || gpsInputValue === "Vị trí hiện tại của tôi") && !query;
+  const isFilterOnlySearch =
+    (!gpsInputValue || gpsInputValue === "Vị trí hiện tại của tôi") && !query;
 
   // =============================
   // 📌 CASE 1 — Có nhập địa điểm (khác "Vị trí hiện tại của tôi")
@@ -1358,27 +1537,60 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   // 🚨 ĐẾM 3 LẦN THẤT BẠI LIÊN TIẾP (CHỈ TÍNH MAIN SEARCH)
   // =============================
   if (!isFilterOnlySearch) {
-  if (result === false) {
-    // ❌ Tìm kiếm chính thất bại
-    notFoundCount++;
-    console.log(
-      "⚠️ Không tìm thấy quán (main search):",
-      notFoundCount,
-      "lần liên tiếp"
-    );
+    if (result === false) {
+      // ❌ Tìm kiếm chính thất bại
+      notFoundCount++;
+      console.log(
+        "⚠️ Không tìm thấy quán (main search):",
+        notFoundCount,
+        "lần liên tiếp"
+      );
 
-    if (notFoundCount >= 3) {
+      if (notFoundCount >= 3) {
+        notFoundCount = 0;
+        openChatboxAutomatically();
+      }
+    } else if (result === true) {
+      // ✅ Tìm kiếm chính thành công → reset chuỗi thất bại
       notFoundCount = 0;
-      openChatboxAutomatically();
     }
-  } else if (result === true) {
-    // ✅ Tìm kiếm chính thành công → reset chuỗi thất bại
-    notFoundCount = 0;
   }
-}
 
   // Nếu là filter-only search → không đụng tới notFoundCount
 });
+
+const favoriteModeBtn = document.getElementById("favoriteModeBtn");
+
+if (favoriteModeBtn) {
+  favoriteModeBtn.addEventListener("click", async () => {
+    // 🔴 Đang tắt → bật chế độ "chỉ quán yêu thích"
+    if (!isFavoriteMode) {
+      isFavoriteMode = true;
+      favoriteModeBtn.classList.add("active");
+
+      const ok = await showFavoritePlaces();
+      // Nếu không có quán / lỗi → tắt lại nút
+      if (!ok) {
+        isFavoriteMode = false;
+        favoriteModeBtn.classList.remove("active");
+      }
+    }
+    // 🟢 Đang bật → tắt chế độ, quay về kết quả tìm kiếm gần nhất
+    else {
+      isFavoriteMode = false;
+      favoriteModeBtn.classList.remove("active");
+
+      await fetchPlaces(
+        lastSearchParams.query,
+        lastSearchParams.flavors,
+        lastSearchParams.budget,
+        lastSearchParams.radius,
+        true
+      );
+    }
+  });
+}
+
 
 // =======================================================
 // ✅ MULTI-SELECT KHẨU VỊ
@@ -1402,11 +1614,11 @@ document.addEventListener("click", (e) => {
 
 // Cập nhật text hiển thị
 const checkboxes = flavorDropdown.querySelectorAll("input[type='checkbox']");
-checkboxes.forEach(cb => {
+checkboxes.forEach((cb) => {
   cb.addEventListener("change", () => {
     const selected = Array.from(checkboxes)
-      .filter(c => c.checked)
-      .map(c => c.value);
+      .filter((c) => c.checked)
+      .map((c) => c.value);
 
     if (selected.length === 0) {
       selectedFlavorsEl.textContent = "Chọn khẩu vị";
@@ -1497,24 +1709,23 @@ document.addEventListener('click', (e) => {
 
 
 // ========== LƯU BÁN KÍNH VÀO GLOBAL STATE ==========
-document.addEventListener('DOMContentLoaded', function() {
-    const radiusInput = document.getElementById('radius');
-    
-    if (radiusInput) {
-        // Lưu giá trị ban đầu
-        window.currentRadius = radiusInput.value;
-        console.log('✅ Khởi tạo bán kính:', window.currentRadius, 'km');
-        
-        // Cập nhật khi thay đổi
-        radiusInput.addEventListener('change', function() {
-            window.currentRadius = this.value;
-            console.log('🎯 Đã cập nhật bán kính:', window.currentRadius, 'km');
-        });
-    } else {
-        console.error('⚠️ Không tìm thấy input #radius');
-    }
-});
+document.addEventListener("DOMContentLoaded", function () {
+  const radiusInput = document.getElementById("radius");
 
+  if (radiusInput) {
+    // Lưu giá trị ban đầu
+    window.currentRadius = radiusInput.value;
+    console.log("✅ Khởi tạo bán kính:", window.currentRadius, "km");
+
+    // Cập nhật khi thay đổi
+    radiusInput.addEventListener("change", function () {
+      window.currentRadius = this.value;
+      console.log("🎯 Đã cập nhật bán kính:", window.currentRadius, "km");
+    });
+  } else {
+    console.error("⚠️ Không tìm thấy input #radius");
+  }
+});
 // =========================
 // 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
 // =========================
@@ -1555,21 +1766,47 @@ input.addEventListener("input", () => {
   filtered.forEach((p) => {
     const div = document.createElement("div");
     const cat = detectCategory(p.ten_quan);
-    const iconUrl = icons[cat] ? icons[cat].options.iconUrl : icons.default.options.iconUrl;
+    const iconUrl = icons[cat]
+      ? icons[cat].options.iconUrl
+      : icons.default.options.iconUrl;
 
     // highlight từ khóa trong tên (ví dụ: "phở" -> <b>phở</b>)
     const name = p.ten_quan;
     const idx = name.toLowerCase().indexOf(text);
     let displayName = name;
     if (idx >= 0) {
-      displayName = `${name.slice(0, idx)}<strong>${name.slice(idx, idx + text.length)}</strong>${name.slice(idx + text.length)}`;
+      displayName = `${name.slice(0, idx)}<strong>${name.slice(
+        idx,
+        idx + text.length
+      )}</strong>${name.slice(idx + text.length)}`;
     }
 
     div.innerHTML = `<img src="${iconUrl}" style="width:20px;height:20px;margin-right:8px;object-fit:contain;"> <div style="flex:1">${displayName}</div>`;
-    div.addEventListener("click", () => {
+    div.addEventListener("click", async () => {
       input.value = p.ten_quan;
       suggestionsEl.classList.remove("show");
-     fetchPlaces(p.ten_quan, [], "", "", true); 
+      
+      // 🔥 FIX: Gọi fetchPlaces và sau đó zoom vào quán cụ thể
+      await fetchPlaces(p.ten_quan, [], "", "", false); // shouldZoom = false để không auto-zoom toàn bộ
+      
+      // 🎯 Zoom trực tiếp vào marker của quán này
+      if (p.lat && p.lon) {
+        const lat = parseFloat(p.lat.toString().replace(",", "."));
+        const lon = parseFloat(p.lon.toString().replace(",", "."));
+        if (!isNaN(lat) && !isNaN(lon)) {
+          map.setView([lat, lon], 17); // zoom level 17 để nhìn rõ
+          
+          // Mở popup của marker này (nếu có)
+          if (window.allMarkers) {
+            const marker = window.allMarkers.find(m => 
+              m.getLatLng().lat === lat && m.getLatLng().lng === lon
+            );
+            if (marker) {
+              marker.openPopup();
+            }
+          }
+        }
+      }
     });
     suggestionsEl.appendChild(div);
   });
@@ -1582,12 +1819,6 @@ document.addEventListener("click", (e) => {
   const searchBox = document.querySelector(".search-box");
   if (!searchBox.contains(e.target)) {
     suggestionsEl.classList.remove("show");
-  }
-});
-// ✅ Xử lý đóng sidebar (luôn hoạt động, dù sidebarContent bị thay đổi)
-document.addEventListener("click", (e) => {
-  if (e.target && e.target.id === "closeSidebar") {
-    document.getElementById("sidebar").classList.remove("show");
   }
 });
 
@@ -1619,7 +1850,9 @@ document.getElementById("imageModal").addEventListener("click", (e) => {
 // =========================
 
 async function geocodeAddress(address) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+    address
+  )}&limit=1`;
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -1660,7 +1893,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
 
       // ✅ Lưu lại tọa độ thật để khi nhấn “Tìm đường đi” dùng đúng vị trí này
       window.currentUserCoords = { lat: userLat, lon: userLon };
-      
+
       // ✅ Xóa marker xuất phát cũ (dù là GPS hay nhập tay)
       if (window.startMarker) {
         map.removeLayer(window.startMarker);
@@ -1687,28 +1920,1258 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
 });
 
 // =========================
-// ⌨️ ENTER chỉ hoạt động khi người dùng đang tương tác với ô nhập địa điểm
+// ⌨️ ENTER chạy nút TÌM cho cả 2 ô input
 // =========================
-let isUsingGpsInput = false;
-
-// Khi người dùng click hoặc gõ trong ô nhập
-const gpsInput = document.getElementById("gpsInput");
-gpsInput.addEventListener("focus", () => (isUsingGpsInput = true));
-gpsInput.addEventListener("input", () => (isUsingGpsInput = true));
-
-// Khi người dùng click ra ngoài map hoặc sidebar → tắt chế độ nhập
-document.addEventListener("click", (e) => {
-  const gpsBox = document.querySelector(".gps-box");
-  if (!gpsBox.contains(e.target)) {
-    isUsingGpsInput = false;
-  }
-});
-
-// Khi nhấn Enter → chỉ hoạt động nếu đang trong chế độ nhập
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && isUsingGpsInput) {
-    e.preventDefault();
-    document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
-  }
+    if (e.key === "Enter") {
+        const active = document.activeElement;
+
+        // Nếu đang focus vào ô địa điểm hoặc ô tìm món → chạy Search
+        if (active && (active.id === "gpsInput" || active.id === "query")) {
+            e.preventDefault();
+            document.getElementById("btnSearch").click();
+        }
+    }
 });
 
+// =====================================================
+// 🚀 TỰ ĐỘNG MỞ QUÁN TỪ TRANG ACCOUNT (Deep Linking)
+// =====================================================
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Đọc tham số trên thanh địa chỉ (Ví dụ: ?search=Phở+Hòa)
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchName = urlParams.get('search');
+
+    // 2. Nếu tìm thấy tên quán
+    if (searchName) {
+        console.log("🌍 Đang tự động tìm quán:", searchName);
+        
+        const searchInput = document.getElementById("query");
+        const searchBtn = document.getElementById("btnSearch");
+
+        if (searchInput && searchBtn) {
+            // A. Điền tên quán vào ô nhập
+            searchInput.value = searchName;
+            
+            // B. Đợi 1 chút cho bản đồ load xong thì tự bấm nút tìm
+            setTimeout(() => {
+                searchBtn.click(); // 👈 Giả lập cú click chuột
+            }, 0); // Đợi 0.5 giây
+        }
+    }
+});
+// ===============================
+// 🎮 MINI GAME POPUP CONTROL
+// ===============================
+
+const miniGameBtn = document.getElementById("miniGameBtn");
+const miniGamePopup = document.getElementById("miniGamePopup");
+const closeMiniGame = document.getElementById("closeMiniGame");
+
+if (miniGameBtn) {
+    miniGameBtn.addEventListener("click", async () => {
+        miniGamePopup.classList.remove("hidden");
+        
+        // 🆕 Load tiến độ game từ server
+        await loadGameProgress();
+        
+        // 🆕 Đợi DOM loaded rồi mới gọi
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                showLevelSelection();
+            });
+        } else {
+            // DOM đã sẵn sàng, gọi luôn
+            const showLevelSelectionEvent = new CustomEvent('showLevelSelection');
+            document.dispatchEvent(showLevelSelectionEvent);
+        }
+    });
+}
+
+if (closeMiniGame) {
+    closeMiniGame.addEventListener("click", () => {
+        miniGamePopup.classList.add("hidden");
+    });
+}
+
+// Đóng popup khi click ra ngoài
+miniGamePopup?.addEventListener("click", (e) => {
+    if (e.target === miniGamePopup) {
+        miniGamePopup.classList.add("hidden");
+    }
+});
+
+// ===============================
+// 🎮 GAME PROGRESS MANAGEMENT
+// ===============================
+
+let userGameProgress = {
+    current_level: 0,
+    completed_levels: [],
+    max_unlocked: 0
+};
+
+// Load tiến độ từ server khi mở game
+async function loadGameProgress() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/game/progress/`, {
+            credentials: 'include'  // Gửi cookies
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'success') {
+                userGameProgress = data;
+                currentLevel = data.current_level;
+                console.log('✅ Đã load game progress:', data);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Không thể load game progress:', error);
+    }
+}
+
+// Lưu tiến độ lên server khi hoàn thành level
+async function saveGameProgress(levelCompleted) {
+    try {
+        // ⏱️ TÍNH THỜI GIAN HOÀN THÀNH (giây)
+        const timeTaken = (Date.now() - levelStartTime) / 1000;
+        
+        const response = await fetch(`${API_BASE_URL}/api/game/update/`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                level_completed: levelCompleted,
+                time_taken: timeTaken,      // 🆕 Gửi thời gian
+                deaths: levelDeaths         // 🆕 Gửi số lần chết
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'success') {
+                userGameProgress = data;
+                console.log('✅ Đã lưu tiến độ:', data);
+                
+                // 🆕 Trả về số sao để hiển thị
+                return data.stars;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Không thể lưu game progress:', error);
+    }
+    return 1; // Mặc định 1 sao nếu lỗi
+}
+
+// ===============================
+// 🎮 GLOBAL GAME VARIABLES (phải ở ngoài DOMContentLoaded)
+// ===============================
+let levelStartTime = Date.now();
+let levelDeaths = 0;
+let currentLevel = 0;
+let gameLoopStarted = false;
+
+document.addEventListener("DOMContentLoaded", function () {
+    const canvas = document.getElementById("gameCanvas");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    // --------------------------
+    // TILE SYSTEM
+    // --------------------------
+   let tileSize = 32; // khôi phục biến này
+
+    // Map 2D (0 = floor, 1 = wall)
+   const levels = [
+    {
+        // ⭐ LEVEL 1
+        map: [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],
+            [1,0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,0,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+            [1,0,1,0,1,1,1,0,1,1,1,0,1,1,1,1,0,1,1,0,1,0,1,0,1],
+            [1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,1,0,0,1,0,1,0,1,0,1],
+            [1,0,1,1,1,0,1,1,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ],
+        playerStart: { x: 1, y: 1 },
+        chestPos:    { x: 23, y: 1 },
+        food: "images/pho.png"   // món ăn mở khóa level 1
+    },
+
+    {
+        // ⭐ LEVEL 2 (mình tạo map mới cho bạn)
+        map: [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,1,1,1,0,0,0,1,0,1,1,1,0,1,0,0,0,1,0,1],
+        [1,0,1,0,1,0,0,0,1,0,1,0,1,0,0,0,0,0,1,1,1,0,1,0,1],
+        [1,0,1,0,1,1,1,0,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1,0,1],
+        [1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1,1,1,1,1,0,1,0,1],
+        [1,0,1,1,1,0,1,1,1,0,1,0,1,0,1,1,1,0,0,0,1,0,1,0,1],
+        [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,1],  // ⭐ FIXED – mở đường bên phải
+        [1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1]
+    ],
+        playerStart: { x: 1, y: 1 },
+        chestPos:    { x: 23, y: 7 },
+        food: "images/bun_bo_hue.png"  // món ăn mở khóa level 2
+    }
+    ,{
+    // ⭐ LEVEL 3 — chuẩn bị cho bot
+     map: [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,1,0,1],
+        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
+        [1,0,1,0,0,0,1,0,1,0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,1],
+        [1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,0,1,0,1],
+        [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1],
+        [1,1,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ],
+
+    playerStart: { x: 1, y: 1 },
+    chestPos:    { x: 23, y: 7 },
+    food: "images/com_tam.png",
+
+    // ➕ BOT XUẤT HIỆN Ở MAP 3
+     bots: [
+        { x: 12, y: 5, dir: "left" }
+    ]
+},
+ {
+        // ⭐ LEVEL 4 - THE BIG CHALLENGE
+        map: [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,1],
+            [1,0,1,1,1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,1],
+            [1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1],
+            [1,0,1,0,1,1,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1,1],
+            [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,1],
+            [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1],
+            [1,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1],
+            [1,0,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,0,1,1,1,1,1,1,1,0,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ],
+        playerStart: { x: 1, y: 1 },
+        chestPos:    { x: 28, y: 13 },
+        food: "images/banh_mi.png",  // 🥖 Bánh mì Việt Nam
+        
+        // 🆕 2 BOTS
+        bots: [
+            { x: 15, y: 7, dir: "left" },
+            { x: 10, y: 9, dir: "right" },
+            { x: 6,  y: 13, dir: "left" }
+        ],
+
+          // 🧱 Moving Walls cho Level 4
+        movingWalls: [
+          // Tường ngang chạy qua lại ở hàng y = 5, từ x = 2 → 8
+          { x: 3,  y: 5, axis: "horizontal", dir: 1, min: 2, max: 8 },
+
+          // Tường dọc chạy lên xuống ở cột x = 21, từ y = 7 → 11
+          { x: 21, y: 8, axis: "vertical",   dir: 1, min: 7, max: 11 },
+
+          // 🆕 Tường dọc mới ở cột x = 13, quanh vị trí shield
+          { x: 13, y: 5, axis: "vertical",   dir: 1, min: 3, max: 9 },
+
+        ],
+        
+        // 🆕 SHIELD POWER-UP (vị trí ở giữa map)
+        shieldPos: { x: 15, y: 5 }
+    }
+];
+
+    // --------------------------
+    // LOAD TEXTURES
+    // --------------------------
+    const wallImg = new Image();
+    wallImg.src = "GameAssets/wall.png";
+
+    const floorImg = new Image();
+    floorImg.src = "GameAssets/floor.png";
+
+    // ➕ THÊM VÀO
+const playerSprites = {
+    up: new Image(),
+    down: new Image(),
+    left: new Image(),
+    right: new Image()
+};
+const playerImg = new Image();
+playerImg.src = "GameAssets/player.png";
+
+playerSprites.up.src = "GameAssets/player_up.png";
+playerSprites.down.src = "GameAssets/player_down.png";
+playerSprites.left.src = "GameAssets/player_left.png";
+playerSprites.right.src = "GameAssets/player_right.png";
+
+const botSprites = {
+    up: new Image(),
+    down: new Image(),
+    left: new Image(),
+    right: new Image()
+};
+
+botSprites.up.src = "GameAssets/bot_up.png";
+botSprites.down.src = "GameAssets/bot_down.png";
+botSprites.left.src = "GameAssets/bot_left.png";
+botSprites.right.src = "GameAssets/bot_right.png";
+
+
+const chestSprites = {
+    closed: new Image(),
+    open: new Image()
+};
+
+chestSprites.closed.src = "GameAssets/chest_closed.png";
+chestSprites.open.src   = "GameAssets/chest_open.png";
+
+// 🆕 THÊM SHIELD SPRITE
+const shieldSprite = new Image();
+shieldSprite.src = "GameAssets/shield.png";  // Bạn cần tạo ảnh này (hoặc dùng emoji 🛡️)
+
+
+
+//Thêm level để tăng độ khó
+let map         = levels[currentLevel].map;
+let foodReward  = levels[currentLevel].food;
+
+// cập nhật vị trí player + chest theo level
+let player = { ...levels[currentLevel].playerStart };
+const chest = { ...levels[currentLevel].chestPos, opened: false };
+
+// ⭐ DANH SÁCH CÁC BOT (0, 1 hoặc nhiều con tùy level)
+let bots = [];
+
+// Khởi tạo bot lần đầu theo currentLevel (level 1–2 sẽ không có bot)
+const initialBots = levels[currentLevel].bots || [];
+initialBots.forEach(b => {
+    bots.push({
+        x: b.x,
+        y: b.y,
+        pixelX: b.x * tileSize,
+        pixelY: b.y * tileSize,
+        dir: b.dir || "left"
+    });
+});
+
+// 🧱 MOVING WALLS (tường di chuyển)
+let movingWalls = [];
+const initialMovingWalls = levels[currentLevel].movingWalls || [];
+initialMovingWalls.forEach(w => {
+    movingWalls.push({
+        ...w,
+        pixelX: w.x * tileSize,
+        pixelY: w.y * tileSize
+    });
+});
+
+
+// 🛡️ TRẠNG THÁI SHIELD
+let shield = {
+    x: null,
+    y: null,
+    visible: false,   // có hiển thị icon trên map hay không
+    active: false,    // đang miễn nhiễm hay không
+    endTime: 0        // thời điểm hết hiệu lực (ms)
+};
+
+// Khởi tạo shield ban đầu theo level hiện tại (chỉ level 4 mới có)
+const initialShield = levels[currentLevel].shieldPos;
+if (initialShield) {
+    shield.x = initialShield.x;
+    shield.y = initialShield.y;
+    shield.visible = true;
+}
+
+    // ➕ THÊM 2 BIẾN NÀY NGAY SAU ĐÓ
+    let playerPixelX = player.x * tileSize;
+    let playerPixelY = player.y * tileSize;
+
+// ➕ THÊM CỜ KIỂM TRA ĐANG DI CHUYỂN HAY KHÔNG
+    let isMoving = false;
+    // ➕ THÊM DÒNG NÀY
+let playerDir = "right"; // hướng mặc định
+    const foods = [
+        "images/pho.png",
+        "images/bun_bo_hue.png",
+        "images/com_tam.png"
+    ];
+    let randomFood = foods[Math.floor(Math.random() * foods.length)];
+// 🔍 HÀM CHECK XEM Ô TILE CÓ MOVING WALL ĐỨNG KHÔNG
+function isMovingWallAt(tileX, tileY) {
+    return movingWalls.some(w => w.x === tileX && w.y === tileY);
+}
+      
+  // Reset toàn bộ trạng thái game (dùng cho nút "Chơi lại")
+   function resetGameState(isLevelChange = false) {  // ✅ Thêm tham số
+    // ⭐ BẮT BUỘC: Tính lại kích thước canvas trước
+    const container = document.getElementById("miniGameInner");
+    if (!container) return;
+
+    const tilesX = levels[currentLevel].map[0].length;
+    const tilesY = levels[currentLevel].map.length;
+
+    const availableWidth  = container.clientWidth;
+    const availableHeight = container.clientHeight;
+
+    const tileW = Math.floor(availableWidth  / tilesX);
+    const tileH = Math.floor(availableHeight / tilesY);
+
+    tileSize = Math.min(tileW, tileH);
+
+    canvas.width  = tilesX * tileSize;
+    canvas.height = tilesY * tileSize;
+
+    // ⭐ SAU ĐÓ MỚI GÁN LẠI TRẠNG THÁI
+    map        = levels[currentLevel].map;
+    foodReward = levels[currentLevel].food;
+
+    // player
+    player.x = levels[currentLevel].playerStart.x;
+    player.y = levels[currentLevel].playerStart.y;
+    playerPixelX = player.x * tileSize;
+    playerPixelY = player.y * tileSize;
+
+    // chest
+    chest.x = levels[currentLevel].chestPos.x;
+    chest.y = levels[currentLevel].chestPos.y;
+    chest.opened = false;
+
+     // ⭐ RESET CÁC BOT THEO LEVEL HIỆN TẠI
+    bots = [];
+    const levelBots = levels[currentLevel].bots || [];
+    levelBots.forEach(b => {
+        bots.push({
+            x: b.x,
+            y: b.y,
+            pixelX: b.x * tileSize,
+            pixelY: b.y * tileSize,
+            dir: b.dir || "left"
+        });
+    });
+
+      // 🧱 RESET MOVING WALLS THEO LEVEL HIỆN TẠI
+    movingWalls = [];
+    const levelMovingWalls = levels[currentLevel].movingWalls || [];
+    levelMovingWalls.forEach(w => {
+        movingWalls.push({
+            ...w,
+            pixelX: w.x * tileSize,
+            pixelY: w.y * tileSize
+        });
+    });
+
+       // 🛡️ RESET SHIELD THEO LEVEL HIỆN TẠI
+    shield.active = false;
+    shield.endTime = 0;
+
+    const levelShield = levels[currentLevel].shieldPos;
+    if (levelShield) {
+        shield.x = levelShield.x;
+        shield.y = levelShield.y;
+        shield.visible = true;   // mỗi lần chơi lại level là có shield lại
+    } else {
+        shield.x = null;
+        shield.y = null;
+        shield.visible = false;
+    }
+    
+    // ⭐ RESET CÁC PHÍM
+    keys.w = false;
+    keys.a = false;
+    keys.s = false;
+    keys.d = false;
+
+    isMoving = false;
+    playerDir = "right";
+
+    const winOverlay = document.getElementById("winOverlay");
+    if (winOverlay) winOverlay.remove();
+
+    canvas.style.display = "block";
+
+    // ⏱️ CHỈ RESET DEATHS KHI CHUYỂN LEVEL
+    if (isLevelChange) {
+        levelDeaths = 0;  // ✅ Chỉ reset khi chuyển level mới
+    }
+    
+    levelStartTime = Date.now();  // ✅ Luôn reset timer
+    
+    drawMap();
+}
+
+
+    // --------------------------
+    // TILE RENDERING
+    // --------------------------
+    function drawMap() {
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < map[y].length; x++) {
+
+                // Draw floor
+                ctx.drawImage(floorImg, x * tileSize, y * tileSize, tileSize, tileSize);
+
+                // Draw wall
+                if (map[y][x] === 1) {
+                    ctx.drawImage(wallImg, x * tileSize, y * tileSize, tileSize, tileSize);
+                }
+            }
+        }
+
+          // 🛡️ VẼ SHIELD TRÊN MAP (nếu có và chưa nhặt)
+    if (shield.visible && shield.x !== null && shield.y !== null && !shield.active) {
+        if (shieldSprite.complete) {
+            ctx.drawImage(
+                shieldSprite,
+                shield.x * tileSize,
+                shield.y * tileSize,
+                tileSize,
+                tileSize
+            );
+        } else {
+            // fallback: vẽ vòng tròn màu nếu ảnh chưa load
+            ctx.fillStyle = "rgba(0, 150, 255, 0.6)";
+            ctx.beginPath();
+            ctx.arc(
+                shield.x * tileSize + tileSize / 2,
+                shield.y * tileSize + tileSize / 2,
+                tileSize / 2 - 4,
+                0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
+    // 🧱 VẼ CÁC MOVING WALLS (dùng pixel để lướt mượt)
+    movingWalls.forEach(w => {
+        const px = (w.pixelX !== undefined) ? w.pixelX : w.x * tileSize;
+        const py = (w.pixelY !== undefined) ? w.pixelY : w.y * tileSize;
+
+        ctx.drawImage(
+            wallImg,
+            px,
+            py,
+            tileSize,
+            tileSize
+        );
+    });
+
+        // Draw player (theo hướng)
+let img = playerSprites[playerDir];
+
+if (img && img.complete) {
+    ctx.drawImage(
+        img,
+        playerPixelX,
+        playerPixelY,
+        tileSize,
+        tileSize
+    );
+} else {
+    // Fallback: vẽ tạm hình tròn nếu ảnh chưa load
+    ctx.fillStyle = "blue";
+    ctx.beginPath();
+    ctx.arc(
+        playerPixelX + tileSize / 2,
+        playerPixelY + tileSize / 2,
+        tileSize / 2 - 4,
+        0, Math.PI * 2
+    );
+    ctx.fill();
+}
+
+ // 🛡️ Nếu shield đang active, vẽ vòng sáng quanh nhân vật
+    if (shield.active) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(0, 200, 255, 0.9)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(
+            playerPixelX + tileSize / 2,
+            playerPixelY + tileSize / 2,
+            tileSize / 2,
+            0, Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.restore();
+    }
+        // Draw chest (closed / open)
+let chestImg = chest.opened ? chestSprites.open : chestSprites.closed;
+// ⭐ VẼ CÁC BOT (nếu level có)
+bots.forEach(bot => {
+    const botImg = botSprites[bot.dir] || botSprites.down;
+
+    if (botImg.complete) {
+        ctx.drawImage(botImg, bot.pixelX, bot.pixelY, tileSize, tileSize);
+    } else {
+        // fallback khi sprite chưa load
+        ctx.fillStyle = "red";
+        ctx.fillRect(bot.pixelX, bot.pixelY, tileSize, tileSize);
+    }
+});
+
+
+if (chestImg && chestImg.complete) {
+    ctx.drawImage(
+        chestImg,
+        chest.x * tileSize,
+        chest.y * tileSize,
+        tileSize,
+        tileSize
+    );
+}
+    }
+    function playChestSound() {
+    const audio = document.getElementById("chestSoundAudio");
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+}
+
+
+    // --------------------------
+    // MOVEMENT
+    // --------------------------
+    function move(dx, dy) {
+    // Nếu đang di chuyển thì bỏ qua input mới
+    if (isMoving) return;
+
+    const targetX = player.x + dx;
+    const targetY = player.y + dy;
+
+    // Kiểm tra có đi được không (0 = đường đi)
+    if (!map[targetY] || map[targetY][targetX] !== 0) {
+        return;
+    }
+
+    isMoving = true;
+
+    const startX = playerPixelX;
+    const startY = playerPixelY;
+    const endX = targetX * tileSize;
+    const endY = targetY * tileSize;
+    const duration = 150; // ms
+    let startTime = null;
+
+    function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+
+        // Nội suy vị trí
+        playerPixelX = startX + (endX - startX) * progress;
+        playerPixelY = startY + (endY - startY) * progress;
+
+        drawMap();
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            // Kết thúc di chuyển → cập nhật vị trí tile thật
+            player.x = targetX;
+            player.y = targetY;
+            isMoving = false;
+
+            // Vẽ lại lần cuối cho chuẩn
+            drawMap();
+
+            // Check win
+            // Check chest collision
+if (player.x === chest.x && player.y === chest.y) {
+    chest.opened = true;
+    drawMap();      // vẽ lại để thấy rương mở
+    playChestSound();
+    setTimeout(showFoodReward, 400); // delay nhẹ cho đẹp
+}
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+
+// ===============================
+// 🎮 LEVEL SELECTION SCREEN
+// ===============================
+function showLevelSelection() {
+    const miniGameInner = document.getElementById("miniGameInner");
+    const canvas = document.getElementById("gameCanvas");
+    if (!miniGameInner || !canvas) return;
+
+    canvas.style.display = "none";
+
+    // Xóa màn hình cũ nếu có
+    let levelSelection = document.getElementById("levelSelection");
+    if (levelSelection) {
+        levelSelection.remove();
+    }
+
+    // Tạo màn hình chọn level
+    levelSelection = document.createElement("div");
+    levelSelection.id = "levelSelection";
+    levelSelection.style.cssText = `
+        padding: 20px;
+        overflow-y: auto;
+        max-height: 100%;
+    `;
+
+    levelSelection.innerHTML = `
+        <h3 style="text-align: center; margin-bottom: 20px; font-size: 24px;">🎮 Chọn Màn Chơi</h3>
+        <div id="levelGrid" style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            max-width: 600px;
+            margin: 0 auto 20px;
+        "></div>
+        <button id="startGameBtn" style="
+            display: block;
+            margin: 0 auto;
+            padding: 12px 30px;
+            background: #5a6ff0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        ">🎮 Bắt đầu chơi</button>
+    `;
+
+    miniGameInner.appendChild(levelSelection);
+
+    const levelGrid = document.getElementById("levelGrid");
+
+    // Tạo các nút level
+    levels.forEach((level, index) => {
+        const isCompleted = userGameProgress.completed_levels.includes(index);
+        const isUnlocked = index === 0 || 
+                           isCompleted || 
+                           userGameProgress.completed_levels.includes(index - 1) ||
+                           index <= userGameProgress.max_unlocked;
+
+        const levelBtn = document.createElement("button");
+        levelBtn.innerHTML = `
+            <div style="font-size: 32px; margin-bottom: 8px;">
+                ${isCompleted ? '✅' : (isUnlocked ? '🔓' : '🔒')}
+            </div>
+            <div style="font-weight: bold;">Level ${index + 1}</div>
+            ${isCompleted ? '<div style="font-size: 12px; color: #4CAF50;">Đã hoàn thành</div>' : ''}
+        `;
+        levelBtn.style.cssText = `
+            padding: 20px;
+            border: 3px solid ${isUnlocked ? '#5a6ff0' : '#ccc'};
+            background: ${isUnlocked ? '#fff' : '#f5f5f5'};
+            border-radius: 12px;
+            cursor: ${isUnlocked ? 'pointer' : 'not-allowed'};
+            transition: all 0.2s;
+            opacity: ${isUnlocked ? '1' : '0.5'};
+        `;
+
+        if (isUnlocked) {
+            levelBtn.addEventListener("click", () => {
+                currentLevel = index;
+
+                // Highlight level được chọn
+                document.querySelectorAll("#levelGrid button").forEach(btn => {
+                    btn.style.background = '#fff';
+                    btn.style.transform = 'scale(1)';
+                });
+                levelBtn.style.background = '#e3f2fd';
+                levelBtn.style.transform = 'scale(1.05)';
+            });
+
+            levelBtn.addEventListener("mouseenter", () => {
+                if (levelBtn.style.background !== 'rgb(227, 242, 253)') {
+                    levelBtn.style.background = '#f0f0f0';
+                }
+            });
+
+            levelBtn.addEventListener("mouseleave", () => {
+                if (levelBtn.style.background !== 'rgb(227, 242, 253)') {
+                    levelBtn.style.background = '#fff';
+                }
+            });
+        }
+
+        levelGrid.appendChild(levelBtn);
+    });
+
+    // Nút bắt đầu game
+    const startBtn = document.getElementById("startGameBtn");
+    if (startBtn) {
+        startBtn.onclick = () => {
+            levelSelection.remove();
+            canvas.style.display = "block";
+            resetGameState(true);
+            setTimeout(autoResizeCanvas, 30);
+        };
+    }
+}
+
+// ===============================
+// 🎮 WIN SCREEN
+// ===============================
+function showFoodReward() {
+    const miniGameInner = document.getElementById("miniGameInner");
+    const canvas = document.getElementById("gameCanvas");
+    if (!miniGameInner || !canvas) return;
+
+    canvas.style.display = "none";
+    
+    // 🆕 LƯU TIẾN ĐỘ VÀ NHẬN SỐ SAO
+    saveGameProgress(currentLevel).then(stars => {
+        // ⏱️ TÍNH THỜI GIAN HIỂN THỊ
+        const timeTaken = (Date.now() - levelStartTime) / 1000;
+        const timeDisplay = timeTaken.toFixed(1) + "s";
+        
+        // ⭐ TẠO CHUỖI SAO
+        const starDisplay = '⭐'.repeat(stars || 1);
+
+        const overlay = document.createElement("div");
+        overlay.id = "winOverlay";
+
+        overlay.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            gap: 20px;
+            text-align: center;
+            min-height: 400px;
+        `;
+
+        overlay.innerHTML = `
+            <h2 style="font-size: 28px; margin: 0;">🎉 Chúc mừng bạn!</h2>
+            
+            <!-- 🆕 HIỂN THỊ SAO -->
+            <div style="font-size: 48px; margin: 10px 0;">
+                ${starDisplay}
+            </div>
+            
+            <!-- 🆕 HIỂN THỊ THỜI GIAN VÀ SỐ LẦN CHẾT -->
+            <div style="font-size: 16px; color: #666; background: #f5f5f5; padding: 12px 24px; border-radius: 12px;">
+                ⏱️ Thời gian: <strong style="color: #5a6ff0;">${timeDisplay}</strong> 
+                &nbsp;&nbsp;|&nbsp;&nbsp; 
+                💀 Chết: <strong style="color: #e53935;">${levelDeaths} lần</strong>
+            </div>
+            
+            <p style="font-size: 18px; margin: 10px 0;">
+                Đây là món ăn dành cho bạn hôm nay:
+            </p>
+
+            <img 
+                src="${foodReward}" 
+                alt="Món ăn gợi ý" 
+                style="
+                    width: 260px;
+                    max-width: 80%;
+                    border-radius: 16px;
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+                "
+            />
+
+            <div style="display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; justify-content: center;">
+                <button 
+                    id="nextLevelBtn"
+                    type="button"
+                    style="
+                        padding: 10px 20px;
+                        border-radius: 999px;
+                        border: none;
+                        background: #5a6ff0;
+                        color: #fff;
+                        font-size: 16px;
+                        cursor: pointer;
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                    "
+                >
+                    ${currentLevel + 1 < levels.length ? '➡ Level tiếp theo' : '🏆 Hoàn thành!'}
+                </button>
+
+                <button 
+                    id="selectLevelBtn"
+                    type="button"
+                    style="
+                        padding: 10px 20px;
+                        border-radius: 999px;
+                        border: none;
+                        background: #4CAF50;
+                        color: #fff;
+                        font-size: 16px;
+                        cursor: pointer;
+                    "
+                >
+                    🎮 Chọn màn khác
+                </button>
+
+                <button 
+                    id="closeGameBtn"
+                    type="button"
+                    style="
+                        padding: 10px 20px;
+                        border-radius: 999px;
+                        border: none;
+                        background: #ccc;
+                        color: #333;
+                        font-size: 16px;
+                        cursor: pointer;
+                    "
+                >
+                    ✖ Đóng
+                </button>
+            </div>
+        `;
+
+        miniGameInner.appendChild(overlay);
+
+        // 👉 NEXT LEVEL BUTTON
+        const nextLevelBtn = overlay.querySelector("#nextLevelBtn");
+        if (nextLevelBtn) {
+            nextLevelBtn.addEventListener("click", () => {
+                currentLevel++;
+
+                if (currentLevel >= levels.length) {
+                    alert("🎉 Bạn đã hoàn thành tất cả các level!");
+                    overlay.remove();
+                    showLevelSelection();
+                    return;
+                }
+
+                overlay.remove();
+                resetGameState(true);
+            });
+        }
+
+        // 👉 NÚT CHỌN MÀN KHÁC
+        const selectLevelBtn = overlay.querySelector("#selectLevelBtn");
+        if (selectLevelBtn) {
+            selectLevelBtn.addEventListener("click", () => {
+                overlay.remove();
+                showLevelSelection();
+            });
+        }
+
+        // 👉 CLOSE BUTTON
+        const closeGameBtn = overlay.querySelector("#closeGameBtn");
+        if (closeGameBtn) {
+            closeGameBtn.addEventListener("click", () => {
+                document.getElementById("miniGamePopup").classList.add("hidden");
+                overlay.remove();
+            });
+        }
+    });
+}
+
+// ===============================
+// 🔥 AUTO RESIZE GAME
+// ===============================
+function autoResizeCanvas() {
+    const container = document.getElementById("miniGameInner");
+    if (!container) return;
+
+    const tilesX = map[0].length;
+    const tilesY = map.length;
+
+    const availableWidth  = container.clientWidth;
+    const availableHeight = container.clientHeight;
+
+    const tileW = Math.floor(availableWidth  / tilesX);
+    const tileH = Math.floor(availableHeight / tilesY);
+
+    tileSize = Math.min(tileW, tileH);
+
+    canvas.width  = tilesX * tileSize;
+    canvas.height = tilesY * tileSize;
+
+    // player
+    playerPixelX = player.x * tileSize;
+    playerPixelY = player.y * tileSize;
+
+   // ⭐⭐ TẤT CẢ BOT CŨNG PHẢI SCALE THEO TILESIZE MỚI ⭐⭐
+    bots.forEach(bot => {
+        bot.pixelX = bot.x * tileSize;
+        bot.pixelY = bot.y * tileSize;
+    });
+
+       // 🧱 MOVING WALLS CŨNG SCALE THEO TILESIZE MỚI
+    movingWalls.forEach(w => {
+        w.pixelX = w.x * tileSize;
+        w.pixelY = w.y * tileSize;
+    });
+
+    drawMap();
+}
+
+
+
+miniGameBtn.addEventListener("click", () => {
+    setTimeout(autoResizeCanvas, 30);
+});
+
+window.addEventListener("resize", () => {
+    if (!miniGamePopup.classList.contains("hidden")) {
+        autoResizeCanvas();
+    }
+});
+
+    wallImg.onload = () => {
+        floorImg.onload = () => {
+            drawMap();
+        };
+    };
+
+// 🎮 SMOOTH MOVEMENT CONTROLS
+// ----------------------------
+const keys = {
+    w: false,
+    a: false,
+    s: false,
+    d: false
+};
+
+document.addEventListener("keydown", e => {
+    const k = e.key.toLowerCase();
+    if (keys[k] !== undefined) keys[k] = true;
+});
+
+document.addEventListener("keyup", e => {
+    const k = e.key.toLowerCase();
+    if (keys[k] !== undefined) keys[k] = false;
+});
+
+// ----------------------------
+// 🎮 GAME LOOP (mượt)
+// ----------------------------
+function gameLoop() {
+
+   // 🛡️ Hết thời gian shield thì tắt
+    if (shield.active && Date.now() > shield.endTime) {
+        shield.active = false;
+    }
+
+
+    const speed = tileSize * 0.04;
+
+    let moveX = 0;
+    let moveY = 0;
+
+    if (keys.w) { playerDir = "up"; moveY = -speed; }
+    if (keys.s) { playerDir = "down"; moveY = speed; }
+    if (keys.a) { playerDir = "left"; moveX = -speed; }
+    if (keys.d) { playerDir = "right"; moveX = speed; }
+
+    const nextTileX = Math.floor((playerPixelX + moveX + tileSize/2) / tileSize);
+    const nextTileY = Math.floor((playerPixelY + moveY + tileSize/2) / tileSize);
+
+     if (map[nextTileY] && map[nextTileY][nextTileX] === 0 &&!isMovingWallAt(nextTileX, nextTileY)) 
+    {
+        playerPixelX += moveX;
+        playerPixelY += moveY;
+
+        player.x = Math.floor((playerPixelX + tileSize/2) / tileSize);
+        player.y = Math.floor((playerPixelY + tileSize/2) / tileSize);
+    }
+
+    // ⭐⭐⭐ CHECK MỞ RƯƠNG ⭐⭐⭐
+    if (!chest.opened && player.x === chest.x && player.y === chest.y) {
+        chest.opened = true;
+        playChestSound();
+        setTimeout(showFoodReward, 350);
+    }
+     // 🛡️ CHECK NHẶT SHIELD
+    if (
+        shield.visible &&
+        !shield.active &&
+        shield.x === player.x &&
+        shield.y === player.y
+    ) {
+        shield.visible = false;          // ẩn icon trên map
+        shield.active = true;            // bắt đầu miễn nhiễm
+        shield.endTime = Date.now() + 5000; // 5 giây
+    }
+
+
+// ------------------------------------------------------
+// ⭐⭐⭐ BOT RANDOM WALK CHO TẤT CẢ CÁC BOT ⭐⭐⭐
+// ------------------------------------------------------
+const botSpeed = tileSize * 0.04;
+
+bots.forEach(bot => {
+    // 1. Kiểm tra các hướng có thể đi (dựa trên tile)
+    const dirs = [];
+    if (map[bot.y - 1] && map[bot.y - 1][bot.x] === 0) dirs.push("up");
+    if (map[bot.y + 1] && map[bot.y + 1][bot.x] === 0) dirs.push("down");
+    if (map[bot.y] && map[bot.y][bot.x - 1] === 0) dirs.push("left");
+    if (map[bot.y] && map[bot.y][bot.x + 1] === 0) dirs.push("right");
+
+    // Nếu lỡ spawn vào chỗ kín hoàn toàn thì bỏ qua để khỏi crash
+    if (dirs.length === 0) return;
+
+    // 2. Thỉnh thoảng random đổi hướng (tăng lên 5% cho bot lanh hơn)
+    if (Math.random() < 0.05) {
+        bot.dir = dirs[Math.floor(Math.random() * dirs.length)];
+    }
+
+    // 3. Nếu hướng hiện tại không còn hợp lệ → chọn hướng khác ngay
+    if (!dirs.includes(bot.dir)) {
+        bot.dir = dirs[Math.floor(Math.random() * dirs.length)];
+    }
+
+    // 4. Di chuyển theo hướng hiện tại
+    let moveBX = 0, moveBY = 0;
+    if (bot.dir === "up") moveBY = -botSpeed;
+    if (bot.dir === "down") moveBY = botSpeed;
+    if (bot.dir === "left") moveBX = -botSpeed;
+    if (bot.dir === "right") moveBX = botSpeed;
+
+    const nextBX = Math.floor((bot.pixelX + moveBX + tileSize / 2) / tileSize);
+    const nextBY = Math.floor((bot.pixelY + moveBY + tileSize / 2) / tileSize);
+
+    // 5. Nếu đi được thì cập nhật vị trí
+      if ( map[nextBY] && map[nextBY][nextBX] === 0 && !isMovingWallAt(nextBX, nextBY)) 
+    {
+        bot.pixelX += moveBX;
+        bot.pixelY += moveBY;
+
+        bot.x = Math.floor((bot.pixelX + tileSize/2) / tileSize);
+        bot.y = Math.floor((bot.pixelY + tileSize/2) / tileSize);
+    } else {
+        // 6. Bị tường chặn → đổi sang 1 hướng hợp lệ khác để khỏi đứng im
+        bot.dir = dirs[Math.floor(Math.random() * dirs.length)];
+    }
+});
+// ------------------------------------------------------
+
+    // ------------------------------------------------------
+    // 🧱 CẬP NHẬT VỊ TRÍ MOVING WALLS (LƯỚT MƯỢT)
+    // ------------------------------------------------------
+    const wallSpeed = tileSize * 0.04; // giống speed bot / player
+
+    movingWalls.forEach(w => {
+        let moveWX = 0;
+        let moveWY = 0;
+
+        if (w.axis === "horizontal") {
+            moveWX = w.dir * wallSpeed;
+        } else if (w.axis === "vertical") {
+            moveWY = w.dir * wallSpeed;
+        }
+
+        let nextPixelX = w.pixelX + moveWX;
+        let nextPixelY = w.pixelY + moveWY;
+
+        // Tính tile nếu di chuyển
+        let nextTileX = Math.floor((nextPixelX + tileSize / 2) / tileSize);
+        let nextTileY = Math.floor((nextPixelY + tileSize / 2) / tileSize);
+
+        // Kiểm tra vượt range hoặc đụng tường tĩnh -> đổi hướng
+        if (w.axis === "horizontal") {
+            if (
+                nextTileX < w.min ||
+                nextTileX > w.max ||
+                map[w.y] && map[w.y][nextTileX] === 1
+            ) {
+                w.dir *= -1; // quay đầu
+                moveWX = w.dir * wallSpeed;
+                nextPixelX = w.pixelX + moveWX;
+                nextTileX = Math.floor((nextPixelX + tileSize / 2) / tileSize);
+            }
+        } else if (w.axis === "vertical") {
+            if (
+                nextTileY < w.min ||
+                nextTileY > w.max ||
+                !map[nextTileY] ||
+                map[nextTileY][w.x] === 1
+            ) {
+                w.dir *= -1;
+                moveWY = w.dir * wallSpeed;
+                nextPixelY = w.pixelY + moveWY;
+                nextTileY = Math.floor((nextPixelY + tileSize / 2) / tileSize);
+            }
+        }
+
+        // Chỉ di chuyển nếu ô tiếp theo là đường (0)
+        if (map[nextTileY] && map[nextTileY][nextTileX] === 0) {
+            w.pixelX = nextPixelX;
+            w.pixelY = nextPixelY;
+
+            // Cập nhật tile logic (để va chạm với player/bot dùng được)
+            w.x = nextTileX;
+            w.y = nextTileY;
+        }
+    });
+
+
+// ⭐⭐⭐ BẤT KỲ BOT NÀO CHẠM NGƯỜI → DIE (trừ khi đang có shield) ⭐⭐⭐
+const hitBot = !shield.active && bots.some(bot => bot.x === player.x && bot.y === player.y);
+// 🧱 MOVING WALL ĐÈ LÊN NGƯỜI → CŨNG CHẾT (trừ khi có shield)
+const hitMovingWall = !shield.active && isMovingWallAt(player.x, player.y);
+
+if (hitBot || hitMovingWall) {
+    // ⭐ RESET PHÍM TRƯỚC KHI ALERT
+    keys.w = false;
+    keys.a = false;
+    keys.s = false;
+    keys.d = false;
+    
+    levelDeaths++;
+
+    alert("💀 Bạn bị bắt / bị tường đè! Hãy thử lại level này.");
+    resetGameState(false);  // không reset deaths
+
+    drawMap();
+    requestAnimationFrame(gameLoop);
+    return;
+}
+
+    // ⭐ Cuối cùng mới vẽ map
+    drawMap();
+    requestAnimationFrame(gameLoop);
+}
+
+
+// ⭐⭐⭐ BẮT ĐẦU VÒNG LẶP GAME (CHỈ 1 LẦN DUY NHẤT!)
+if (!gameLoopStarted) {
+    gameLoopStarted = true;
+    requestAnimationFrame(gameLoop);
+}
+
+// 🆕 THÊM EVENT LISTENER ĐỂ GỌI showLevelSelection TỪ NGOÀI
+document.addEventListener('showLevelSelection', () => {
+    showLevelSelection();
+});
+
+}); // <-- Chỉ đóng DOMContentLoaded 1 lần duy nhất
+
+
+// Xử lý nút đóng sidebar
+const closeSidebarBtn = document.getElementById('closeSidebar');
+if (closeSidebarBtn) {
+    closeSidebarBtn.addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.classList.remove('show');
+        }
+    });
+}
+
+// Đóng sidebar khi click vào overlay (nếu có)
+const sidebar = document.getElementById('sidebar');
+if (sidebar) {
+    sidebar.addEventListener('click', (e) => {
+        // Chỉ đóng khi click vào chính sidebar (không phải nội dung bên trong)
+        if (e.target === sidebar) {
+            sidebar.classList.remove('show');
+        }
+    });
+}

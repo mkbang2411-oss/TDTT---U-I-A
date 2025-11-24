@@ -299,17 +299,21 @@ THEME_CATEGORIES = {
     'spicy_food': {
         'name': 'Đồ cay',
         'keywords': [
-            'cay', 'spicy', 'hot',
-            'lẩu', 'lẩu cay', 'hot pot', 'hotpot',
-            'lẩu thái', 'lẩu tứ xuyên', 'Lẩu',
-            'lẩu ếch', 'lẩu gà',
-            'mì cay', 'mì cay hàn quốc',
-            'tokbokki', 'tteokbokki',
-            'gà cay', 'gà rán cay',
-            'ớt', 'chili',
-            'kim chi', 'kimchi',
-            'bún bò huế', 'mực xào cay',
-            'đồ cay hàn', 'đồ cay thái'
+        'cay', 'spicy', 'hot',
+        'lẩu cay', 'lau cay', 'hot pot cay', 'hotpot cay',  # 🔥 BỎ "lẩu" đơn thuần
+        'lẩu thái', 'lau thai',  # Lẩu Thái thường cay
+        'lẩu tứ xuyên', 'lau tu xuyen', 'tứ xuyên', 'tu xuyen',  # Tứ Xuyên = cay
+        # 🔥 XÓA: 'lẩu ếch', 'lẩu gà' (không chắc cay)
+        'mì cay', 'mi cay', 'mì cay hàn quốc', 'mi cay han quoc',
+        'tokbokki', 'tteokbokki',
+        'gà cay', 'ga cay', 'gà rán cay', 'ga ran cay',
+        'ớt', 'chili',
+        'bún bò huế',  # Bún bò Huế thường cay
+        'mực xào cay', 'muc xao cay',
+        'đồ cay hàn', 'do cay han', 'đồ cay thái', 'do cay thai',
+        'kim chi', 'kimchi',
+        'sườn cay', 'suon cay',
+        'phá lấu', 'pha lau'  # Phá lấu thường cay
         ],
         'icon': '🌶️'
     },
@@ -472,15 +476,18 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                 
                 for single_theme in theme_list:
                     if single_theme == 'food_street':
-                        mo_ta = str(row.get('mo_ta', '')).strip()
-                        if mo_ta == 'Khu ẩm thực':
+                        mo_ta = str(row.get('mo_ta', '')).strip().lower()
+                        # 🔥 SỬA: So sánh linh hoạt hơn, bỏ dấu tiếng Việt
+                        mo_ta_no_accent = normalize_text(mo_ta)  # Bỏ dấu
+                        if 'khu' in mo_ta and 'am thuc' in mo_ta_no_accent:
                             match_found = True
                             food_street_count += 1
                             break
                     
                     elif single_theme == 'michelin':
-                        mo_ta = str(row.get('mo_ta', '')).strip()
-                        if mo_ta == 'Michelin':
+                        mo_ta = str(row.get('mo_ta', '')).strip().lower()
+                        # 🔥 SỬA: Kiểm tra chứa từ "michelin"
+                        if 'michelin' in mo_ta:
                             match_found = True
                             break
                     
@@ -515,8 +522,43 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                 
                 if not match_found:
                     continue
-            
-            # THÊM VÀO RESULTS
+
+            # 🔥 THÊM ĐOẠN NÀY NGAY SAU PHẦN LỌC THEME (sau dòng "if not match_found: continue")
+            # 🔥 LỌC QUÁN NƯỚC - CHỈ CHO PHÉP KHI CÓ THEME coffee_chill
+            if theme and 'coffee_chill' not in theme_list:
+                # Danh sách keyword QUÁN NƯỚC cần loại bỏ
+                drink_keywords = [
+                    'cafe', 'coffee', 'ca phe', 'cà phê',
+                    'trà', 'tea', 'trà sữa', 'milk tea',
+                    'sinh tố', 'smoothie', 'juice', 'nước ép',
+                    'highlands', 'starbucks', 'phúc long', 'trung nguyên',
+                    'gong cha', 'royaltea', 'ding tea', 'tocotoco', 
+                    'koi thé', 'koi the', 'bobapop', 'alley', 
+                    'tiger sugar', 'passio', 'phindi'
+                ]
+                
+                # Kiểm tra tên quán có chứa keyword quán nước không
+                is_drink_place = False
+                for drink_kw in drink_keywords:
+                    drink_kw_normalized = normalize_text_with_accent(drink_kw)
+                    if drink_kw_normalized in name_normalized:
+                        is_drink_place = True
+                        break
+                
+                # Nếu là quán nước → BỎ QUA
+                if is_drink_place:
+                    continue
+
+            # 🔥 Lọc BÁNH MÌ KHỎI THEME dessert_bakery
+            if theme and 'dessert_bakery' in theme_list:
+                # Bỏ dấu để kiểm tra
+                name_for_check = normalize_text(str(row.get('ten_quan', '')))
+                # Loại bỏ tất cả biến thể của bánh mì
+                banh_mi_variants = ['banhmi', 'banh mi', 'banhmy', 'banh my']
+                if any(variant in name_for_check for variant in banh_mi_variants):
+                    continue
+
+            # THÊM VÀO RESULTS (phần code cũ giữ nguyên)
             results.append({
                 'ten_quan': clean_value(row.get('ten_quan', '')),
                 'dia_chi': clean_value(row.get('dia_chi', '')),
@@ -604,13 +646,64 @@ def get_theme_for_meal(meal_key, user_selected_themes):
     Chọn theme phù hợp cho từng bữa ăn
     
     Logic:
-    1. Nếu user CHỌN theme → LUÔN DÙNG theme đó (không tự động đổi)
+    1. Nếu user CHỌN theme → DÙNG theme ưu tiên phù hợp với bữa
     2. Nếu KHÔNG → dùng theme mặc định theo bữa
     """
-    # 🔥 NẾU USER ĐÃ CHỌN THEME → DÙNG LUÔN, KHÔNG ĐỔI
+    # ⚡ DANH SÁCH THEME KHÔNG PHÙ HỢP CHO TỪNG BỮA
+    MEAL_RESTRICTIONS = {
+        'dessert': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'spicy_food'],
+        'morning_drink': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'asian_fusion', 'spicy_food', 'vegetarian'],
+        'afternoon_drink': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'asian_fusion', 'spicy_food', 'vegetarian'],
+        'drink': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'asian_fusion', 'spicy_food', 'vegetarian']
+    }
+    
+    # 🔥 NẾU USER ĐÃ CHỌN THEME
     if user_selected_themes:
-        # Nếu chọn nhiều theme → dùng theme đầu tiên
-        return user_selected_themes[0]
+        # Lọc bỏ theme không phù hợp với bữa này
+        restricted = MEAL_RESTRICTIONS.get(meal_key, [])
+        suitable_themes = [t for t in user_selected_themes if t not in restricted]
+        
+        # ⚡ NẾU LÀ BỮA DRINK → ƯU TIÊN coffee_chill
+        if meal_key in ['morning_drink', 'afternoon_drink', 'drink']:
+            if 'coffee_chill' in suitable_themes:
+                return 'coffee_chill'
+            elif 'dessert_bakery' in suitable_themes:
+                return 'dessert_bakery'
+            elif suitable_themes:
+                return suitable_themes[0]
+            else:
+                return 'coffee_chill'
+        
+        # ⚡ NẾU LÀ TRÁNG MIỆNG → ƯU TIÊN dessert_bakery
+        if meal_key == 'dessert':
+            if 'dessert_bakery' in suitable_themes:
+                return 'dessert_bakery'
+            elif 'street_food' in suitable_themes:  # 🔥 ƯU TIÊN street_food TRƯỚC coffee_chill
+                return 'street_food'
+            elif 'asian_fusion' in suitable_themes:  # 🔥 ƯU TIÊN asian_fusion TRƯỚC coffee_chill
+                return 'asian_fusion'
+            elif 'coffee_chill' in suitable_themes:  # 🔥 coffee_chill cuối cùng (chỉ khi không có lựa chọn khác)
+                return 'coffee_chill'
+            elif suitable_themes:
+                return suitable_themes[0]
+            else:
+                return 'dessert_bakery'
+        
+        # 🔥 CÁC BỮA ĂN CHÍNH → ƯU TIÊN THEME PHÙ HỢP NHẤT
+        # Ưu tiên: street_food > asian_fusion > seafood > spicy_food > luxury_dining
+        priority_order = ['street_food', 'asian_fusion', 'seafood', 'spicy_food', 'luxury_dining', 'vegetarian', 'food_street', 'michelin']
+        
+        for theme in priority_order:
+            if theme in suitable_themes:
+                return theme
+        
+        # Nếu không có theme nào trong priority → lấy theme đầu tiên
+        if suitable_themes:
+            return suitable_themes[0]
+        else:
+            # Không có theme phù hợp → dùng mặc định
+            meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
+            return meal_map['preferred'][0]
     
     # 🔥 NẾU USER KHÔNG CHỌN THEME → Tự động chọn theo bữa
     meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
@@ -618,104 +711,198 @@ def get_theme_for_meal(meal_key, user_selected_themes):
 
 # ==================== GENERATE SMART PLAN ====================
 
-def generate_meal_schedule(time_start_str, time_end_str):
-    """Generate meal schedule based on time range"""
+def generate_meal_schedule(time_start_str, time_end_str, user_selected_themes):
+    """
+    Generate meal schedule dựa trên KHUNG GIỜ thực tế
+    Hỗ trợ khung giờ qua đêm (vd: 7:00 → 6:00 sáng hôm sau)
+    """
     time_start = datetime.strptime(time_start_str, '%H:%M')
     time_end = datetime.strptime(time_end_str, '%H:%M')
     
-    duration_hours = (time_end - time_start).seconds / 3600
+    # 🔥 NẾU GIỜ KẾT THÚC < GIỜ BẮT ĐẦU → COI LÀ NGÀY HÔM SAU
+    if time_end <= time_start:
+        time_end = time_end + timedelta(days=1)
+    
+    start_hour = time_start.hour + time_start.minute / 60.0
+    end_hour = time_end.hour + time_end.minute / 60.0
+    
+    # 🔥 NẾU QUA ĐÊM → CỘNG 24 GIỜ CHO end_hour
+    if time_end.day > time_start.day:
+        end_hour += 24
+    
+    # 🔥 KIỂM TRA CÓ CHỌN THEME KHÔNG
+    has_selected_themes = user_selected_themes and len(user_selected_themes) > 0
+    
+    if has_selected_themes:
+        has_coffee_chill = 'coffee_chill' in user_selected_themes
+        dessert_themes = {'street_food', 'asian_fusion', 'dessert_bakery', 'coffee_chill'}
+        has_dessert_theme = any(theme in dessert_themes for theme in user_selected_themes)
+    else:
+        has_coffee_chill = True
+        has_dessert_theme = True
     
     plan = {}
     
-    if duration_hours >= 12:
-        plan = {
-            'breakfast': {
-                'time': '07:00',
-                'title': 'Bữa sáng',
-                'categories': ['pho', 'banh mi', 'bun'],
-                'icon': '🍳'
-            },
-            'morning_drink': {
-                'time': '09:30',
-                'title': 'Giải khát buổi sáng',
-                'categories': ['tra sua', 'cafe', 'coffee'],
-                'icon': '🧋'
-            },
-            'lunch': {
-                'time': '12:00',
-                'title': 'Bữa trưa',
-                'categories': ['com tam', 'mi', 'bun'],
-                'icon': '🍚'
-            },
-            'afternoon_drink': {
-                'time': '15:00',
+    # 🔥 HÀM HELPER: TÍNH GIỜ VÀ FORMAT
+    def format_time(hour_float):
+        """Chuyển số giờ (có thể > 24) thành HH:MM"""
+        hour_float = hour_float % 24  # Quay vòng 24 giờ
+        return f'{int(hour_float):02d}:{int((hour_float % 1) * 60):02d}'
+    
+    def is_in_range(target_hour, range_start, range_end):
+        """Kiểm tra giờ có nằm trong khoảng không (hỗ trợ qua đêm)"""
+        # Nếu target_hour < start_hour → coi như ngày hôm sau
+        if target_hour < start_hour:
+            target_hour += 24
+        return range_start <= target_hour < range_end and start_hour <= target_hour < end_hour
+    
+    # 🔥 KHUNG GIỜ BỮA SÁNG (6:00 - 10:00)
+    breakfast_time = max(start_hour, 6.5)
+    if breakfast_time < start_hour:
+        breakfast_time += 24
+    if is_in_range(breakfast_time, 6, 10):
+        plan['breakfast'] = {
+            'time': format_time(breakfast_time),
+            'title': 'Bữa sáng',
+            'categories': ['pho', 'banh mi', 'bun'],
+            'icon': '🍳'
+        }
+    
+    # 🔥 ĐỒ UỐNG BUỔI SÁNG (9:30 - 11:30)
+    if has_coffee_chill:
+        morning_drink_time = max(start_hour + 1.5, 9.5)
+        if morning_drink_time < start_hour:
+            morning_drink_time += 24
+        if is_in_range(morning_drink_time, 9.5, 11.5):
+            if 'breakfast' not in plan or (morning_drink_time - start_hour >= 1.5):
+                plan['morning_drink'] = {
+                    'time': format_time(morning_drink_time),
+                    'title': 'Giải khát buổi sáng',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '🧋'
+                }
+    
+    # 🔥 BỮA TRƯA (11:00 - 14:00)
+    lunch_time = max(start_hour, 11.5)
+    if lunch_time < start_hour:
+        lunch_time += 24
+    if 'breakfast' in plan:
+        breakfast_hour = float(plan['breakfast']['time'].split(':')[0]) + float(plan['breakfast']['time'].split(':')[1]) / 60
+        if breakfast_hour < start_hour:
+            breakfast_hour += 24
+        lunch_time = max(lunch_time, breakfast_hour + 3)
+    
+    if is_in_range(lunch_time, 11, 14):
+        plan['lunch'] = {
+            'time': format_time(lunch_time),
+            'title': 'Bữa trưa',
+            'categories': ['com tam', 'mi', 'bun'],
+            'icon': '🍚'
+        }
+    
+    # 🔥 TRÀ CHIỀU (14:00 - 17:00)
+    if has_coffee_chill:
+        afternoon_drink_time = max(start_hour, 14.5)
+        if afternoon_drink_time < start_hour:
+            afternoon_drink_time += 24
+        if 'lunch' in plan:
+            lunch_hour = float(plan['lunch']['time'].split(':')[0]) + float(plan['lunch']['time'].split(':')[1]) / 60
+            if lunch_hour < start_hour:
+                lunch_hour += 24
+            afternoon_drink_time = max(afternoon_drink_time, lunch_hour + 1.5)
+        
+        if is_in_range(afternoon_drink_time, 14, 17):
+            plan['afternoon_drink'] = {
+                'time': format_time(afternoon_drink_time),
                 'title': 'Trà chiều',
                 'categories': ['tra sua', 'cafe', 'coffee'],
                 'icon': '☕'
-            },
-            'dinner': {
-                'time': '18:30',
-                'title': 'Bữa tối',
-                'categories': ['com tam', 'mi cay', 'pho'],
-                'icon': '🍽️'
-            },
-            'dessert': {
-                'time': '20:30',
+            }
+    
+    # 🔥 BỮA TỐI (17:00 - 21:00)
+    dinner_time = max(start_hour, 18)
+    if dinner_time < start_hour:
+        dinner_time += 24
+    if 'lunch' in plan:
+        lunch_hour = float(plan['lunch']['time'].split(':')[0]) + float(plan['lunch']['time'].split(':')[1]) / 60
+        if lunch_hour < start_hour:
+            lunch_hour += 24
+        dinner_time = max(dinner_time, lunch_hour + 4)
+    elif 'breakfast' in plan:
+        breakfast_hour = float(plan['breakfast']['time'].split(':')[0]) + float(plan['breakfast']['time'].split(':')[1]) / 60
+        if breakfast_hour < start_hour:
+            breakfast_hour += 24
+        dinner_time = max(dinner_time, breakfast_hour + 6)
+    
+    if is_in_range(dinner_time, 17, 21):
+        plan['dinner'] = {
+            'time': format_time(dinner_time),
+            'title': 'Bữa tối',
+            'categories': ['com tam', 'mi cay', 'pho'],
+            'icon': '🍽️'
+        }
+    
+    # 🔥 TRÁNG MIỆNG (19:00 - 23:00)
+    if has_dessert_theme:
+        dessert_time = max(start_hour, 20)
+        if dessert_time < start_hour:
+            dessert_time += 24
+        if 'dinner' in plan:
+            dinner_hour = float(plan['dinner']['time'].split(':')[0]) + float(plan['dinner']['time'].split(':')[1]) / 60
+            if dinner_hour < start_hour:
+                dinner_hour += 24
+            dessert_time = max(dessert_time, dinner_hour + 1.5)
+        
+        if is_in_range(dessert_time, 19, 24):  # 🔥 Đến 24h (0h)
+            plan['dessert'] = {
+                'time': format_time(dessert_time),
                 'title': 'Tráng miệng',
                 'categories': ['banh kem', 'kem', 'tra sua'],
                 'icon': '🍰'
             }
+    
+    # 🔥 NẾU KHÔNG CÓ BỮA NÀO → TẠO BỮA MẶC ĐỊNH
+    if len(plan) == 0:
+        plan['meal'] = {
+            'time': time_start_str,
+            'title': 'Bữa ăn',
+            'categories': ['pho', 'com tam', 'bun'],
+            'icon': '🍜'
         }
-    elif duration_hours >= 6:
-        plan = {
-            'meal1': {
-                'time': time_start_str,
-                'title': 'Bữa chính',
-                'categories': ['com tam', 'pho', 'bun'],
-                'icon': '🍚'
-            },
-            'drink': {
-                'time': (time_start + timedelta(hours=2)).strftime('%H:%M'),
-                'title': 'Giải khát',
-                'categories': ['tra sua', 'cafe'],
-                'icon': '☕'
-            },
-            'meal2': {
-                'time': (time_start + timedelta(hours=4)).strftime('%H:%M'),
-                'title': 'Bữa phụ',
-                'categories': ['banh mi', 'mi', 'banh'],
-                'icon': '🥖'
-            }
-        }
-    else:
-        plan = {
-            'meal': {
-                'time': time_start_str,
-                'title': 'Bữa ăn',
-                'categories': ['pho', 'com tam', 'bun'],
-                'icon': '🍜'
-            },
-            'drink': {
-                'time': (time_start + timedelta(hours=1.5)).strftime('%H:%M'),
+        
+        duration_hours = (time_end - time_start).seconds / 3600
+        if has_coffee_chill and duration_hours >= 1.5:
+            drink_time = time_start + timedelta(hours=duration_hours * 0.7)
+            plan['drink'] = {
+                'time': drink_time.strftime('%H:%M'),
                 'title': 'Giải khát',
                 'categories': ['tra sua', 'cafe'],
                 'icon': '☕'
             }
-        }
     
     return plan
 
-def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00', radius_km=None):
+def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00', radius_km=None):
     """Tạo kế hoạch ăn uống thông minh"""
     
     if radius_km is None or radius_km <= 0:
-        return {{
+        return {
             'error': True,
             'message': 'Vui lòng chọn bán kính tìm kiếm'
-        }}
+        }
     
     df = pd.read_csv(csv_file)
-    plan = generate_meal_schedule(start_time, end_time)
+    
+    # 🔥 PARSE USER THEMES TRƯỚC
+    user_selected_themes = []
+    if theme:
+        if isinstance(theme, str):
+            user_selected_themes = [t.strip() for t in theme.split(',')]
+        elif isinstance(theme, list):
+            user_selected_themes = theme
+    
+    # 🔥 TRUYỀN user_selected_themes VÀO generate_meal_schedule
+    plan = generate_meal_schedule(start_time, end_time, user_selected_themes)
     
     current_lat, current_lon = user_lat, user_lon
     used_place_ids = set()
@@ -746,24 +933,46 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data.csv', theme=None, user
             filters, excluded_ids=used_place_ids, top_n=20
         )
         
-        # 🔥 LỌC CHẶT THEO KEYWORD - KHÔNG CÓ THÌ BỎ BỮA
-        if places and key in MEAL_TYPE_KEYWORDS:
-            meal_keywords = MEAL_TYPE_KEYWORDS[key]
+        # 🔥 LỌC ĐẶC BIỆT: Loại bánh mì khỏi bữa tráng miệng
+        if key == 'dessert' and places:
             filtered_places = []
+            for p in places:
+                name_lower = normalize_text(p['ten_quan'])  # Dùng normalize_text (BỎ DẤU)
+                # Loại bỏ tất cả quán có "banh mi" hoặc "banhmi"
+                if 'banhmi' not in name_lower and 'banh mi' not in name_lower:
+                    filtered_places.append(p)
+            places = filtered_places
+        
+        # 🔥 Lọc CHẶT THEO KEYWORD - NHƯNG BỎ QUA CHO THEME ĐẶC BIỆT
+        if places and key in MEAL_TYPE_KEYWORDS:
+            # ⚡ KIỂM TRA XEM CÓ PHẢI THEME ĐẶC BIỆT KHÔNG
+            skip_keyword_filter = False
             
-            for place in places:
-                name_normalized = normalize_text_with_accent(place['ten_quan'])
+            if meal_theme in ['food_street', 'michelin', 'luxury_dining']:
+                skip_keyword_filter = True
+                print(f"⚡ Theme đặc biệt '{meal_theme}' - BỎ QUA lọc keyword")
+            
+            # ⚡ CHỈ LỌC NẾU KHÔNG PHẢI THEME ĐẶC BIỆT
+            if not skip_keyword_filter:
+                meal_keywords = MEAL_TYPE_KEYWORDS[key]
+                filtered_places = []
                 
-                for kw in meal_keywords:
-                    kw_normalized = normalize_text_with_accent(kw)
-                    search_text = ' ' + name_normalized + ' '
-                    search_keyword = ' ' + kw_normalized + ' '
+                for place in places:
+                    name_normalized = normalize_text_with_accent(place['ten_quan'])
                     
-                    if search_keyword in search_text:
-                        filtered_places.append(place)
-                        break
-            
-            places = filtered_places  # 🔥 LUÔN THAY THẾ
+                    for kw in meal_keywords:
+                        kw_normalized = normalize_text_with_accent(kw)
+                        search_text = ' ' + name_normalized + ' '
+                        search_keyword = ' ' + kw_normalized + ' '
+                        
+                        if search_keyword in search_text:
+                            filtered_places.append(place)
+                            break
+                
+                places = filtered_places
+                print(f"✅ Đã lọc keyword cho theme '{meal_theme}', còn {len(places)} quán")
+            else:
+                print(f"⚡ Giữ nguyên {len(places)} quán cho theme '{meal_theme}'")
         
         if places:
             places_found += 1
@@ -871,31 +1080,16 @@ def get_food_planner_html():
 /* ========== SIDE PANEL ========== */
 .food-planner-panel {
     position: fixed;
-    top: 0px;
+    top: 0;
     right: -550px;
     width: 550px;
     height: 100vh;
     background: white;
     z-index: 999999 !important;
     transition: right 0.3s ease;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.18);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-}
-
-.food-planner-panel::-webkit-scrollbar {
-    width: 6px;
-}
-
-.food-planner-panel::-webkit-scrollbar-track {
-    background: transparent; /* Nền thanh cuộn trong suốt */
-}
-
-.food-planner-panel::-webkit-scrollbar-thumb {
-    /* Màu cam nhạt mờ, giống với chatbot: rgba(255,107,53,0.3) */
-    background: rgba(255, 44, 44, 0.3);
-    border-radius: 3px;
 }
 
 .food-planner-panel.active {
@@ -1336,7 +1530,7 @@ def get_food_planner_html():
 
 .timeline-line {
     position: absolute;
-    left: 80px;
+    left: 120px; /* 🔥 TĂNG từ 80px lên 120px */
     top: 12px;
     bottom: 15px;
     width: 3px;
@@ -1346,7 +1540,7 @@ def get_food_planner_html():
 .meal-item {
     position: relative;
     margin-bottom: 25px;
-    padding-left: 100px;
+    padding-left: 130px;
 }
 
 .meal-item:last-child {
@@ -1361,7 +1555,7 @@ def get_food_planner_html():
     position: absolute;
     left: 0;
     top: 0;
-    width: 75px;
+    width: 115px; /* 🔥 TĂNG từ 75px lên 115px */
     text-align: right;
     padding-right: 15px;
 }
@@ -1380,7 +1574,7 @@ def get_food_planner_html():
 
 .time-dot {
     position: absolute;
-    left: 72px;
+    left: 112px; /* 🔥 TĂNG từ 72px lên 112px */
     top: 8px;
     width: 16px;
     height: 16px;
@@ -1419,6 +1613,78 @@ def get_food_planner_html():
     border-color: #45a049;
     background: #e8f5e9;
 }
+
+/* ========== HIGHLIGHT EFFECT KHI SẮP XẾP LẠI ========== */
+@keyframes repositionPulse {
+    0%, 100% {
+        background: #FFF5F0;
+        border-color: #FFE5D9;
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    }
+    25% {
+        background: #E8F5E9;
+        border-color: #4caf50;
+        box-shadow: 0 0 0 8px rgba(76, 175, 80, 0.3);
+    }
+    50% {
+        background: #FFF5F0;
+        border-color: #FFE5D9;
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    }
+    75% {
+        background: #E8F5E9;
+        border-color: #4caf50;
+        box-shadow: 0 0 0 8px rgba(76, 175, 80, 0.3);
+    }
+}
+
+/* ========== DRAG & DROP VISUAL FEEDBACK ========== */
+.meal-item.drag-over {
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+}
+
+.meal-card-vertical.drop-target {
+    border: 2px dashed #4caf50 !important;
+    background: #E8F5E9 !important;
+}
+
+/* Hiệu ứng sau khi thả - giống với repositioned */
+.meal-card-vertical.just-dropped {
+    animation: repositionPulse 1.5s ease-in-out;
+}
+
+.meal-card-vertical.repositioned {
+    animation: repositionPulse 1.5s ease-in-out;
+}
+
+/* Icon di chuyển lên/xuống */
+.reposition-indicator {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 24px;
+    animation: slideIndicator 0.8s ease-out;
+    pointer-events: none;
+    z-index: 100;
+}
+
+@keyframes slideIndicator {
+    0% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.5);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.8);
+    }
+}
+
 
 .meal-title-vertical {
     font-size: 15px;
@@ -1543,13 +1809,14 @@ def get_food_planner_html():
 }
 
 .time-input-inline {
-    padding: 4px 8px;
+    padding: 6px 10px;
     border: 2px solid #FFE5D9;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     outline: none;
-    width: 80px;
+    width: 100px;
+    text-align: center;
 }
 
 .time-input-inline:focus {
@@ -1670,7 +1937,8 @@ def get_food_planner_html():
 /* ========== MANUAL MODE ========== */
 .meal-item.drag-over {  
     background-color: #fff3cd !important;  
-    border: 2px solid #
+    border: 2px solid #ffc107 !important;
+}
 
 .manual-plans-container {
     transition: max-height 0.3s ease;
@@ -1848,7 +2116,6 @@ def get_food_planner_html():
 }
 
 /* ========== STYLE INPUT TÊN CARD ========== */
-/* ========== STYLE INPUT TÊN CARD ========== */
 .meal-title-input {
     padding: 4px 8px;
     border: 2px solid #FFE5D9;
@@ -1881,17 +2148,54 @@ def get_food_planner_html():
     }
     
     .meal-item {
-        padding-left: 100px;
+        padding-left: 130px; /* 🔥 TĂNG từ 100px */
     }
     
     .time-dot {
-        left: 72px;
+        left: 112px; /* 🔥 TĂNG từ 72px */
+    }
+    
+    .timeline-line {
+        left: 120px; /* 🔥 THÊM DÒNG NÀY */
+    }
+    
+    .time-marker {
+        width: 115px; /* 🔥 THÊM DÒNG NÀY */
     }
     
     .food-planner-btn {
         right: 20px;
     }
 }
+
+/* ========== AUTO-SCROLL ZONE INDICATOR ========== */
+.panel-content.scrolling-up::before,
+.panel-content.scrolling-down::after {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: 200px;
+    pointer-events: none;
+    z-index: 999;
+    animation: scrollZonePulse 1s infinite;
+}
+
+.panel-content.scrolling-up::before {
+    top: 60px; /* Dưới header */
+    background: linear-gradient(to bottom, rgba(76, 175, 80, 0.1), transparent);
+}
+
+.panel-content.scrolling-down::after {
+    bottom: 0;
+    background: linear-gradient(to top, rgba(76, 175, 80, 0.1), transparent);
+}
+
+@keyframes scrollZonePulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.8; }
+}
+
 </style>
 
 <!-- Food Planner Button -->
@@ -2171,13 +2475,17 @@ function savePlan() {
     mealItems.forEach(item => {
         const mealKey = item.dataset.mealKey;
         if (mealKey && currentPlan[mealKey]) {
-            // 🔥 CẬP NHẬT NGAY TỪ INPUT TRƯỚC KHI LƯU
-            const timeInput = item.querySelector('.time-input-inline');
-            if (timeInput && timeInput.value) {
-                currentPlan[mealKey].time = timeInput.value;
+            // 🔥 CẬP NHẬT THỜI GIAN từ input giờ/phút
+            const hourInput = item.querySelector('.time-input-hour[data-meal-key="' + mealKey + '"]');
+            const minuteInput = item.querySelector('.time-input-minute[data-meal-key="' + mealKey + '"]');
+            
+            if (hourInput && minuteInput) {
+                const hour = hourInput.value.padStart(2, '0');
+                const minute = minuteInput.value.padStart(2, '0');
+                currentPlan[mealKey].time = `${hour}:${minute}`;
             }
             
-            // Kiểm tra các input khác
+            // 🔥 CẬP NHẬT TITLE từ input (CHỈ GIỮ 1 LẦN)
             const titleInput = item.querySelector('input[onchange*="updateMealTitle"]');
             if (titleInput && titleInput.value) {
                 currentPlan[mealKey].title = titleInput.value;
@@ -2344,6 +2652,20 @@ function toggleEditMode() {
         }
     }
     
+    // 🔥 LƯU TITLE TỪ INPUT TRƯỚC KHI RENDER LẠI
+    if (isEditMode && currentPlan) {
+        const mealItems = document.querySelectorAll('.meal-item');
+        mealItems.forEach(item => {
+            const mealKey = item.dataset.mealKey;
+            if (mealKey && currentPlan[mealKey]) {
+                const titleInput = item.querySelector('input[onchange*="updateMealTitle"]');
+                if (titleInput && titleInput.value) {
+                    currentPlan[mealKey].title = titleInput.value;
+                }
+            }
+        });
+    }
+    
     if (currentPlan) {
         displayPlanVertical(currentPlan, isEditMode);
     }
@@ -2382,9 +2704,9 @@ function openFoodPlanner() {
     isPlannerOpen = true;
     loadSavedPlans();
     
-    // 🔥 TỰ ĐỘNG VẼ LẠI ĐƯỜNG ĐI KHI MỞ PANEL
-    if (currentPlan && !isEditMode) {
-        setTimeout(() => {
+    // Tự động vẽ lại đường đi
+    setTimeout(() => {
+        if (currentTab === 'auto' && currentPlan && !isEditMode) {
             const hasPlaces = Object.keys(currentPlan)
                 .filter(k => k !== '_order')
                 .some(k => currentPlan[k] && currentPlan[k].place);
@@ -2392,8 +2714,13 @@ function openFoodPlanner() {
             if (hasPlaces) {
                 drawRouteOnMap(currentPlan);
             }
-        }, 300);
-    }
+        } else if (currentTab === 'manual' && currentManualPlanId && !isManualEditMode) {
+            const hasPlaces = manualPlan.some(item => item.place);
+            if (hasPlaces) {
+                drawManualRouteOnMap();
+            }
+        }
+    }, 300);
 }
 
 function closeFoodPlanner() {
@@ -2456,10 +2783,8 @@ async function generateAutoPlan() {
         const endMinute = document.getElementById('endMinute').value.padStart(2, '0');
         const endTime = `${endHour}:${endMinute}`;
         
-        // 🔥 ƯU TIÊN LẤY TỪ WINDOW (ĐÃ LƯU TRONG script.js)
         const radius = window.currentRadius || document.getElementById('radius')?.value || '';
         
-        // 🔥 KIỂM TRA BÁN KÍNH
         if (!radius || radius === '') {
             resultDiv.innerHTML = `
                 <div class="error-message">
@@ -2474,7 +2799,7 @@ async function generateAutoPlan() {
         const tastesParam = selectedFlavors.join(',');
         
         const randomSeed = Date.now();
-        let url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${startTime}&end_time=${endTime}&radius_km=${radius}`; // 🔥 THÊM RADIUS
+        let url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${startTime}&end_time=${endTime}&radius_km=${radius}`;
         
         if (selectedThemes.length > 0) {
             url += `&theme=${selectedThemes.join(',')}`;
@@ -2486,7 +2811,6 @@ async function generateAutoPlan() {
         
         const response = await fetch(url);
         
-        // 🔥 XỬ LÝ LỖI TỪ SERVER
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || 'Không thể tạo kế hoạch');
@@ -2494,7 +2818,6 @@ async function generateAutoPlan() {
         
         const data = await response.json();
         
-        // 🔥 KIỂM TRA LỖI TRONG RESPONSE
         if (data.error) {
             resultDiv.innerHTML = `
                 <div class="error-message">
@@ -2506,9 +2829,7 @@ async function generateAutoPlan() {
         }
         
         currentPlan = data;
-        currentPlanId = null;
-        window.currentPlanName = null;
-
+        
         if (!filtersCollapsed) {
             toggleFilters();
         }
@@ -2543,7 +2864,24 @@ function displayPlanVertical(plan, editMode = false) {
         clearRoutes();
         return;
     }
-    
+
+    // 🔥 KIỂM TRA TRƯỜNG HỢP ĐÃ XÓA HẾT QUÁN TRONG EDIT MODE
+    const allKeys = Object.keys(plan).filter(k => k !== '_order');
+    if (allKeys.length === 0 && editMode) {
+        resultDiv.innerHTML = `
+            <div class="error-message">
+                <h3>🗑️ Đã xóa hết lịch trình</h3>
+                <p>Bạn đã xóa tất cả các quán trong lịch trình này</p>
+                <button onclick="toggleEditMode(); generateAutoPlan();" 
+                    style="margin-top: 15px; padding: 10px 20px; background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                    ✨ Tạo lại lịch trình
+                </button>
+            </div>
+        `;
+        clearRoutes();
+        return;
+    }
+
     let html = `
     <div class="schedule-header">
         <h3 class="schedule-title">
@@ -2586,14 +2924,25 @@ function displayPlanVertical(plan, editMode = false) {
     const mealOrder = ['breakfast', 'morning_drink', 'lunch', 'afternoon_drink', 'dinner', 'dessert', 'meal', 'meal1', 'drink', 'meal2'];
     let hasPlaces = false;
     
-    // 🔥 SẮP XẾP THEO THỜI GIAN THỰC TẾ
-    const allMealKeys = Object.keys(plan)
-        .filter(k => k !== '_order' && plan[k] && plan[k].time)
-        .sort((a, b) => {
-            const timeA = plan[a].time || '00:00';
-            const timeB = plan[b].time || '00:00';
-            return timeA.localeCompare(timeB);
-        });
+    // 🔥 ƯU TIÊN THỨ TỰ ĐÃ KÉO THẢ (_order), CHỈ SORT KHI CHƯA CÓ _order
+    let allMealKeys;
+
+    if (plan._order && plan._order.length > 0) {
+        // ✅ Nếu có _order (đã kéo thả) → GIỮ NGUYÊN thứ tự
+        allMealKeys = plan._order.filter(k => plan[k] && plan[k].time);
+    } else {
+        // ✅ Nếu chưa có _order → Sắp xếp theo thời gian
+        allMealKeys = Object.keys(plan)
+            .filter(k => k !== '_order' && plan[k] && plan[k].time)
+            .sort((a, b) => {
+                const timeA = plan[a].time || '00:00';
+                const timeB = plan[b].time || '00:00';
+                return timeA.localeCompare(timeB);
+            });
+        
+        // 🔥 LƯU vào _order để lần sau không bị sort lại
+        plan._order = allMealKeys;
+    }
     
     for (const key of allMealKeys) {
         const meal = plan[key];
@@ -2609,7 +2958,15 @@ function displayPlanVertical(plan, editMode = false) {
                 <div class="meal-item" data-meal-key="${key}">
                     <div class="time-marker">
                         ${editMode ? 
-                            `<input type="time" class="time-input-inline" value="${meal.time}" onchange="updateMealTime('${key}', this.value)">` :
+                            `<div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" min="0" max="23" value="${meal.time.split(':')[0]}" 
+                                    class="time-input-hour" data-meal-key="${key}"
+                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                                <span style="font-weight: bold; color: #FF6B35;">:</span>
+                                <input type="number" min="0" max="59" value="${meal.time.split(':')[1]}" 
+                                    class="time-input-minute" data-meal-key="${key}"
+                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                            </div>` :
                             `<div class="time-badge">${meal.time}</div>`
                         }
                     </div>
@@ -2663,7 +3020,15 @@ function displayPlanVertical(plan, editMode = false) {
             <div class="meal-item" draggable="${editMode}" data-meal-key="${key}">
                 <div class="time-marker">
                     ${editMode ? 
-                        `<input type="time" class="time-input-inline" value="${meal.time}" onchange="updateMealTime('${key}', this.value)">` :
+                        `<div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="number" min="0" max="23" value="${meal.time.split(':')[0]}" 
+                                class="time-input-hour" data-meal-key="${key}"
+                                style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                            <span style="font-weight: bold; color: #FF6B35;">:</span>
+                            <input type="number" min="0" max="59" value="${meal.time.split(':')[1]}" 
+                                class="time-input-minute" data-meal-key="${key}"
+                                style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                        </div>` :
                         `<div class="time-badge">${meal.time}</div>`
                     }
                 </div>
@@ -2744,6 +3109,7 @@ function displayPlanVertical(plan, editMode = false) {
 
     if (editMode) {
         setupDragAndDrop();
+        setTimeout(() => setupEditModeTimeInputs(), 100);
     }
     
     // 🔥 VẼ ĐƯỜNG ĐI KHI HIỂN THỊ KẾ HOẠCH
@@ -2996,140 +3362,163 @@ function drawRouteOnMap(plan) {
     const routeDash = null; // Đường liền
     
     async function drawSingleRoute(startPoint, endPoint, index) {
-    try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
-        
-        // 🔥 THÊM: Truyền signal vào fetch
-        const response = await fetch(url, { signal });
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
+            
+            // 🔥 THÊM: Truyền signal vào fetch
+            const response = await fetch(url, { signal });
 
-        const data = await response.json();
-        
-        if (data.code === 'Ok' && data.routes && data.routes[0]) {
-            const route = data.routes[0];
-            const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+            const data = await response.json();
             
-            const color = getRouteColor(index, totalRoutes);
-            
-            // 🔥 KIỂM TRA TRÙNG VÀ TÍNH OFFSET (pixels nhỏ)
-            let offsetPixels = 0;
-            
-            for (let i = 0; i < drawnSegments.length; i++) {
-                if (checkRouteOverlap(coords, drawnSegments[i].coords)) {
-                    const overlapCount = drawnSegments.filter(seg => 
-                        checkRouteOverlap(coords, seg.coords)
-                    ).length;
+            if (data.code === 'Ok' && data.routes && data.routes[0]) {
+                const route = data.routes[0];
+                const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                
+                const color = getRouteColor(index, totalRoutes);
+                
+                // 🔥 KIỂM TRA TRÙNG VÀ TÍNH OFFSET (pixels nhỏ)
+                let offsetPixels = 0;
+                
+                for (let i = 0; i < drawnSegments.length; i++) {
+                    if (checkRouteOverlap(coords, drawnSegments[i].coords)) {
+                        const overlapCount = drawnSegments.filter(seg => 
+                            checkRouteOverlap(coords, seg.coords)
+                        ).length;
+                        
+                        // 🔥 Offset 3 pixels mỗi đường (luân phiên trái/phải)
+                        offsetPixels = (overlapCount % 2 === 0) ? 8 : -8;
+                        console.log(`⚠️ Đường ${index} trùng ${overlapCount} đường, offset = ${offsetPixels}px`);
+                        break;
+                    }
+                }
+                
+                drawnSegments.push({ coords: coords, index: index });
+                
+                // 🔥 Vẽ VIỀN TRẮNG
+                const outlinePolyline = L.polyline(coords, {
+                    color: '#FFFFFF',
+                    weight: routeWeight + 3,
+                    opacity: 0.9,
+                    smoothFactor: 1
+                }).addTo(map);
+                
+                routeLayers.push(outlinePolyline);
+                
+                // 🔥 VẼ ĐƯỜNG MÀU CHÍNH
+                const mainPolyline = L.polyline(coords, {
+                    color: color,
+                    weight: routeWeight,
+                    opacity: 1,
+                    smoothFactor: 1,
+                    dashArray: null
+                }).addTo(map);
+                
+                // ✅ ÁP DỤNG OFFSET SAU KHI ADD VÀO MAP (cho cả 2 layer)
+                if (offsetPixels !== 0) {
+                    if (typeof outlinePolyline.setOffset === 'function') {
+                        outlinePolyline.setOffset(offsetPixels);
+                    }
+                    if (typeof mainPolyline.setOffset === 'function') {
+                        mainPolyline.setOffset(offsetPixels);
+                    }
+                }
+                
+                const tooltipText = index === 0 
+                    ? `🚗 Khởi hành → ${endPoint.name}`
+                    : `${index}. ${startPoint.name} → ${endPoint.name}`;
+                
+                mainPolyline.bindTooltip(tooltipText, {
+                    permanent: false,
+                    direction: 'center',
+                    className: 'route-tooltip'
+                });
+                
+                routeLayers.push(mainPolyline);
+                
+                // ĐÁNH SỐ QUÁN
+                if (!startPoint.isUser) {
+                    const numberMarker = L.marker([startPoint.lat, startPoint.lon], {
+                        icon: L.divIcon({
+                            className: 'route-number-marker',
+                            html: `<div style="
+                                background: ${color};
+                                color: white;
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: bold;
+                                font-size: 18px;
+                                border: 4px solid white;
+                                box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                                z-index: 1000;
+                            ">${index}</div>`,
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 20]
+                        }),
+                        zIndexOffset: 1000
+                    }).addTo(map);
                     
-                    // 🔥 Offset 3 pixels mỗi đường (luân phiên trái/phải)
-                    offsetPixels = (overlapCount % 2 === 0) ? 8 : -8;
-                    console.log(`⚠️ Đường ${index} trùng ${overlapCount} đường, offset = ${offsetPixels}px`);
-                    break;
+                    routeLayers.push(numberMarker);
                 }
-            }
-            
-            drawnSegments.push({ coords: coords, index: index });
-            
-            // 🔥 Vẽ VIỀN TRẮNG
-            const outlinePolyline = L.polyline(coords, {
-                color: '#FFFFFF',
-                weight: routeWeight + 3,
-                opacity: 0.9,
-                smoothFactor: 1
-            }).addTo(map);
-            
-            routeLayers.push(outlinePolyline);
-            
-            // 🔥 VẼ ĐƯỜNG MÀU CHÍNH
-            const mainPolyline = L.polyline(coords, {
-                color: color,
-                weight: routeWeight,
-                opacity: 1,
-                smoothFactor: 1,
-                dashArray: null
-            }).addTo(map);
-            
-            // ✅ ÁP DỤNG OFFSET SAU KHI ADD VÀO MAP (cho cả 2 layer)
-            if (offsetPixels !== 0) {
-                if (typeof outlinePolyline.setOffset === 'function') {
-                    outlinePolyline.setOffset(offsetPixels);
-                }
-                if (typeof mainPolyline.setOffset === 'function') {
-                    mainPolyline.setOffset(offsetPixels);
-                }
-            }
-            
-            const tooltipText = index === 0 
-                ? `🚗 Khởi hành → ${endPoint.name}`
-                : `${index}. ${startPoint.name} → ${endPoint.name}`;
-            
-            mainPolyline.bindTooltip(tooltipText, {
-                permanent: false,
-                direction: 'center',
-                className: 'route-tooltip'
-            });
-            
-            routeLayers.push(mainPolyline);
-            
-            // ĐÁNH SỐ QUÁN
-            if (!startPoint.isUser) {
-                const numberMarker = L.marker([startPoint.lat, startPoint.lon], {
-                    icon: L.divIcon({
-                        className: 'route-number-marker',
-                        html: `<div style="
-                            background: ${color};
-                            color: white;
-                            width: 40px;
-                            height: 40px;
-                            border-radius: 50%;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-weight: bold;
-                            font-size: 18px;
-                            border: 4px solid white;
-                            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-                            z-index: 1000;
-                        ">${index}</div>`,
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
-                    }),
-                    zIndexOffset: 1000
-                }).addTo(map);
                 
-                routeLayers.push(numberMarker);
-            }
-            
-            // ĐÁNH SỐ QUÁN CUỐI
-            if (index === totalRoutes - 1 && !endPoint.isUser) {
-                const lastColor = getRouteColor(totalRoutes - 1, totalRoutes);
-                const lastNumberMarker = L.marker([endPoint.lat, endPoint.lon], {
-                    icon: L.divIcon({
-                        className: 'route-number-marker',
-                        html: `<div style="
-                            background: ${lastColor};
-                            color: white;
-                            width: 40px;
-                            height: 40px;
-                            border-radius: 50%;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-weight: bold;
-                            font-size: 18px;
-                            border: 4px solid white;
-                            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-                            z-index: 1000;
-                        ">${totalRoutes}</div>`,
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
-                    }),
-                    zIndexOffset: 1000
-                }).addTo(map);
+                // ĐÁNH SỐ QUÁN CUỐI
+                if (index === totalRoutes - 1 && !endPoint.isUser) {
+                    const lastColor = getRouteColor(totalRoutes - 1, totalRoutes);
+                    const lastNumberMarker = L.marker([endPoint.lat, endPoint.lon], {
+                        icon: L.divIcon({
+                            className: 'route-number-marker',
+                            html: `<div style="
+                                background: ${lastColor};
+                                color: white;
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: bold;
+                                font-size: 18px;
+                                border: 4px solid white;
+                                box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                                z-index: 1000;
+                            ">${totalRoutes}</div>`,
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 20]
+                        }),
+                        zIndexOffset: 1000
+                    }).addTo(map);
+                    
+                    routeLayers.push(lastNumberMarker);
+                }
                 
-                routeLayers.push(lastNumberMarker);
+            } else {
+                console.log('Không tìm thấy route, dùng đường thẳng');
+                const color = getRouteColor(index, totalRoutes);
+                
+                const outlineLine = L.polyline(
+                    [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                    { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
+                ).addTo(map);
+                routeLayers.push(outlineLine);
+
+                const mainStraightLine = L.polyline(
+                    [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                    { color: color, weight: routeWeight, opacity: 1 }
+                ).addTo(map);
+                routeLayers.push(mainStraightLine);
             }
             
-        } else {
-            console.log('Không tìm thấy route, dùng đường thẳng');
+        } catch (error) {
+            // 🔥 BỎ QUA NẾU REQUEST BỊ HỦY
+            if (error.name === 'AbortError') {
+                console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
+                return;
+            }
+        
+            console.error('Lỗi vẽ route:', error);
             const color = getRouteColor(index, totalRoutes);
             
             const outlineLine = L.polyline(
@@ -3144,30 +3533,7 @@ function drawRouteOnMap(plan) {
             ).addTo(map);
             routeLayers.push(mainStraightLine);
         }
-        
-    } catch (error) {
-        // 🔥 BỎ QUA NẾU REQUEST BỊ HỦY
-        if (error.name === 'AbortError') {
-            console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
-            return;
-        }
-    
-        console.error('Lỗi vẽ route:', error);
-        const color = getRouteColor(index, totalRoutes);
-        
-        const outlineLine = L.polyline(
-            [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
-            { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
-        ).addTo(map);
-        routeLayers.push(outlineLine);
-
-        const mainStraightLine = L.polyline(
-            [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
-            { color: color, weight: routeWeight, opacity: 1 }
-        ).addTo(map);
-        routeLayers.push(mainStraightLine);
     }
-}
     
     // Vẽ từng đoạn route
     (async function drawAllRoutes() {
@@ -3196,6 +3562,229 @@ function drawRouteOnMap(plan) {
         }
     })();
 }
+
+function drawManualRouteOnMap() {
+    if (typeof map === 'undefined' || typeof L === 'undefined') {
+        console.log('Map chưa sẵn sàng');
+        return;
+    }
+    
+    clearRoutes();
+    currentRouteAbortController = new AbortController();
+    const signal = currentRouteAbortController.signal;
+    
+    const drawnSegments = [];
+    const waypoints = [];
+    
+    if (window.currentUserCoords) {
+        waypoints.push({
+            lat: window.currentUserCoords.lat,
+            lon: window.currentUserCoords.lon,
+            name: 'Vị trí của bạn',
+            isUser: true
+        });
+    }
+    
+    const sortedPlan = [...manualPlan].sort((a, b) => a.time.localeCompare(b.time));
+    
+    sortedPlan.forEach(item => {
+        if (item.place) {
+            waypoints.push({
+                lat: item.place.lat,
+                lon: item.place.lon,
+                name: item.place.ten_quan,
+                time: item.time,
+                isUser: false
+            });
+        }
+    });
+    
+    if (waypoints.length < 2) {
+        console.log('Không đủ điểm để vẽ đường');
+        return;
+    }
+    
+    const totalRoutes = waypoints.length - 1;
+    const routeWeight = 6;
+    
+    // 🔥 FUNCTION drawSingleRoute - ĐÚNG CẤU TRÚC
+    async function drawSingleRoute(startPoint, endPoint, index) {
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
+            const response = await fetch(url, { signal });
+            const data = await response.json();
+            
+            if (data.code === 'Ok' && data.routes && data.routes[0]) {
+                const route = data.routes[0];
+                const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                const color = getRouteColor(index, totalRoutes);
+                
+                let offsetPixels = 0;
+                for (let i = 0; i < drawnSegments.length; i++) {
+                    if (checkRouteOverlap(coords, drawnSegments[i].coords)) {
+                        const overlapCount = drawnSegments.filter(seg => 
+                            checkRouteOverlap(coords, seg.coords)
+                        ).length;
+                        offsetPixels = (overlapCount % 2 === 0) ? 8 : -8;
+                        break;
+                    }
+                }
+                
+                drawnSegments.push({ coords: coords, index: index });
+                
+                const outlinePolyline = L.polyline(coords, {
+                    color: '#FFFFFF',
+                    weight: routeWeight + 3,
+                    opacity: 0.9,
+                    smoothFactor: 1
+                }).addTo(map);
+                routeLayers.push(outlinePolyline);
+                
+                const mainPolyline = L.polyline(coords, {
+                    color: color,
+                    weight: routeWeight,
+                    opacity: 1,
+                    smoothFactor: 1,
+                    dashArray: null
+                }).addTo(map);
+                
+                if (offsetPixels !== 0) {
+                    if (typeof outlinePolyline.setOffset === 'function') {
+                        outlinePolyline.setOffset(offsetPixels);
+                    }
+                    if (typeof mainPolyline.setOffset === 'function') {
+                        mainPolyline.setOffset(offsetPixels);
+                    }
+                }
+                
+                const tooltipText = index === 0 
+                    ? `🚗 Khởi hành → ${endPoint.name}`
+                    : `${index}. ${startPoint.name} → ${endPoint.name}`;
+                
+                mainPolyline.bindTooltip(tooltipText, {
+                    permanent: false,
+                    direction: 'center',
+                    className: 'route-tooltip'
+                });
+                
+                routeLayers.push(mainPolyline);
+                
+                if (!startPoint.isUser) {
+                    const numberMarker = L.marker([startPoint.lat, startPoint.lon], {
+                        icon: L.divIcon({
+                            className: 'route-number-marker',
+                            html: `<div style="
+                                background: ${color};
+                                color: white;
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: bold;
+                                font-size: 18px;
+                                border: 4px solid white;
+                                box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                                z-index: 1000;
+                            ">${index}</div>`,
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 20]
+                        }),
+                        zIndexOffset: 1000
+                    }).addTo(map);
+                    routeLayers.push(numberMarker);
+                }
+                
+                if (index === totalRoutes - 1 && !endPoint.isUser) {
+                    const lastColor = getRouteColor(totalRoutes - 1, totalRoutes);
+                    const lastNumberMarker = L.marker([endPoint.lat, endPoint.lon], {
+                        icon: L.divIcon({
+                            className: 'route-number-marker',
+                            html: `<div style="
+                                background: ${lastColor};
+                                color: white;
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: bold;
+                                font-size: 18px;
+                                border: 4px solid white;
+                                box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                                z-index: 1000;
+                            ">${totalRoutes}</div>`,
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 20]
+                        }),
+                        zIndexOffset: 1000
+                    }).addTo(map);
+                    routeLayers.push(lastNumberMarker);
+                }
+            } else {
+                console.log('Không tìm thấy route, dùng đường thẳng');
+                const color = getRouteColor(index, totalRoutes);
+                
+                const outlineLine = L.polyline(
+                    [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                    { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
+                ).addTo(map);
+                routeLayers.push(outlineLine);
+
+                const mainStraightLine = L.polyline(
+                    [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                    { color: color, weight: routeWeight, opacity: 1 }
+                ).addTo(map);
+                routeLayers.push(mainStraightLine);
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
+                return;
+            }
+            console.error('Lỗi vẽ route:', error);
+            const color = getRouteColor(index, totalRoutes);
+            
+            const outlineLine = L.polyline(
+                [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
+            ).addTo(map);
+            routeLayers.push(outlineLine);
+
+            const mainStraightLine = L.polyline(
+                [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
+                { color: color, weight: routeWeight, opacity: 1 }
+            ).addTo(map);
+            routeLayers.push(mainStraightLine);
+        }
+    } // 🔥 ĐÓNG drawSingleRoute() Ở ĐÂY
+    
+    // 🔥 drawAllRoutes() PHẢI NẰM NGOÀI drawSingleRoute()
+    (async function drawAllRoutes() {
+        try {
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                if (signal.aborted) {
+                    console.log('⚠️ Đã dừng vẽ tất cả routes do bị hủy');
+                    return;
+                }
+                await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
+            }
+            
+            if (!signal.aborted) {
+                const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
+                map.fitBounds(bounds, { padding: [50, 50] });
+                console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường (Manual Mode)`);
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('Lỗi trong drawAllRoutes:', error);
+            }
+        }
+    })();
+} // 🔥 ĐÓNG drawManualRouteOnMap() Ở ĐÂY
+
 
 // ========== DELETE MEAL SLOT ==========
 function deleteMealSlot(mealKey) {
@@ -3328,6 +3917,193 @@ function setupDragAndDrop() {
     }
 }
 
+function setupManualDragAndDrop() {
+    const mealItems = document.querySelectorAll('.meal-item[draggable="true"]');
+    
+    mealItems.forEach(item => {
+        item.addEventListener('dragstart', handleManualDragStart);
+        item.addEventListener('dragend', handleManualDragEnd);
+        item.addEventListener('dragover', handleManualDragOverItem);
+    });
+    
+    const container = document.querySelector('.timeline-container');
+    if (container) {
+        container.addEventListener('dragover', handleManualDragOver);
+        container.addEventListener('drop', handleManualDrop);
+    }
+}
+
+function handleManualDragStart(e) {
+    draggedElement = this;
+    window.draggedElement = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+    lastTargetElement = null;
+    startAutoScroll();
+}
+
+function handleManualDragEnd(e) {
+    if (draggedElement) {
+        draggedElement.classList.remove('dragging');
+    }
+    
+    document.querySelectorAll('.meal-card-vertical.drop-target').forEach(card => {
+        card.classList.remove('drop-target');
+    });
+    
+    draggedElement = null;
+    window.draggedElement = null;
+    lastDragY = 0;
+    lastTargetElement = null;
+    stopAutoScroll();
+}
+
+function handleManualDragOverItem(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    
+    if (!draggedElement || draggedElement === this) return;
+    
+    e.dataTransfer.dropEffect = 'move';
+    
+    document.querySelectorAll('.meal-card-vertical.drop-target').forEach(card => {
+        card.classList.remove('drop-target');
+    });
+    
+    const targetCard = this.querySelector('.meal-card-vertical');
+    if (targetCard) {
+        targetCard.classList.add('drop-target');
+    }
+    
+    lastTargetElement = this;
+    lastDragY = e.clientY;
+    return false;
+}
+
+function handleManualDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    
+    lastDragY = e.clientY;
+    
+    if (!draggedElement) return;
+    
+    e.dataTransfer.dropEffect = 'move';
+    
+    const afterElement = getDragAfterElement(
+        document.querySelector('.timeline-container'),
+        e.clientY
+    );
+    
+    if (afterElement == null) {
+        document.querySelector('.timeline-container').appendChild(draggedElement);
+    } else {
+        document.querySelector('.timeline-container').insertBefore(draggedElement, afterElement);
+    }
+    
+    return false;
+}
+
+function handleManualDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    if (!draggedElement || !lastTargetElement) return;
+    if (draggedElement === lastTargetElement) return;
+    
+    const draggedId = parseInt(draggedElement.dataset.mealId);
+    const targetId = parseInt(lastTargetElement.dataset.mealId);
+    
+    // Cập nhật title và time từ DOM trước khi swap
+    const draggedTitleInput = draggedElement.querySelector('.time-input-inline');
+    const draggedHourInput = draggedElement.querySelector('.time-input-hour-manual[data-item-id="' + draggedId + '"]');
+    const draggedMinuteInput = draggedElement.querySelector('.time-input-minute-manual[data-item-id="' + draggedId + '"]');
+    
+    const draggedItem = manualPlan.find(i => i.id === draggedId);
+    if (draggedTitleInput && draggedItem) {
+        draggedItem.title = draggedTitleInput.value;
+    }
+    if (draggedHourInput && draggedMinuteInput && draggedItem) {
+        const hour = draggedHourInput.value.padStart(2, '0');
+        const minute = draggedMinuteInput.value.padStart(2, '0');
+        draggedItem.time = `${hour}:${minute}`;
+    }
+    
+    const targetTitleInput = lastTargetElement.querySelector('.time-input-inline');
+    const targetHourInput = lastTargetElement.querySelector('.time-input-hour-manual[data-item-id="' + targetId + '"]');
+    const targetMinuteInput = lastTargetElement.querySelector('.time-input-minute-manual[data-item-id="' + targetId + '"]');
+    
+    const targetItem = manualPlan.find(i => i.id === targetId);
+    if (targetTitleInput && targetItem) {
+        targetItem.title = targetTitleInput.value;
+    }
+    if (targetHourInput && targetMinuteInput && targetItem) {
+        const hour = targetHourInput.value.padStart(2, '0');
+        const minute = targetMinuteInput.value.padStart(2, '0');
+        targetItem.time = `${hour}:${minute}`;
+    }
+    
+    // Swap data
+    const draggedIndex = manualPlan.findIndex(i => i.id === draggedId);
+    const targetIndex = manualPlan.findIndex(i => i.id === targetId);
+    
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+        [manualPlan[draggedIndex], manualPlan[targetIndex]] = [manualPlan[targetIndex], manualPlan[draggedIndex]];
+    }
+    
+    displayManualPlanTimeline();
+    
+    setTimeout(() => {
+        const draggedCard = document.querySelector(`[data-meal-id="${draggedId}"] .meal-card-vertical`);
+        const targetCard = document.querySelector(`[data-meal-id="${targetId}"] .meal-card-vertical`);
+        
+        if (draggedCard) {
+            draggedCard.classList.add('just-dropped');
+            const direction = draggedIndex < targetIndex ? '⬇️' : '⬆️';
+            const indicator1 = document.createElement('div');
+            indicator1.className = 'reposition-indicator';
+            indicator1.textContent = direction;
+            draggedCard.style.position = 'relative';
+            draggedCard.appendChild(indicator1);
+            
+            const draggedItem = document.querySelector(`[data-meal-id="${draggedId}"]`);
+            if (draggedItem) {
+                draggedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            setTimeout(() => {
+                draggedCard.classList.remove('just-dropped');
+                if (indicator1.parentNode) {
+                    indicator1.remove();
+                }
+            }, 1500);
+        }
+        
+        if (targetCard) {
+            targetCard.classList.add('just-dropped');
+            const direction = targetIndex < draggedIndex ? '⬇️' : '⬆️';
+            const indicator2 = document.createElement('div');
+            indicator2.className = 'reposition-indicator';
+            indicator2.textContent = direction;
+            targetCard.style.position = 'relative';
+            targetCard.appendChild(indicator2);
+            
+            setTimeout(() => {
+                targetCard.classList.remove('just-dropped');
+                if (indicator2.parentNode) {
+                    indicator2.remove();
+                }
+            }, 1500);
+        }
+    }, 100);
+    
+    return false;
+}
+
 function handleDragStart(e) {
     draggedElement = this;
     window.draggedElement = this;
@@ -3343,10 +4119,16 @@ function handleDragEnd(e) {
     if (draggedElement) {
         draggedElement.classList.remove('dragging');
     }
+    
+    // 🔥 XÓA tất cả highlight
+    document.querySelectorAll('.meal-card-vertical.drop-target').forEach(card => {
+        card.classList.remove('drop-target');
+    });
+    
     draggedElement = null;
     window.draggedElement = null;
     lastDragY = 0;
-    lastTargetElement = null; // 🔥 RESET
+    lastTargetElement = null;
     
     stopAutoScroll();
 }
@@ -3361,14 +4143,18 @@ function handleDragOverItem(e) {
     
     e.dataTransfer.dropEffect = 'move';
     
-    // 🔥 HIGHLIGHT card đích - để người dùng thấy rõ
-    if (lastTargetElement && lastTargetElement !== this) {
-        lastTargetElement.classList.remove('drag-over');
+    // 🔥 XÓA highlight cũ
+    document.querySelectorAll('.meal-card-vertical.drop-target').forEach(card => {
+        card.classList.remove('drop-target');
+    });
+    
+    // 🔥 HIGHLIGHT card đích
+    const targetCard = this.querySelector('.meal-card-vertical');
+    if (targetCard) {
+        targetCard.classList.add('drop-target');
     }
     
     lastTargetElement = this;
-    this.classList.add('drag-over');  // Thêm class để hiện visual feedback
-    
     lastDragY = e.clientY;
     return false;
 }
@@ -3405,7 +4191,7 @@ function handleDragEnter(e) {
     }
 }
 
-// ✨ AUTO-SCROLL TOÀN BỘ PANEL - CỰC NHANH
+// ✨ AUTO-SCROLL TOÀN BỘ PANEL - CỰC NHANH VÀ MƯỢT
 function startAutoScroll() {
     if (autoScrollInterval) return;
     
@@ -3420,27 +4206,35 @@ function startAutoScroll() {
         
         const rect = container.getBoundingClientRect();
         
-        // 🔥 DÙNG lastDragY CẬP NHẬT LiÊN TỤC
+        // 🔥 DÙNG lastDragY CẬP NHẬT LIÊN TỤC
         if (lastDragY === 0) return;
         
-        const topEdge = rect.top + 150;      // Vùng trên
-        const bottomEdge = rect.bottom - 150; // Vùng dưới
+        // 🔥 VÙNG KÍCH HOẠT RỘNG HƠN - 200px thay vì 150px
+        const topEdge = rect.top + 200;      // Vùng trên
+        const bottomEdge = rect.bottom - 200; // Vùng dưới
         
         let scrollSpeed = 0;
         
-        // CUỘN LÊN
+       // CUỘN LÊNNN
         if (lastDragY < topEdge) {
             const distance = topEdge - lastDragY;
-            const ratio = Math.min(1, distance / 150);
-            scrollSpeed = -(10 + ratio * 40); // 10-50 px/frame
+            const ratio = Math.min(1, distance / 200);
+            scrollSpeed = -(15 + ratio * 50);
             container.scrollTop += scrollSpeed;
+            container.classList.add('scrolling-up'); // 🔥 THÊM
+            container.classList.remove('scrolling-down');
         }
         // CUỘN XUỐNG
         else if (lastDragY > bottomEdge) {
             const distance = lastDragY - bottomEdge;
-            const ratio = Math.min(1, distance / 150);
-            scrollSpeed = (10 + ratio * 40); // 10-50 px/frame
+            const ratio = Math.min(1, distance / 200);
+            scrollSpeed = (15 + ratio * 50);
             container.scrollTop += scrollSpeed;
+            container.classList.add('scrolling-down'); // 🔥 THÊM
+            container.classList.remove('scrolling-up');
+        } else {
+            // 🔥 XÓA CLASS KHI KHÔNG SCROLL
+            container.classList.remove('scrolling-up', 'scrolling-down');
         }
         
     }, 16); // 60fps - mượt
@@ -3499,41 +4293,112 @@ function handleDrop(e) {
     const draggedKey = draggedElement.dataset.mealKey;
     const targetKey = lastTargetElement.dataset.mealKey;
     
-    // 🔥 CẬP NHẬT DỮ LIỆU TRƯỚC KHI ĐỔI
-    // Từ input tên của draggedElement
-    const draggedTitleInput = draggedElement.querySelector('.meal-title-input');
-    const draggedTimeInput = draggedElement.querySelector('.time-input-inline');
+    // ✅ Cập nhật dữ liệu TRƯỚC khi đổi
+    const draggedTitleInput = draggedElement.querySelector('.meal-title-input, input[onchange*="updateMealTitle"]');
+    const draggedHourInput = draggedElement.querySelector('.time-input-hour[data-meal-key="' + draggedKey + '"]');
+    const draggedMinuteInput = draggedElement.querySelector('.time-input-minute[data-meal-key="' + draggedKey + '"]');
+    
     if (draggedTitleInput && draggedKey && currentPlan[draggedKey]) {
         currentPlan[draggedKey].title = draggedTitleInput.value;
     }
-    if (draggedTimeInput && draggedKey && currentPlan[draggedKey]) {
-        currentPlan[draggedKey].time = draggedTimeInput.value;
+    if (draggedHourInput && draggedMinuteInput && draggedKey && currentPlan[draggedKey]) {
+        const hour = draggedHourInput.value.padStart(2, '0');
+        const minute = draggedMinuteInput.value.padStart(2, '0');
+        currentPlan[draggedKey].time = `${hour}:${minute}`;
     }
     
-    // Từ input tên của targetElement
-    const targetTitleInput = lastTargetElement.querySelector('.meal-title-input');
-    const targetTimeInput = lastTargetElement.querySelector('.time-input-inline');
+    const targetTitleInput = lastTargetElement.querySelector('.meal-title-input, input[onchange*="updateMealTitle"]');
+    const targetHourInput = lastTargetElement.querySelector('.time-input-hour[data-meal-key="' + targetKey + '"]');
+    const targetMinuteInput = lastTargetElement.querySelector('.time-input-minute[data-meal-key="' + targetKey + '"]');
+    
     if (targetTitleInput && targetKey && currentPlan[targetKey]) {
         currentPlan[targetKey].title = targetTitleInput.value;
     }
-    if (targetTimeInput && targetKey && currentPlan[targetKey]) {
-        currentPlan[targetKey].time = targetTimeInput.value;
+    if (targetHourInput && targetMinuteInput && targetKey && currentPlan[targetKey]) {
+        const hour = targetHourInput.value.padStart(2, '0');
+        const minute = targetMinuteInput.value.padStart(2, '0');
+        currentPlan[targetKey].time = `${hour}:${minute}`;
     }
     
-    // ✅ SWAP DỮ LIỆU
+    // ✅ SWAP dữ liệu
     if (currentPlan && draggedKey && targetKey) {
         const temp = currentPlan[draggedKey];
         currentPlan[draggedKey] = currentPlan[targetKey];
         currentPlan[targetKey] = temp;
     }
     
-    // ✅ RENDER LẠI (không swap HTML trực tiếp)
+    // 🔥 LƯU VỊ TRÍ CŨ để biết quán nào bị di chuyển
+    const allMealItems = document.querySelectorAll('.meal-item[data-meal-key]');
+    const oldOrder = Array.from(allMealItems).map(item => item.dataset.mealKey);
+    const draggedOldIndex = oldOrder.indexOf(draggedKey);
+    const targetOldIndex = oldOrder.indexOf(targetKey);
+    
+    // Cập nhật thứ tự mới
+    const newOrder = [...oldOrder];
+    [newOrder[draggedOldIndex], newOrder[targetOldIndex]] = [newOrder[targetOldIndex], newOrder[draggedOldIndex]];
+    
+    if (!currentPlan._order) {
+        currentPlan._order = [];
+    }
+    currentPlan._order = newOrder;
+    
+    // ✅ RENDER lại
     displayPlanVertical(currentPlan, isEditMode);
     
-    // 🔥 REMOVE HIGHLIGHT
-    if (lastTargetElement) {
-        lastTargetElement.classList.remove('drag-over');
-    }
+    // 🔥 THÊM HIỆU ỨNG CHO CẢ 2 QUÁN BỊ HOÁN ĐỔI
+    setTimeout(() => {
+        // Quán được kéo
+        const draggedCard = document.querySelector(`[data-meal-key="${draggedKey}"] .meal-card-vertical`);
+        if (draggedCard) {
+            draggedCard.classList.add('just-dropped');
+            
+            // Thêm icon mũi tên
+            const draggedNewIndex = newOrder.indexOf(draggedKey);
+            const direction = draggedNewIndex < draggedOldIndex ? '⬆️' : '⬇️';
+            const indicator1 = document.createElement('div');
+            indicator1.className = 'reposition-indicator';
+            indicator1.textContent = direction;
+            draggedCard.style.position = 'relative';
+            draggedCard.appendChild(indicator1);
+            
+            // Scroll đến quán được kéo
+            const draggedItem = document.querySelector(`[data-meal-key="${draggedKey}"]`);
+            if (draggedItem) {
+                draggedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            // Xóa sau 1.5s
+            setTimeout(() => {
+                draggedCard.classList.remove('just-dropped');
+                if (indicator1.parentNode) {
+                    indicator1.remove();
+                }
+            }, 1500);
+        }
+        
+        // Quán đích (bị đẩy)
+        const targetCard = document.querySelector(`[data-meal-key="${targetKey}"] .meal-card-vertical`);
+        if (targetCard) {
+            targetCard.classList.add('just-dropped');
+            
+            // Thêm icon mũi tên (ngược hướng với quán kéo)
+            const targetNewIndex = newOrder.indexOf(targetKey);
+            const direction = targetNewIndex < targetOldIndex ? '⬆️' : '⬇️';
+            const indicator2 = document.createElement('div');
+            indicator2.className = 'reposition-indicator';
+            indicator2.textContent = direction;
+            targetCard.style.position = 'relative';
+            targetCard.appendChild(indicator2);
+            
+            // Xóa sau 1.5s
+            setTimeout(() => {
+                targetCard.classList.remove('just-dropped');
+                if (indicator2.parentNode) {
+                    indicator2.remove();
+                }
+            }, 1500);
+        }
+    }, 100);
     
     return false;
 }
@@ -3557,6 +4422,15 @@ function getDragAfterElement(container, y) {
 function updateMealTime(mealKey, newTime) {
     if (currentPlan && currentPlan[mealKey]) {
         currentPlan[mealKey].time = newTime;
+        
+        // 🔥 CẬP NHẬT TITLE TỪ INPUT (nếu có)
+        const mealCard = document.querySelector(`[data-meal-key="${mealKey}"]`);
+        if (mealCard) {
+            const titleInput = mealCard.querySelector('input[onchange*="updateMealTitle"]');
+            if (titleInput && titleInput.value) {
+                currentPlan[mealKey].title = titleInput.value;
+            }
+        }
     }
 }
 
@@ -3582,9 +4456,32 @@ const iconOptions = ['🍳', '🥐', '🍜', '🍚', '🍛', '🍝', '🍕', '�
 function toggleManualEditMode() {
     isManualEditMode = !isManualEditMode;
     
-    // Reset waiting state khi thoát edit mode
-    if (!isManualEditMode) {
-        waitingForPlaceSelection = null;
+    const editBtn = document.getElementById('editManualPlanBtn');
+    if (editBtn) {
+        if (isManualEditMode) {
+            editBtn.classList.add('active');
+            editBtn.title = 'Thoát chỉnh sửa';
+            clearRoutes();
+        } else {
+            editBtn.classList.remove('active');
+            editBtn.title = 'Chỉnh sửa';
+            waitingForPlaceSelection = null;
+        }
+    }
+    
+    // Lưu title từ input trước khi render lại
+    if (isManualEditMode) {
+        const mealItems = document.querySelectorAll('.meal-item');
+        mealItems.forEach(item => {
+            const itemId = parseInt(item.dataset.mealId);
+            const manualItem = manualPlan.find(i => i.id === itemId);
+            if (manualItem) {
+                const titleInput = item.querySelector('input[onchange*="updateManualItemTitle"]');
+                if (titleInput && titleInput.value) {
+                    manualItem.title = titleInput.value;
+                }
+            }
+        });
     }
     
     displayManualPlanTimeline();
@@ -3671,20 +4568,18 @@ function openManualPlan(planId) {
     isManualEditMode = false;
     waitingForPlaceSelection = null;
     
-    // 🔥 ĐÓNG "KẾ HOẠCH CỦA BẠN" - FORCE STYLE
+    clearRoutes(); // ⚡ THÊM DÒNG NÀY
+    
+    // Đóng "Kế hoạch của bạn"
     const container = document.getElementById('manualPlansContainer');
     const arrow = document.getElementById('manualPlansArrow');
     
     if (container && arrow) {
-        // Set trực tiếp style để chắc chắn
         container.style.maxHeight = '0';
         container.style.overflow = 'hidden';
         arrow.style.transform = 'rotate(0deg)';
-        
-        console.log('✅ Đã đóng "Kế hoạch của bạn"');
     }
     
-    // Hiển thị timeline
     displayManualPlanTimeline();
 
     // Scroll lên top
@@ -3716,11 +4611,28 @@ function displayManualPlanTimeline() {
     if (!currentPlanData) return;
     
     const planName = currentPlanData.name;
-    const editMode = isManualEditMode; // Dùng biến state để kiểm soát edit mode
+    const editMode = isManualEditMode;
+    
+    // ⚡ Kiểm tra nếu đã xóa hết quán trong edit mode
+    if (manualPlan.length === 0 && editMode) {
+        contentDiv.innerHTML = `
+            <div class="error-message">
+                <h3>🗑️ Đã xóa hết lịch trình</h3>
+                <p>Bạn đã xóa tất cả các quán trong lịch trình này</p>
+                <button onclick="addManualMealSlot();" 
+                    style="margin-top: 15px; padding: 10px 20px; background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                    ✨ Thêm quán mới
+                </button>
+            </div>
+        `;
+        clearRoutes();
+        return;
+    }
     
     let html = `
     <div class="schedule-header">
         <h3 class="schedule-title">
+            <span style="margin-right: 8px;">📅</span>
             <span ${editMode ? 'contenteditable="true" class="editable" onblur="updateManualPlanName(this.textContent)"' : ''}><span>${planName}</span></span>
         </h3>
         <div class="action-buttons">
@@ -3752,17 +4664,27 @@ function displayManualPlanTimeline() {
     `;
     
     manualPlan.sort((a, b) => a.time.localeCompare(b.time));
+    let hasPlaces = false;
     
     manualPlan.forEach((item, index) => {
         const isWaiting = waitingForPlaceSelection === item.id;
+        const icon = item.icon || '🍽️';
         
         if (!item.place) {
             // Card trống
             html += `
-                <div class="meal-item" data-meal-id="${item.id}">
+                <div class="meal-item" data-meal-id="${item.id}" draggable="${editMode}">
                     <div class="time-marker">
                         ${editMode ? 
-                            `<input type="time" class="time-input-inline" value="${item.time}" onchange="updateManualItemTime(${item.id}, this.value)">` :
+                            `<div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" min="0" max="23" value="${item.time.split(':')[0]}" 
+                                    class="time-input-hour time-input-hour-manual" data-item-id="${item.id}"
+                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                                <span style="font-weight: bold; color: #FF6B35;">:</span>
+                                <input type="number" min="0" max="59" value="${item.time.split(':')[1]}" 
+                                    class="time-input-minute time-input-minute-manual" data-item-id="${item.id}"
+                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                            </div>` :
                             `<div class="time-badge">${item.time}</div>`
                         }
                     </div>
@@ -3772,12 +4694,12 @@ function displayManualPlanTimeline() {
                             <div class="meal-title-left">
                                 ${editMode ? `
                                     <select onchange="updateManualItemIcon(${item.id}, this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
-                                        ${iconOptions.map(ico => `<option value="${ico}" ${ico === (item.icon || '🍽️') ? 'selected' : ''}>${ico}</option>`).join('')}
+                                        ${iconOptions.map(ico => `<option value="${ico}" ${ico === icon ? 'selected' : ''}>${ico}</option>`).join('')}
                                     </select>
-                                ` : `<span style="font-size: 22px;">${item.icon || '🍽️'}</span>`}
+                                ` : `<span style="font-size: 22px;">${icon}</span>`}
                                 ${editMode ? 
                                     `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
-                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn" style="flex: 1;">` :
+                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">` :
                                     `<span>${item.title}</span>`
                                 }
                             </div>
@@ -3794,7 +4716,7 @@ function displayManualPlanTimeline() {
                             ` : ''}
                         </div>
                         <div class="empty-slot-content">
-                            <div class="icon">🏪</div>
+                            <div class="icon">🪧</div>
                             <div class="text">${isWaiting ? 'Đang chờ chọn quán...' : 'Chưa có quán'}</div>
                             ${!editMode ? '<div style="font-size: 12px; margin-top: 8px; color: #999;">Bật chế độ chỉnh sửa để thêm quán</div>' : '<div style="font-size: 12px; margin-top: 8px; color: #999;">Nhấn nút ✔ để chọn quán từ bản đồ</div>'}
                         </div>
@@ -3802,83 +4724,108 @@ function displayManualPlanTimeline() {
                 </div>
             `;
         } else {
-                    // Card có quán
-                    const place = item.place;
-                    const cardClickEvent = editMode ? '' : `onclick="flyToPlace(${place.lat}, ${place.lon})"`;
-                    const cardCursor = editMode ? 'cursor: default;' : 'cursor: pointer;';
-                    
-                    html += `
-                        <div class="meal-item" data-meal-id="${item.id}">
-                            <div class="time-marker">
+            hasPlaces = true;
+            const place = item.place;
+            const cardClickEvent = editMode ? '' : `onclick="flyToPlace(${place.lat}, ${place.lon})"`;
+            const cardCursor = editMode ? 'cursor: default;' : 'cursor: pointer;';
+            
+            html += `
+                <div class="meal-item" data-meal-id="${item.id}" draggable="${editMode}">
+                    <div class="time-marker">
+                        ${editMode ? 
+                            `<div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" min="0" max="23" value="${item.time.split(':')[0]}" 
+                                    class="time-input-hour time-input-hour-manual" data-item-id="${item.id}"
+                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                                <span style="font-weight: bold; color: #FF6B35;">:</span>
+                                <input type="number" min="0" max="59" value="${item.time.split(':')[1]}" 
+                                    class="time-input-minute time-input-minute-manual" data-item-id="${item.id}"
+                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                            </div>` :
+                            `<div class="time-badge">${item.time}</div>`
+                        }
+                    </div>
+                    <div class="time-dot"></div>
+                    <div class="meal-card-vertical ${editMode ? 'edit-mode' : ''}" ${cardClickEvent} style="${cardCursor}">
+                        <div class="meal-title-vertical">
+                            <div class="meal-title-left">
+                                ${editMode ? `
+                                    <select onchange="updateManualItemIcon(${item.id}, this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
+                                        ${iconOptions.map(ico => `<option value="${ico}" ${ico === icon ? 'selected' : ''}>${ico}</option>`).join('')}
+                                    </select>
+                                ` : `<span style="font-size: 22px;">${icon}</span>`}
                                 ${editMode ? 
-                                    `<input type="time" class="time-input-inline" value="${item.time}" onchange="updateManualItemTime(${item.id}, this.value)">` :
-                                    `<div class="time-badge">${item.time}</div>`
+                                    `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
+                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">` :
+                                    `<span>${item.title}</span>`
                                 }
                             </div>
-                            <div class="time-dot"></div>
-                            <div class="meal-card-vertical ${editMode ? 'edit-mode' : ''}" ${cardClickEvent} style="${cardCursor}">
-                                <div class="meal-title-vertical">
-                                    <div class="meal-title-left">
-                                        ${editMode ? `
-                                            <select onchange="updateManualItemIcon(${item.id}, this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
-                                                ${iconOptions.map(ico => `<option value="${ico}" ${ico === (item.icon || '🍽️') ? 'selected' : ''}>${ico}</option>`).join('')}
-                                            </select>
-                                        ` : `<span style="font-size: 22px;">${item.icon || '🍽️'}</span>`}
-                                        ${editMode ? 
-                                            `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
-                                                class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">` :
-                                            `<span>${item.title}</span>`
-                                        }
-                                    </div>
-                                    ${editMode ? `
-                                    <div class="meal-actions">
-                                        <button class="meal-action-btn delete-meal" onclick="event.stopPropagation(); deleteManualItem(${item.id})" title="Xóa quán">
-                                            🗑️
-                                        </button>
-                                        <button class="meal-action-btn select-meal ${isWaiting ? 'active' : ''}" 
-                                                onclick="event.stopPropagation(); selectPlaceForManualItem(${item.id})" title="Chọn quán mới">
-                                            ${isWaiting ? '⏳' : '✔'}
-                                        </button>
-                                    </div>
-                                    ` : ''}
-                                </div>
-                                <div class="place-info-vertical">
-                                    <div class="place-name-vertical">${place.ten_quan}</div>
-                                    <div class="place-address-vertical">📍 ${place.dia_chi}</div>
-                                    <div class="place-meta-vertical">
-                                        <div class="meta-item-vertical">
-                                            <span>⭐</span>
-                                            <strong>${place.rating ? place.rating.toFixed(1) : 'N/A'}</strong>
-                                        </div>
-                                        ${place.gia_trung_binh ? `
-                                            <div class="meta-item-vertical">
-                                                <span>💰</span>
-                                                <strong>${place.gia_trung_binh}</strong>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
+                            ${editMode ? `
+                            <div class="meal-actions">
+                                <button class="meal-action-btn delete-meal" onclick="event.stopPropagation(); deleteManualItem(${item.id})" title="Xóa quán">
+                                    🗑️
+                                </button>
+                                <button class="meal-action-btn select-meal ${isWaiting ? 'active' : ''}" 
+                                        onclick="event.stopPropagation(); selectPlaceForManualItem(${item.id})" title="Chọn quán mới">
+                                    ${isWaiting ? '⏳' : '✔'}
+                                </button>
                             </div>
+                            ` : ''}
                         </div>
-                    `;
-                }
-            });
-            
-            html += '</div>';
-            contentDiv.innerHTML = html;
-
-            // 🔥 KIỂM TRA text có dài hơn khung không
-            setTimeout(() => {
-                const titleContainer = document.querySelector('.schedule-title > span:last-child');
-                if (titleContainer && !titleContainer.hasAttribute('contenteditable')) {
-                    const textSpan = titleContainer.querySelector('span');
-                    if (textSpan && textSpan.scrollWidth > titleContainer.clientWidth) {
-                        titleContainer.classList.add('overflow'); // 🔥 Thêm class để bật animation
-                    } else {
-                        titleContainer.classList.remove('overflow');
-                    }
-                }
-            }, 100);         
+                        <div class="place-info-vertical">
+                            <div class="place-name-vertical">${place.ten_quan}</div>
+                            <div class="place-address-vertical">📍 ${place.dia_chi}</div>
+                            <div class="place-meta-vertical">
+                                <div class="meta-item-vertical">
+                                    <span>⭐</span>
+                                    <strong>${place.rating ? place.rating.toFixed(1) : 'N/A'}</strong>
+                                </div>
+                                ${place.gia_trung_binh ? `
+                                    <div class="meta-item-vertical">
+                                        <span>💰</span>
+                                        <strong>${place.gia_trung_binh}</strong>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${place.khau_vi ? `
+                                <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                                    👅 Khẩu vị: ${place.khau_vi}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    html += '</div>';
+    contentDiv.innerHTML = html;
+    
+    if (editMode) {
+        setupManualDragAndDrop();
+        setTimeout(() => setupManualModeTimeInputs(), 100);
+    }
+    
+    // Vẽ đường đi khi không ở edit mode
+    if (!editMode && hasPlaces) {
+        setTimeout(() => drawManualRouteOnMap(), 500);
+    } else {
+        clearRoutes();
+    }
+    
+    // Kiểm tra text có dài hơn khung không
+    setTimeout(() => {
+        const titleContainer = document.querySelector('.schedule-title > span:last-child');
+        if (titleContainer && !titleContainer.hasAttribute('contenteditable')) {
+            const textSpan = titleContainer.querySelector('span');
+            if (textSpan && textSpan.scrollWidth > titleContainer.clientWidth) {
+                titleContainer.classList.add('overflow');
+            } else {
+                titleContainer.classList.remove('overflow');
+            }
+        }
+    }, 100);
 }
 
 function updateManualPlanName(newName) {
@@ -3996,15 +4943,26 @@ function resetManualPlan() {
 function saveManualPlanChanges() {
     if (!currentManualPlanId) return;
 
-    // 🔥 Cập nhật time từ DOM
+    // Cập nhật time và title từ DOM
     const mealItems = document.querySelectorAll('.meal-item');
     mealItems.forEach(item => {
-        const mealId = parseInt(item.dataset.mealId);
-        const timeInput = item.querySelector('.time-input-inline');
-        if (timeInput) {
-            const manualItem = manualPlan.find(i => i.id === mealId);
+        const itemId = parseInt(item.dataset.mealId);
+        const timeInputs = item.querySelectorAll('.time-input-hour-manual, .time-input-minute-manual');
+        
+        if (timeInputs.length === 2) {
+            const manualItem = manualPlan.find(i => i.id === itemId);
             if (manualItem) {
-                manualItem.time = timeInput.value;
+                const hour = timeInputs[0].value.padStart(2, '0');
+                const minute = timeInputs[1].value.padStart(2, '0');
+                manualItem.time = `${hour}:${minute}`;
+            }
+        }
+        
+        const titleInput = item.querySelector('.time-input-inline');
+        if (titleInput) {
+            const manualItem = manualPlan.find(i => i.id === itemId);
+            if (manualItem) {
+                manualItem.title = titleInput.value;
             }
         }
     });
@@ -4015,7 +4973,7 @@ function saveManualPlanChanges() {
         plan.updatedAt = new Date().toISOString();
         localStorage.setItem('manual_food_plans', JSON.stringify(manualPlans));
         
-        // 🔥 THÊM: Thoát edit mode sau khi lưu
+        // Thoát edit mode sau khi lưu
         if (isManualEditMode) {
             toggleManualEditMode();
         }
@@ -4196,14 +5154,9 @@ window.foodPlannerState = {
         return waitingForPlaceSelection !== null;
     },
     selectPlace: (place) => {
-        console.log("selectPlace duoc goi:", place.ten_quan);
-        console.log("waitingForPlaceSelection:", waitingForPlaceSelection);
-        console.log("currentManualPlanId:", currentManualPlanId);
-        
         if (waitingForPlaceSelection) {
             if (currentTab === 'manual') {
                 // MANUAL MODE
-                console.log("Dang o Manual Mode");
                 const item = manualPlan.find(i => i.id === waitingForPlaceSelection);
                 if (item) {
                     item.place = {
@@ -4219,25 +5172,17 @@ window.foodPlannerState = {
                     };
                     waitingForPlaceSelection = null;
                     displayManualPlanTimeline();
-                    console.log("Manual mode: Da cap nhat quan thanh cong!");
                     return true;
                 } else {
                     console.error("❌ Không tìm thấy item trong manualPlan");
-                    return false; // 🔥 RETURN FALSE
+                    return false;
                 }
             } else {
                 // AUTO MODE
-                console.log("Dang o Auto Mode");
-                const success = replacePlaceInMeal(place); // 🔥 NHẬN RETURN VALUE
-                if (success) {
-                    console.log("Auto mode: Da thay doi quan thanh cong!");
-                } else {
-                    console.error("Auto mode: Loi khi thay doi quan!");
-                }
-                return success; // 🔥 RETURN ĐÚNG KẾT QUẢ
+                const success = replacePlaceInMeal(place);
+                return success;
             }
         }
-        console.log("Khong co slot nao dang cho chon quan");
         return false;
     }
 };
@@ -4386,5 +5331,267 @@ document.addEventListener('DOMContentLoaded', function() {
     setupCyclicInput('startMinute', 59);
     setupCyclicInput('endMinute', 59);
 });
+// ========== SETUP CYCLIC TIME INPUTS FOR EDIT MODE ==========
+function setupEditModeTimeInputs() {
+    document.querySelectorAll('.time-input-hour, .time-input-minute').forEach(input => {
+        const isHour = input.classList.contains('time-input-hour');
+        const maxValue = isHour ? 23 : 59;
+        
+        // Xử lý wheel scroll
+        input.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            let val = parseInt(this.value) || 0;
+            
+            if (e.deltaY < 0) {
+                val = val >= maxValue ? 0 : val + 1;
+            } else {
+                val = val <= 0 ? maxValue : val - 1;
+            }
+            
+            this.value = val.toString().padStart(2, '0');
+            updateTimeFromInputs(this);
+        }, { passive: false });
+        
+        // Xử lý arrow keys
+        input.addEventListener('keydown', function(e) {
+            let val = parseInt(this.value) || 0;
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                val = val >= maxValue ? 0 : val + 1;
+                this.value = val.toString().padStart(2, '0');
+                updateTimeFromInputs(this);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                val = val <= 0 ? maxValue : val - 1;
+                this.value = val.toString().padStart(2, '0');
+                updateTimeFromInputs(this);
+            }
+        });
+        
+        // Xử lý blur để format
+        input.addEventListener('blur', function() {
+            let val = parseInt(this.value) || 0;
+            if (val > maxValue) val = maxValue;
+            if (val < 0) val = 0;
+            this.value = val.toString().padStart(2, '0');
+            updateTimeFromInputs(this);
+        });
+        
+        // Xử lý change
+        input.addEventListener('change', function() {
+            let val = parseInt(this.value) || 0;
+            if (val > maxValue) val = 0;
+            if (val < 0) val = maxValue;
+            this.value = val.toString().padStart(2, '0');
+            updateTimeFromInputs(this);
+        });
+    });
+}
+
+function updateTimeFromInputs(input) {
+    const mealKey = input.dataset.mealKey;
+    const parent = input.closest('.meal-item');
+    if (!parent) return;
+    
+    const hourInput = parent.querySelector('.time-input-hour[data-meal-key="' + mealKey + '"]');
+    const minuteInput = parent.querySelector('.time-input-minute[data-meal-key="' + mealKey + '"]');
+    
+    if (hourInput && minuteInput) {
+        const hour = hourInput.value.padStart(2, '0');
+        const minute = minuteInput.value.padStart(2, '0');
+        const newTime = `${hour}:${minute}`;
+        
+        if (currentPlan && currentPlan[mealKey]) {
+            // 🔥 LƯU VỊ TRÍ CŨ trước khi sort
+            const oldOrder = currentPlan._order ? [...currentPlan._order] : 
+                Object.keys(currentPlan)
+                    .filter(k => k !== '_order' && currentPlan[k] && currentPlan[k].time)
+                    .sort((a, b) => currentPlan[a].time.localeCompare(currentPlan[b].time));
+            
+            const oldIndex = oldOrder.indexOf(mealKey);
+            
+            // Cập nhật thời gian
+            currentPlan[mealKey].time = newTime;
+            
+            // Cập nhật title nếu có
+            const titleInput = parent.querySelector('input[onchange*="updateMealTitle"]');
+            if (titleInput && titleInput.value) {
+                currentPlan[mealKey].title = titleInput.value;
+            }
+            
+            // 🔥 SORT lại theo thời gian
+            const newOrder = Object.keys(currentPlan)
+                .filter(k => k !== '_order' && currentPlan[k] && currentPlan[k].time)
+                .sort((a, b) => {
+                    const timeA = currentPlan[a].time || '00:00';
+                    const timeB = currentPlan[b].time || '00:00';
+                    return timeA.localeCompare(timeB);
+                });
+            
+            const newIndex = newOrder.indexOf(mealKey);
+            
+            currentPlan._order = newOrder;
+            
+            // ✅ RENDER lại
+            displayPlanVertical(currentPlan, isEditMode);
+            
+            // 🔥 HIGHLIGHT card vừa di chuyển + HIỂN THỊ ICON
+            setTimeout(() => {
+                const movedCard = document.querySelector(`[data-meal-key="${mealKey}"] .meal-card-vertical`);
+                if (movedCard && oldIndex !== newIndex) {
+                    // Thêm class animation
+                    movedCard.classList.add('repositioned');
+                    
+                    // Thêm icon mũi tên
+                    const direction = newIndex < oldIndex ? '⬆️' : '⬇️';
+                    const indicator = document.createElement('div');
+                    indicator.className = 'reposition-indicator';
+                    indicator.textContent = direction;
+                    movedCard.style.position = 'relative';
+                    movedCard.appendChild(indicator);
+                    
+                    // Scroll đến vị trí mới
+                    const mealItem = document.querySelector(`[data-meal-key="${mealKey}"]`);
+                    if (mealItem) {
+                        mealItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    
+                    // Xóa animation và icon sau 1.5s
+                    setTimeout(() => {
+                        movedCard.classList.remove('repositioned');
+                        if (indicator.parentNode) {
+                            indicator.remove();
+                        }
+                    }, 1500);
+                }
+            }, 100);
+        }
+    }
+}
+// ========== SETUP CYCLIC TIME INPUTS FOR MANUAL MODE ==========
+function setupManualModeTimeInputs() {
+    document.querySelectorAll('.time-input-hour-manual, .time-input-minute-manual').forEach(input => {
+        const isHour = input.classList.contains('time-input-hour-manual');
+        const maxValue = isHour ? 23 : 59;
+        
+        input.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            let val = parseInt(this.value) || 0;
+            
+            if (e.deltaY < 0) {
+                val = val >= maxValue ? 0 : val + 1;
+            } else {
+                val = val <= 0 ? maxValue : val - 1;
+            }
+            
+            this.value = val.toString().padStart(2, '0');
+            updateManualTimeFromInputs(this);
+        }, { passive: false });
+        
+        input.addEventListener('keydown', function(e) {
+            let val = parseInt(this.value) || 0;
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                val = val >= maxValue ? 0 : val + 1;
+                this.value = val.toString().padStart(2, '0');
+                updateManualTimeFromInputs(this);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                val = val <= 0 ? maxValue : val - 1;
+                this.value = val.toString().padStart(2, '0');
+                updateManualTimeFromInputs(this);
+            }
+        });
+        
+        input.addEventListener('blur', function() {
+            let val = parseInt(this.value) || 0;
+            if (val > maxValue) val = maxValue;
+            if (val < 0) val = 0;
+            this.value = val.toString().padStart(2, '0');
+            updateManualTimeFromInputs(this);
+        });
+        
+        input.addEventListener('change', function() {
+            let val = parseInt(this.value) || 0;
+            if (val > maxValue) val = 0;
+            if (val < 0) val = maxValue;
+            this.value = val.toString().padStart(2, '0');
+            updateManualTimeFromInputs(this);
+        });
+    });
+}
+
+function updateManualTimeFromInputs(input) {
+    const itemId = parseInt(input.dataset.itemId);
+    const parent = input.closest('.time-marker');
+    if (!parent) return;
+    
+    const hourInput = parent.querySelector('.time-input-hour-manual');
+    const minuteInput = parent.querySelector('.time-input-minute-manual');
+    
+    if (hourInput && minuteInput) {
+        const hour = hourInput.value.padStart(2, '0');
+        const minute = minuteInput.value.padStart(2, '0');
+        const newTime = `${hour}:${minute}`;
+        
+        const item = manualPlan.find(i => i.id === itemId);
+        if (item) {
+            // Lưu vị trí cũ
+            const oldOrder = [...manualPlan];
+            const oldIndex = oldOrder.findIndex(i => i.id === itemId);
+            
+            // Cập nhật time
+            item.time = newTime;
+            
+            // Cập nhật title nếu có
+            const mealCard = document.querySelector(`[data-meal-id="${itemId}"]`);
+            if (mealCard) {
+                const titleInput = mealCard.querySelector('input[onchange*="updateManualItemTitle"]');
+                if (titleInput && titleInput.value) {
+                    item.title = titleInput.value;
+                }
+            }
+            
+            // Sort lại theo thời gian
+            manualPlan.sort((a, b) => a.time.localeCompare(b.time));
+            
+            const newIndex = manualPlan.findIndex(i => i.id === itemId);
+            
+            // Render lại
+            displayManualPlanTimeline();
+            
+            // Highlight card vừa di chuyển
+            if (oldIndex !== newIndex) {
+                setTimeout(() => {
+                    const movedCard = document.querySelector(`[data-meal-id="${itemId}"] .meal-card-vertical`);
+                    if (movedCard) {
+                        movedCard.classList.add('repositioned');
+                        
+                        const direction = newIndex < oldIndex ? '⬆️' : '⬇️';
+                        const indicator = document.createElement('div');
+                        indicator.className = 'reposition-indicator';
+                        indicator.textContent = direction;
+                        movedCard.style.position = 'relative';
+                        movedCard.appendChild(indicator);
+                        
+                        const mealItem = document.querySelector(`[data-meal-id="${itemId}"]`);
+                        if (mealItem) {
+                            mealItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        
+                        setTimeout(() => {
+                            movedCard.classList.remove('repositioned');
+                            if (indicator.parentNode) {
+                                indicator.remove();
+                            }
+                        }, 1500);
+                    }
+                }, 100);
+            }
+        }
+    }
+}
 </script>
 '''

@@ -7,10 +7,18 @@
     <link rel="stylesheet" href="button.css">
     <link rel="stylesheet" href="weblogin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    
+    <!-- 🗺️ Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- ✅ MarkerCluster CSS - QUAN TRỌNG! -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
+    <!-- 🚗 Leaflet Routing Machine CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    
+    <!-- 🎨 Custom Styles -->
     <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -41,7 +49,6 @@
     }
     
     /* Ẩn/hiện phần tử theo trạng thái */
-    /* .guest-only { display: block; } */
     .guest-only,
     .user-only { display: none; }
     
@@ -66,10 +73,10 @@
                 </a>
             </div>
             <!-- Nút Sign Up/Sign In - CHỈ HIỆN KHI CHƯA ĐĂNG NHẬP -->
-                <div class="guest-only">
-                    <a href="http://127.0.0.1:8000/accounts/signup" class="button-SignUp">Đăng Kí</a>
-                    <a href="http://127.0.0.1:8000/accounts/login" class="button-SignIn">Đăng Nhập</a>
-                </div>
+            <div class="guest-only">
+                <a href="http://127.0.0.1:8000/accounts/signup" class="button-SignUp">Đăng Kí</a>
+                <a href="http://127.0.0.1:8000/accounts/login" class="button-SignIn">Đăng Nhập</a>
+            </div>
         </div>
     </header>
 
@@ -91,42 +98,42 @@
         </div>
 
         <!-- Multi-select khẩu vị -->
-<div class="flavor-selector" id="flavorSelector">
-    <div class="flavor-selector-btn" id="flavorBtn">
-        <span class="selected-flavors empty">Khẩu vị</span>
-        <span class="arrow">▼</span>
-    </div>
-    <div class="flavor-dropdown" id="flavorDropdown">
-        <div class="flavor-option">
-            <input type="checkbox" value="cay" id="flavor-cay">
-            <label for="flavor-cay">Cay</label>
+        <div class="flavor-selector" id="flavorSelector">
+            <div class="flavor-selector-btn" id="flavorBtn">
+                <span class="selected-flavors empty">Khẩu vị</span>
+                <span class="arrow">▼</span>
+            </div>
+            <div class="flavor-dropdown" id="flavorDropdown">
+                <div class="flavor-option">
+                    <input type="checkbox" value="cay" id="flavor-cay">
+                    <label for="flavor-cay">Cay</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="man" id="flavor-man">
+                    <label for="flavor-man">Mặn</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="ngot" id="flavor-ngot">
+                    <label for="flavor-ngot">Ngọt</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="chua" id="flavor-chua">
+                    <label for="flavor-chua">Chua</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="dang" id="flavor-dang">
+                    <label for="flavor-dang">Đắng</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="tanh" id="flavor-tanh">
+                    <label for="flavor-tanh">Tanh</label>
+                </div>
+                <div class="flavor-option">
+                    <input type="checkbox" value="thanh" id="flavor-thanh">
+                    <label for="flavor-thanh">Thanh</label>
+                </div>
+            </div>
         </div>
-        <div class="flavor-option">
-            <input type="checkbox" value="man" id="flavor-man">
-            <label for="flavor-man">Mặn</label>
-        </div>
-        <div class="flavor-option">
-            <input type="checkbox" value="ngot" id="flavor-ngot">
-            <label for="flavor-ngot">Ngọt</label>
-        </div>
-        <div class="flavor-option">
-            <input type="checkbox" value="chua" id="flavor-chua">
-            <label for="flavor-chua">Chua</label>
-        </div>
-        <div class="flavor-option">
-            <input type="checkbox" value="dang" id="flavor-dang">
-            <label for="flavor-dang">Đắng</label>
-        </div>
-        <div class="flavor-option">
-            <input type="checkbox" value="tanh" id="flavor-tanh">
-            <label for="flavor-tanh">Tanh</label>
-        </div>
-        <div class="flavor-option">
-            <input type="checkbox" value="thanh" id="flavor-thanh">
-            <label for="flavor-thanh">Thanh</label>
-        </div>
-    </div>
-</div>
 
         <!-- 💰 NGÂN SÁCH -->
         <div class="budget-selector flavor-selector" id="budgetSelector">
@@ -210,10 +217,17 @@
         
         <!-- ✅ NỘI DUNG ĐỘNG (render từ JS) -->
         <div id="sidebar-content"></div>
+    </div>
+
+    <!-- ✅ MAP + NÚT QUÁN YÊU THÍCH -->
+    <div id="map-container" style="position: relative;">
+        <div id="map"></div>
+
+        <!-- 🔴 Nút chỉ hiển thị quán đã yêu thích -->
+        <div id="favoriteModeBtn" class="map-floating-btn">
+            ❤️ Quán yêu thích
         </div>
-
-
-    <div id="map"></div>
+    </div>
     
     <!-- 🖼️ Popup zoom ảnh -->
     <div id="imageModal" class="image-modal">
@@ -221,7 +235,42 @@
         <img id="modalImg" src="" alt="Zoomed image">
     </div>
 
+    <!-- 🎮 MINI GAME START -->
+    <button id="miniGameBtn" class="mini-game-btn">🎮 Mini Game</button>
+
+    <div id="miniGamePopup" class="mini-game-popup hidden">
+        <div class="mini-game-content">
+            <!-- Nút đóng popup -->
+            <button id="closeMiniGame" class="close-mini-game" type="button">×</button>
+
+            <h2>Mini-game</h2>
+
+            <!-- Vùng chứa game và win screen -->
+            <div id="miniGameInner">
+                <canvas id="gameCanvas" width="800" height="800"></canvas>
+            </div>
+
+            <!-- Âm thanh mở rương -->
+            <audio id="chestSoundAudio" src="GameAssets/open_chest.mp3" hidden></audio>
+        </div>
+    </div>
+    <!-- 🎮 MINI GAME END -->
+
+    <!-- 📦 JAVASCRIPT LIBRARIES -->
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- ✅ MarkerCluster JS - QUAN TRỌNG! Phải load SAU Leaflet -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    
+    <!-- Leaflet Routing Machine JS -->
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    
+    <!-- Fuse.js for search -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+    
+    <!-- ✅ Your custom script - Load CUỐI CÙNG -->
     <script src="script.js"></script>
     
     <!-- 🔐 Script kiểm tra đăng nhập -->
