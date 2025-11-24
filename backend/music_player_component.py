@@ -725,7 +725,11 @@ def get_music_player_html() -> str:
         font-size: 16px;
     }
 
-    .music-volume-btn {
+    .music-upload-btn {
+        background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 148, 94, 0.8);
+        color: #FFFFFF;
         font-size: 18px;
         font-weight: 700;
         width: 32px;
@@ -736,201 +740,166 @@ def get_music_player_html() -> str:
         align-items: center;
         justify-content: center;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-        border: 1px solid #FFE5D9;
-        color: transparent;
+        box-shadow: 0 4px 12px rgba(255, 126, 75, 0.4);
     }
 
-    /* Fix riêng cho Firefox */
-    .music-volume-btn::-moz-focus-inner {
-        border: 0;
+    .music-upload-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(255, 126, 75, 0.6);
     }
 
-    .music-volume-btn::before {
-        content: "🔊";
-        position: absolute;
-        background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .music-volume-btn:hover {
-        background: #FFFFFF;
-        border-color: #FFB084;
-        transform: scale(1.05);
-        box-shadow: 0 4px 14px rgba(255, 126, 75, 0.4);
-    }
-
-    /* Volume Slider Dọc - Redesigned */
-    .volume-slider-container {
+    /* Upload Modal */
+    .music-upload-modal {
         position: fixed;
-        width: 80px;
-        background: rgba(255, 255, 255, 0.96);
-        backdrop-filter: blur(26px) saturate(180%);
-        -webkit-backdrop-filter: blur(26px) saturate(180%);
-        border: 1px solid #FFE5D9;
-        border-radius: 24px;
-        padding: 20px 16px;
-        box-shadow:
-            0 10px 35px rgba(255, 107, 53, 0.25),
-            0 24px 60px rgba(203, 92, 37, 0.18),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9);
-        opacity: 0;
-        transform: translateX(10px) scale(0.95);
-        pointer-events: none;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 10000001;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .volume-slider-container::before {
-        content: "";
-        position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-        border-radius: 24px 24px 0 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100000000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
     }
 
-    .volume-slider-container.show {
+    .music-upload-modal.show {
         opacity: 1;
-        transform: translateX(0) scale(1);
         pointer-events: auto;
     }
 
-    .volume-icon {
-        font-size: 24px;
-        background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+    .music-upload-content {
+        background: #FFFFFF;
+        border-radius: 24px;
+        padding: 32px;
+        width: 90%;
+        max-width: 480px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
     }
 
-    .volume-slider {
-        -webkit-appearance: slider-vertical;
-        appearance: slider-vertical;
-        accent-color: #FF8E53;
-        width: 6px;
-        height: 140px;
-        background: transparent;
-        border-radius: 10px;
-        outline: none;
-        cursor: pointer;
-        border: none;
-        box-shadow: none;
+    .music-upload-modal.show .music-upload-content {
+        transform: scale(1);
     }
 
-    /* Chrome/Safari - Track */
-    .volume-slider::-webkit-slider-runnable-track {
-        width: 6px;
-        background: linear-gradient(
-            to top,
-            rgba(255, 107, 53, 0.55) 0%,
-            rgba(255, 107, 53, 0.55) var(--volume-percent, 100%),
-            rgba(255, 212, 186, 0.9) var(--volume-percent, 100%),
-            rgba(255, 212, 186, 0.9) 100%
-        );
-        border-radius: 10px;
-        border: 1px solid rgba(255, 176, 132, 0.4);
-        box-shadow:
-            inset 0 2px 4px rgba(255, 107, 53, 0.15),
-            0 2px 8px rgba(255, 107, 53, 0.1);
+    .music-upload-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
     }
 
-    /* Firefox - Track */
-    .volume-slider::-moz-range-track {
-        width: 6px;
-        background: linear-gradient(
-            to top,
-            rgba(255, 107, 53, 0.55) 0%,
-            rgba(255, 107, 53, 0.55) var(--volume-percent, 100%),
-            rgba(255, 212, 186, 0.9) var(--volume-percent, 100%),
-            rgba(255, 212, 186, 0.9) 100%
-        );
-        border-radius: 10px;
-        border: 1px solid rgba(255, 176, 132, 0.4);
-        box-shadow:
-            inset 0 2px 4px rgba(255, 107, 53, 0.15),
-            0 2px 8px rgba(255, 107, 53, 0.1);
-    }
-
-    /* Firefox - Progress */
-    .volume-slider::-moz-range-progress {
-        background: rgba(255, 107, 53, 0.55);
-        border-radius: 10px;
-    }
-
-    .volume-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #FFB084, #FF8E53);
-        box-shadow:
-            0 4px 12px rgba(255, 126, 75, 0.6),
-            0 0 0 3px rgba(255, 255, 255, 0.95),
-            0 0 0 5px rgba(255, 126, 75, 0.25),
-            inset 0 1px 2px rgba(255, 255, 255, 0.4);
-        cursor: grab;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        left: 5px;  /* 👈 THÊM 2 DÒNG NÀY */
-    }
-
-    .volume-slider::-webkit-slider-thumb:hover {
-        transform: scale(1.15);
-        box-shadow:
-            0 6px 16px rgba(255, 126, 75, 0.75),
-            0 0 0 4px rgba(255, 255, 255, 1),
-            0 0 0 7px rgba(255, 126, 75, 0.35),
-            inset 0 1px 2px rgba(255, 255, 255, 0.5);
-    }
-
-    .volume-slider::-webkit-slider-thumb:active {
-        cursor: grabbing;
-        transform: scale(1.05);
-    }
-
-    .volume-slider::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #FFB084, #FF8E53);
-        border: 3px solid rgba(255, 255, 255, 0.95);
-        box-shadow:
-            0 4px 12px rgba(255, 126, 75, 0.6),
-            0 0 0 2px rgba(255, 126, 75, 0.25);
-        cursor: grab;
-    }
-
-    .volume-slider::-moz-range-thumb:active {
-        cursor: grabbing;
-    }
-
-    .volume-percent {
-        font-size: 13px;
+    .music-upload-title {
+        font-size: 20px;
         font-weight: 700;
-        color: #FF8E53;
-        min-width: 45px;
-        text-align: center;
-        padding: 6px 12px;
-        border-radius: 12px;
-        background: linear-gradient(
-            135deg,
-            rgba(255, 176, 132, 0.2),
-            rgba(255, 200, 160, 0.15)
-        );
-        border: 1px solid rgba(255, 176, 132, 0.4);
+        color: #1f2933;
     }
+
+    .music-upload-close {
+        background: transparent;
+        border: none;
+        font-size: 28px;
+        color: #94a3b8;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+    }
+
+    .music-upload-close:hover {
+        background: #f1f5f9;
+        color: #FF6B35;
+    }
+
+    .music-upload-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .music-upload-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .music-upload-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1f2933;
+    }
+
+    .music-upload-input {
+        padding: 12px 16px;
+        border: 2px solid #FFE5D9;
+        border-radius: 12px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.2s ease;
+        background: #FFF5F0;
+    }
+
+    .music-upload-input:focus {
+        outline: none;
+        border-color: #FFB084;
+        background: #FFFFFF;
+    }
+
+    .music-upload-file-btn {
+        padding: 12px 16px;
+        border: 2px dashed #FFB084;
+        border-radius: 12px;
+        background: #FFF5F0;
+        cursor: pointer;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 600;
+        color: #9A3412;
+        transition: all 0.2s ease;
+    }
+
+    .music-upload-file-btn:hover {
+        background: #FFE5D9;
+        border-color: #FF8E53;
+    }
+
+    .music-upload-file-name {
+        font-size: 12px;
+        color: #6b7280;
+        font-style: italic;
+    }
+
+    .music-upload-submit {
+        padding: 14px 24px;
+        background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+        border: none;
+        border-radius: 12px;
+        color: #FFFFFF;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        box-shadow: 0 4px 16px rgba(255, 126, 75, 0.4);
+    }
+
+    .music-upload-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 126, 75, 0.6);
+    }
+
+    .music-upload-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }    
     
 </style>
 
@@ -951,7 +920,7 @@ def get_music_player_html() -> str:
                 <span id="playlistModeText">auto playlist</span>
                 <span style="margin-left: 4px;">▾</span>
             </div>
-            <button class="music-volume-btn" id="volumeBtn" title="Điều chỉnh âm lượng">🔊</button>
+            <button class="music-upload-btn" id="uploadMusicBtn" title="Tải nhạc lên">+</button>
             <button class="music-close-btn" id="closeMusicPanel" aria-label="Close">×</button>
         </div>
     </div>
@@ -984,11 +953,31 @@ def get_music_player_html() -> str:
     </div>
 </div>
 
-<!-- Volume Slider -->
-<div class="volume-slider-container" id="volumeSliderContainer">
-    <div class="volume-icon">🔊</div>
-    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100" orient="vertical">
-    <div class="volume-percent" id="volumePercent">100%</div>
+<!-- Upload Modal -->
+<div class="music-upload-modal" id="uploadModal">
+    <div class="music-upload-content">
+        <div class="music-upload-header">
+            <div class="music-upload-title">🎵 Tải nhạc lên</div>
+            <button class="music-upload-close" id="closeUploadModal">×</button>
+        </div>
+        <form class="music-upload-form" id="uploadForm">
+            <div class="music-upload-field">
+                <label class="music-upload-label">Tên bài hát</label>
+                <input type="text" class="music-upload-input" id="trackNameInput" placeholder="Nhập tên bài hát..." required>
+            </div>
+            <div class="music-upload-field">
+                <label class="music-upload-label">File nhạc (MP3, WAV, OGG, M4A)</label>
+                <input type="file" id="audioFileInput" accept=".mp3,.wav,.ogg,.m4a,.mpeg,.flac,.aac" style="display: none;">
+                <div class="music-upload-file-btn" id="selectFileBtn">
+                    🎵 Chọn file nhạc 🎵
+                </div>
+                <div class="music-upload-file-name" id="fileName">Chưa chọn file</div>
+            </div>
+            <button type="submit" class="music-upload-submit" id="uploadSubmitBtn" disabled>
+                Tải lên
+            </button>
+        </form>
+    </div>
 </div>
 
 <audio id="hiddenMusicAudio"></audio>
@@ -1432,18 +1421,7 @@ def get_music_player_html() -> str:
 
     document.addEventListener("click", function(e) {
         if (!musicPanel || !musicBtn) return;
-        
-        // Kiểm tra xem có click vào volume slider không
-        const volumeSliderContainer = document.getElementById("volumeSliderContainer");
-        const volumeBtn = document.getElementById("volumeBtn");
-        
-        const clickedVolume = volumeSliderContainer && volumeSliderContainer.contains(e.target);
-        const clickedVolumeBtn = volumeBtn && volumeBtn.contains(e.target);
-        
-        if (!musicPanel.contains(e.target) && 
-            !musicBtn.contains(e.target) && 
-            !clickedVolume && 
-            !clickedVolumeBtn) {
+        if (!musicPanel.contains(e.target) && !musicBtn.contains(e.target)) {
             musicPanel.classList.remove("open");
             musicBtn.classList.remove("active");
         }
@@ -1484,68 +1462,117 @@ def get_music_player_html() -> str:
         }
     });
 
-    // Volume Control Feature
-    const volumeBtn = document.getElementById("volumeBtn");
-    const volumeSliderContainer = document.getElementById("volumeSliderContainer");
-    const volumeSlider = document.getElementById("volumeSlider");
-    const volumePercent = document.getElementById("volumePercent");
+    // Upload Music Feature
+    const uploadBtn = document.getElementById("uploadMusicBtn");
+    const uploadModal = document.getElementById("uploadModal");
+    const closeUploadModal = document.getElementById("closeUploadModal");
+    const uploadForm = document.getElementById("uploadForm");
+    const trackNameInput = document.getElementById("trackNameInput");
+    const audioFileInput = document.getElementById("audioFileInput");
+    const selectFileBtn = document.getElementById("selectFileBtn");
+    const fileName = document.getElementById("fileName");
+    const uploadSubmitBtn = document.getElementById("uploadSubmitBtn");
 
-    // Mở volume slider
-    if (volumeBtn && volumeSliderContainer) {
-        volumeBtn.addEventListener("click", function(e) {
+    let selectedFile = null;
+
+    // Mở modal upload
+    if (uploadBtn && uploadModal) {
+        uploadBtn.addEventListener("click", function(e) {
             e.stopPropagation();
-            
-            // Tính vị trí của button
-            const rect = volumeBtn.getBoundingClientRect();
-            
-            // Đặt slider bên phải button
-            volumeSliderContainer.style.top = (rect.top + rect.height / 2 - 90) + 'px';
-            volumeSliderContainer.style.left = (rect.right + 12) + 'px';
-            
-            volumeSliderContainer.classList.toggle("show");
+            uploadModal.classList.add("show");
         });
     }
 
-    // Đóng volume slider khi click bên ngoài
-    document.addEventListener("click", function(e) {
-        if (volumeSliderContainer && volumeBtn && 
-            !volumeSliderContainer.contains(e.target) && 
-            !volumeBtn.contains(e.target)) {
-            volumeSliderContainer.classList.remove("show");
+    // Đóng modal
+    if (closeUploadModal) {
+        closeUploadModal.addEventListener("click", function() {
+            uploadModal.classList.remove("show");
+            resetUploadForm();
+        });
+    }
+
+    // Click outside để đóng
+    if (uploadModal) {
+        uploadModal.addEventListener("click", function(e) {
+            if (e.target === uploadModal) {
+                uploadModal.classList.remove("show");
+                resetUploadForm();
+            }
+        });
+    }
+
+    // Chọn file
+    if (selectFileBtn && audioFileInput) {
+        selectFileBtn.addEventListener("click", function() {
+            audioFileInput.click();
+        });
+
+        audioFileInput.addEventListener("change", function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                fileName.textContent = file.name;
+                checkFormValid();
+            }
+        });
+    }
+
+    // Kiểm tra form hợp lệ
+    function checkFormValid() {
+        if (trackNameInput && uploadSubmitBtn) {
+            const isValid = trackNameInput.value.trim() && selectedFile;
+            uploadSubmitBtn.disabled = !isValid;
         }
-    });
-
-    // Xử lý thay đổi âm lượng
-    if (volumeSlider && audioEl) {
-        volumeSlider.addEventListener("input", function() {
-            const volume = volumeSlider.value / 100;
-            audioEl.volume = volume;
-            
-            // Cập nhật hiển thị %
-            if (volumePercent) {
-                volumePercent.textContent = volumeSlider.value + "%";
-            }
-            
-            // Cập nhật gradient
-            volumeSlider.style.setProperty('--volume-percent', volumeSlider.value + '%');
-            
-            // Cập nhật icon loa TRONG SLIDER
-            const volumeIcon = document.querySelector(".volume-icon");
-            if (volumeIcon) {
-                if (volume === 0) {
-                    volumeIcon.textContent = "🔇";
-                } else if (volume < 0.5) {
-                    volumeIcon.textContent = "🔉";
-                } else {
-                    volumeIcon.textContent = "🔊";
-                }
-            }
-        });
-        
-        // Set volume mặc định
-        audioEl.volume = 1;
     }
 
+    if (trackNameInput) {
+        trackNameInput.addEventListener("input", checkFormValid);
+    }
+
+    // Submit form
+    if (uploadForm) {
+        uploadForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const trackName = trackNameInput.value.trim();
+            if (!trackName || !selectedFile) return;
+
+            // Tạo URL tạm cho file audio
+            const audioURL = URL.createObjectURL(selectedFile);
+            
+            // Thêm vào danh sách tracks
+            const newTrack = {
+                id: "upload_" + Date.now(),
+                title: trackName,
+                artist: "",
+                mood: "",
+                file: audioURL,
+                cover: "",
+                accent: "",
+                isUploaded: true
+            };
+
+            MUSIC_TRACKS.push(newTrack);
+            
+            // Render lại danh sách
+            renderTrackList();
+            
+            // Đóng modal và reset
+            uploadModal.classList.remove("show");
+            resetUploadForm();
+            
+            // Thông báo thành công
+            alert("✅ Đã thêm bài hát: " + trackName);
+        });
+    }
+
+    function resetUploadForm() {
+        if (trackNameInput) trackNameInput.value = "";
+        if (audioFileInput) audioFileInput.value = "";
+        if (fileName) fileName.textContent = "Chưa chọn file";
+        selectedFile = null;
+        if (uploadSubmitBtn) uploadSubmitBtn.disabled = true;
+    }       
 })();
 </script>
 """
