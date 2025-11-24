@@ -23,6 +23,7 @@ if __name__ == '__main__':
 
 #  
 # cd TDTT---U-I-A
+# Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 # .\venv\Scripts\Activate.ps1
 # pip install -r requirements.txt
 # cd user_management
