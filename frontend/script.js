@@ -961,7 +961,20 @@ function createMarker(p, lat, lon) {
     // 🚗 NÚT TÌM ĐƯỜNG ĐI
     const tongquanTab = sidebarContent.querySelector("#tab-tongquan");
     const routeBtn = document.createElement("button");
-    routeBtn.textContent = "📍 Tìm đường đi";
+
+    // ✅ Kiểm tra xem có đang chỉ đường đến quán này không
+    const isCurrentPlaceRouted = (routeControl && currentPlaceId === place_id);
+
+    if (isCurrentPlaceRouted) {
+      // ✅ Đang chỉ đường đến quán này → Hiển thị nút "Tắt chỉ đường"
+      routeBtn.textContent = "📍 Tắt chỉ đường";
+      routeBtn.style.background = "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)";
+    } else {
+      // ✅ Chưa chỉ đường hoặc đang chỉ đường quán khác → Hiển thị "Tìm đường đi"
+      routeBtn.textContent = "🔍 Tìm đường đi";
+      routeBtn.style.background = "";
+    }
+
     routeBtn.className = "route-btn";
     tongquanTab.appendChild(routeBtn);
 
@@ -969,7 +982,7 @@ function createMarker(p, lat, lon) {
       const gpsInput = document.getElementById("gpsInput");
       const inputValue = gpsInput ? gpsInput.value.trim() : "";
 
-      // Toggle off nếu đang chỉ đường cho cùng quán
+      // ✅ TRƯỜNG HỢP 1: Đang chỉ đường đến quán này → Tắt đường đi
       if (routeControl && currentPlaceId === place_id) {
         map.removeControl(routeControl);
         routeControl = null;
@@ -977,15 +990,14 @@ function createMarker(p, lat, lon) {
 
         const infoEl = tongquanTab.querySelector(".route-info");
         if (infoEl) infoEl.remove();
+
+        // Đổi lại nút
+        routeBtn.textContent = "🔍 Tìm đường đi";
+        routeBtn.style.background = "";
         return;
       }
 
-      // Xóa đường cũ
-      if (routeControl) {
-        map.removeControl(routeControl);
-        routeControl = null;
-        currentPlaceId = null;
-      }
+      // ✅ TRƯỜNG HỢP 2: Chưa có đường hoặc đang chỉ quán khác → Xóa đường cũ và vẽ đường mới
 
       // Kiểm tra vị trí xuất phát
       if (!inputValue && !window.currentUserCoords) {
@@ -1011,17 +1023,20 @@ function createMarker(p, lat, lon) {
         return;
       }
 
-      // Vẽ đường
+      // ✅ Xóa đường cũ nếu có (đang chỉ quán khác)
+      if (routeControl) {
+        map.removeControl(routeControl);
+        routeControl = null;
+      }
+
+      // ✅ Vẽ đường mới
       drawRoute(userLat, userLon, lat, lon, tongquanTab);
       currentPlaceId = place_id;
-    });
 
-    // Xóa route cũ khi mở quán mới
-    if (routeControl) {
-      map.removeControl(routeControl);
-      routeControl = null;
-      currentPlaceId = null;
-    }
+      // ✅ Đổi nút thành "Tắt chỉ đường"
+      routeBtn.textContent = "📍 Tắt chỉ đường";
+      routeBtn.style.background = "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)";
+    });
 
     sidebar.classList.remove("hidden");
 
@@ -1082,6 +1097,7 @@ function createMarker(p, lat, lon) {
         show: false,
         addWaypoints: false,
         routeWhileDragging: false,
+        containerClassName: 'hidden-routing-control',
         createMarker: (i, wp) => {
           return L.marker(wp.latLng, {
             icon: i === 0
@@ -1904,29 +1920,18 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
 });
 
 // =========================
-// ⌨️ ENTER chỉ hoạt động khi người dùng đang tương tác với ô nhập địa điểm
+// ⌨️ ENTER chạy nút TÌM cho cả 2 ô input
 // =========================
-let isUsingGpsInput = false;
-
-// Khi người dùng click hoặc gõ trong ô nhập
-const gpsInput = document.getElementById("gpsInput");
-gpsInput.addEventListener("focus", () => (isUsingGpsInput = true));
-gpsInput.addEventListener("input", () => (isUsingGpsInput = true));
-
-// Khi người dùng click ra ngoài map hoặc sidebar → tắt chế độ nhập
-document.addEventListener("click", (e) => {
-  const gpsBox = document.querySelector(".gps-box");
-  if (!gpsBox.contains(e.target)) {
-    isUsingGpsInput = false;
-  }
-});
-
-// Khi nhấn Enter → chỉ hoạt động nếu đang trong chế độ nhập
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && isUsingGpsInput) {
-    e.preventDefault();
-    document.getElementById("gpsEnterBtn").click(); // Giả lập click nút ↩
-  }
+    if (e.key === "Enter") {
+        const active = document.activeElement;
+
+        // Nếu đang focus vào ô địa điểm hoặc ô tìm món → chạy Search
+        if (active && (active.id === "gpsInput" || active.id === "query")) {
+            e.preventDefault();
+            document.getElementById("btnSearch").click();
+        }
+    }
 });
 
 // =====================================================

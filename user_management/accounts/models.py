@@ -34,7 +34,48 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.get_sender_display()}: {self.content[:30]}..."
+
+
+# CHÚ Ý: 2 CLASS NÀY PHẢI Ở NGOÀI, KHÔNG THỤT LỀ
+class FriendRequest(models.Model):
+    """
+    Model lưu trữ yêu cầu kết bạn giữa các user
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Đang chờ'),
+        ('accepted', 'Đã chấp nhận'),
+        ('rejected', 'Đã từ chối'),
+    ]
     
+
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_requests')
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_requests')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('sender', 'receiver')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.sender.username} -> {self.receiver.username} ({self.status})"
+
+
+class Friendship(models.Model):
+    """
+    Model lưu trữ quan hệ bạn bè giữa 2 user
+    """
+    user1 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='friendships_as_user1')
+    user2 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='friendships_as_user2')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user1', 'user2')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user1.username} <-> {self.user2.username}"
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     # upload_to='avatars/' nghĩa là ảnh sẽ chui vào thư mục media/avatars/

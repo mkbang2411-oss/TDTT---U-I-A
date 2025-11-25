@@ -1,16 +1,17 @@
-  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
-  body {
-    margin: 0;
-    font-family: "Montserrat", sans-serif;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+body {
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
+}
 
 /* Background xoay 90 độ */
-.background-left{
+.background-left {
   position: absolute;
   width: 500px;
   height: 100px;
   left: 10px;
-  transform: scale(1.5) rotate(90deg); /* Gộp 2 transform */
+  transform: scale(1.5) rotate(90deg);
   height: 1984px;
   width: 683px;
   left: -1550px;
@@ -29,14 +30,14 @@
   padding: 20px;
 }
 
-.logo{
+.logo {
   text-align: left;
   padding: 20px 0;
   margin-bottom: 200px;
   position: relative;
   margin-left: -100px;
- 
 }
+
 .logo img {
   width: 400px;
   height: auto;
@@ -44,17 +45,20 @@
   top: 20px;
   margin-left: 10px;
 }
-.avatar{
+
+.avatar {
   position: absolute;
   left: -290px;
   top: 5px;
 }
-.Sign-out{
+
+.Sign-out {
   position: fixed;
   top: 500px;
   left: 390px;
 }
-.button-SignOut{
+
+.button-SignOut {
   display: inline-block;
   padding: 12px 30px;
   background-color: #fed57e;
@@ -65,10 +69,12 @@
   font-size: 16px;
   transition: all 0.3s ease;
 }
-.button-SignOut:hover{
+
+.button-SignOut:hover {
   color: #bc2a21;
 }
-.Account{
+
+.Account {
   position: fixed;
   color: #bc2a21;
   top: 100px;
@@ -78,7 +84,7 @@
   margin-left: 5px;
 }
 
-.Menu{
+.Menu {
   margin-top: 20px;
   position: relative;
   left: -30px;
@@ -86,7 +92,8 @@
 }
 
 .Menu_Account,
-.Menu_Favorite{
+.Menu_Favorite,
+.Menu_Friend {
   padding: 20px;
   margin: 15px 0;
   cursor: pointer;
@@ -96,37 +103,47 @@
   font-weight: bold;
   text-align: center;
   color: white;
-  
 }
-.Menu_Account{
+
+.Menu_Account {
   margin-top: -150px;
   margin-left: -25px;
 }
-.Menu_Favorite{
+
+.Menu_Favorite {
   margin-left: -25px;
 }
+
+.Menu_Friend {
+  margin-left: -25px;
+}
+
 .Menu_Account:hover,
-.Menu_Favorite:hover{
-  background: rgba(255, 255, 255, 0.3); /* NỀN KHI HOVER */
-  transform: translateX(10px); /* DI CHUYỂN KHI HOVER */
+.Menu_Favorite:hover,
+.Menu_Friend:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(10px);
 }
 
 .Menu_Account.active,
-.Menu_Favorite.active{
-  background: rgba(255, 255, 255, 0.4); /* NỀN KHI ACTIVE */
-  border-left: 5px solid white; /* VIỀN TRÁI */
+.Menu_Favorite.active,
+.Menu_Friend.active {
+  background: rgba(255, 255, 255, 0.4);
+  border-left: 5px solid white;
 }
+
 /* Main content */
 .main-content {
-  margin-left: 650px; /* Cách sidebar */
+  margin-left: 650px;
   padding: 20px;
   position: relative;
   z-index: 5;
   margin-top: 250px;
 }
+
 .form-group {
   display: flex;
-  flex-direction: row; /* Thêm dòng này để chắc chắn nằm ngang */
+  flex-direction: row;
   gap: 40px;
   margin-top: 10px;
   width: 100%;
@@ -134,49 +151,40 @@
 
 .input-box input {
   width: 100%;
-  padding: 10px 20px; /* Padding trong khung */
-  border: 2px solid #ddd; /* Viền khung */
-  border-radius: 10px; /* Bo góc */
+  padding: 10px 20px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
-  background: #f9f9f9; /* Màu nền */
+  background: #f9f9f9;
   transition: all 0.3s;
-  
-  /* THÊM SHADOW */
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
-.input-box label{
+
+.input-box label {
   display: block;
   margin-bottom: 10px;
   font-size: 20px;
   color: #333;
-    /* THÊM HIỆU ỨNG */
-  letter-spacing: 1px; /* Khoảng cách chữ */
+  letter-spacing: 1px;
   position: relative;
   padding-left: 10px;
-
 }
-/* THÊM ĐƯỜNG KẺ BÊN TRÁI LABEL */
+
 .input-box label::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 20px;
-    background: #d32f2f; /* Màu đỏ */
-    border-radius: 2px;
-}
-/* ẨN/HIỆN TRANG - THÊM VÀO TRƯỚC DÒNG CUỐI */
-.page {
-  display: none;
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background: #d32f2f;
+  border-radius: 2px;
 }
 
-.page.active {
-  display: block;
-}
-.Favorite{
+/* FRIEND PAGE */
+.Friend {
   position: fixed;
   color: #bc2a21;
   top: 100px;
@@ -185,24 +193,278 @@
   font-size: 50px;
   margin-left: 5px;
 }
-.Back{
+
+/* TABS */
+.friend-tabs {
+  margin-top: 80px;
+  margin-left: -300px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 15px 20px;
+  border: none;
+  background: white;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tab-btn:hover {
+  background: #fed57e;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(188, 42, 33, 0.2);
+}
+
+.tab-btn.active {
+  background: #bc2a21;
+  color: white;
+  box-shadow: 0 4px 15px rgba(188, 42, 33, 0.3);
+}
+
+/* TAB CONTENT */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* SEARCH CONTAINER */
+.search-container {
+  margin-top: 0;
+  margin-left: -300px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 25px;
+  padding: 5px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.search-box:hover {
+  box-shadow: 0 6px 20px rgba(188, 42, 33, 0.2);
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 20px;
+  font-size: 16px;
+  background: transparent;
+  color: #333;
+}
+
+.search-input::placeholder {
+  color: #999;
+}
+
+.search-button {
+  background: #fed57e;
+  border: none;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-button:hover {
+  background: #bc2a21;
+  transform: scale(1.1);
+}
+
+/* FRIENDS LIST */
+.friends-list {
+  margin-top: 30px;
+  margin-left: -300px;
+  max-width: 600px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* FRIEND CARD */
+.friend-card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.friend-card:hover {
+  box-shadow: 0 4px 15px rgba(188, 42, 33, 0.15);
+  transform: translateY(-2px);
+}
+
+.friend-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.friend-avatar {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #fed57e, #bc2a21);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.friend-name {
+  font-weight: 600;
+  font-size: 18px;
+  color: #333;
+}
+
+.friend-email {
+  font-size: 14px;
+  color: #999;
+  margin-top: 5px;
+}
+
+/* BUTTONS */
+.btn-add,
+.btn-accept,
+.btn-reject,
+.btn-chat {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.btn-add {
+  background: #fed57e;
+  color: white;
+}
+
+.btn-add:hover {
+  background: #bc2a21;
+  transform: scale(1.05);
+}
+
+.btn-accept {
+  background: #4caf50;
+  color: white;
+  margin-right: 10px;
+}
+
+.btn-accept:hover {
+  background: #45a049;
+}
+
+.btn-reject {
+  background: #f44336;
+  color: white;
+}
+
+.btn-reject:hover {
+  background: #da190b;
+}
+
+.btn-chat {
+  background: #2196f3;
+  color: white;
+}
+
+.btn-chat:hover {
+  background: #0b7dda;
+}
+
+.btn-group {
+  display: flex;
+  gap: 5px;
+}
+
+/* NO DATA */
+.no-data {
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+  padding: 40px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* ẨN/HIỆN TRANG */
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+.Favorite {
+  position: fixed;
+  color: #bc2a21;
+  top: 100px;
+  left: 350px;
+  font-weight: bold;
+  font-size: 50px;
+  margin-left: 5px;
+}
+
+.Back {
   position: relative;
   left: 80px;
 }
-.Button_back{
+
+.Button_back {
   display: inline-block;
-  transition: all 0.3 ease;
-}
-.Button_back:hover{
-  transform: scale(1.2);
-}
-.Button_back img{
   transition: all 0.3s ease;
 }
-.Button_back:hover img{
+
+.Button_back:hover {
+  transform: scale(1.2);
+}
+
+.Button_back img {
+  transition: all 0.3s ease;
+}
+
+.Button_back:hover img {
   filter: brightness(1.3);
 }
 
+<<<<<<< HEAD
+/* SCROLLBAR */
+.friends-list::-webkit-scrollbar {
+  width: 8px;
+}
+=======
 /* Nền tối mờ che toàn màn hình */
 .modal-overlay {
     position: fixed;
@@ -409,4 +671,26 @@
   textarea {
       font-family: "Montserrat", sans-serif !important;
   }
+>>>>>>> 2be1da6a80e170000e16b2fd996ac45f8dbe6d19
 
+.friends-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.friends-list::-webkit-scrollbar-thumb {
+  background: #bc2a21;
+  border-radius: 10px;
+}
+
+.friends-list::-webkit-scrollbar-thumb:hover {
+  background: #fed57e;
+}
+
+/* CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE */
+input,
+button,
+select,
+textarea {
+  font-family: "Montserrat", sans-serif !important;
+}

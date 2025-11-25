@@ -19,7 +19,7 @@ urlpatterns = [
     path('', home, name='home'),  # Trang chủ
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),  # Dùng django-allauth
-
+    path('api/accounts/', include('accounts.urls')),  # ← QUAN TRỌNG!
     path('api/reviews/<str:place_id>', account_views.reviews_api, name='reviews_api'),
 
     path('api/check-auth/', account_views.check_auth_status, name='check_auth_status'),

@@ -12,6 +12,10 @@ from django.conf import settings
 import json, os
 import pandas as pd
 from datetime import datetime
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
+from django.views.decorators.http import require_http_methods
+from .models import FriendRequest, Friendship
 
 # ------------------------LẤY DỮ LIỆU REVIEW--------------------------
 
@@ -466,6 +470,192 @@ def get_user_favorites_api(request):
 
     user = request.user
     
+    return JsonResponse({'status': 'error', 'message': 'Chỉ hỗ trợ GET'}, status=405)
+# ==========================================================
+# ✏️ LOGIC API KẾT BẠN
+# ==========================================================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def send_friend_request(request):
+    """Gửi lời mời kết bạn"""
+    try:
+        data = json.loads(request.body)
+        sender_id = data.get('sender_id')
+        receiver_id = data.get('receiver_id')
+        
+        sender = get_object_or_404(User, id=sender_id)
+        receiver = get_object_or_404(User, id=receiver_id)
+        
+        # Kiểm tra không tự gửi cho chính mình
+        if sender == receiver:
+            return JsonResponse({'error': 'Không thể kết bạn với chính mình'}, status=400)
+        
+        # Kiểm tra đã là bạn chưa
+        if Friendship.objects.filter(user1=sender, user2=receiver).exists() or \
+           Friendship.objects.filter(user1=receiver, user2=sender).exists():
+            return JsonResponse({'error': 'Đã là bạn bè rồi'}, status=400)
+        
+        # Kiểm tra đã gửi lời mời chưa
+        if FriendRequest.objects.filter(sender=sender, receiver=receiver, status='pending').exists():
+            return JsonResponse({'error': 'Đã gửi lời mời rồi'}, status=400)
+        
+        # Tạo lời mời kết bạn
+        friend_request = FriendRequest.objects.create(sender=sender, receiver=receiver)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã gửi lời mời kết bạn',
+            'request_id': friend_request.id
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def accept_friend_request(request):
+    """Chấp nhận lời mời kết bạn"""
+    try:
+        data = json.loads(request.body)
+        request_id = data.get('request_id')
+        
+        friend_request = get_object_or_404(FriendRequest, id=request_id, status='pending')
+        
+        # Cập nhật trạng thái
+        friend_request.status = 'accepted'
+        friend_request.save()
+        
+        # Tạo quan hệ bạn bè
+        Friendship.objects.create(user1=friend_request.sender, user2=friend_request.receiver)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã chấp nhận lời mời kết bạn'
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def reject_friend_request(request):
+    """Từ chối lời mời kết bạn"""
+    try:
+        data = json.loads(request.body)
+        request_id = data.get('request_id')
+        
+        friend_request = get_object_or_404(FriendRequest, id=request_id, status='pending')
+        friend_request.status = 'rejected'
+        friend_request.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã từ chối lời mời kết bạn'
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+def get_friends_list(request, user_id):
+    """Lấy danh sách bạn bè"""
+    try:
+        user = get_object_or_404(User, id=user_id)
+        
+        # Lấy bạn bè
+        friends_as_user1 = Friendship.objects.filter(user1=user).values_list('user2', flat=True)
+        friends_as_user2 = Friendship.objects.filter(user2=user).values_list('user1', flat=True)
+        
+        friend_ids = list(friends_as_user1) + list(friends_as_user2)
+        friends = User.objects.filter(id__in=friend_ids)
+        
+        friends_data = [
+            {
+                'id': friend.id,
+                'username': friend.username,
+                'email': friend.email
+            }
+            for friend in friends
+        ]
+        
+        return JsonResponse({'friends': friends_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+def get_friend_requests(request, user_id):
+    """Lấy danh sách lời mời kết bạn"""
+    try:
+        user = get_object_or_404(User, id=user_id)
+        
+        # Lời mời nhận được
+        received_requests = FriendRequest.objects.filter(receiver=user, status='pending')
+        
+        requests_data = [
+            {
+                'id': req.id,
+                'sender_id': req.sender.id,
+                'sender_username': req.sender.username,
+                'created_at': req.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            for req in received_requests
+        ]
+        
+        return JsonResponse({'requests': requests_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+def search_user(request):
+    """Tìm kiếm user theo username hoặc ID"""
+    try:
+        query = request.GET.get('q', '').strip()  # Thêm .strip() để bỏ khoảng trắng
+        
+        if not query:
+            return JsonResponse({'error': 'Cần nhập từ khóa tìm kiếm'}, status=400)
+        
+        # Tìm theo username hoặc ID
+        if query.isdigit():  # Nếu là số thì tìm theo ID
+            users = User.objects.filter(id=int(query))
+        else:  # Nếu là chữ thì tìm theo username
+            users = User.objects.filter(username__icontains=query)[:10]
+        
+        # ✅ THÊM KIỂM TRA NÀY
+        if not users.exists():
+            return JsonResponse({
+                'users': [],
+                'message': 'Không tìm thấy user nào'
+            })
+        
+        users_data = [
+            {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email
+            }
+            for user in users
+        ]
+        
+        return JsonResponse({'users': users_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+@login_required
+@require_http_methods(["GET"])
+def get_current_user(request):
+    """Lấy thông tin user đang đăng nhập"""
+    try:
+        user = request.user
+        return JsonResponse({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
     # Lấy danh sách ID từ DB
     favorite_ids = list(FavoritePlace.objects.filter(user=user).values_list('place_id', flat=True))
     
@@ -754,3 +944,4 @@ def reset_game_progress(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
