@@ -470,7 +470,30 @@ def get_user_favorites_api(request):
 
     user = request.user
     
-    return JsonResponse({'status': 'error', 'message': 'Chỉ hỗ trợ GET'}, status=405)
+    # Lấy danh sách ID từ DB
+    favorite_ids = list(FavoritePlace.objects.filter(user=user).values_list('place_id', flat=True))
+    
+    # Đọc CSV
+    csv_path = os.path.join(settings.BASE_DIR, '..', 'backend', 'Data_with_flavor.csv')
+    csv_path = os.path.abspath(csv_path)
+
+    favorite_places = []
+    try:
+        df = pd.read_csv(csv_path)
+        df['data_id'] = df['data_id'].astype(str) # Ép kiểu string để so sánh
+        
+        # Lọc những quán có id nằm trong danh sách favorite
+        filtered_df = df[df['data_id'].isin(favorite_ids)]
+        
+        # Chuyển dữ liệu thành List of Dictionaries
+        # fillna('') để tránh lỗi null khi chuyển sang JSON
+        favorite_places = filtered_df.fillna('').to_dict('records')
+        
+    except Exception as e:
+        print(f"Lỗi đọc CSV: {e}")
+    
+    # Trả về JSON 
+    return JsonResponse({'favorites': favorite_places})
 # ==========================================================
 # ✏️ LOGIC API KẾT BẠN
 # ==========================================================
@@ -656,30 +679,6 @@ def get_current_user(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-    # Lấy danh sách ID từ DB
-    favorite_ids = list(FavoritePlace.objects.filter(user=user).values_list('place_id', flat=True))
-    
-    # Đọc CSV
-    csv_path = os.path.join(settings.BASE_DIR, '..', 'backend', 'Data_with_flavor.csv')
-    csv_path = os.path.abspath(csv_path)
-
-    favorite_places = []
-    try:
-        df = pd.read_csv(csv_path)
-        df['data_id'] = df['data_id'].astype(str) # Ép kiểu string để so sánh
-        
-        # Lọc những quán có id nằm trong danh sách favorite
-        filtered_df = df[df['data_id'].isin(favorite_ids)]
-        
-        # Chuyển dữ liệu thành List of Dictionaries
-        # fillna('') để tránh lỗi null khi chuyển sang JSON
-        favorite_places = filtered_df.fillna('').to_dict('records')
-        
-    except Exception as e:
-        print(f"Lỗi đọc CSV: {e}")
-    
-    # Trả về JSON 
-    return JsonResponse({'favorites': favorite_places})
 # ===============================
 # 📍 GỢI Ý QUÁN THEO QUẬN CHO ALBUM
 # ===============================
