@@ -308,8 +308,37 @@
             </div>
           </div>
         </div>
+        <div id="avatar-modal" class="modal-overlay" style="display: none">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Cập nhật ảnh đại diện</h3>
+              <span class="close-modal" onclick="closeModal()">×</span>
 
+            </div>
 
+            <div class="modal-body">
+              <p>Xem trước ảnh của bạn</p>
+              <div class="preview-container">
+                <img id="avatar-preview-img" src="" alt="Preview" />
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+              <button class="btn-save" onclick="confirmUpload()">Lưu</button>
+          </div>
+          </div>
+        </div>
+      </div>
+      <!--Favorite-->
+      <div id="Favorite_Page" class="page">
+        <div class="Favorite">
+          <p>Yêu Thích</p>
+        </div>
+        <div id="favorites-list" class="favorites-grid-container">
+          <p style="text-align: center; color: #666">⏳ Đang tải dữ liệu...</p>
+        </div>
+      </div>
         <!--Friends-->
         <div id="Friend_Page" class="page">
             <div class="Friend">
@@ -344,20 +373,7 @@
                 <div id="friends-list" class="friends-list"></div>
             </div>
         </div>
-
       </div>
-      <!--Favorite-->
-      <div id="Favorite_Page" class="page">
-        <div class="Favorite">
-          <p>Yêu Thích</p>
-        </div>
-        <div id="favorites-list" class="favorites-grid-container">
-          <p style="text-align: center; color: #666">⏳ Đang tải dữ liệu...</p>
-        </div>
-      </div>
-
-    </div>
-
     <!-- JAVASCRIPT -->
     <script>
 
