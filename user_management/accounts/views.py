@@ -5,7 +5,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from allauth.socialaccount.models import SocialAccount
-from .models import ChatConversation, ChatMessage, GameProgress
+from .models import ChatConversation, ChatMessage, GameProgress, FoodCard
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import UserProfile, FavoritePlace
 from django.conf import settings
@@ -490,6 +490,73 @@ def get_user_favorites_api(request):
     
     # Trả về JSON 
     return JsonResponse({'favorites': favorite_places})
+# ===============================
+# 📍 GỢI Ý QUÁN THEO QUẬN CHO ALBUM
+# ===============================
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+
+@login_required
+def get_district_places(request):
+    """
+    GET /api/food/suggestions/?district=Quận%201
+
+    Trả về danh sách quán trong Data_with_flavor.csv
+    có địa chỉ chứa chuỗi quận (vd: "Quận 1").
+    """
+    district = request.GET.get("district")
+    if not district:
+        return JsonResponse(
+            {"status": "error", "message": "Thiếu tham số district"},
+            status=400
+        )
+
+    try:
+        # 🔁 ĐƯỜNG DẪN CSV – dùng đúng đường dẫn bạn đang dùng cho favorites
+        csv_path = os.path.join(
+            settings.BASE_DIR, "..", "backend", "Data_with_flavor.csv"
+        )
+        csv_path = os.path.abspath(csv_path)
+
+        df = pd.read_csv(csv_path)
+
+        # 👉 Tên cột địa chỉ trong CSV của bạn: "dia_chi"
+        ADDRESS_COL = "dia_chi"
+        if ADDRESS_COL not in df.columns:
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": f"Không tìm thấy cột '{ADDRESS_COL}' trong CSV.",
+                },
+                status=500,
+            )
+
+        # chuẩn hóa chuỗi để so sánh
+        df[ADDRESS_COL] = df[ADDRESS_COL].astype(str)
+
+        norm_target = district.strip().lower()       # vd: "quận 1"
+
+        def match_row(addr):
+            v = str(addr).strip().lower()
+            # chỉ cần trong dia_chi chứa "quận 1" là match
+            return norm_target in v
+
+        filtered_df = df[df[ADDRESS_COL].apply(match_row)]
+
+        # giới hạn số quán trả về (cho nhẹ)
+        places = filtered_df.fillna("").to_dict("records")[:15]
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "district": district,
+                "count": len(places),
+                "places": places,
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
 # ===============================
@@ -520,6 +587,50 @@ def get_game_progress(request):
             'status': 'error', 
             'message': str(e)
         }, status=500)
+@login_required
+def get_food_album(request):
+    """
+    API trả danh sách FoodCard + trạng thái unlock cho user hiện tại
+    GET /accounts/api/game/album/
+    """
+    try:
+        # Lấy hoặc tạo GameProgress cho user
+        progress, created = GameProgress.objects.get_or_create(user=request.user)
+
+        completed_set = set(progress.completed_levels or [])
+        cards_data = []
+
+        for card in FoodCard.objects.all().order_by("level_index"):
+            level_index = card.level_index
+            level_key = str(level_index)
+
+            unlocked = level_index in completed_set            # đã hoàn thành level
+            available_to_play = progress.is_level_unlocked(level_index)
+            stars = progress.level_stars.get(level_key, 0)
+            best_time = progress.best_times.get(level_key)
+
+            cards_data.append({
+                "id": card.id,
+                "level_index": level_index,
+                "district": card.district,
+                "food_name": card.food_name,
+                "icon": card.icon or "",
+                "description": card.description or "",
+                "unlocked": unlocked,
+                "available_to_play": available_to_play,
+                "stars": stars,
+                "best_time": best_time,
+            })
+
+        return JsonResponse({
+            "status": "success",
+            "cards": cards_data,
+        })
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": str(e),
+        }, status=500)    
 
 
 @csrf_exempt

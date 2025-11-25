@@ -20,6 +20,8 @@
     
     <!-- 🎨 Custom Styles -->
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="mini_game.css" />
+
 </head>
 
 <style>
@@ -243,15 +245,91 @@
             <!-- Nút đóng popup -->
             <button id="closeMiniGame" class="close-mini-game" type="button">×</button>
 
+             <!-- Header + Tabs -->
+        <div class="mini-game-header">
             <h2>Mini-game</h2>
+            <div class="mini-game-tabs">
+                <button
+                    id="miniGameTabBtn"
+                    type="button"
+                    class="mini-tab-btn active"
+                    data-target="miniGameTab">
+                    🎮 Chơi game
+                </button>
+                <button
+                    id="miniAlbumTabBtn"
+                    type="button"
+                    class="mini-tab-btn"
+                    data-target="miniAlbumTab">
+                    📖 Album
+                </button>
+            </div>
+        </div>
 
+        <!-- TAB: GAME -->
+        <div id="miniGameTab" class="mini-game-tab-content active">
             <!-- Vùng chứa game và win screen -->
             <div id="miniGameInner">
                 <canvas id="gameCanvas" width="800" height="800"></canvas>
             </div>
+        </div>
 
-            <!-- Âm thanh mở rương -->
-            <audio id="chestSoundAudio" src="GameAssets/open_chest.mp3" hidden></audio>
+        <!-- TAB: ALBUM -->
+        <div id="miniAlbumTab" class="mini-game-tab-content">
+            <div class="album-wrapper">
+                <h3 class="album-title">📚 Food Map Journey</h3>
+                <p class="album-subtitle">
+                    Hoàn thành các map trong mini game để mở khóa món ăn đặc trưng từng quận.
+                </p>
+
+                <div class="album-grid">
+                  <!-- 🆕 Panel hiển thị list quán gợi ý -->
+                <div id="albumPlacesPanel" class="album-places-panel">
+                    <div class="album-places-empty">
+                        Chọn một món <strong>đã mở</strong> để xem list quán gợi ý trong khu vực đó 😋
+                    </div>
+                </div>
+                    <!-- Level 0 -->
+                    <div class="album-card locked" data-level="0">
+                        <div class="album-card-header">
+                            <span class="album-district">Quận 1</span>
+                            <span class="album-status">🔒 Chưa mở</span>
+                        </div>
+                        <div class="album-food">🍜 Phở</div>
+                    </div>
+
+                    <!-- Level 1 -->
+                    <div class="album-card locked" data-level="1">
+                        <div class="album-card-header">
+                            <span class="album-district">Quận 3</span>
+                            <span class="album-status">🔒 Chưa mở</span>
+                        </div>
+                        <div class="album-food">🥖 Bánh Mì</div>
+                    </div>
+
+                    <!-- Level 2 -->
+                    <div class="album-card locked" data-level="2">
+                        <div class="album-card-header">
+                            <span class="album-district">Quận 5</span>
+                            <span class="album-status">🔒 Chưa mở</span>
+                        </div>
+                        <div class="album-food">🍜 Hủ Tiếu</div>
+                    </div>
+
+                    <!-- Level 3 -->
+                    <div class="album-card locked" data-level="3">
+                        <div class="album-card-header">
+                            <span class="album-district">Quận 7</span>
+                            <span class="album-status">🔒 Chưa mở</span>
+                        </div>
+                        <div class="album-food">🍮 Bánh Flan</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Âm thanh mở rương -->
+        <audio id="chestSoundAudio" src="GameAssets/open_chest.mp3" hidden></audio>
         </div>
     </div>
     <!-- 🎮 MINI GAME END -->
@@ -272,6 +350,8 @@
     
     <!-- ✅ Your custom script - Load CUỐI CÙNG -->
     <script src="script.js"></script>
+    <script src="mini_game.js"></script>
+
     
     <!-- 🔐 Script kiểm tra đăng nhập -->
     <script>

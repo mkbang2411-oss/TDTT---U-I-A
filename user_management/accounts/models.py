@@ -96,3 +96,18 @@ class GameProgress(models.Model):
         if level_index == 0:
             return True  # Level đầu tiên luôn mở
         return level_index in self.completed_levels or level_index <= self.get_max_unlocked_level()
+
+
+class FoodCard(models.Model):
+    """
+    Thẻ món ăn dùng cho album Food Map Journey.
+    Mỗi card gắn với 1 level trong mini game.
+    """
+    level_index = models.IntegerField(unique=True)  # level tương ứng (0,1,2,3,...)
+    district = models.CharField(max_length=100)     # VD: "Quận 1"
+    food_name = models.CharField(max_length=100)    # VD: "Phở"
+    icon = models.CharField(max_length=10, blank=True, null=True)  # emoji: 🍜, 🥖,...
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Level {self.level_index} - {self.district} - {self.food_name}"

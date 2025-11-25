@@ -40,6 +40,9 @@ urlpatterns = [
     path('api/game/progress/', account_views.get_game_progress, name='get_game_progress'),
     path('api/game/update/', account_views.update_game_progress, name='update_game_progress'),
     path('api/game/reset/', account_views.reset_game_progress, name='reset_game_progress'),  # Bonus: reset tiến độ
+    path('api/game/album/', account_views.get_food_album, name='get_food_album'),
+    path('api/food/suggestions/', account_views.get_district_places, name='get_district_places'),
+
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
