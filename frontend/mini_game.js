@@ -153,28 +153,30 @@ function setupAlbumCardClicks() {
     const panel = document.getElementById("albumPlacesPanel");
 
     cards.forEach(card => {
-        // clear handler cũ (nếu có)
+        // Clear handler cũ
         card.onclick = null;
 
         card.addEventListener("click", () => {
-            // chỉ cho click khi card đã unlock
+            // 🔒 Nếu card chưa unlock → hiển thị thông báo
             if (!card.classList.contains("unlocked")) {
                 if (panel) {
+                    const levelIndex = card.getAttribute("data-level");
                     panel.innerHTML = `
                         <div class="album-places-empty">
-                            Hãy hoàn thành màn chơi này để mở khóa món và xem gợi ý quán nhé 🔒
+                            🔒 Hãy hoàn thành Level ${parseInt(levelIndex) + 1} để mở khóa món này!
                         </div>
                     `;
                 }
                 return;
             }
 
-            // highlight card được chọn
+            // ✅ Nếu card đã unlock → highlight card và load quán
             cards.forEach(c => c.classList.remove("selected"));
             card.classList.add("selected");
 
             const districtEl = card.querySelector(".album-district");
             const district = districtEl ? districtEl.textContent.trim() : null;
+            
             if (district) {
                 showDistrictPlaces(district);
             }

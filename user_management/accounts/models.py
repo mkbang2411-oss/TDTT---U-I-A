@@ -148,7 +148,11 @@ class FoodCard(models.Model):
     district = models.CharField(max_length=100)     # VD: "Quận 1"
     food_name = models.CharField(max_length=100)    # VD: "Phở"
     icon = models.CharField(max_length=10, blank=True, null=True)  # emoji: 🍜, 🥖,...
-    description = models.TextField(blank=True, null=True)
+    
+    # 🆕 THÊM CÁC FIELD NÀY
+    description = models.TextField(blank=True, null=True)  # Mô tả món ăn
+    price_range = models.CharField(max_length=50, blank=True, null=True)  # VD: "45.000 - 60.000đ"
+    image_url = models.CharField(max_length=255, blank=True, null=True)  # URL ảnh món ăn
 
     def __str__(self):
         return f"Level {self.level_index} - {self.district} - {self.food_name}"
