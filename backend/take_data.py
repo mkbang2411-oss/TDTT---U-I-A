@@ -7,7 +7,7 @@ from requests.exceptions import ChunkedEncodingError
 import requests
 
 # ⚙️ Cấu hình
-SERP_API_KEY = "a3ce5e1007e887b80f0c3114d9bd93854917de1e7caae81e7887148f233072a4"
+SERP_API_KEY = "c0a9a59f6aa0c706bca0e436958e149a9139660ada983e090334b6a25778504a"
 CSV_FILE = "Data_with_flavor.csv"
 
 

@@ -5,11 +5,11 @@ import re
 CSV_FILE = "Data_with_flavor.csv"
 
 # Giờ mở cửa random (bạn tự chỉnh ở đây)
-OPEN_HOURS = ["6:00","8:30","9:00","16:00","6:30","7:00","8:00"]
+OPEN_HOURS = ["6:00","6:30","7:00"]
 
 # ====== TỰ CHỈNH Ở ĐÂY ======
-START_CSV = 2022      # dòng bắt đầu (giống hệt số dòng trong file CSV)
-END_CSV   = 2287      # dòng kết thúc (giống hệt số dòng trong file CSV)
+START_CSV = 2287      # dòng bắt đầu (giống hệt số dòng trong file CSV)
+END_CSV   = 2461      # dòng kết thúc (giống hệt số dòng trong file CSV)
 # ============================
 
 df = pd.read_csv(CSV_FILE)

@@ -685,12 +685,15 @@ from django.http import JsonResponse
 @login_required
 def get_district_places(request):
     """
-    GET /api/food/suggestions/?district=Quận%201
-
-    Trả về danh sách quán trong Data_with_flavor.csv
-    có địa chỉ chứa chuỗi quận (vd: "Quận 1").
+    GET /api/food/suggestions/?district=Quận%201,%203,%205&food=Phở
+    
+    Trả về danh sách quán theo:
+    1. Địa chỉ chứa quận
+    2. Tên quán chứa món ăn (nếu có tham số food)
     """
     district = request.GET.get("district")
+    food_keyword = request.GET.get("food", "").strip()  # 🆕 Thêm tham số food
+    
     if not district:
         return JsonResponse(
             {"status": "error", "message": "Thiếu tham số district"},
@@ -698,7 +701,6 @@ def get_district_places(request):
         )
 
     try:
-        # 🔁 ĐƯỜNG DẪN CSV – dùng đúng đường dẫn bạn đang dùng cho favorites
         csv_path = os.path.join(
             settings.BASE_DIR, "..", "backend", "Data_with_flavor.csv"
         )
@@ -706,36 +708,55 @@ def get_district_places(request):
 
         df = pd.read_csv(csv_path)
 
-        # 👉 Tên cột địa chỉ trong CSV của bạn: "dia_chi"
         ADDRESS_COL = "dia_chi"
+        NAME_COL = "ten_quan"  # 🆕 Thêm cột tên quán
+        
         if ADDRESS_COL not in df.columns:
             return JsonResponse(
-                {
-                    "status": "error",
-                    "message": f"Không tìm thấy cột '{ADDRESS_COL}' trong CSV.",
-                },
+                {"status": "error", "message": f"Không tìm thấy cột '{ADDRESS_COL}'"},
                 status=500,
             )
 
-        # chuẩn hóa chuỗi để so sánh
         df[ADDRESS_COL] = df[ADDRESS_COL].astype(str)
+        df[NAME_COL] = df[NAME_COL].astype(str)
 
-        norm_target = district.strip().lower()       # vd: "quận 1"
+        # 🔍 TÁCH CÁC QUẬN
+        district_list = [d.strip() for d in district.split(",")]
+        normalized_districts = []
+        for d in district_list:
+            d_lower = d.lower()
+            if "quận" not in d_lower:
+                normalized_districts.append(f"quận {d}")
+            else:
+                normalized_districts.append(d_lower)
 
-        def match_row(addr):
-            v = str(addr).strip().lower()
-            # chỉ cần trong dia_chi chứa "quận 1" là match
-            return norm_target in v
+        def match_row(row):
+            addr_lower = str(row[ADDRESS_COL]).lower()
+            name_lower = str(row[NAME_COL]).lower()
+            
+            # ✅ Kiểm tra địa chỉ có chứa quận không
+            has_district = any(district in addr_lower for district in normalized_districts)
+            
+            # 🆕 Nếu có tham số food → kiểm tra tên quán có chứa món ăn không
+            if food_keyword:
+                food_lower = food_keyword.lower()
+                has_food = food_lower in name_lower
+                return has_district and has_food
+            
+            return has_district
 
-        filtered_df = df[df[ADDRESS_COL].apply(match_row)]
+        filtered_df = df[df.apply(match_row, axis=1)]
 
-        # giới hạn số quán trả về (cho nhẹ)
+        # 🔀 SHUFFLE để tránh lấy toàn quán đầu file
+        filtered_df = filtered_df.sample(frac=1).reset_index(drop=True)
+        
         places = filtered_df.fillna("").to_dict("records")[:15]
 
         return JsonResponse(
             {
                 "status": "success",
                 "district": district,
+                "food": food_keyword if food_keyword else "Tất cả",
                 "count": len(places),
                 "places": places,
             }

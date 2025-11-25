@@ -19,7 +19,13 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
   className: 'map-pastel'
 }).addTo(map);
 
+// Cho file khác (mini_game.js) dùng được
+window.map = map;
+// Map place_id -> marker
+window.placeMarkersById = {};
+
 let markers = [];
+
 let markerClusterGroup = L.markerClusterGroup({
   iconCreateFunction: function(cluster) {
     const count = cluster.getChildCount();
@@ -582,7 +588,8 @@ function displayPlaces(places, shouldZoom = true) {
   });
 
   markers = []; // reset mảng markers
-
+  // reset index marker theo place_id
+window.placeMarkersById = {};
   // 👉 Gắn cluster vào map trước
   map.addLayer(markerClusterGroup);
 
@@ -672,6 +679,12 @@ function createMarker(p, lat, lon) {
     icon,
     placeData: p // ✅ Lưu thông tin quán vào marker
   });
+// Lưu marker theo id để có thể focus từ mini_game.js
+const placeId = p.data_id || p.ten_quan;
+if (placeId) {
+  if (!window.placeMarkersById) window.placeMarkersById = {};
+  window.placeMarkersById[placeId] = marker;
+}
 
   // ⭐ Thêm hiệu ứng glow cho Michelin
   if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
@@ -1984,3 +1997,99 @@ if (sidebar) {
         }
     });
 }
+
+// =========================
+// 🎯 Cho mini_game.js gọi khi click vào quán trong Album
+// =========================
+window.focusPlaceOnMap = function ({ lat, lon, placeId, name, address }) {
+  if (!window.map) return;
+
+  // 1️⃣ Ưu tiên dùng marker có sẵn theo id
+  if (placeId && window.placeMarkersById && window.placeMarkersById[placeId]) {
+    const mk = window.placeMarkersById[placeId];
+    const pos = mk.getLatLng();
+
+    // zoom tới & tái sử dụng logic click marker (mở sidebar, review, route,…)
+    map.setView(pos, 17, { animate: true });
+    mk.fire("click");
+    return;
+  }
+
+  // 2️⃣ Fallback: dùng toạ độ
+  const latNum = parseFloat(lat);
+  const lonNum = parseFloat(lon);
+  if (!isNaN(latNum) && !isNaN(lonNum)) {
+    const pos = [latNum, lonNum];
+    map.setView(pos, 17, { animate: true });
+
+    L.popup()
+      .setLatLng(pos)
+      .setContent(`<b>${name || ""}</b><br>${address || ""}`)
+      .openOn(map);
+  }
+};
+
+// =========================
+// 🎯 Cho mini_game (Album) gọi
+// =========================
+window.focusPlaceOnMap = function ({
+  lat,
+  lon,
+  placeId,
+  name,
+  address,
+  placeData
+}) {
+  if (!window.map) return;
+
+  let marker = null;
+
+  // 1️⃣ Ưu tiên dùng marker đã tồn tại
+  if (placeId && window.placeMarkersById && window.placeMarkersById[placeId]) {
+    marker = window.placeMarkersById[placeId];
+  }
+
+  // 2️⃣ Nếu chưa có marker mà có placeData → tạo luôn marker
+  if (!marker && placeData) {
+    const plat = parseFloat(placeData.lat ?? lat);
+    const plon = parseFloat(placeData.lon ?? lon);
+    if (!isNaN(plat) && !isNaN(plon)) {
+      marker = createMarker(placeData, plat, plon);
+
+      if (window.markerClusterGroup) {
+        window.markerClusterGroup.addLayer(marker);
+      } else {
+        marker.addTo(map);
+      }
+
+      // lưu lại để lần sau dùng
+      const id = placeId || placeData.data_id || placeData.ten_quan;
+      if (!window.placeMarkersById) window.placeMarkersById = {};
+      if (id) window.placeMarkersById[id] = marker;
+
+      if (id && window.visibleMarkers) {
+        visibleMarkers.add(id); // tránh tạo trùng trong lazy-load
+      }
+    }
+  }
+
+  // 3️⃣ Nếu đã có marker → zoom + giả lập click để mở sidebar
+  if (marker) {
+    const pos = marker.getLatLng();
+    map.setView(pos, 17, { animate: true });
+    marker.fire("click");           // ⬅ chạy y như user click trên map
+    return;
+  }
+
+  // 4️⃣ Fallback cuối: chỉ pan + popup đơn giản
+  const plat = parseFloat(lat);
+  const plon = parseFloat(lon);
+  if (!isNaN(plat) && !isNaN(plon)) {
+    const pos = [plat, plon];
+    map.setView(pos, 17, { animate: true });
+    L.popup()
+      .setLatLng(pos)
+      .setContent(`<b>${name || ""}</b><br>${address || ""}`)
+      .openOn(map);
+  }
+};

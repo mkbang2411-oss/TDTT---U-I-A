@@ -185,7 +185,7 @@ function setupAlbumCardClicks() {
 }
 
 // ===============================
-// 📍 RENDER DANH SÁCH QUÁN THEO QUẬN
+// 🍽️ RENDER DANH SÁCH QUÁN THEO QUẬN
 // ===============================
 function renderPlaceSuggestions(district, places) {
     const panel = document.getElementById("albumPlacesPanel");
@@ -200,19 +200,28 @@ function renderPlaceSuggestions(district, places) {
         return;
     }
 
-    const itemsHtml = places.map(p => `
-        <div class="place-card">
-            <div class="place-main">
-                <div class="place-name">${p.ten_quan || "Quán ăn"}</div>
-                <div class="place-rating">
-                    ${p.rating ? `⭐ ${p.rating}` : ""}
-                    ${p.gia_trung_binh ? `<span class="place-price">${p.gia_trung_binh}</span>` : ""}
+    const itemsHtml = places.map(p => {
+        const lat = p.lat || p.latitude || "";
+        const lon = p.lon || p.longitude || "";
+        const placeId = p.data_id || p.ten_quan || "";
+
+        return `
+            <div class="place-card"
+                 data-lat="${lat}"
+                 data-lon="${lon}"
+                 data-place-id="${placeId}">
+                <div class="place-main">
+                    <div class="place-name">${p.ten_quan || "Quán ăn"}</div>
+                    <div class="place-rating">
+                        ${p.rating ? `⭐ ${p.rating}` : ""}
+                        ${p.gia_trung_binh ? `<span class="place-price">${p.gia_trung_binh}</span>` : ""}
+                    </div>
                 </div>
+                <div class="place-address">${p.dia_chi || ""}</div>
+                ${p.khau_vi ? `<div class="place-flavor">Khẩu vị: ${p.khau_vi}</div>` : ""}
             </div>
-            <div class="place-address">${p.dia_chi || ""}</div>
-            ${p.khau_vi ? `<div class="place-flavor">Khẩu vị: ${p.khau_vi}</div>` : ""}
-        </div>
-    `).join("");
+        `;
+    }).join("");
 
     panel.innerHTML = `
         <h4 class="album-places-title">Gợi ý quán ở ${district}</h4>
@@ -220,27 +229,109 @@ function renderPlaceSuggestions(district, places) {
             ${itemsHtml}
         </div>
     `;
+    // 🆕 Gắn click cho từng quán, truyền luôn object p
+const list = panel.querySelector(".album-places-list");
+const cards = list.querySelectorAll(".place-card");
+
+cards.forEach((card, index) => {
+  card.addEventListener("click", () => {
+    // highlight
+    list.querySelectorAll(".place-card").forEach(c => c.classList.remove("active"));
+    card.classList.add("active");
+
+    const p = places[index];
+    if (!p) return;
+
+    const lat = p.lat || p.latitude;
+    const lon = p.lon || p.longitude;
+    const placeId = p.data_id || p.ten_quan;
+
+    if (window.focusPlaceOnMap) {
+      window.focusPlaceOnMap({
+        lat,
+        lon,
+        placeId,
+        name: p.ten_quan,
+        address: p.dia_chi,
+        placeData: p     // ⬅ gửi luôn data sang cho script.js
+      });
+    }
+  });
+});
+
+    // 🆕 gắn sự kiện click cho từng quán
+    setupAlbumPlaceClicks();
 }
 
+function setupAlbumPlaceClicks() {
+    const panel = document.getElementById("albumPlacesPanel");
+    if (!panel) return;
+
+    const list = panel.querySelector(".album-places-list");
+    if (!list) return;
+
+    const cards = list.querySelectorAll(".place-card");
+
+    cards.forEach(card => {
+        card.onclick = () => {
+            // highlight card đang chọn
+            list.querySelectorAll(".place-card").forEach(c => c.classList.remove("active"));
+            card.classList.add("active");
+
+            const lat = parseFloat(card.dataset.lat);
+            const lon = parseFloat(card.dataset.lon);
+            const placeId = card.dataset.placeId || null;
+
+            const name = card.querySelector(".place-name")?.textContent.trim() || "";
+            const address = card.querySelector(".place-address")?.textContent.trim() || "";
+
+            // Gọi qua script.js
+            if (window.focusPlaceOnMap && (placeId || (!isNaN(lat) && !isNaN(lon)))) {
+                window.focusPlaceOnMap({ lat, lon, placeId, name, address });
+            } else if (!isNaN(lat) && !isNaN(lon) && window.map) {
+                // fallback rất basic
+                window.map.setView([lat, lon], 17);
+            }
+        };
+    });
+}
+
+
+
+
 // ===============================
-// 📍 GỌI API LẤY QUÁN THEO QUẬN
+// 🔍 GỌI API LẤY QUÁN THEO QUẬN
 // ===============================
 async function showDistrictPlaces(district) {
     const panel = document.getElementById("albumPlacesPanel");
     if (!panel) return;
 
+    // 🆕 LẤY TÊN MÓN ĂN TỪ CARD
+    const selectedCard = document.querySelector(".album-card.selected");
+    const foodEl = selectedCard ? selectedCard.querySelector(".album-food") : null;
+    let foodName = "";
+    
+    if (foodEl) {
+        // Lấy text "🍜 Phở Bò Sài Gòn" → "Phở"
+        const fullText = foodEl.textContent.trim();
+        foodName = fullText.replace(/[🍜🥖🍚🥐]/g, "").trim().split(" ")[0]; // Lấy từ đầu tiên
+    }
+
     panel.innerHTML = `
         <div class="album-places-loading">
             <div class="spinner"></div>
-            <p>Đang tải quán ở <strong>${district}</strong>...</p>
+            <p>Đang tải quán <strong>${foodName || "ăn"}</strong> ở <strong>${district}</strong>...</p>
         </div>
     `;
 
     try {
-        const response = await fetch(
-            `${API_GAME_URL}/api/food/suggestions/?district=${encodeURIComponent(district)}`,
-            { credentials: "include" }
-        );
+        // 🆕 GỬI THÊM THAM SỐ FOOD
+        let url = `${API_GAME_URL}/api/food/suggestions/?district=${encodeURIComponent(district)}`;
+        if (foodName) {
+            url += `&food=${encodeURIComponent(foodName)}`;
+        }
+        
+        const response = await fetch(url, { credentials: "include" });
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -338,7 +429,9 @@ async function loadAlbumCards() {
     }
 });
  // 🆕 Gán sự kiện click cho card
-    setupAlbumCardClicks();
+    setTimeout(() => {
+        setupAlbumCardClicks();
+    }, 100);
     } catch (error) {
         console.error('❌ Không load được album:', error);
     }
@@ -1477,3 +1570,4 @@ document.addEventListener('showLevelSelection', () => {
 });
 
 }); // <-- Chỉ đóng DOMContentLoaded 1 lần duy nhất
+
