@@ -632,25 +632,15 @@ def get_friend_requests(request, user_id):
 
 @require_http_methods(["GET"])
 def search_user(request):
-    """Tìm kiếm user theo username hoặc ID"""
+    """Tìm kiếm user theo email"""
     try:
-        query = request.GET.get('q', '').strip()  # Thêm .strip() để bỏ khoảng trắng
+        query = request.GET.get('q', '')
         
         if not query:
-            return JsonResponse({'error': 'Cần nhập từ khóa tìm kiếm'}, status=400)
+            return JsonResponse({'error': 'Cần nhập email để tìm kiếm'}, status=400)
         
-        # Tìm theo username hoặc ID
-        if query.isdigit():  # Nếu là số thì tìm theo ID
-            users = User.objects.filter(id=int(query))
-        else:  # Nếu là chữ thì tìm theo username
-            users = User.objects.filter(username__icontains=query)[:10]
-        
-        # ✅ THÊM KIỂM TRA NÀY
-        if not users.exists():
-            return JsonResponse({
-                'users': [],
-                'message': 'Không tìm thấy user nào'
-            })
+        # Tìm theo email
+        users = User.objects.filter(email__icontains=query)[:10]
         
         users_data = [
             {

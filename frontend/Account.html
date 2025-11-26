@@ -27,6 +27,9 @@
             <div class="Menu_Account" onclick="showPage('Account_Page')">Tài Khoản</div>
             <div class="Menu_Favorite" onclick="showPage('Favorite_Page')">Yêu Thích</div>
             <div class="Menu_Friend" onclick="showPage('Friend_Page')">Bạn Bè</div>
+            <div class="Menu_Logout">
+              <a href="#" class="button-SignOut" id="logout-button">Đăng Xuất</a>
+            </div>
         </div>
         <div class="Back">
             <a href="/" class="Button_back">
@@ -35,11 +38,7 @@
         </div>
         
       </div>
-      <div class="Back">
-        <a href="http://127.0.0.1:5000/" class="Button_back">
-          <img src="Picture/đ.png" width="50" height="50" alt="Back" />
-        </a>
-      </div>
+      
     </div>
 
     <div class="main-content">
@@ -104,9 +103,7 @@
           />
         </div>
 
-        <div class="Sign-out" style="margin-top: 10px">
-          <a href="#" class="button-SignOut" id="logout-button">Đăng Xuất</a>
-        </div>
+        
         <div class="account_Info">
           <div class="form-group">
             <div class="input-box">
@@ -356,7 +353,7 @@
             <div id="search-tab" class="tab-content active">
                 <div class="search-container">
                     <div class="search-box">
-                        <input type="text" id="search-input" class="search-input" placeholder="Tìm kiếm theo tên hoặc ID...">
+                        <input type="email" id="search-input" class="search-input" placeholder="Nhập email để tìm bạn bè...">
                         <button class="search-button" onclick="searchUsers()">🔎</button>
                     </div>
                 </div>
