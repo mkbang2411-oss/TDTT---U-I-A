@@ -1,0 +1,388 @@
+// ========================================
+// 🧩 JIGSAW PUZZLE MINI GAME
+// ========================================
+
+class JigsawPuzzle {
+  constructor() {
+    this.svg = document.getElementById("puzzle");
+    
+    // Kiểm tra xem có tồn tại không
+    if (!this.svg) {
+      console.error("Không tìm thấy SVG #puzzle");
+      return;
+    }
+    
+    this.defs = this.svg.querySelector("defs");
+    this.layer = document.getElementById("pieces");
+    this.piecePaths = [...this.defs.querySelectorAll("path")];
+    
+    this.pieces = [];
+    this.draggedPiece = null;
+    this.dragOffset = { x: 0, y: 0 };
+    this.snapThreshold = 30; // Dễ: ngưỡng snap lớn
+    
+    this.moves = 0;
+    this.startTime = null;
+    this.timerInterval = null;
+    this.completedPieces = 0;
+    
+    this.svgNS = "http://www.w3.org/2000/svg";
+    this.xlinkNS = "http://www.w3.org/1999/xlink";
+    
+    this.init();
+  }
+  
+  init() {
+    this.createPieces();
+    this.setupEventListeners();
+    this.shuffle();
+    this.startTimer();
+  }
+  
+  createPieces() {
+  // ✅ Lấy kích thước thực của viewBox
+  const viewBox = this.svg.viewBox.baseVal;
+  const imgWidth = viewBox.width;   // 1071
+  const imgHeight = viewBox.height; // 750
+  
+  this.piecePaths.forEach((path, index) => {
+    const bbox = path.getBBox();
+    
+    // Tạo clipPath
+    const cp = document.createElementNS(this.svgNS, "clipPath");
+    cp.id = `clip-${index}`;
+    const useClip = document.createElementNS(this.svgNS, "use");
+    useClip.setAttributeNS(this.xlinkNS, "xlink:href", `#${path.id}`);
+    cp.appendChild(useClip);
+    this.defs.appendChild(cp);
+    
+    // Tạo group mảnh ghép
+    const g = document.createElementNS(this.svgNS, "g");
+    g.classList.add("piece");
+    g.dataset.id = index;
+    
+    // ✅ Sử dụng <image> với kích thước đúng
+    const img = document.createElementNS(this.svgNS, "image");
+    img.setAttributeNS(this.xlinkNS, "xlink:href", "Picture/puzzle_sample.png");
+    img.setAttribute("x", "0");
+    img.setAttribute("y", "0");
+    img.setAttribute("width", imgWidth);
+    img.setAttribute("height", imgHeight);
+    img.setAttribute("clip-path", `url(#clip-${index})`);
+    img.setAttribute("preserveAspectRatio", "none"); // ✅ Đổi từ "xMidYMid slice" thành "none"
+    
+    // Viền mảnh
+    const outline = document.createElementNS(this.svgNS, "use");
+    outline.setAttributeNS(this.xlinkNS, "xlink:href", `#${path.id}`);
+    outline.setAttribute("style", "fill:none;stroke:#333;stroke-width:2");
+    
+    g.appendChild(img);
+    g.appendChild(outline);
+    this.layer.appendChild(g);
+    
+    // ✅ Lưu thông tin mảnh - VỊ TRÍ ĐÚNG LÀ 0,0 vì path đã có offset trong d=""
+    this.pieces.push({
+      element: g,
+      index: index,
+      correctX: 0,  // Vị trí đúng là gốc tọa độ
+      correctY: 0,
+      currentX: 0,
+      currentY: 0,
+      isCorrect: false,
+      bbox: bbox
+    });
+  });
+}
+  
+  shuffle() {
+     const boardWidth = 1071;
+  const boardHeight = 750;
+    
+    this.pieces.forEach(piece => {
+      // Mức độ dễ: chỉ xáo trộn trong phạm vi gần (±150px)
+      const randomX = (Math.random() - 0.5) * 300;
+      const randomY = (Math.random() - 0.5) * 300;
+      
+      // Đảm bảo không ra ngoài board
+      piece.currentX = Math.max(-100, Math.min(boardWidth - 100, randomX));
+      piece.currentY = Math.max(-100, Math.min(boardHeight - 100, randomY));
+      
+      this.updatePiecePosition(piece);
+    });
+    
+    this.completedPieces = 0;
+    this.updateStats();
+  }
+  
+  updatePiecePosition(piece) {
+    piece.element.setAttribute("transform", 
+      `translate(${piece.currentX}, ${piece.currentY})`);
+  }
+  
+  setupEventListeners() {
+    // Nút shuffle
+    const btnShuffle = document.querySelector('.mini-game-overlay .btn-shuffle');
+    if (btnShuffle) {
+      btnShuffle.addEventListener('click', () => this.reset());
+    }
+    
+    // Drag events cho SVG
+    this.svg.addEventListener('mousedown', (e) => this.onMouseDown(e));
+    this.svg.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    this.svg.addEventListener('mouseup', (e) => this.onMouseUp(e));
+    
+    // Touch events cho mobile
+    this.svg.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
+    this.svg.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
+    this.svg.addEventListener('touchend', (e) => this.onTouchEnd(e));
+  }
+  
+  getPointerPosition(e) {
+    const pt = this.svg.createSVGPoint();
+    pt.x = e.clientX || (e.touches && e.touches[0].clientX);
+    pt.y = e.clientY || (e.touches && e.touches[0].clientY);
+    
+    const svgP = pt.matrixTransform(this.svg.getScreenCTM().inverse());
+    return { x: svgP.x, y: svgP.y };
+  }
+  
+  onMouseDown(e) {
+    const target = e.target.closest('.piece');
+    if (!target || target.classList.contains('correct')) return;
+    
+    const piece = this.pieces.find(p => p.element === target);
+    if (!piece) return;
+    
+    this.draggedPiece = piece;
+    const pos = this.getPointerPosition(e);
+    
+    this.dragOffset.x = pos.x - piece.currentX;
+    this.dragOffset.y = pos.y - piece.currentY;
+    
+    piece.element.classList.add('dragging');
+    
+    // Đưa mảnh lên trên cùng
+    this.layer.appendChild(piece.element);
+  }
+  
+  onMouseMove(e) {
+    if (!this.draggedPiece) return;
+    e.preventDefault();
+    
+    const pos = this.getPointerPosition(e);
+    this.draggedPiece.currentX = pos.x - this.dragOffset.x;
+    this.draggedPiece.currentY = pos.y - this.dragOffset.y;
+    
+    this.updatePiecePosition(this.draggedPiece);
+  }
+  
+  onMouseUp(e) {
+    if (!this.draggedPiece) return;
+    
+    this.draggedPiece.element.classList.remove('dragging');
+    this.checkPiecePosition(this.draggedPiece);
+    this.draggedPiece = null;
+    
+    this.moves++;
+    this.updateStats();
+  }
+  
+  // Touch events
+  onTouchStart(e) {
+    if (e.touches.length === 1) {
+      this.onMouseDown(e.touches[0]);
+    }
+  }
+  
+  onTouchMove(e) {
+    if (this.draggedPiece && e.touches.length === 1) {
+      e.preventDefault();
+      this.onMouseMove(e.touches[0]);
+    }
+  }
+  
+  onTouchEnd(e) {
+    this.onMouseUp(e);
+  }
+  
+  checkPiecePosition(piece) {
+    const dx = Math.abs(piece.currentX - piece.correctX);
+    const dy = Math.abs(piece.currentY - piece.correctY);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Nếu gần vị trí đúng thì snap vào
+    if (distance < this.snapThreshold) {
+      piece.currentX = piece.correctX;
+      piece.currentY = piece.correctY;
+      piece.isCorrect = true;
+      piece.element.classList.add('correct');
+      
+      this.updatePiecePosition(piece);
+      this.completedPieces++;
+      
+      // Kiểm tra hoàn thành
+      if (this.completedPieces === this.pieces.length) {
+        this.onComplete();
+      }
+    }
+  }
+  
+  startTimer() {
+    this.startTime = Date.now();
+    this.timerInterval = setInterval(() => {
+      this.updateTimer();
+    }, 1000);
+  }
+  
+  updateTimer() {
+    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    
+    const timerEl = document.querySelector('.mini-game-overlay .timer span');
+    if (timerEl) {
+      timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+  }
+  
+  updateStats() {
+    const movesEl = document.querySelector('.mini-game-overlay .moves span');
+    if (movesEl) {
+      movesEl.textContent = this.moves;
+    }
+  }
+  
+  onComplete() {
+    clearInterval(this.timerInterval);
+    
+    // Hiệu ứng hoàn thành
+    this.svg.classList.add('completed');
+    
+    // Hiển thị modal
+    setTimeout(() => {
+      this.showCompletionModal();
+    }, 600);
+  }
+  
+  showCompletionModal() {
+    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    
+    const overlay = document.getElementById('miniGameOverlay');
+    const modal = document.createElement('div');
+    modal.className = 'completion-modal show';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h2>🎉 Chúc mừng! 🎉</h2>
+        <p>Bạn đã hoàn thành puzzle!</p>
+        <div class="stats">
+          <div>⏱️ Thời gian: ${minutes}:${seconds.toString().padStart(2, '0')}</div>
+          <div>🔄 Số bước: ${this.moves}</div>
+        </div>
+        <button class="btn-play-again">Chơi lại</button>
+      </div>
+    `;
+    
+    overlay.appendChild(modal);
+    
+    modal.querySelector('.btn-play-again').addEventListener('click', () => {
+      modal.remove();
+      this.reset();
+    });
+    
+    // Click outside để đóng
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+        this.reset();
+      }
+    });
+  }
+  
+  reset() {
+    // Reset stats
+    this.moves = 0;
+    this.completedPieces = 0;
+    this.updateStats();
+    
+    // Clear timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
+    // Reset pieces
+    this.pieces.forEach(piece => {
+      piece.isCorrect = false;
+      piece.element.classList.remove('correct');
+    });
+    
+    this.svg.classList.remove('completed');
+    
+    // Shuffle lại
+    this.shuffle();
+    this.startTimer();
+  }
+}
+
+// ========================================
+// 🎮 MỞ/ĐÓNG MINI GAME OVERLAY
+// ========================================
+
+let puzzleGame = null;
+
+function initMiniGame() {
+  const openBtn = document.getElementById('miniGameBtn');
+  const closeBtn = document.getElementById('miniGameCloseBtn');
+  const overlay = document.getElementById('miniGameOverlay');
+  
+  if (!openBtn || !closeBtn || !overlay) {
+    console.error('Không tìm thấy các element mini game');
+    return;
+  }
+  
+  // Mở mini game
+  openBtn.addEventListener('click', () => {
+    overlay.classList.remove('hidden');
+    
+    // Khởi tạo game nếu chưa có
+    if (!puzzleGame) {
+      // Đợi một chút để overlay hiện ra trước
+      setTimeout(() => {
+        puzzleGame = new JigsawPuzzle();
+      }, 100);
+    } else {
+      // Nếu đã có game rồi thì reset
+      puzzleGame.reset();
+    }
+  });
+  
+  // Đóng mini game
+  closeBtn.addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    
+    // Dừng timer khi đóng
+    if (puzzleGame && puzzleGame.timerInterval) {
+      clearInterval(puzzleGame.timerInterval);
+    }
+  });
+  
+  // Đóng khi click bên ngoài wrapper
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.add('hidden');
+      if (puzzleGame && puzzleGame.timerInterval) {
+        clearInterval(puzzleGame.timerInterval);
+      }
+    }
+  });
+}
+
+// ========================================
+// 🚀 KHỞI ĐỘNG KHI DOM LOADED
+// ========================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('🎮 Mini Game script loaded');
+  initMiniGame();
+});

@@ -1314,28 +1314,27 @@ async function fetchPlaces(
       return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
-    let filtered = data;
+     let filtered = data;
 
-    // ========== 1️⃣ Fuzzy Search (FIXED) ==========
+    // ========== 1️⃣ Tìm theo tên (có rút ngắn dần) ==========
     if (query) {
       const queryKeepTone = normalizeKeepTone(query);
       const queryNoTone = normalizeRemoveAll(query);
 
-      // ⭐ BƯỚC 1: Exact match GIỮ DẤU THANH trước
+      // --- Bước 1: thử exact-match với chuỗi đầy đủ (giữ dấu thanh) ---
       const exactMatches = data.filter((p) => {
         const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
         return nameKeepTone.includes(queryKeepTone);
       });
 
-      // Nếu có exact match → dùng luôn, không cần fuzzy
       if (exactMatches.length > 0) {
         filtered = exactMatches;
-        console.log(`✅ Exact match found: ${exactMatches.length} results`);
+        console.log("✅ Exact match found:", exactMatches.length);
       } else {
-        // ⭐ BƯỚC 2: Fuzzy search BỎ DẤU (fallback)
+        // --- Chuẩn bị query không dấu + xử lý trường hợp người dùng gõ liền chữ ---
         let normalizedQuery = queryNoTone;
 
-        // Chia chữ nếu user gõ liền "bundaubac..."
+        // Giữ logic cũ: tự chèn khoảng trắng nếu user gõ liền (vd: "bundaubac")
         if (!normalizedQuery.includes(" ")) {
           const possibleMatches = data.map((p) =>
             normalizeRemoveAll(p.ten_quan || "")
@@ -1355,7 +1354,7 @@ async function fetchPlaces(
           }
         }
 
-        // Fuzzy engine với threshold cao hơn một chút
+        // Chuẩn bị dữ liệu cho Fuse chỉ 1 lần
         const fuse = new Fuse(
           data.map((p) => ({
             ...p,
@@ -1363,48 +1362,66 @@ async function fetchPlaces(
           })),
           {
             keys: ["ten_quan_no_dau"],
-            threshold: 0.35, // ⭐ Giảm xuống để strict hơn
+            threshold: 0.35,   // khá strict
             ignoreLocation: true,
-            includeScore: true, // ⭐ Để debug
+            includeScore: true,
           }
         );
 
-        const fuzzyResults = fuse.search(normalizedQuery);
+        // Hàm chạy fuzzy + lọc cho 1 câu query đã normalize (không dấu)
+        function runFuzzy(normQ) {
+          const fuzzyResults = fuse.search(normQ);
+          const queryWords = normQ.split(" ").filter(Boolean);
 
-        // ⭐ Log để debug
+          return fuzzyResults
+            .map((r) => r.item)
+            .filter((p) => {
+              const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+              const hasPhrase = nameNoTone.includes(normQ);
+              const hasAllWords = queryWords.every((w) =>
+                nameNoTone.includes(w)
+              );
+
+              // Query nhiều từ: cho pass nếu chứa cụm hoặc đủ các từ
+              if (queryWords.length >= 2) {
+                return hasPhrase || hasAllWords;
+              }
+              // Query 1 từ: chỉ cần chứa từ đó
+              return hasPhrase;
+            });
+        }
+
+        // --- Bước 2: thử với chuỗi đầy đủ ---
+        let currentNorm = normalizedQuery;
+        let currentWords = currentNorm.split(" ").filter(Boolean);
+        let results = runFuzzy(currentNorm);
         console.log(
-          "🔍 Fuzzy results:",
-          fuzzyResults.map((r) => ({
-            name: r.item.ten_quan,
-            score: r.score,
-          }))
+          `🔍 Fuzzy với "${currentNorm}" =>`,
+          results.length,
+          "kết quả"
         );
 
-        // ⭐ BƯỚC 3: Filter kết quả fuzzy - KHÔNG dùng \b (word boundary)
-        const queryWords = normalizedQuery.split(" ").filter(Boolean);
-        const escapedPhrase = escapeRegex(normalizedQuery);
+        // --- Bước 3: nếu không ra kết quả thì rút bớt từ cuối dần ---
+        // VD: "bun thit nuong cha gio" -> "bun thit nuong cha" -> "bun thit nuong" -> ...
+        while (results.length === 0 && currentWords.length > 1) {
+          currentWords.pop(); // bỏ bớt 1 từ cuối
+          currentNorm = currentWords.join(" ");
+          results = runFuzzy(currentNorm);
+          console.log(
+            `🔁 Thử lại với "${currentNorm}" =>`,
+            results.length,
+            "kết quả"
+          );
+        }
 
-        filtered = fuzzyResults
-          .map((r) => r.item)
-          .filter((p) => {
-            const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
-
-            // Check có chứa phrase không (không cần word boundary)
-            const hasPhrase = nameNoTone.includes(normalizedQuery);
-
-            // Check có chứa TẤT CẢ các từ không
-            const hasAllWords = queryWords.every((w) => nameNoTone.includes(w));
-
-            // Nếu query có nhiều từ → cần match phrase hoặc tất cả từ
-            // Nếu query 1 từ → cần match từ đó
-            if (queryWords.length >= 2) {
-              return hasPhrase || hasAllWords;
-            } else {
-              return hasPhrase;
-            }
-          });
-
-        console.log(`🔎 Fuzzy fallback: ${filtered.length} results`);
+        filtered = results;
+        console.log(
+          "✅ Query cuối cùng dùng để filter:",
+          `"${currentNorm}"`,
+          "=>",
+          filtered.length,
+          "kết quả"
+        );
       }
     }
 

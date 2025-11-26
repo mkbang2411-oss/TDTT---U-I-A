@@ -1388,6 +1388,32 @@ body {
   display: none !important;
 }
 
+/* Nút yêu thích */
+.map-floating-btn {
+  position: absolute;
+  top: 80px;        /* chỉnh lại cho hợp UI của bạn */
+  right: 10px;
+  z-index: 1000;
+
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 8px 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Trạng thái bật (sẽ dùng ở Bước 4 – JS) */
+.map-floating-btn.active {
+  background: #ff4b5c;
+  color: #ffffff;
+}
+
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,
 button,
