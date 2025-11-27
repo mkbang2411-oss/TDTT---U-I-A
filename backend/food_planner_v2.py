@@ -1131,7 +1131,7 @@ def get_food_planner_html():
     width: 550px;
     height: 100vh;
     background: white;
-    z-index: 999999 !important;
+    z-index: 9999999999999 !important;
     transition: right 0.3s ease;
     display: flex;
     flex-direction: column;
@@ -2480,7 +2480,7 @@ def get_food_planner_html():
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999998;
+    z-index: 99999999999;
     box-shadow: -6px 0 20px rgba(255, 107, 53, 0.4);
     transition: right 0.3s ease, transform 0.3s ease, width 0.3s ease, box-shadow 0.3s ease, background 0.3s ease; /* ✅ CHỈ GIỮ TRANSITION CẦN THIẾT */
     overflow: hidden;
@@ -2502,14 +2502,14 @@ def get_food_planner_html():
 }
 
 /* ✅ KHI PANEL MỞ → NÚT XUẤT HIỆN */
-.food-planner-panel.active ~ .close-panel-btn {
-    right: 550px; /* ✅ LÒI RA BÊN TRÁI PANEL */
+.food-planner-panel.active .close-panel-btn {
+    right: 550px !important; /* ✅ LỒI RA BÊN TRÁI PANEL */
 }
 
 .close-panel-btn:hover {
     background: linear-gradient(135deg, #FF8E53 0%, #FFB84D 100%);
     box-shadow: -8px 0 28px rgba(255, 107, 53, 0.5);
-    transform: translateY(-50%) translateX(16px);
+    transform: translateY(-50%) translateX(20px);
     width: 56px;
 }
 
@@ -2646,12 +2646,13 @@ def get_food_planner_html():
                 <div id="planResult"></div>
             </div>  
         </div>
+        <!-- ✅ NÚT ĐÓNG ĐẸP HƠN VỚI ICON >> -->
+            <button class="close-panel-btn" onclick="closeFoodPlanner()" title="Đóng lịch trình">
+                <span class="arrow-icon">»</span>
+            </button>
     </div>
 </div>
-<!-- ✅ NÚT ĐÓNG ĐẸP HƠN VỚI ICON >> -->
-<button class="close-panel-btn" onclick="closeFoodPlanner()" title="Đóng lịch trình">
-    <span class="arrow-icon">»</span>
-</button>
+
 <script>
 // ========== GLOBAL STATE ==========
 let isPlannerOpen = false;
