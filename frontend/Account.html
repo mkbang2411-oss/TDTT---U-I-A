@@ -647,6 +647,120 @@
                 console.error('Lỗi tải danh sách bạn:', error);
             }
         }
+        // TẢI DANH SÁCH BẠN BÈ
+          async function loadFriendsList() {
+              if(!CURRENT_USER_ID) {
+                  console.log('⏳ Chưa có CURRENT_USER_ID');
+                  return;
+              }
+              
+              try {
+                  const response = await fetch(`${API_URL}/friends/${CURRENT_USER_ID}/`);
+                  const data = await response.json();
+                  
+                  const friendsDiv = document.getElementById('friends-list');
+                  if(data.friends && data.friends.length > 0) {
+                      friendsDiv.innerHTML = data.friends.map(friend => `
+                          <div class="friend-card">
+                              <div class="friend-info">
+                                  <div class="friend-avatar">👤</div>
+                                  <div>
+                                      <div class="friend-name">${friend.username}</div>
+                                      <div class="friend-email">${friend.email}</div>
+                                  </div>
+                              </div>
+                              <div class="btn-group">
+                                  <button class="btn-chat" onclick="viewFriendFavorites(${friend.id}, '${friend.username}')">❤️ Quán yêu thích</button>
+                                  <button class="btn-reject" onclick="unfriendUser(${friend.id}, '${friend.username}')">🗑️ Hủy kết bạn</button>
+                              </div>
+                          </div>
+                      `).join('');
+                  } else {
+                      friendsDiv.innerHTML = '<p class="no-data">Chưa có bạn bè nào</p>';
+                  }
+              } catch(error) {
+                  console.error('Lỗi tải danh sách bạn:', error);
+              }
+          }
+
+          // HỦY KẾT BẠN
+          async function unfriendUser(friendId, friendName) {
+              const result = await Swal.fire({
+                  title: 'Xác nhận hủy kết bạn?',
+                  text: `Bạn muốn hủy kết bạn với ${friendName}?`,
+                  icon: 'warning',
+                  showCancelButton: true,
+                  confirmButtonColor: '#d33',
+                  cancelButtonColor: '#3085d6',
+                  confirmButtonText: 'Đúng, hủy kết bạn!',
+                  cancelButtonText: 'Hủy'
+              });
+              
+              if(result.isConfirmed) {
+                  try {
+                      const response = await fetch(`${API_URL}/friend/unfriend/`, {
+                          method: 'POST',
+                          headers: {'Content-Type': 'application/json'},
+                          credentials: 'include',
+                          body: JSON.stringify({friend_id: friendId})
+                      });
+                      
+                      const data = await response.json();
+                      if(data.success) {
+                          Swal.fire('Thành công', 'Đã hủy kết bạn', 'success');
+                          loadFriendsList(); // Reload danh sách
+                      } else {
+                          Swal.fire('Lỗi', data.error, 'error');
+                      }
+                  } catch(error) {
+                      console.error('Lỗi:', error);
+                      Swal.fire('Lỗi', 'Không thể hủy kết bạn', 'error');
+                  }
+              }
+          }
+
+          // XEM QUÁN YÊU THÍCH CỦA BẠN BÈ
+          // ✅ XEM QUÁN YÊU THÍCH CỦA BẠN BÈ - HIỂN THỊ TRÊN BẢN ĐỒ
+          async function viewFriendFavorites(friendId, friendName) {
+            try {
+                console.log('📤 Đang gọi API:', `${API_URL}/friend/${friendId}/favorites/`);
+                
+                const response = await fetch(`${API_URL}/friend/${friendId}/favorites/`, {
+                    credentials: 'include'
+                });
+                
+                console.log('📥 Response status:', response.status);
+                const data = await response.json();
+                console.log('📦 Data nhận được:', data);
+                
+                if(data.status === 'success') {
+                    if(data.favorites && data.favorites.length > 0) {
+                        console.log('✅ Có', data.favorites.length, 'quán yêu thích');
+                        console.log('📍 Dữ liệu quán:', data.favorites);
+                        
+                        // Lưu vào localStorage
+                        localStorage.setItem('friendFavorites', JSON.stringify({
+                            friendName: friendName,
+                            places: data.favorites
+                        }));
+                        
+                        console.log('💾 Đã lưu vào localStorage');
+                        
+                        // Chuyển sang trang map
+                        window.location.href = 'http://127.0.0.1:5000/?view=friend-favorites';
+                    } else {
+                        console.warn('⚠️ Không có quán yêu thích');
+                        Swal.fire('Thông báo', `${friendName} chưa có quán yêu thích nào`, 'info');
+                    }
+                } else {
+                    console.error('❌ Lỗi API:', data.error);
+                    Swal.fire('Lỗi', data.error, 'error');
+                }
+            } catch(error) {
+                console.error('❌ Lỗi:', error);
+                Swal.fire('Lỗi', 'Không thể tải danh sách yêu thích', 'error');
+            }
+        }
 
         function getCookie(name) {
             let cookieValue = null;

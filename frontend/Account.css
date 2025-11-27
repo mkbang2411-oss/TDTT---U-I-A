@@ -694,6 +694,16 @@ body {
 .friends-list::-webkit-scrollbar-thumb:hover {
   background: #fed57e;
 }
+/* Marker quán yêu thích của bạn bè */
+.friend-favorite-marker {
+    background: none !important;
+    border: none !important;
+}
+
+.friend-favorite-marker:hover {
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+}
 
 /* CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE */
 input,

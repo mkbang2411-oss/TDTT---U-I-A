@@ -984,3 +984,101 @@ def streak_handler(request):
                 'status': 'error',
                 'message': str(e)
             }, status=500)
+# ==========================================================
+# 🗑️ API HỦY KẾT BẠN
+# ==========================================================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def unfriend(request):
+    """Hủy kết bạn"""
+    try:
+        data = json.loads(request.body)
+        friend_id = data.get('friend_id')
+        
+        if not friend_id:
+            return JsonResponse({'error': 'Thiếu friend_id'}, status=400)
+        
+        user = request.user
+        friend = get_object_or_404(User, id=friend_id)
+        
+        # Tìm và xóa quan hệ bạn bè (có thể user1 hoặc user2)
+        friendship = Friendship.objects.filter(
+            user1=user, user2=friend
+        ).first() or Friendship.objects.filter(
+            user1=friend, user2=user
+        ).first()
+        
+        if not friendship:
+            return JsonResponse({'error': 'Không phải bạn bè'}, status=400)
+        
+        friendship.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã hủy kết bạn'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ==========================================================
+# 👥 API XEM QUÁN YÊU THÍCH CỦA BẠN BÈ
+# ==========================================================
+
+@login_required
+@require_http_methods(["GET"])
+def get_friend_favorites(request, friend_id):
+    """Lấy danh sách quán yêu thích của một bạn bè"""
+    try:
+        user = request.user
+        friend = get_object_or_404(User, id=friend_id)
+        
+        # Kiểm tra có phải bạn bè không
+        is_friend = Friendship.objects.filter(
+            user1=user, user2=friend
+        ).exists() or Friendship.objects.filter(
+            user1=friend, user2=user
+        ).exists()
+        
+        if not is_friend:
+            return JsonResponse({
+                'error': 'Bạn phải là bạn bè mới xem được danh sách yêu thích'
+            }, status=403)
+        
+        # Lấy danh sách ID quán yêu thích
+        favorite_ids = list(
+            FavoritePlace.objects.filter(user=friend).values_list('place_id', flat=True)
+        )
+        
+        if not favorite_ids:
+            return JsonResponse({
+                'status': 'success',
+                'friend_username': friend.username,
+                'favorites': []
+            })
+        
+        # Đọc CSV để lấy thông tin chi tiết
+        csv_path = os.path.join(settings.BASE_DIR, '..', 'backend', 'Data_with_flavor.csv')
+        csv_path = os.path.abspath(csv_path)
+        
+        favorite_places = []
+        try:
+            df = pd.read_csv(csv_path)
+            df['data_id'] = df['data_id'].astype(str)
+            
+            filtered_df = df[df['data_id'].isin(favorite_ids)]
+            favorite_places = filtered_df.fillna('').to_dict('records')
+        except Exception as e:
+            print(f"Lỗi đọc CSV: {e}")
+        
+        return JsonResponse({
+            'status': 'success',
+            'friend_username': friend.username,
+            'favorites': favorite_places
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

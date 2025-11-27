@@ -11,4 +11,6 @@ urlpatterns = [
     path('users/search/', views.search_user, name='search_user'),
     path('current-user/', views.get_current_user, name='get_current_user'),
     path('api/streak/', views.streak_handler, name='streak_handler'),
+    path('friend/unfriend/', views.unfriend, name='unfriend'),
+    path('friend/<int:friend_id>/favorites/', views.get_friend_favorites, name='get_friend_favorites'),
 ]

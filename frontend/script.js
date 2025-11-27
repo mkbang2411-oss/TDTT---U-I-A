@@ -543,6 +543,8 @@ function openChatboxAutomatically() {
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
 function displayPlaces(places, shouldZoom = true) {
+  console.log('🎯 displayPlaces được gọi với', places ? places.length : 0, 'quán');
+  console.log('📦 Data:', places);
   allPlacesData = places || [];
   visibleMarkers.clear();
 
@@ -2110,3 +2112,149 @@ window.focusPlaceOnMap = function ({
       .openOn(map);
   }
 };
+
+// ==========================================================
+// 🗺️ HIỂN THỊ QUÁN YÊU THÍCH CỦA BẠN BÈ
+// ==========================================================
+// ==========================================================
+// 🗺️ HIỂN THỊ QUÁN YÊU THÍCH CỦA BẠN BÈ
+// ==========================================================
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('🔍 Checking for friend favorites view...');
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('🔍 URL params:', urlParams.toString());
+    
+    if (urlParams.get('view') === 'friend-favorites') {
+        console.log('✅ Friend favorites mode detected');
+        
+        const friendData = localStorage.getItem('friendFavorites');
+        console.log('💾 LocalStorage data:', friendData);
+        
+        if (friendData) {
+            const { friendName, places } = JSON.parse(friendData);
+            console.log('👤 Friend:', friendName);
+            console.log('🍽️ Places count:', places.length);
+            console.log('📦 Places data:', places);
+            
+            // ✅ Kiểm tra dữ liệu có hợp lệ không
+            if (!places || places.length === 0) {
+                alert(`${friendName} chưa có quán yêu thích nào`);
+                localStorage.removeItem('friendFavorites');
+                return;
+            }
+            
+            // ✅ Log chi tiết từng quán
+            places.forEach((place, i) => {
+                console.log(`\nQuán ${i+1}:`);
+                console.log(`  - Tên: ${place.ten_quan}`);
+                console.log(`  - lat: ${place.lat}`);
+                console.log(`  - lon: ${place.lon}`);
+            });
+            
+            localStorage.removeItem('friendFavorites');
+            
+            // ✅ QUAN TRỌNG: Đợi 500ms để đảm bảo map đã load xong
+            setTimeout(() => {
+                alert(`Đang hiển thị ${places.length} quán yêu thích của ${friendName}`);
+                
+                // ✅ Xóa TẤT CẢ marker cũ trước khi hiển thị
+                if (window.markerClusterGroup) {
+                    map.removeLayer(window.markerClusterGroup);
+                }
+                
+                // ✅ Tạo cluster mới
+                window.markerClusterGroup = L.markerClusterGroup({
+                    maxClusterRadius: 50,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false
+                });
+                map.addLayer(window.markerClusterGroup);
+                
+                // ✅ Reset biến toàn cục
+                window.allPlacesData = places;
+                window.visibleMarkers = new Set();
+                
+                // ✅ Hiển thị chỉ 7 quán của bạn bè
+                displayPlaces(places, true);
+                
+                console.log('✅ Đã gọi displayPlaces với', places.length, 'quán');
+            }, 500);
+            
+        } else {
+            console.warn('⚠️ No data in localStorage');
+        }
+    } else {
+        console.log('ℹ️ Not in friend favorites view mode');
+    }
+});
+// Hàm toast
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.textContent = message;
+        toast.className = `toast show ${type}`;
+        setTimeout(() => {
+            toast.className = 'toast';
+        }, 3000);
+    }
+}
+// Thêm vào cuối file, sau phần xử lý friend favorites
+
+// ==========================================================
+// 🚪 NÚT THOÁT KHỎI CHẾ ĐỘ XEM QUÁN BẠN BÈ
+// ==========================================================
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('view') === 'friend-favorites') {
+        // ✅ Tạo nút thoát
+        const exitBtn = document.createElement('button');
+        exitBtn.innerHTML = 'X';
+        exitBtn.style.cssText = `
+            position: fixed;
+            top: 180px;
+            left: 20px;
+            z-index: 10000;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #bc2a21 0%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        `;
+        
+        // ✅ Hover effect
+        exitBtn.addEventListener('mouseenter', () => {
+            exitBtn.style.transform = 'translateY(-2px)';
+            exitBtn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+        });
+        
+        exitBtn.addEventListener('mouseleave', () => {
+            exitBtn.style.transform = 'translateY(0)';
+            exitBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+        });
+        
+        // ✅ Click để thoát
+        exitBtn.addEventListener('click', () => {
+            // Xóa tham số view khỏi URL
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+            
+            // Reload lại trang để hiển thị bản đồ bình thường
+            window.location.reload();
+        });
+        
+        // ✅ Thêm nút vào body
+        document.body.appendChild(exitBtn);
+        
+        console.log('✅ Đã thêm nút thoát khỏi chế độ bạn bè');
+    }
+});
