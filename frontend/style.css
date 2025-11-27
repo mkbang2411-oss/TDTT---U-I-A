@@ -1388,30 +1388,186 @@ body {
   display: none !important;
 }
 
-/* Nút yêu thích */
-.map-floating-btn {
-  position: absolute;
-  top: 80px;        /* chỉnh lại cho hợp UI của bạn */
-  right: 10px;
-  z-index: 1000;
+/* ❤️ NÚT YÊU THÍCH ở HEADER (ICON TRÁI TIM) */
+.favorite-heart-btn {
+    background: rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    width: 30px;              /* ⭐ ĐỔI từ 45px → 36px */
+    height: 30px;             /* ⭐ ĐỔI từ 45px → 36px */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+    order: 1;
+    margin: 0 !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
 
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 8px 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.favorite-heart-btn i {
+    color: white;
+    font-size: 14px;          /* ⭐ ĐỔI từ 20px → 16px */
+    transition: all 0.3s ease;
+}
 
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.favorite-heart-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Trạng thái active (đang xem quán yêu thích) */
+.favorite-heart-btn.active {
+    background: #ff4b5c;
+    border-color: #ff4b5c;
+}
+
+.favorite-heart-btn.active i {
+    color: white;
+    animation: heartBeat 0.6s ease infinite;
+}
+
+/* Animation cho trái tim */
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(1.2); }
+    50% { transform: scale(1.1); }
+    75% { transform: scale(1.15); }
 }
 
 /* Trạng thái bật (sẽ dùng ở Bước 4 – JS) */
 .map-floating-btn.active {
   background: #ff4b5c;
   color: #ffffff;
+}
+
+/* Ẩn mặc định */
+.user-only {
+    display: none;
+}
+
+/* Chỉ hiện khi có class .show */
+.user-only.show {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 15px !important;
+    align-items: center !important;
+    z-index: 100 !important;
+}
+
+.favorite-heart-btn {
+    order: 2; /* Hiển thị đầu tiên (bên trái) */
+    margin: 0 !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+.account-button {
+    order: 1; /* Hiển thị sau (bên phải) */
+    margin: 0 !important; /* Xóa margin thừa */
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    text-decoration: none !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* ✅ Responsive cho mobile */
+@media (max-width: 768px) {
+    .user-only {
+        top: 15px !important;
+        right: 15px !important;
+        gap: 10px !important;
+    }
+    
+    .favorite-heart-btn {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .favorite-heart-btn i {
+        font-size: 14px;
+    }
+}
+
+/* 🔔 NÚT THÔNG BÁO */
+.notification-btn {
+    background: rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+    order: 2; /* Hiển thị ở giữa (sau nút yêu thích, trước tài khoản) */
+    margin: 0 !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+.notification-btn i {
+    color: white;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.notification-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Trạng thái active (có thông báo mới) */
+.notification-btn.has-notification {
+    background: #ff9800;
+    border-color: #ff9800;
+    animation: bellRing 1s ease infinite;
+}
+
+.notification-btn.has-notification i {
+    color: white;
+}
+
+/* Badge số thông báo */
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #f44336;
+    color: white;
+    font-size: 9px;
+    font-weight: bold;
+    border-radius: 10px;
+    padding: 2px 5px;
+    min-width: 16px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation lắc chuông */
+@keyframes bellRing {
+    0%, 100% { transform: rotate(0deg); }
+    10%, 30% { transform: rotate(-10deg); }
+    20%, 40% { transform: rotate(10deg); }
+    50% { transform: rotate(0deg); }
+}
+
+.notification-btn {
+    order: 3; /* Nút thông báo - ở giữa */
 }
 
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/

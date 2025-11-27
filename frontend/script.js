@@ -1591,26 +1591,27 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   // Nếu là filter-only search → không đụng tới notFoundCount
 });
 
-const favoriteModeBtn = document.getElementById("favoriteModeBtn");
+// ✅ NÚT YÊU THÍCH Ở HEADER (ICON TRÁI TIM)
+const favoriteModeBtnHeader = document.getElementById("favoriteModeBtnHeader");
 
-if (favoriteModeBtn) {
-  favoriteModeBtn.addEventListener("click", async () => {
+if (favoriteModeBtnHeader) {
+  favoriteModeBtnHeader.addEventListener("click", async () => {
     // 🔴 Đang tắt → bật chế độ "chỉ quán yêu thích"
     if (!isFavoriteMode) {
       isFavoriteMode = true;
-      favoriteModeBtn.classList.add("active");
+      favoriteModeBtnHeader.classList.add("active");
 
       const ok = await showFavoritePlaces();
       // Nếu không có quán / lỗi → tắt lại nút
       if (!ok) {
         isFavoriteMode = false;
-        favoriteModeBtn.classList.remove("active");
+        favoriteModeBtnHeader.classList.remove("active");
       }
     }
     // 🟢 Đang bật → tắt chế độ, quay về kết quả tìm kiếm gần nhất
     else {
       isFavoriteMode = false;
-      favoriteModeBtn.classList.remove("active");
+      favoriteModeBtnHeader.classList.remove("active");
 
       await fetchPlaces(
         lastSearchParams.query,

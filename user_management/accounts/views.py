@@ -333,11 +333,15 @@ def check_auth_status(request):
         # Nếu đã đăng nhập
         return JsonResponse({
             'is_authenticated': True,
-            'username': request.user.username  # Gửi kèm tên user nếu muốn
+            'is_logged_in': True,  # ← THÊM dòng này cho script.js
+            'username': request.user.username
         })
     else:
         # Nếu chưa đăng nhập
-        return JsonResponse({'is_authenticated': False})
+        return JsonResponse({
+            'is_authenticated': False,
+            'is_logged_in': False  # ← THÊM dòng này
+        })
     
 @login_required
 def update_avatar(request):

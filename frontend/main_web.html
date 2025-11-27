@@ -53,9 +53,9 @@
     /* Ẩn/hiện phần tử theo trạng thái */
     .guest-only,
     .user-only { display: none; }
-    
+
     body.logged-in .guest-only { display: none; }
-    body.logged-in .user-only { display: block; }
+    body.logged-in .user-only { display: flex !important; } /* ĐỔI: block → flex */
 </style>
 
 <body>
@@ -69,11 +69,25 @@
             
             <!-- Nút Account - CHỈ HIỆN KHI ĐÃ ĐĂNG NHẬP -->
             <div class="user-only">
+                <!-- Nút Yêu thích (Icon trái tim - nằm bên TRÁI) -->
+                <button id="favoriteModeBtnHeader" class="favorite-heart-btn" title="Quán yêu thích">
+                    <i class="fa-solid fa-heart"></i>
+                </button>
+
+                <!-- ⭐ NÚT THÔNG BÁO (MỚI THÊM) -->
+                <button id="notificationBtn" class="notification-btn" title="Thông báo">
+                    <i class="fa-solid fa-bell"></i>
+                    <!-- Badge số thông báo chưa đọc -->
+                    <span class="notification-badge" style="display: none;">0</span>
+                </button>
+                
+                <!-- Nút Tài khoản (nằm bên PHẢI) -->
                 <a href="Account.html" class="account-button">
                     <span class="account-text">Tài khoản</span>
                     <img src="Picture/user.png" alt="Account" class="account-img">
                 </a>
             </div>
+
             <!-- Nút Sign Up/Sign In - CHỈ HIỆN KHI CHƯA ĐĂNG NHẬP -->
             <div class="guest-only">
                 <a href="http://127.0.0.1:8000/accounts/signup" class="button-SignUp">Đăng Kí</a>
@@ -225,10 +239,6 @@
     <div id="map-container" style="position: relative;">
         <div id="map"></div>
 
-        <!-- 🔴 Nút chỉ hiển thị quán đã yêu thích -->
-        <div id="favoriteModeBtn" class="map-floating-btn">
-            ❤️ Quán yêu thích
-        </div>
          <!-- 🧩 Nút Mini Game -->
     <button id="miniGameBtn" class="map-floating-btn mini-game-btn">
         🧩
@@ -278,18 +288,21 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log('🔍 Check auth response:', data); // ✅ THÊM dòng này
                 // data sẽ là: {is_authenticated: true} hoặc {is_authenticated: false}
                 if (data.is_authenticated) {
                     // Đã đăng nhập
-                    if (guestButtons) guestButtons.style.display = 'none'; // Ẩn nút Đăng nhập
-                    if (userButton) userButton.style.display = 'block';  // Hiện nút Account
-                    
-                    // Tùy chọn: Chào mừng người dùng
+                    if (guestButtons) guestButtons.style.display = 'none';
+                    if (userButton) {
+                        userButton.classList.add('show');  // ⭐ THÊM class 'show'
+                    }
                     console.log('Chào mừng, ' + data.username);
                 } else {
                     // Chưa đăng nhập
-                    if (guestButtons) guestButtons.style.display = 'block'; // Hiện nút Đăng nhập
-                    if (userButton) userButton.style.display = 'none';   // Ẩn nút Account
+                    if (guestButtons) guestButtons.style.display = 'block';
+                    if (userButton) {
+                        userButton.classList.remove('show');  // ⭐ XÓA class 'show'
+                    }
                 }
             })
             .catch(error => {
@@ -403,6 +416,36 @@
     </div>
     <div id="insert-chatbot-and-map"></div>
      <script src="minigame.js"></script>
+
+    <script>
+    // Test nút thông báo
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationBadge = notificationBtn.querySelector('.notification-badge');
+
+    // Giả lập có 5 thông báo mới
+    function showNotification(count) {
+        if (count > 0) {
+            notificationBtn.classList.add('has-notification');
+            notificationBadge.textContent = count;
+            notificationBadge.style.display = 'block';
+        } else {
+            notificationBtn.classList.remove('has-notification');
+            notificationBadge.style.display = 'none';
+        }
+    }
+
+    // Khi click nút thông báo
+    notificationBtn.addEventListener('click', () => {
+        alert('Danh sách thông báo (sẽ làm sau)');
+        // Xóa thông báo sau khi xem
+        showNotification(0);
+    });
+
+    // Giả lập có 3 thông báo mới khi load trang
+    setTimeout(() => {
+        showNotification(3);
+    }, 2000);
+    </script>
 
 </body>
 </html>
