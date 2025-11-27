@@ -1,5 +1,5 @@
 // ========================================
-// 🧩 JIGSAW PUZZLE MINI GAME
+// 🧩 JIGSAW PUZZLE MINI GAME WITH PROGRESS SAVE
 // ========================================
 
 class JigsawPuzzle {
@@ -29,16 +29,193 @@ class JigsawPuzzle {
     this.xlinkNS = "http://www.w3.org/1999/xlink";
     
     this.currentMap = "banh_mi";
+    this.userProgress = {}; // 🆕 Lưu tiến độ user
     
     this.init();
   }
   
-  init() {
+  async init() {
+    await this.loadUserProgress(); // 🆕 Load tiến độ trước
     this.createPieces();
     this.setupEventListeners();
     this.setupMapSelector();
-    this.shuffle();
-    this.startTimer();
+    
+    // 🆕 Kiểm tra xem map hiện tại đã hoàn thành chưa
+    // ✅ CHỜ 200MS ĐỂ ĐẢM BẢO DOM ĐÃ SẴN SÀNG
+    setTimeout(() => {
+      if (this.isMapCompleted(this.currentMap)) {
+        this.showCompletedState();
+      } else {
+        this.shuffle();
+        this.startTimer();
+      }
+    }, 200);
+  }
+  
+  // 🆕 LOAD TIẾN ĐỘ USER
+  async loadUserProgress() {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/puzzle/progress/', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        this.userProgress = data.progress;
+        console.log('✅ Đã load tiến độ:', this.userProgress);
+        // ✅ CHỈ CẬP NHẬT SAU KHI DOM SẴN SÀNG
+        setTimeout(() => {
+          this.updateMapButtons();
+        }, 100);
+      }
+    } catch (error) {
+      console.log('ℹ️ Chưa đăng nhập hoặc chưa có tiến độ');
+      this.userProgress = {};
+    }
+  }
+  
+  // 🆕 KIỂM TRA MAP ĐÃ HOÀN THÀNH CHƯA
+  isMapCompleted(mapName) {
+    return this.userProgress[mapName]?.completed === true;
+  }
+  
+  // 🆕 CẬP NHẬT GIAO DIỆN NÚT MAP (thêm dấu ✅)
+  updateMapButtons() {
+    const mapButtons = document.querySelectorAll('.map-option');
+    mapButtons.forEach(btn => {
+      const mapName = btn.dataset.map;
+      const span = btn.querySelector('span');
+      
+      if (this.isMapCompleted(mapName)) {
+        // Thêm dấu tích vào map đã hoàn thành
+        if (!span.textContent.includes('✅')) {
+          span.textContent = '✅ ' + span.textContent;
+        }
+        btn.style.background = 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)';
+      } else {
+        // Xóa dấu tích nếu có
+        span.textContent = span.textContent.replace('✅ ', '');
+        btn.style.background = '';
+      }
+    });
+  }
+  
+  // 🆕 HIỂN THỊ TRẠNG THÁI ĐÃ HOÀN THÀNH
+  showCompletedState() {
+    // ✅ KIỂM TRA PIECES ĐÃ TẠO CHƯA
+    if (this.pieces.length === 0) {
+      console.warn('⚠️ Pieces chưa được tạo, bỏ qua showCompletedState');
+      return;
+    }
+    
+    // Đặt tất cả mảnh về đúng vị trí
+    this.pieces.forEach(piece => {
+      piece.currentX = piece.correctX;
+      piece.currentY = piece.correctY;
+      piece.isCorrect = true;
+      piece.element.classList.add('correct');
+      this.updatePiecePosition(piece);
+    });
+    
+    this.completedPieces = this.pieces.length;
+    
+    // Hiển thị thông tin
+    const progress = this.userProgress[this.currentMap];
+    if (progress) {
+      const minutes = Math.floor(progress.completion_time / 60);
+      const seconds = progress.completion_time % 60;
+      
+      const timerEl = document.querySelector('.mini-game-overlay .timer span');
+      const movesEl = document.querySelector('.mini-game-overlay .moves span');
+      
+      if (timerEl) timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      if (movesEl) movesEl.textContent = progress.moves_count;
+    }
+    
+    // 🆕 ẨN NÚT XÁO LẠI
+    this.hideShuffleButton();
+    
+    // Thêm nút Reset
+    this.addResetButton();
+  }
+  
+  // 🆕 ẨN NÚT XÁO LẠI
+  hideShuffleButton() {
+    const shuffleBtn = document.querySelector('.mini-game-overlay .btn-shuffle');
+    if (shuffleBtn) {
+      shuffleBtn.style.display = 'none';
+    }
+  }
+  
+  // 🆕 HIỆN NÚT XÁO LẠI
+  showShuffleButton() {
+    const shuffleBtn = document.querySelector('.mini-game-overlay .btn-shuffle');
+    if (shuffleBtn) {
+      shuffleBtn.style.display = 'block';
+    }
+  }
+  
+  // 🆕 THÊM NÚT RESET
+  addResetButton() {
+    const header = document.querySelector('.mini-game-overlay .game-header');
+    
+    // ✅ KIỂM TRA HEADER TỒN TẠI
+    if (!header) {
+      console.warn('⚠️ Không tìm thấy game-header, bỏ qua thêm nút reset');
+      return;
+    }
+    
+    // Xóa nút cũ nếu có
+    const oldResetBtn = document.getElementById('btnResetProgress');
+    if (oldResetBtn) oldResetBtn.remove();
+    
+    const resetBtn = document.createElement('button');
+    resetBtn.id = 'btnResetProgress';
+    resetBtn.className = 'btn-shuffle';
+    resetBtn.innerHTML = '🔄 Chơi lại';
+    resetBtn.style.background = '#ef4444';
+    
+    resetBtn.addEventListener('click', () => this.resetProgress());
+    
+    header.appendChild(resetBtn);
+  }
+  
+  // 🆕 RESET TIẾN ĐỘ
+  async resetProgress() {
+    if (!confirm('Bạn có chắc muốn reset tiến độ map này?')) return;
+    
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/puzzle/reset/${this.currentMap}/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        // Xóa tiến độ khỏi local
+        delete this.userProgress[this.currentMap];
+        
+        // Xóa nút reset
+        const resetBtn = document.getElementById('btnResetProgress');
+        if (resetBtn) resetBtn.remove();
+        
+        // 🆕 HIỆN LẠI NÚT XÁO
+        this.showShuffleButton();
+        
+        // Update lại giao diện map buttons
+        this.updateMapButtons();
+        
+        // Reset game
+        this.reset();
+        
+        console.log('✅ Đã reset tiến độ');
+      }
+    } catch (error) {
+      console.error('❌ Lỗi reset:', error);
+      alert('Lỗi khi reset tiến độ. Vui lòng thử lại!');
+    }
   }
   
   setupMapSelector() {
@@ -66,7 +243,6 @@ class JigsawPuzzle {
     const fullImg = this.defs.querySelector('#full-img');
     if (fullImg) {
       fullImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
-      console.log('✅ Đã đổi ảnh trong defs');
     }
     
     // 2. Đổi tất cả ảnh trong các mảnh ghép
@@ -76,16 +252,13 @@ class JigsawPuzzle {
         img.setAttributeNS(this.xlinkNS, 'href', imagePath);
       }
     });
-    console.log(`✅ Đã đổi ${this.pieces.length} mảnh ghép`);
     
-    // 3. ✅ FIX CHẮC CHẮN: Đổi ảnh nền mờ bằng cách XÓA VÀ TẠO LẠI
+    // 3. Đổi ảnh nền mờ
     const oldBgImg = this.svg.querySelector('#bg-hint-img');
     if (oldBgImg) {
       oldBgImg.remove();
-      console.log('🗑️ Đã xóa ảnh nền mờ cũ');
     }
     
-    // Tạo ảnh nền mờ mới
     const newBgImg = document.createElementNS(this.svgNS, 'image');
     newBgImg.id = 'bg-hint-img';
     newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
@@ -97,11 +270,21 @@ class JigsawPuzzle {
     newBgImg.setAttribute('opacity', '0.18');
     newBgImg.style.pointerEvents = 'none';
     
-    // Thêm vào TRƯỚC layer pieces (để nằm dưới)
     this.svg.insertBefore(newBgImg, this.layer);
-    console.log('✅ Đã tạo ảnh nền mờ mới:', imagePath);
     
-    this.reset();
+    // 🆕 Kiểm tra map mới đã hoàn thành chưa
+    if (this.isMapCompleted(mapName)) {
+      this.showCompletedState();
+    } else {
+      // Xóa nút reset nếu có
+      const resetBtn = document.getElementById('btnResetProgress');
+      if (resetBtn) resetBtn.remove();
+      
+      // 🆕 HIỆN LẠI NÚT XÁO
+      this.showShuffleButton();
+      
+      this.reset();
+    }
   }
   
   createPieces() {
@@ -112,7 +295,6 @@ class JigsawPuzzle {
     this.piecePaths.forEach((path, index) => {
       const bbox = path.getBBox();
       
-      // Tạo clipPath
       const cp = document.createElementNS(this.svgNS, "clipPath");
       cp.id = `clip-${index}`;
       const useClip = document.createElementNS(this.svgNS, "use");
@@ -120,12 +302,10 @@ class JigsawPuzzle {
       cp.appendChild(useClip);
       this.defs.appendChild(cp);
       
-      // Tạo group mảnh ghép
       const g = document.createElementNS(this.svgNS, "g");
       g.classList.add("piece");
       g.dataset.id = index;
       
-      // ✅ Dùng <image> với đường dẫn động
       const img = document.createElementNS(this.svgNS, "image");
       img.setAttributeNS(this.xlinkNS, "xlink:href", `Picture/${this.currentMap}.png`);
       img.setAttribute("x", "0");
@@ -135,7 +315,6 @@ class JigsawPuzzle {
       img.setAttribute("clip-path", `url(#clip-${index})`);
       img.setAttribute("preserveAspectRatio", "none");
       
-      // Viền mảnh
       const outline = document.createElementNS(this.svgNS, "use");
       outline.setAttributeNS(this.xlinkNS, "xlink:href", `#${path.id}`);
       outline.setAttribute("style", "fill:none;stroke:#333;stroke-width:2");
@@ -309,9 +488,47 @@ class JigsawPuzzle {
     clearInterval(this.timerInterval);
     this.svg.classList.add('completed');
     
+    // 🆕 Lưu tiến độ vào database
+    const completionTime = Math.floor((Date.now() - this.startTime) / 1000);
+    this.saveCompletion(completionTime, this.moves);
+    
     setTimeout(() => {
       this.showCompletionModal();
     }, 600);
+  }
+  
+  // 🆕 LƯU TIẾN ĐỘ HOÀN THÀNH
+  async saveCompletion(completionTime, moves) {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/puzzle/complete/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          map_name: this.currentMap,
+          completion_time: completionTime,
+          moves_count: moves
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        console.log('✅ Đã lưu tiến độ hoàn thành');
+        
+        // Cập nhật local progress
+        this.userProgress[this.currentMap] = {
+          completed: true,
+          completion_time: completionTime,
+          moves_count: moves
+        };
+        
+        // Cập nhật giao diện map buttons
+        this.updateMapButtons();
+      }
+    } catch (error) {
+      console.log('ℹ️ Chưa đăng nhập, không lưu tiến độ');
+    }
   }
   
   showCompletionModal() {
@@ -330,7 +547,7 @@ class JigsawPuzzle {
           <div>⏱️ Thời gian: ${minutes}:${seconds.toString().padStart(2, '0')}</div>
           <div>🔄 Số bước: ${this.moves}</div>
         </div>
-        <button class="btn-play-again">Chơi lại</button>
+        <button class="btn-play-again">Đóng</button>
       </div>
     `;
     
@@ -338,13 +555,14 @@ class JigsawPuzzle {
     
     modal.querySelector('.btn-play-again').addEventListener('click', () => {
       modal.remove();
-      this.reset();
+      // Không reset nữa, để giữ trạng thái đã hoàn thành
+      this.showCompletedState();
     });
     
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         modal.remove();
-        this.reset();
+        this.showCompletedState();
       }
     });
   }
@@ -364,6 +582,9 @@ class JigsawPuzzle {
     });
     
     this.svg.classList.remove('completed');
+    
+    // 🆕 ĐẢM BẢO NÚT XÁO ĐƯỢC HIỆN
+    this.showShuffleButton();
     
     this.shuffle();
     this.startTimer();
@@ -394,7 +615,12 @@ function initMiniGame() {
         puzzleGame = new JigsawPuzzle();
       }, 100);
     } else {
-      puzzleGame.reset();
+      // 🆕 Khi mở lại, kiểm tra map hiện tại đã hoàn thành chưa
+      if (puzzleGame.isMapCompleted(puzzleGame.currentMap)) {
+        puzzleGame.showCompletedState();
+      } else {
+        puzzleGame.reset();
+      }
     }
   });
   

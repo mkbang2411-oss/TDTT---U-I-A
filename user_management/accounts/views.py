@@ -7,7 +7,7 @@ from django.utils import timezone
 from allauth.socialaccount.models import SocialAccount
 from .models import ChatConversation, ChatMessage
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import UserProfile, FavoritePlace
+from .models import UserProfile, FavoritePlace, PuzzleProgress
 from django.conf import settings
 import json, os
 import pandas as pd
@@ -754,4 +754,111 @@ def get_district_places(request):
 
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+    
+    # ==========================================================
+# 🧩 PUZZLE GAME - LƯU TIẾN ĐỘ
+# ==========================================================
+
+@login_required
+@require_http_methods(["GET"])
+def get_puzzle_progress(request):
+    """
+    Lấy tiến độ hoàn thành puzzle của user
+    GET /api/puzzle/progress/
+    """
+    try:
+        user = request.user
+        progress_list = PuzzleProgress.objects.filter(user=user)
+        
+        progress_data = {}
+        for progress in progress_list:
+            progress_data[progress.map_name] = {
+                'completed': progress.completed,
+                'completion_time': progress.completion_time,
+                'moves_count': progress.moves_count,
+                'completed_at': progress.completed_at.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        
+        return JsonResponse({
+            'status': 'success',
+            'progress': progress_data
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def save_puzzle_completion(request):
+    """
+    Lưu tiến độ hoàn thành puzzle
+    POST /api/puzzle/complete/
+    Body: {
+        "map_name": "banh_mi",
+        "completion_time": 120,  // giây
+        "moves_count": 45
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        map_name = data.get('map_name')
+        completion_time = data.get('completion_time')
+        moves_count = data.get('moves_count')
+        
+        if not map_name:
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Thiếu thông tin map_name'
+            }, status=400)
+        
+        # Tạo hoặc cập nhật progress
+        progress, created = PuzzleProgress.objects.update_or_create(
+            user=request.user,
+            map_name=map_name,
+            defaults={
+                'completed': True,
+                'completion_time': completion_time,
+                'moves_count': moves_count
+            }
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã lưu tiến độ thành công',
+            'is_new_record': created
+        })
+        
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def reset_puzzle_progress(request, map_name):
+    """
+    Reset tiến độ puzzle về chưa hoàn thành
+    POST /api/puzzle/reset/<map_name>/
+    """
+    try:
+        progress = PuzzleProgress.objects.filter(
+            user=request.user,
+            map_name=map_name
+        ).first()
+        
+        if progress:
+            progress.delete()
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Đã reset tiến độ {map_name}'
+            })
+        else:
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Chưa có tiến độ để reset'
+            })
+            
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 

@@ -96,4 +96,21 @@ class FavoritePlace(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.place_id}"
     
+class PuzzleProgress(models.Model):
+    """
+    Lưu tiến độ hoàn thành puzzle của user
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='puzzle_progress')
+    map_name = models.CharField(max_length=50)  # 'banh_mi', 'com_tam', 'bun_bo_hue'
+    completed = models.BooleanField(default=False)
+    completion_time = models.IntegerField(null=True, blank=True)  # Thời gian hoàn thành (giây)
+    moves_count = models.IntegerField(null=True, blank=True)  # Số bước di chuyển
+    completed_at = models.DateTimeField(auto_now=True)  # Lần hoàn thành gần nhất
 
+    class Meta:
+        unique_together = ('user', 'map_name')
+        ordering = ['-completed_at']
+
+    def __str__(self):
+        status = "✅" if self.completed else "⏳"
+        return f"{status} {self.user.username} - {self.map_name}"

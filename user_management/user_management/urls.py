@@ -34,6 +34,9 @@ urlpatterns = [
     path('api/change-password/', account_views.change_password_api, name='change_password_api'),
     path('api/favorite/<str:place_id>/', account_views.toggle_favorite, name='toggle_favorite'),
     path('api/get-favorites/', account_views.get_user_favorites_api, name='get_user_favorites_api'),
+    path('api/puzzle/progress/', account_views.get_puzzle_progress, name='get_puzzle_progress'),
+    path('api/puzzle/complete/', account_views.save_puzzle_completion, name='save_puzzle_completion'),
+    path('api/puzzle/reset/<str:map_name>/', account_views.reset_puzzle_progress, name='reset_puzzle_progress'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
