@@ -302,7 +302,7 @@
 /* Nút mở mini game trên map */
 .mini-game-btn {
   position: fixed;
-  bottom: 100px;
+  bottom: 300px;
   right: 20px;
   width: 60px;
   height: 60px;
