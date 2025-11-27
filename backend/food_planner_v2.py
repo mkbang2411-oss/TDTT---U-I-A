@@ -601,7 +601,7 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                 banh_mi_variants = ['banhmi', 'banh mi', 'banhmy', 'banh my']
                 if any(variant in name_for_check for variant in banh_mi_variants):
                     continue
-
+            
             # THÊM VÀO RESULTS (phần code cũ giữ nguyên)
             results.append({
                 'ten_quan': clean_value(row.get('ten_quan', '')),
@@ -1042,7 +1042,8 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
                 'data_id': best_place['data_id'],
                 'hinh_anh': best_place['hinh_anh'],
                 'gia_trung_binh': best_place['gia_trung_binh'],
-                'khau_vi': best_place['khau_vi']
+                'khau_vi': best_place['khau_vi'],
+                'gio_mo_cua': best_place['gio_mo_cua'] 
             }
             
             current_lat = best_place['lat']
@@ -1897,63 +1898,155 @@ def get_food_planner_html():
     gap: 8px;
 }
 
+/* ========== MEAL ACTIONS - REDESIGN ========== */
 .meal-actions {
     display: none;
-    gap: 6px;
+    gap: 10px;
+    flex-wrap: nowrap; /* ✅ BẮT BUỘC NGANG HÀNG */
+    align-items: center; /* ✅ CĂNG GIỮA */
 }
 
 .meal-card-vertical.edit-mode .meal-actions {
     display: flex;
 }
 
+/* ✅ NÚT CƠ BẢN - TO HƠN, RÕ RÀNG HƠN */
 .meal-action-btn {
     background: white;
-    border: 1px solid #e9ecef;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    border: 2px solid #e9ecef;
+    padding: 10px 16px;
+    border-radius: 12px;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+    min-height: 44px;
+    outline: none; /* ✅ XÓA VIỀN ĐEN */
+}
+
+/* ✅ XÓA OUTLINE KHI FOCUS/ACTIVE */
+.meal-action-btn:focus,
+.meal-action-btn:active {
+    outline: none;
+}
+
+.meal-action-btn:hover::before {
+    opacity: 1;
+}
+
+/* ✅ ĐẢM BẢO ICON + TEXT Ở TRÊN */
+.meal-action-btn .btn-icon,
+.meal-action-btn .btn-text {
+    position: relative;
+    z-index: 1;
 }
 
 .meal-action-btn:hover {
-    border-color: #FF6B35;
-    background: #FFF5F0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    background: #f8f9fa; /* ✅ THÊM DÒNG NÀY */
+    border-color: inherit;
 }
 
+.meal-action-btn:active {
+    transform: translateY(0);
+}
+
+/* ✅ ICON + TEXT TRONG NÚT */
+.meal-action-btn .btn-icon {
+    font-size: 18px;
+    line-height: 1;
+    z-index: 1;
+}
+
+.meal-action-btn .btn-text {
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 1;
+}
+
+/* ========== NÚT XÓA - ĐỎ RÕ RÀNG ========== */
 .meal-action-btn.delete-meal {
-    background: #fee;
+    background: linear-gradient(135deg, #fee 0%, #fdd 100%);
     border-color: #e74c3c;
+    color: #c0392b;
 }
 
 .meal-action-btn.delete-meal:hover {
-    background: #e74c3c;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    border-color: #c0392b;
     color: white;
+    box-shadow: 0 4px 16px rgba(231, 76, 60, 0.4);
 }
 
+/* ========== NÚT CHỌN QUÁN - XANH LÁ NỔI BẬT ========== */
 .meal-action-btn.select-meal {
-    background: #e8f5e9;
-    border-color: #4caf50;
+    background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    border: 2px solid #4caf50;
+    color: #2e7d32;
+    flex: 1; /* ✅ Chiếm nhiều không gian hơn */
+    min-width: 140px; /* ✅ Đủ rộng để hiển thị text */
 }
 
 .meal-action-btn.select-meal:hover {
-    background: #4caf50;
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+    border-color: #45a049;
     color: white;
+    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.4);
 }
 
+/* ✅ TRẠNG THÁI ACTIVE - ĐANG CHỜ CHỌN */
 .meal-action-btn.select-meal.active {
-    background: #4caf50;
+    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    border-color: #2e7d32;
     color: white;
-    animation: pulse 1s infinite;
+    animation: selectPulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2);
 }
 
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+@keyframes selectPulse {
+    0%, 100% { 
+        box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 0 8px rgba(76, 175, 80, 0.1);
+        transform: scale(1.03);
+    }
+}
+
+/* ✅ RESPONSIVE - MOBILE */
+@media (max-width: 768px) {
+    .meal-actions {
+        width: 100%;
+        flex-wrap: nowrap; /* ✅ VẪN NGANG TRÊN MOBILE */
+    }
+    
+    .meal-action-btn {
+        flex: 1;
+        min-width: 0;
+        padding: 8px 10px; /* ✅ THU NHỎ PADDING */
+    }
+    
+    .meal-action-btn.select-meal {
+        min-width: 0;
+    }
+    
+    .meal-action-btn .btn-text {
+        font-size: 11px; /* ✅ CHỮ NHỎ HƠN */
+    }
+    
+    .meal-action-btn .btn-icon {
+        font-size: 16px; /* ✅ ICON NHỎ HƠN */
+    }
 }
 
 .place-info-vertical {
@@ -2078,53 +2171,92 @@ def get_food_planner_html():
 
 /* ========== ACTION BUTTONS ========== */
 .action-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
+    min-width: 52px;
+    height: 52px;
+    border-radius: 26px;
     border: none;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    gap: 8px;
+    padding: 0 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     cursor: pointer;
-    transition: transform 0.15s ease;
-    flex-shrink: 0;  /* 🔥 THÊM DÒNG NÀY */
-    min-width: 44px;  /* 🔥 ĐẢM BẢO KHÔNG BỊ NÉN NHỎ HƠN */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.action-btn:hover::before {
+    width: 300px;
+    height: 300px;
 }
 
 .action-btn:hover {
-    transform: translateY(-4px);
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
 
-.action-btn.secondary {
-    background: #FF6B35;
-    color: #fff;
+.action-btn:active {
+    transform: translateY(-2px) scale(1.02);
+    transition: all 0.1s;
 }
 
-.action-btn.secondary:hover {
-    background: #FF8E53;
-}
-
+/* 🔥 NÚT EDIT (CAM) */
 .action-btn.edit {
-    background: #FFA500;
-    color: #fff;
+    background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+    color: white;
 }
 
 .action-btn.edit:hover {
-    background: #FF8C00;
+    background: linear-gradient(135deg, #FFB84D 0%, #FFA500 100%);
+    box-shadow: 0 8px 24px rgba(255, 165, 0, 0.4);
 }
 
 .action-btn.edit.active {
-    background: #4caf50;
+    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    animation: editPulse 2s infinite;
 }
 
+.action-btn.edit.active:hover {
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+    box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4);
+}
+
+@keyframes editPulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(76, 175, 80, 0.6);
+    }
+}
+
+/* 🔥 NÚT LƯU (ĐỎ CAM GRADIENT) */
 .action-btn.primary {
     background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
     color: white;
 }
 
 .action-btn.primary:hover {
-    opacity: 0.9;
+    background: linear-gradient(135deg, #FF8E53 0%, #FFB84D 100%);
+    box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
 }
 
 .action-btn.add {
@@ -2137,9 +2269,30 @@ def get_food_planner_html():
 }
 
 .action-btn svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     fill: white;
+    z-index: 1;
+    flex-shrink: 0;
+}
+
+.btn-label {
+    z-index: 1;
+    white-space: nowrap;
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* 🔥 NÚT CHIA SẺ (XANH DƯƠNG) */
+.action-btn.share {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+}
+
+.action-btn.share:hover {
+    background: linear-gradient(135deg, #42A5F5 0%, #2196F3 100%);
+    box-shadow: 0 8px 24px rgba(33, 150, 243, 0.4);
 }
 
 /* ========== SCHEDULE HEADER ========== */
@@ -2263,28 +2416,168 @@ def get_food_planner_html():
     overflow: hidden !important;
 }
 
+/* ========== TOOLTIP HƯỚNG DẪN ========== */
+.meal-action-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    animation: tooltipFadeIn 0.2s ease-out;
+}
+
+.meal-action-btn[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+    z-index: 1000;
+    pointer-events: none;
+    animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* ✅ ẨN TOOLTIP MẶC ĐỊNH CỦA BROWSER */
+.meal-action-btn {
+    position: relative;
+}
+
+/* ========== NÚT ĐÓNG THU THEO PANEL ========== */
+.close-panel-btn {
+    position: fixed;
+    top: 50%;
+    right: -48px; /* ✅ MẶC ĐỊNH ẨN NGOÀI MÀN HÌNH */
+    transform: translateY(-50%);
+    width: 48px;
+    height: 100px;
+    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+    border: none;
+    border-radius: 12px 0 0 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999998;
+    box-shadow: -6px 0 20px rgba(255, 107, 53, 0.4);
+    transition: right 0.3s ease, transform 0.3s ease, width 0.3s ease, box-shadow 0.3s ease, background 0.3s ease; /* ✅ CHỈ GIỮ TRANSITION CẦN THIẾT */
+    overflow: hidden;
+}
+
+.close-panel-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s ease;
+}
+
+.close-panel-btn:hover::before {
+    left: 100%;
+}
+
+/* ✅ KHI PANEL MỞ → NÚT XUẤT HIỆN */
+.food-planner-panel.active ~ .close-panel-btn {
+    right: 550px; /* ✅ LÒI RA BÊN TRÁI PANEL */
+}
+
+.close-panel-btn:hover {
+    background: linear-gradient(135deg, #FF8E53 0%, #FFB84D 100%);
+    box-shadow: -8px 0 28px rgba(255, 107, 53, 0.5);
+    transform: translateY(-50%) translateX(16px);
+    width: 56px;
+}
+
+.close-panel-btn:active {
+    transform: translateY(-50%) translateX(4px) scale(0.95);
+}
+
+.close-panel-btn .arrow-icon {
+    font-size: 28px;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: arrowPulse 2s ease-in-out infinite;
+}
+
+@keyframes arrowPulse {
+    0%, 100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    50% {
+        transform: translateX(4px);
+        opacity: 0.8;
+    }
+}
+
+.close-panel-btn:hover .arrow-icon {
+    animation: arrowBounce 0.6s ease-in-out infinite;
+}
+
+@keyframes arrowBounce {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(8px);
+    }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .close-panel-btn {
+        right: -48px; /* ✅ Mobile: ẨN mặc định */
+    }
+    
+    .food-planner-panel.active ~ .close-panel-btn {
+        right: 100%; /* ✅ Mobile: panel = 100% width */
+        width: 36px;
+        height: 70px;
+    }
+}
+
 </style>
 
 <!-- Food Planner Button -->
-<div class="food-planner-btn" id="foodPlannerBtn" title="Lịch trình bữa ăn" style="font-size: 28px; display: flex; align-items: center; justify-content: center;">
-    📋
+<div class="food-planner-btn" id="foodPlannerBtn" title="Lên kế hoạch ăn uống">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
+    </svg>
 </div>
 
 <!-- Food Planner Panel -->
 <div class="food-planner-panel" id="foodPlannerPanel">
-    <div class="panel-inner">
-        <div class="panel-header">
-            <h2 style="font-size: 22px;">
-                <span style="font-size: 26px;">📋</span> Lịch trình bữa ăn
-            </h2>
-            <div class="header-actions">
-                <button class="header-btn" onclick="closeFoodPlanner()" title="Đóng">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
+    <div class="panel-header">
+        <h2 style="font-size: 22px;">
+            <span style="font-size: 26px;">📋</span> Lịch trình bữa ăn
+        </h2>
+    </div>
         
         <div class="panel-content">
             <!-- AUTO MODE -->
@@ -2355,13 +2648,17 @@ def get_food_planner_html():
         </div>
     </div>
 </div>
-
+<!-- ✅ NÚT ĐÓNG ĐẸP HƠN VỚI ICON >> -->
+<button class="close-panel-btn" onclick="closeFoodPlanner()" title="Đóng lịch trình">
+    <span class="arrow-icon">»</span>
+</button>
 <script>
 // ========== GLOBAL STATE ==========
 let isPlannerOpen = false;
 let selectedThemes = []; // Đổi từ selectedTheme thành selectedThemes (array)
 let currentPlan = null;
 let currentPlanId = null;
+let suggestedFoodStreet = null;
 let filtersCollapsed = false;
 let isEditMode = false;
 let draggedElement = null;
@@ -2411,20 +2708,75 @@ function initThemeGrid() {
     const grid = document.getElementById('themeGrid');
     if (!grid) return;
     
-    // 🔥 THÊM CLASS MỚI
-    grid.className = 'theme-grid-new';
+    // 🔥 XÓA CLASS CŨ
+    grid.className = '';
     
-    Object.keys(themes).forEach(key => {
-        const theme = themes[key];
-        const card = document.createElement('div');
-        card.className = 'theme-card';
-        card.dataset.theme = key;
-        card.innerHTML = `
-            <div class="theme-icon">${theme.icon}</div>
-            <div class="theme-name">${theme.name}</div>
+    // 🔥 CẤU TRÚC MỚI - CHIA THÀNH 3 SECTIONS
+    const sections = [
+        {
+            title: 'Giải khát & Tráng miệng',
+            icon: '🍹',
+            themes: ['coffee_chill', 'dessert_bakery'],
+            columns: 2
+        },
+        {
+            title: 'Ẩm thực đa dạng',
+            icon: '🍽️',
+            themes: ['street_food', 'asian_fusion', 'seafood', 'luxury_dining', 'vegetarian', 'spicy_food'],
+            columns: 2
+        },
+        {
+            title: 'Khu du lịch',
+            icon: '🏙️',
+            themes: ['food_street', 'michelin'],
+            columns: 2
+        }
+    ];
+    
+    sections.forEach(section => {
+        // Tạo section container
+        const sectionDiv = document.createElement('div');
+        sectionDiv.className = 'theme-section-group';
+        sectionDiv.style.marginBottom = '24px';
+        
+        // Tạo header
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'theme-section-header';
+        headerDiv.innerHTML = `
+            <span style="font-size: 24px; margin-right: 8px;">${section.icon}</span>
+            <span style="font-size: 14px; font-weight: 700; color: #333;">${section.title}</span>
         `;
-        card.onclick = () => selectTheme(key);
-        grid.appendChild(card);
+        headerDiv.style.cssText = `
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%);
+            border-radius: 12px;
+            border: 2px solid #FFD699;
+        `;
+        
+        // Tạo grid cho themes
+        const themeGrid = document.createElement('div');
+        themeGrid.className = 'theme-grid-new';
+        themeGrid.style.gridTemplateColumns = `repeat(${section.columns}, 1fr)`;
+        
+        section.themes.forEach(key => {
+            const theme = themes[key];
+            const card = document.createElement('div');
+            card.className = 'theme-card';
+            card.dataset.theme = key;
+            card.innerHTML = `
+                <div class="theme-icon">${theme.icon}</div>
+                <div class="theme-name">${theme.name}</div>
+            `;
+            card.onclick = () => selectTheme(key);
+            themeGrid.appendChild(card);
+        });
+        
+        sectionDiv.appendChild(headerDiv);
+        sectionDiv.appendChild(themeGrid);
+        grid.appendChild(sectionDiv);
     });
 }
 
@@ -2547,6 +2899,8 @@ function savePlan() {
 
     // Cập nhật order
     currentPlan._order = planArray.map(x => x.key);
+    // Xóa quán gợi ý trước khi lưu
+    suggestedFoodStreet = null;
 
     // 🔥 LẤY TÊN TỪ DOM (nếu user đã edit inline)
     const titleElement = document.querySelector('.schedule-title span[contenteditable]');
@@ -2578,7 +2932,8 @@ function savePlan() {
         id: currentPlanId || Date.now().toString(), // 🔥 TẠO ID MỚI NẾU CHƯA CÓ
         name: currentDisplayName,
         plan: planArray,
-        savedAt: new Date().toISOString()
+        savedAt: new Date().toISOString(),
+        radius: window.currentRadius || '10'  // 🔥 THÊM DÒNG NÀY
     };
     
     if (currentPlanId) {
@@ -2647,7 +3002,9 @@ function loadSavedPlans(planId) {
 
             currentPlanId = planId;
             window.currentPlanName = plan.name;
+            window.currentRadius = plan.radius || '10';  // 🔥 THÊM DÒNG NÀY
             isEditMode = false;
+            suggestedFoodStreet = null; // Xóa gợi ý khi load plan cũ
             displayPlanVertical(currentPlan, false);
 
             setTimeout(() => drawRouteOnMap(currentPlan), 500);
@@ -2803,7 +3160,17 @@ function openFoodPlanner() {
 function closeFoodPlanner() {
     document.getElementById('foodPlannerPanel').classList.remove('active');
     isPlannerOpen = false;
-    clearRoutes(); // Xóa đường khi đóng panel
+    
+    // ✅ Cleanup toàn bộ
+    clearRoutes();
+    stopAutoScroll();
+    disableGlobalDragTracking();
+    
+    // ✅ Reset states
+    draggedElement = null;
+    window.draggedElement = null;
+    lastTargetElement = null;
+    lastDragY = 0;
 }
 
 // ========== GET SELECTED FLAVORS ==========
@@ -2822,6 +3189,50 @@ function getSelectedFlavors() {
     }
     
     return selectedFlavors;
+}
+
+// ========== TÌM KHU ẨM THỰC GỢI Ý (18:00 - 02:00) ==========
+async function findSuggestedFoodStreet() {
+    try {
+        let userLat, userLon;
+        
+        if (window.currentUserCoords) {
+            userLat = window.currentUserCoords.lat;
+            userLon = window.currentUserCoords.lon;
+        } else {
+            return null;
+        }
+        
+        const radiusInput = document.getElementById('radius');
+        const radius = radiusInput?.value || window.currentRadius || '10';
+        
+        
+        const randomHour = Math.floor(Math.random() * 9) + 18; // 18-26 (26 = 2h sÃ¡ng)
+        const actualHour = randomHour >= 24 ? randomHour - 24 : randomHour;
+        const randomMinute = Math.floor(Math.random() * 60);
+        const searchTime = `${actualHour.toString().padStart(2, '0')}:${randomMinute.toString().padStart(2, '0')}`;
+        
+        const randomSeed = Date.now();
+        const url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${searchTime}&end_time=${searchTime}&radius_km=${radius}&theme=food_street`;
+        
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        
+        const data = await response.json();
+        if (data.error || !data) return null;
+        
+        
+        for (const key in data) {
+            if (key !== '_order' && data[key] && data[key].place) {
+                return data[key].place;
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Lá»—i tÃ¬m khu áº©m thá»±c gá»£i Ã½:', error);
+        return null;
+    }
 }
 
 // ========== AUTO MODE: GENERATE PLAN ==========
@@ -2860,18 +3271,15 @@ async function generateAutoPlan() {
         const endMinute = document.getElementById('endMinute').value.padStart(2, '0');
         const endTime = `${endHour}:${endMinute}`;
         
-        const radius = window.currentRadius || document.getElementById('radius')?.value || '';
-        
-        if (!radius || radius === '') {
-            resultDiv.innerHTML = `
-                <div class="error-message">
-                    <h3>⚠️ Chưa chọn bán kính</h3>
-                    <p>Vui lòng chọn bán kính tìm kiếm trước khi tạo kế hoạch</p>
-                </div>
-            `;
-            return;
-        }
-        
+        // 🔥 ĐỌC TỪ HIDDEN INPUT TRƯỚC, SAU ĐÓ MỚI DÙNG window.currentRadius
+        const radiusInput = document.getElementById('radius');
+        const radius = radiusInput?.value || window.currentRadius || '10';
+
+        // 🔥 CẬP NHẬT LẠI window.currentRadius
+        window.currentRadius = radius;
+
+        console.log('🔍 Bán kính đang dùng:', radius + ' km');
+
         const selectedFlavors = getSelectedFlavors();
         const tastesParam = selectedFlavors.join(',');
         
@@ -2894,6 +3302,15 @@ async function generateAutoPlan() {
         }
         
         const data = await response.json();
+
+        // 🔥 LOG DEBUG - KIỂM TRA DATA TỪ API
+        console.log('🔍 [API Response] Full data:', data);
+        Object.keys(data).forEach(key => {
+            if (key !== '_order' && data[key] && data[key].place) {
+                console.log(`📍 [${key}] ${data[key].place.ten_quan}`);
+                console.log(`   gio_mo_cua:`, data[key].place.gio_mo_cua);
+            }
+        });
         
         if (data.error) {
             resultDiv.innerHTML = `
@@ -2909,6 +3326,13 @@ async function generateAutoPlan() {
         
         isEditMode = false;
         displayPlanVertical(currentPlan, false);
+        // Tìm khu ẩm thực gợi ý (CHỈ KHI KHÔNG CHỌN THEME food_street)
+        if (!selectedThemes.includes('food_street')) {
+            suggestedFoodStreet = await findSuggestedFoodStreet();
+            if (suggestedFoodStreet) {
+                displayPlanVertical(currentPlan, false);
+            }
+        }
         
     } catch (error) {
         console.error('Error:', error);
@@ -2920,6 +3344,84 @@ async function generateAutoPlan() {
                     : 'Đã có lỗi xảy ra. Vui lòng thử lại sau.'}</p>
             </div>
         `;
+    }
+}
+
+// ========== TÍNH TỔNG KINH PHÍ ==========
+function calculateTotalBudget(plan) {
+    let total = 0;
+    let unknownCount = 0;
+    let hasOverPrice = false;
+    
+    Object.keys(plan).forEach(key => {
+        if (key === '_order') return;
+        
+        const meal = plan[key];
+        if (!meal || !meal.place || !meal.place.gia_trung_binh) {
+            unknownCount++;
+            return;
+        }
+        
+        const priceStr = meal.place.gia_trung_binh.trim();
+        
+        // 🔥 XỬ LÝ "Trên X.XXX.XXX ₫"
+        if (priceStr.includes('Trên')) {
+            hasOverPrice = true;
+            const match = priceStr.match(/[\d\.]+/);
+            if (match) {
+                const value = parseInt(match[0].replace(/\./g, ''));
+                total += value;
+            }
+            return;
+        }
+        
+        // 🔥 XỬ LÝ KHOẢNG GIÁ: "100-200 N ₫" hoặc "1-100.000 ₫"
+        const parts = priceStr.split('-');
+        if (parts.length === 2) {
+            let maxPart = parts[1].trim();
+            
+            // 🔥 CHUẨN HÓA: Thay thế TẤT CẢ khoảng trắng (bao gồm \xa0) thành khoảng trắng thường
+            maxPart = maxPart.replace(/\s+/g, ' ');
+            
+            // 🔥 KIỂM TRA CÓ CHỮ "N" (không phân biệt khoảng trắng)
+            const hasN = /N\s*₫/i.test(maxPart) || /\s+N\s+/i.test(maxPart);
+            
+            // Xóa TẤT CẢ ký tự không phải số hoặc dấu chấm
+            maxPart = maxPart.replace(/[^\d\.]/g, '');
+            
+            // Xóa dấu chấm phân cách hàng nghìn
+            maxPart = maxPart.replace(/\./g, '');
+            
+            let max = parseInt(maxPart);
+            
+            // 🔥 NẾU CÓ CHỮ "N" → NHÂN 1000
+            if (!isNaN(max) && max > 0) {
+                if (hasN) {
+                    max = max * 1000;
+                }
+                total += max;
+            } else {
+                unknownCount++;
+            }
+        } else {
+            unknownCount++;
+        }
+    });
+    
+    return {
+        total: total,
+        unknown: unknownCount,
+        hasOverPrice: hasOverPrice
+    };
+}
+
+function formatMoney(value) {
+    if (value >= 1000000) {
+        return (value / 1000000).toFixed(1).replace('.0', '') + ' triệu ₫';
+    } else if (value >= 1000) {
+        return (value / 1000).toFixed(0) + '.000 ₫';
+    } else {
+        return value + ' ₫';
     }
 }
 
@@ -2955,6 +3457,9 @@ function displayPlanVertical(plan, editMode = false) {
         return;
     }
 
+    // 🔥 TÍNH TỔNG KINH PHÍ
+    const budget = calculateTotalBudget(plan);
+
     let html = `
     <div class="schedule-header">
         <h3 class="schedule-title">
@@ -2962,28 +3467,75 @@ function displayPlanVertical(plan, editMode = false) {
             <span ${editMode ? 'contenteditable="true" class="editable" onblur="updateAutoPlanName(this.textContent)"' : ''}><span>${window.currentPlanName || 'Lịch trình của bạn'}</span></span>
         </h3>
         <div class="action-buttons" id="actionButtons">
-            <button class="action-btn secondary" onclick="generateAutoPlan()" title="Tạo lại">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                </svg>
-            </button>
             <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                 </svg>
+                <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
             </button>
-            <button class="action-btn primary" onclick="savePlan()" title="Lưu">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
+            <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
                 </svg>
+                <span class="btn-label">Lưu</span>
             </button>
-            <button class="action-btn secondary" onclick="sharePlan()" title="Chia sẻ kế hoạch">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
+            <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
                 </svg>
+                <span class="btn-label">Chia sẻ</span>
             </button>
         </div>
     </div>
+
+    <!-- 📍 Bán Kính Tìm Kiếm -->
+    <div style="
+        background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+        border: 2px solid #FFB84D;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
+    ">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 28px;">📍</span>
+            <div>
+                <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">Bán kính tìm kiếm</div>
+                <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
+                    ${window.currentRadius || '10'} km
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 💰 Tổng Kinh Phí -->
+    <div style="
+        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+        border: 2px solid #4caf50;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+    ">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 28px;">💰</span>
+            <div>
+                <div style="font-size: 13px; color: #2e7d32; font-weight: 600; margin-bottom: 4px;">Tổng kinh phí dự kiến</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1b5e20;">
+                        ${budget.hasOverPrice ? 'Trên ' : ''}${formatMoney(budget.total)}
+                        ${budget.unknown > 0 ? `<span style="font-size: 13px; font-weight: 500; color: #666; margin-left: 8px;">(Không tính ${budget.unknown} quán)</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="timeline-container"><div class="timeline-line"></div>
     `;
     
@@ -3053,12 +3605,14 @@ function displayPlanVertical(plan, editMode = false) {
                             </div>
                             ${editMode ? `
                             <div class="meal-actions">
-                                <button class="meal-action-btn delete-meal" onclick="deleteMealSlot('${key}')" title="Xóa">
-                                    🗑️
-                                </button>
                                 <button class="meal-action-btn select-meal ${isWaitingForSelection ? 'active' : ''}" 
-                                        onclick="selectPlaceForMeal('${key}')" title="Chọn quán">
-                                    ${isWaitingForSelection ? '⏳' : '✔'}
+                                        onclick="selectPlaceForMeal('${key}')" title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán trên bản đồ...' : 'Nhấn để chọn quán ăn từ bản đồ'}">
+                                    <span class="btn-icon">${isWaitingForSelection ? '⏳' : '✏️'}</span>
+                                    <span class="btn-text">${isWaitingForSelection ? 'Đang chọn...' : 'Chọn quán'}</span>
+                                </button>
+                                <button class="meal-action-btn delete-meal" onclick="deleteMealSlot('${key}')" title="Xóa bữa ăn này">
+                                    <span class="btn-icon">🗑️</span>
+                                    <span class="btn-text">Xóa</span>
                                 </button>
                             </div>
                             ` : ''}
@@ -3078,8 +3632,8 @@ function displayPlanVertical(plan, editMode = false) {
         const place = meal.place;
         
         // ✅ CODE MỚI - TRUYỀN THÊM data_id VÀ ten_quan
-        const cardClickEvent = editMode ? '' : `onclick="flyToPlace(${place.lat}, ${place.lon}, '${place.data_id}', '${place.ten_quan.replace(/'/g, "\\'")}')"`;
-        const cardCursor = editMode ? 'cursor: default;' : 'cursor: pointer;';
+        const cardClickEvent = `onclick="flyToPlace(${place.lat}, ${place.lon}, '${place.data_id}', '${place.ten_quan.replace(/'/g, "\\'")}')"`;
+        const cardCursor = 'cursor: pointer;'; // ✅ LUÔN HIỆN CON TRỎ TAY
         
         const isWaitingForSelection = waitingForPlaceSelection === key;
         
@@ -3108,22 +3662,51 @@ function displayPlanVertical(plan, editMode = false) {
                                     ${iconOptions.map(ico => `<option value="${ico}" ${ico === icon ? 'selected' : ''}>${ico}</option>`).join('')}
                                 </select>
                             ` : `<span style="font-size: 22px;">${icon}</span>`}
-                            ${editMode ? 
-                                `<div style="display: flex; gap: 4px; align-items: center; flex: 1;">
-                                    <input type="text" value="${meal.title}" onchange="updateMealTitle('${key}', this.value)" 
-                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">
-                                </div>` :
-                                `<span>${meal.title}</span>`
-                            }
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                ${editMode ? 
+                                    `<input type="text" value="${meal.title}" onchange="updateMealTitle('${key}', this.value)" 
+                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">`
+                                    : `<span>${meal.title}</span>`
+                                }
+                                ${(() => {
+                                    const gioMoCua = place.gio_mo_cua || '';
+                                    let displayTime = '';
+                                    
+                                    if (!gioMoCua || gioMoCua.trim() === '') {
+                                        displayTime = 'Không rõ thời gian';
+                                    } else {
+                                        const gioNormalized = gioMoCua.toLowerCase();
+                                        
+                                        if (gioNormalized.includes('always') || gioNormalized.includes('24') || 
+                                            gioNormalized.includes('cả ngày') || gioNormalized.includes('mở cả ngày') ||
+                                            gioNormalized.includes('ca ngay') || gioNormalized.includes('mo ca ngay')) {
+                                            displayTime = 'Mở cả ngày';
+                                        } else if (gioNormalized.includes('mở') || gioNormalized.includes('đóng') ||
+                                                gioNormalized.includes('ong') || gioNormalized.includes('mo cua') || 
+                                                gioNormalized.includes('dong cua') || gioNormalized.includes('mo') || 
+                                                gioNormalized.includes('dong')) {
+                                            displayTime = gioMoCua;
+                                        } else {
+                                            displayTime = 'Không rõ thời gian';
+                                        }
+                                    }
+                                    
+                                    return `<div style="font-size: 11px; color: #8B6914; font-weight: 500;">
+                                        🕐 ${displayTime}
+                                    </div>`;
+                                })()}
+                            </div>
                         </div>
                         ${editMode ? `
                         <div class="meal-actions">
-                            <button class="meal-action-btn delete-meal" onclick="deleteMealSlot('${key}')" title="Xóa quán">
-                                🗑️
-                            </button>
                             <button class="meal-action-btn select-meal ${isWaitingForSelection ? 'active' : ''}" 
-                                    onclick="selectPlaceForMeal('${key}')" title="Chọn quán mới">
-                                ${isWaitingForSelection ? '⏳' : '✔'}
+                                    onclick="selectPlaceForMeal('${key}')" title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán khác trên bản đồ...' : 'Nhấn để đổi sang quán khác'}">
+                                <span class="btn-icon">${isWaitingForSelection ? '⏳' : '✏️'}</span>
+                                <span class="btn-text">${isWaitingForSelection ? 'Đang đổi...' : 'Đổi quán'}</span>
+                            </button>
+                            <button class="meal-action-btn delete-meal" onclick="deleteMealSlot('${key}')" title="Xóa bữa ăn này">
+                                <span class="btn-icon">🗑️</span>
+                                <span class="btn-text">Xóa</span>
                             </button>
                         </div>
                         ` : ''}
@@ -3156,29 +3739,177 @@ function displayPlanVertical(plan, editMode = false) {
     
     html += '</div>';
 
+    // CARD GỢI Ý KHU ẨM THỰC (CHỈ KHI KHÔNG EDIT MODE VÀ KHÔNG CHỌN THEME food_street)
+    const shouldShowSuggestion = !editMode && 
+                                suggestedFoodStreet && 
+                                !selectedThemes.includes('food_street');
+
+    if (shouldShowSuggestion) {
+        html += `
+            <div style="margin-top: 40px; padding: 0 20px;">
+                <div style="
+                    background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+                    border: 3px dashed #FFB84D;
+                    border-radius: 20px;
+                    padding: 20px;
+                    position: relative;
+                    box-shadow: 0 6px 20px rgba(255, 184, 77, 0.25);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                " onclick="flyToPlace(${suggestedFoodStreet.lat}, ${suggestedFoodStreet.lon}, '${suggestedFoodStreet.data_id}', '${suggestedFoodStreet.ten_quan.replace(/'/g, "\\'")}')"
+                onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 28px rgba(255, 184, 77, 0.35)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(255, 184, 77, 0.25)';">
+                    
+                    <!-- TAG Gợi ý -->
+                    <div style="
+                        position: absolute;
+                        top: -12px;
+                        left: 20px;
+                        background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                        color: white;
+                        padding: 6px 16px;
+                        border-radius: 20px;
+                        font-size: 13px;
+                        font-weight: 700;
+                        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                    ">
+                        <span style="font-size: 16px;">✨</span>
+                        <span>Gợi ý cho bạn</span>
+                    </div>
+                    
+                    <!-- HEADER -->
+                    <div style="margin-top: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🪔</span>
+                        <div>
+                            <div style="font-size: 16px; font-weight: 700; color: #6B5410; margin-bottom: 4px;">
+                                Khu ẩm thực đêm
+                            </div>
+                            ${(() => {
+                                const gioMoCua = suggestedFoodStreet.gio_mo_cua || '';
+                                let displayTime = '';
+                                
+                                if (!gioMoCua || gioMoCua.trim() === '') {
+                                    displayTime = 'Không rõ thời gian';
+                                } else {
+                                    const gioNormalized = gioMoCua.toLowerCase();
+                                    
+                                    if (gioNormalized.includes('always') || gioNormalized.includes('24') || 
+                                        gioNormalized.includes('cả ngày') || gioNormalized.includes('mở cả ngày') ||
+                                        gioNormalized.includes('ca ngay') || gioNormalized.includes('mo ca ngay')) {
+                                        displayTime = 'Mở cả ngày';
+                                    } else if (gioNormalized.includes('mở') || gioNormalized.includes('đóng') ||
+                                            gioNormalized.includes('ong') || gioNormalized.includes('mo cua') || 
+                                            gioNormalized.includes('dong cua') || gioNormalized.includes('mo') || 
+                                            gioNormalized.includes('dong')) {
+                                        displayTime = gioMoCua;
+                                    } else {
+                                        displayTime = 'Không rõ thời gian';
+                                    }
+                                }
+                                
+                                return `<div style="font-size: 13px; color: #8B6914; font-weight: 500;">
+                                    🕐 ${displayTime}
+                                </div>`;
+                            })()}
+                        </div>
+                    </div>
+                    
+                    <!-- NỘI DUNG -->
+                    <div style="
+                        background: white;
+                        border-radius: 12px;
+                        padding: 16px;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                        border: 1px solid rgba(255, 184, 77, 0.2);
+                    ">
+                        <div style="font-weight: 700; color: #FF6B35; margin-bottom: 8px; font-size: 15px; display: flex; align-items: center; gap: 6px;">
+                            <span>🍽️</span>
+                            <span>${suggestedFoodStreet.ten_quan}</span>
+                        </div>
+                        <div style="color: #666; font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+                            📍 ${suggestedFoodStreet.dia_chi}
+                        </div>
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
+                            <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                                <span style="font-size: 16px;">⭐</span>
+                                <strong>${suggestedFoodStreet.rating ? parseFloat(suggestedFoodStreet.rating).toFixed(1) : 'N/A'}</strong>
+                            </div>
+                            ${suggestedFoodStreet.gia_trung_binh && !['$', '$$', '$$$', '$$$$'].includes(suggestedFoodStreet.gia_trung_binh.trim()) ? `
+                                <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                                    <span style="font-size: 16px;">💰</span>
+                                    <strong>${suggestedFoodStreet.gia_trung_binh}</strong>
+                                </div>
+                            ` : ''}
+                        </div>
+                        ${suggestedFoodStreet.khau_vi ? `
+                            <div style="margin-top: 12px; padding: 8px 12px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                                👅 Khẩu vị: ${suggestedFoodStreet.khau_vi}
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- FOOTER -->
+                    <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
+                        👆 Nhấn để xem trên bản đồ
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     // 🔥 THÊM NÚT "+" Ở CUỐI TIMELINE (CHỈ KHI EDIT MODE)
     if (editMode) {
         html += `
-            <div style="margin-top: 30px; padding: 20px; text-align: center;">
-                <button onclick="addNewMealSlot()" style="
-                    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-                    color: white;
-                    border: none;
-                    width: 56px;
-                    height: 56px;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    font-size: 28px;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-                    transition: all 0.2s ease;
-                " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';" title="Thêm quán mới">
-                    +
-                </button>
-                <div style="margin-top: 10px; font-size: 14px; color: #4caf50; font-weight: 600;">
-                    Thêm quán mới
+            <div style="margin-top: 30px; padding: 20px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 30px;">
+                <!-- NÚT THÊM QUÁN MỚI -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <button onclick="addNewMealSlot()" style="
+                        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                        color: white;
+                        border: none;
+                        width: 56px;
+                        height: 56px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        font-size: 28px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+                        transition: all 0.2s ease;
+                    " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';" title="Thêm quán mới">
+                        +
+                    </button>
+                    <div style="margin-top: 10px; font-size: 14px; color: #4caf50; font-weight: 600;">
+                        Thêm quán mới
+                    </div>
+                </div>
+                
+                <!-- NÚT XÓA TẤT CẢ -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <button onclick="deleteAllMeals()" style="
+                        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                        color: white;
+                        border: none;
+                        width: 56px;
+                        height: 56px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        font-size: 28px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+                        transition: all 0.2s ease;
+                    " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(231, 76, 60, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(231, 76, 60, 0.3)';" title="Xóa tất cả quán">
+                        🗑️
+                    </button>
+                    <div style="margin-top: 10px; font-size: 14px; color: #e74c3c; font-weight: 600;">
+                        Xóa tất cả
+                    </div>
                 </div>
             </div>
         `;
@@ -3683,6 +4414,18 @@ function selectPlaceForMeal(mealKey) {
         waitingForPlaceSelection = mealKey;
     }
     displayPlanVertical(currentPlan, isEditMode);
+
+    // ✅ THÊM LOG ĐỂ DEBUG
+    console.log('🔍 Kiểm tra refreshCurrentSidebar:', typeof window.refreshCurrentSidebar);
+    
+    if (typeof window.refreshCurrentSidebar === 'function') {
+        setTimeout(() => {
+            console.log('🔄 Gọi refreshCurrentSidebar');
+            window.refreshCurrentSidebar();
+        }, 100);
+    } else {
+        console.error('❌ refreshCurrentSidebar không tồn tại!');
+    }
 }
 
 // ========== REPLACE PLACE IN MEAL ==========
@@ -3754,7 +4497,8 @@ function replacePlaceInMeal(newPlace) {
         data_id: newPlace.data_id,
         hinh_anh: newPlace.hinh_anh || '',
         gia_trung_binh: newPlace.gia_trung_binh || '',
-        khau_vi: newPlace.khau_vi || ''
+        khau_vi: newPlace.khau_vi || '',
+        gio_mo_cua: newPlace.gio_mo_cua || ''
     };
     
     console.log("✅ Đã cập nhật quán cho mealKey:", mealKey, currentPlan[mealKey]);
@@ -3823,7 +4567,8 @@ function handleDragStart(e) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', this.innerHTML);
     
-    lastTargetElement = null; // 🔥 RESET
+    lastTargetElement = null;
+    enableGlobalDragTracking(); // ✅ Bật tracking
     startAutoScroll();
 }
 
@@ -3832,7 +4577,6 @@ function handleDragEnd(e) {
         draggedElement.classList.remove('dragging');
     }
     
-    // 🔥 XÓA tất cả highlight
     document.querySelectorAll('.meal-card-vertical.drop-target').forEach(card => {
         card.classList.remove('drop-target');
     });
@@ -3843,6 +4587,7 @@ function handleDragEnd(e) {
     lastTargetElement = null;
     
     stopAutoScroll();
+    disableGlobalDragTracking(); // ✅ Tắt tracking
 }
 
 // ========== DRAG OVER ITEM - HIGHLIGHT VỊ TRÍ MUỐN ĐỔI ==========
@@ -3907,11 +4652,17 @@ function handleDragEnter(e) {
 function startAutoScroll() {
     if (autoScrollInterval) return;
     
+    let frameCount = 0;
+    
     autoScrollInterval = setInterval(() => {
         if (!draggedElement) {
             stopAutoScroll();
             return;
         }
+        
+        // ✅ Giảm tần suất xuống 30fps thay vì 60fps
+        frameCount++;
+        if (frameCount % 2 !== 0) return;
         
         const container = document.querySelector('.panel-content');
         if (!container) return;
@@ -3957,14 +4708,35 @@ function stopAutoScroll() {
         clearInterval(autoScrollInterval);
         autoScrollInterval = null;
     }
+
+    // ✅ Cleanup visual indicators
+    const container = document.querySelector('.panel-content');
+    if (container) {
+        container.classList.remove('scrolling-up', 'scrolling-down');
+    }
 }
 
 // ✨ THEO DÕI CHUỘT TRÊN TOÀN BỘ DOCUMENT
-document.addEventListener('dragover', (e) => {
-    if (draggedElement) {
-        lastDragY = e.clientY;
+let globalDragListener = null;
+
+function enableGlobalDragTracking() {
+    if (globalDragListener) return;
+    
+    globalDragListener = (e) => {
+        if (draggedElement) {
+            lastDragY = e.clientY;
+        }
+    };
+    
+    document.addEventListener('dragover', globalDragListener, { passive: true });
+}
+
+function disableGlobalDragTracking() {
+    if (globalDragListener) {
+        document.removeEventListener('dragover', globalDragListener);
+        globalDragListener = null;
     }
-}, { passive: true });
+}
 
 function handleDragOver(e) {
     if (e.preventDefault) {
@@ -4301,17 +5073,20 @@ function flyToPlace(lat, lon, placeId, placeName) {
                 return true;
             }
             
-            // 🔥 NẾU CHƯA TÌM THẤY → RETRY
-            if (attempt < 25) {
-                console.log(`⏳ Lần thử ${attempt + 1}/25 - Chưa tìm thấy marker`);
-                setTimeout(() => tryClick(attempt + 1), 1000);
+            // ✅ Giảm retry từ 25 → 8 lần
+            const MAX_RETRIES = 8;
+            
+            if (attempt < MAX_RETRIES) {
+                console.log(`⏳ Lần thử ${attempt + 1}/${MAX_RETRIES} - Chưa tìm thấy marker`);
+                setTimeout(() => tryClick(attempt + 1), 800); // ✅ 800ms thay vì 1000ms
             } else {
-                console.error(`❌ Không tìm thấy marker sau 25 lần thử`);
+                console.error(`❌ Không tìm thấy marker sau ${MAX_RETRIES} lần thử`);
                 
-                if (typeof loadMarkersInViewport === 'function') {
-                    console.log('🔄 Thử reload markers...');
+                // ✅ CHỈ reload 1 lần duy nhất
+                if (attempt === MAX_RETRIES && typeof loadMarkersInViewport === 'function') {
+                    console.log('🔄 Thử reload markers lần cuối...');
                     loadMarkersInViewport();
-                    setTimeout(() => tryClick(0), 2000);
+                    setTimeout(() => tryClick(MAX_RETRIES + 1), 1500);
                 }
             }
             
@@ -4453,22 +5228,14 @@ function setupEditModeTimeInputs() {
         
         // Xử lý wheel scroll
         let scrollTimeout = null;
+        // ✅ Debounce để giảm tần suất update
+        let wheelTimeout = null;
+
         input.addEventListener('wheel', function(e) {
             e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
             
-            // 🔥 CHẶN SCROLL PANEL KHI ĐANG LĂN
-            const panel = document.querySelector('.panel-content');
-            if (panel) {
-                panel.style.overflow = 'hidden';
-                
-                // Bật lại sau 300ms
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    panel.style.overflow = '';
-                }, 300);
-            }
+            // ✅ Debounce - chỉ update sau 50ms
+            clearTimeout(wheelTimeout);
             
             let val = parseInt(this.value) || 0;
             
@@ -4479,10 +5246,13 @@ function setupEditModeTimeInputs() {
             }
             
             this.value = val.toString().padStart(2, '0');
-            updateTimeFromInputs(this);
             
-            return false;
-        }, { passive: false, capture: true });
+            // ✅ Chỉ update sau khi dừng scroll
+            wheelTimeout = setTimeout(() => {
+                updateTimeFromInputs(this);
+            }, 50);
+            
+        }, { passive: false }); // ✅ Bỏ capture: true
         
         // Xử lý arrow keys
         input.addEventListener('keydown', function(e) {
@@ -4600,6 +5370,71 @@ function updateTimeFromInputs(input) {
             }, 100);
         }
     }
+}
+// ========== CẬP NHẬT BÁN KÍNH KHI CHỌN ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const radiusInputs = document.querySelectorAll('input[name="radius"]');
+    
+    radiusInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const radiusValue = this.value || '10'; // Mặc định 10km nếu chọn "Bán kính mặc định"
+            
+            // 🔥 CẬP NHẬT BIẾN TOÀN CỤC
+            window.currentRadius = radiusValue;
+            
+            // 🔥 CẬP NHẬT HIDDEN INPUT
+            const hiddenInput = document.getElementById('radius');
+            if (hiddenInput) {
+                hiddenInput.value = radiusValue;
+            }
+            
+            console.log('✅ Đã cập nhật bán kính:', radiusValue + ' km');
+        });
+    });
+    
+    // 🔥 ĐẶT GIÁ TRỊ BAN ĐẦU
+    const checkedRadius = document.querySelector('input[name="radius"]:checked');
+    if (checkedRadius) {
+        window.currentRadius = checkedRadius.value || '10';
+        const hiddenInput = document.getElementById('radius');
+        if (hiddenInput) {
+            hiddenInput.value = window.currentRadius;
+        }
+    }
+});
+
+// ========== DELETE ALL MEALS ==========
+function deleteAllMeals() {
+    if (!currentPlan) return;
+    
+    const mealCount = Object.keys(currentPlan).filter(k => k !== '_order').length;
+    
+    if (mealCount === 0) {
+        alert('⚠️ Lịch trình đã trống rồi!');
+        return;
+    }
+    
+    if (!confirm(`🗑️ Bạn có chắc muốn xóa tất cả ${mealCount} quán trong lịch trình?`)) {
+        return;
+    }
+    
+    // Xóa tất cả keys trừ _order
+    Object.keys(currentPlan).forEach(key => {
+        if (key !== '_order') {
+            delete currentPlan[key];
+        }
+    });
+    
+    // Reset _order
+    currentPlan._order = [];
+    
+    // Reset waiting state
+    waitingForPlaceSelection = null;
+    
+    // Render lại
+    displayPlanVertical(currentPlan, isEditMode);
+    
+    alert('✅ Đã xóa tất cả quán!');
 }
 </script>
 '''

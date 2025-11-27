@@ -591,7 +591,7 @@ function displayPlaces(places, shouldZoom = true) {
 
   markers = []; // reset mảng markers
   // reset index marker theo place_id
-window.placeMarkersById = {};
+  window.placeMarkersById = {};
   // 👉 Gắn cluster vào map trước
   map.addLayer(markerClusterGroup);
 
@@ -725,6 +725,8 @@ if (placeId) {
     map.setView([lat, lon], 17, { animate: true });
     const sidebar = document.getElementById("sidebar");
     const sidebarContent = document.getElementById("sidebar-content");
+
+    sidebar.dataset.placeId = place_id;
 
     let googleReviews = [];
     let userReviews = [];
@@ -2259,3 +2261,24 @@ window.addEventListener('DOMContentLoaded', () => {
         console.log('✅ Đã thêm nút thoát khỏi chế độ bạn bè');
     }
 });
+
+//Hàm click lại marker
+window.refreshCurrentSidebar = function() {
+  const sidebar = document.getElementById('sidebar');
+  
+  if (!sidebar || !sidebar.classList.contains('show')) {
+    return;
+  }
+  
+  const placeId = sidebar.dataset.placeId;
+  
+  if (!placeId) {
+    return;
+  }
+  
+  if (!window.placeMarkersById || !window.placeMarkersById[placeId]) {
+    return;
+  }
+  
+  window.placeMarkersById[placeId].fire('click');
+};
