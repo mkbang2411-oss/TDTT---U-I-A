@@ -314,8 +314,24 @@
             </div>
 
             <!-- Khu vực board ghép hình -->
-            <div class="mini-game-content">
-                <div id="jigsawBoard" class="jigsaw-board">
+           <div class="mini-game-content">
+    <!-- 🗺️ MAP SELECTOR -->
+    <div class="map-selector">
+        <button class="map-option active" data-map="banh_mi">
+            <img src="Picture/banh_mi.png" alt="Bánh Mì">
+            <span>Bánh Mì</span>
+        </button>
+        <button class="map-option" data-map="com_tam">
+            <img src="Picture/com_tam.png" alt="Cơm Tấm">
+            <span>Cơm Tấm</span>
+        </button>
+        <button class="map-option" data-map="bun_bo_hue">
+            <img src="Picture/bun_bo_hue.png" alt="Bún Bò Huế">
+            <span>Bún Bò Huế</span>
+        </button>
+    </div>
+
+    <div id="jigsawBoard" class="jigsaw-board">
     <div id="board">
        
         <svg id="puzzle" viewBox="0 0 1071 750"
@@ -325,9 +341,9 @@
            <defs>
     <!-- Ảnh nền -->
     <image id="full-img"
-           href="Picture/puzzle_sample.png"
-           x="0" y="0"
-           width="1071" height="750" />
+       href="Picture/banh_mi.png"
+       x="0" y="0"
+       width="1071" height="750" />
 
     <!-- 12 path mảnh ghép từ SVG mới (1071x750) -->
 <path id="piece-0" d="M357 63.6807C373.569 63.6807 387 77.2552 387 94C387 110.745 373.569 124.319 357 124.319V189H207.994C207.727 172.444 194.402 159.106 178 159.106C161.598 159.106 148.273 172.444 148.006 189H0V-1H357V63.6807Z" />
@@ -357,13 +373,14 @@
 </defs>
 
             <!-- Ảnh nền mờ làm hình gợi ý, dùng CHUNG hệ tọa độ với mảnh ghép -->
-    <image
-        href="Picture/puzzle_sample.png"
-        x="0" y="0"
-        width="1071" height="750"
-        preserveAspectRatio="none"
-        opacity="0.18"
-        style="pointer-events:none" />
+<image
+    id="bg-hint-img"
+    href="Picture/banh_mi.png"
+    x="0" y="0"
+    width="1071" height="750"
+    preserveAspectRatio="none"
+    opacity="0.18"
+    style="pointer-events:none" />
 
     <!-- nơi chứa 12 mảnh -->
     <g id="pieces"></g>

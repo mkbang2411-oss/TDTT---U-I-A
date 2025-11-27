@@ -6,7 +6,6 @@ class JigsawPuzzle {
   constructor() {
     this.svg = document.getElementById("puzzle");
     
-    // Kiểm tra xem có tồn tại không
     if (!this.svg) {
       console.error("Không tìm thấy SVG #puzzle");
       return;
@@ -19,7 +18,7 @@ class JigsawPuzzle {
     this.pieces = [];
     this.draggedPiece = null;
     this.dragOffset = { x: 0, y: 0 };
-    this.snapThreshold = 30; // Dễ: ngưỡng snap lớn
+    this.snapThreshold = 30;
     
     this.moves = 0;
     this.startTime = null;
@@ -29,81 +28,143 @@ class JigsawPuzzle {
     this.svgNS = "http://www.w3.org/2000/svg";
     this.xlinkNS = "http://www.w3.org/1999/xlink";
     
+    this.currentMap = "banh_mi";
+    
     this.init();
   }
   
   init() {
     this.createPieces();
     this.setupEventListeners();
+    this.setupMapSelector();
     this.shuffle();
     this.startTimer();
   }
   
-  createPieces() {
-  // ✅ Lấy kích thước thực của viewBox
-  const viewBox = this.svg.viewBox.baseVal;
-  const imgWidth = viewBox.width;   // 1071
-  const imgHeight = viewBox.height; // 750
-  
-  this.piecePaths.forEach((path, index) => {
-    const bbox = path.getBBox();
+  setupMapSelector() {
+    const mapButtons = document.querySelectorAll('.map-option');
     
-    // Tạo clipPath
-    const cp = document.createElementNS(this.svgNS, "clipPath");
-    cp.id = `clip-${index}`;
-    const useClip = document.createElementNS(this.svgNS, "use");
-    useClip.setAttributeNS(this.xlinkNS, "xlink:href", `#${path.id}`);
-    cp.appendChild(useClip);
-    this.defs.appendChild(cp);
-    
-    // Tạo group mảnh ghép
-    const g = document.createElementNS(this.svgNS, "g");
-    g.classList.add("piece");
-    g.dataset.id = index;
-    
-    // ✅ Sử dụng <image> với kích thước đúng
-    const img = document.createElementNS(this.svgNS, "image");
-    img.setAttributeNS(this.xlinkNS, "xlink:href", "Picture/puzzle_sample.png");
-    img.setAttribute("x", "0");
-    img.setAttribute("y", "0");
-    img.setAttribute("width", imgWidth);
-    img.setAttribute("height", imgHeight);
-    img.setAttribute("clip-path", `url(#clip-${index})`);
-    img.setAttribute("preserveAspectRatio", "none"); // ✅ Đổi từ "xMidYMid slice" thành "none"
-    
-    // Viền mảnh
-    const outline = document.createElementNS(this.svgNS, "use");
-    outline.setAttributeNS(this.xlinkNS, "xlink:href", `#${path.id}`);
-    outline.setAttribute("style", "fill:none;stroke:#333;stroke-width:2");
-    
-    g.appendChild(img);
-    g.appendChild(outline);
-    this.layer.appendChild(g);
-    
-    // ✅ Lưu thông tin mảnh - VỊ TRÍ ĐÚNG LÀ 0,0 vì path đã có offset trong d=""
-    this.pieces.push({
-      element: g,
-      index: index,
-      correctX: 0,  // Vị trí đúng là gốc tọa độ
-      correctY: 0,
-      currentX: 0,
-      currentY: 0,
-      isCorrect: false,
-      bbox: bbox
+    mapButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const newMap = btn.dataset.map;
+        
+        mapButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        this.changeMap(newMap);
+      });
     });
-  });
-}
+  }
+  
+  changeMap(mapName) {
+    this.currentMap = mapName;
+    const imagePath = `Picture/${mapName}.png?t=${Date.now()}`;
+    
+    console.log('🗺️ Đổi map sang:', imagePath);
+    
+    // 1. Đổi ảnh trong defs
+    const fullImg = this.defs.querySelector('#full-img');
+    if (fullImg) {
+      fullImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
+      console.log('✅ Đã đổi ảnh trong defs');
+    }
+    
+    // 2. Đổi tất cả ảnh trong các mảnh ghép
+    this.pieces.forEach(piece => {
+      const img = piece.element.querySelector('image');
+      if (img) {
+        img.setAttributeNS(this.xlinkNS, 'href', imagePath);
+      }
+    });
+    console.log(`✅ Đã đổi ${this.pieces.length} mảnh ghép`);
+    
+    // 3. ✅ FIX CHẮC CHẮN: Đổi ảnh nền mờ bằng cách XÓA VÀ TẠO LẠI
+    const oldBgImg = this.svg.querySelector('#bg-hint-img');
+    if (oldBgImg) {
+      oldBgImg.remove();
+      console.log('🗑️ Đã xóa ảnh nền mờ cũ');
+    }
+    
+    // Tạo ảnh nền mờ mới
+    const newBgImg = document.createElementNS(this.svgNS, 'image');
+    newBgImg.id = 'bg-hint-img';
+    newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
+    newBgImg.setAttribute('x', '0');
+    newBgImg.setAttribute('y', '0');
+    newBgImg.setAttribute('width', '1071');
+    newBgImg.setAttribute('height', '750');
+    newBgImg.setAttribute('preserveAspectRatio', 'none');
+    newBgImg.setAttribute('opacity', '0.18');
+    newBgImg.style.pointerEvents = 'none';
+    
+    // Thêm vào TRƯỚC layer pieces (để nằm dưới)
+    this.svg.insertBefore(newBgImg, this.layer);
+    console.log('✅ Đã tạo ảnh nền mờ mới:', imagePath);
+    
+    this.reset();
+  }
+  
+  createPieces() {
+    const viewBox = this.svg.viewBox.baseVal;
+    const imgWidth = viewBox.width;
+    const imgHeight = viewBox.height;
+    
+    this.piecePaths.forEach((path, index) => {
+      const bbox = path.getBBox();
+      
+      // Tạo clipPath
+      const cp = document.createElementNS(this.svgNS, "clipPath");
+      cp.id = `clip-${index}`;
+      const useClip = document.createElementNS(this.svgNS, "use");
+      useClip.setAttributeNS(this.xlinkNS, "xlink:href", `#${path.id}`);
+      cp.appendChild(useClip);
+      this.defs.appendChild(cp);
+      
+      // Tạo group mảnh ghép
+      const g = document.createElementNS(this.svgNS, "g");
+      g.classList.add("piece");
+      g.dataset.id = index;
+      
+      // ✅ Dùng <image> với đường dẫn động
+      const img = document.createElementNS(this.svgNS, "image");
+      img.setAttributeNS(this.xlinkNS, "xlink:href", `Picture/${this.currentMap}.png`);
+      img.setAttribute("x", "0");
+      img.setAttribute("y", "0");
+      img.setAttribute("width", imgWidth);
+      img.setAttribute("height", imgHeight);
+      img.setAttribute("clip-path", `url(#clip-${index})`);
+      img.setAttribute("preserveAspectRatio", "none");
+      
+      // Viền mảnh
+      const outline = document.createElementNS(this.svgNS, "use");
+      outline.setAttributeNS(this.xlinkNS, "xlink:href", `#${path.id}`);
+      outline.setAttribute("style", "fill:none;stroke:#333;stroke-width:2");
+      
+      g.appendChild(img);
+      g.appendChild(outline);
+      this.layer.appendChild(g);
+      
+      this.pieces.push({
+        element: g,
+        index: index,
+        correctX: 0,
+        correctY: 0,
+        currentX: 0,
+        currentY: 0,
+        isCorrect: false,
+        bbox: bbox
+      });
+    });
+  }
   
   shuffle() {
-     const boardWidth = 1071;
-  const boardHeight = 750;
+    const boardWidth = 1071;
+    const boardHeight = 750;
     
     this.pieces.forEach(piece => {
-      // Mức độ dễ: chỉ xáo trộn trong phạm vi gần (±150px)
       const randomX = (Math.random() - 0.5) * 300;
       const randomY = (Math.random() - 0.5) * 300;
       
-      // Đảm bảo không ra ngoài board
       piece.currentX = Math.max(-100, Math.min(boardWidth - 100, randomX));
       piece.currentY = Math.max(-100, Math.min(boardHeight - 100, randomY));
       
@@ -120,18 +181,15 @@ class JigsawPuzzle {
   }
   
   setupEventListeners() {
-    // Nút shuffle
     const btnShuffle = document.querySelector('.mini-game-overlay .btn-shuffle');
     if (btnShuffle) {
       btnShuffle.addEventListener('click', () => this.reset());
     }
     
-    // Drag events cho SVG
     this.svg.addEventListener('mousedown', (e) => this.onMouseDown(e));
     this.svg.addEventListener('mousemove', (e) => this.onMouseMove(e));
     this.svg.addEventListener('mouseup', (e) => this.onMouseUp(e));
     
-    // Touch events cho mobile
     this.svg.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
     this.svg.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
     this.svg.addEventListener('touchend', (e) => this.onTouchEnd(e));
@@ -160,8 +218,6 @@ class JigsawPuzzle {
     this.dragOffset.y = pos.y - piece.currentY;
     
     piece.element.classList.add('dragging');
-    
-    // Đưa mảnh lên trên cùng
     this.layer.appendChild(piece.element);
   }
   
@@ -187,7 +243,6 @@ class JigsawPuzzle {
     this.updateStats();
   }
   
-  // Touch events
   onTouchStart(e) {
     if (e.touches.length === 1) {
       this.onMouseDown(e.touches[0]);
@@ -210,7 +265,6 @@ class JigsawPuzzle {
     const dy = Math.abs(piece.currentY - piece.correctY);
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    // Nếu gần vị trí đúng thì snap vào
     if (distance < this.snapThreshold) {
       piece.currentX = piece.correctX;
       piece.currentY = piece.correctY;
@@ -220,7 +274,6 @@ class JigsawPuzzle {
       this.updatePiecePosition(piece);
       this.completedPieces++;
       
-      // Kiểm tra hoàn thành
       if (this.completedPieces === this.pieces.length) {
         this.onComplete();
       }
@@ -254,11 +307,8 @@ class JigsawPuzzle {
   
   onComplete() {
     clearInterval(this.timerInterval);
-    
-    // Hiệu ứng hoàn thành
     this.svg.classList.add('completed');
     
-    // Hiển thị modal
     setTimeout(() => {
       this.showCompletionModal();
     }, 600);
@@ -291,7 +341,6 @@ class JigsawPuzzle {
       this.reset();
     });
     
-    // Click outside để đóng
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         modal.remove();
@@ -301,17 +350,14 @@ class JigsawPuzzle {
   }
   
   reset() {
-    // Reset stats
     this.moves = 0;
     this.completedPieces = 0;
     this.updateStats();
     
-    // Clear timer
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
     
-    // Reset pieces
     this.pieces.forEach(piece => {
       piece.isCorrect = false;
       piece.element.classList.remove('correct');
@@ -319,14 +365,13 @@ class JigsawPuzzle {
     
     this.svg.classList.remove('completed');
     
-    // Shuffle lại
     this.shuffle();
     this.startTimer();
   }
 }
 
 // ========================================
-// 🎮 MỞ/ĐÓNG MINI GAME OVERLAY
+// 🎮 MỞ/ĐÓNG MINI GAME
 // ========================================
 
 let puzzleGame = null;
@@ -341,33 +386,26 @@ function initMiniGame() {
     return;
   }
   
-  // Mở mini game
   openBtn.addEventListener('click', () => {
     overlay.classList.remove('hidden');
     
-    // Khởi tạo game nếu chưa có
     if (!puzzleGame) {
-      // Đợi một chút để overlay hiện ra trước
       setTimeout(() => {
         puzzleGame = new JigsawPuzzle();
       }, 100);
     } else {
-      // Nếu đã có game rồi thì reset
       puzzleGame.reset();
     }
   });
   
-  // Đóng mini game
   closeBtn.addEventListener('click', () => {
     overlay.classList.add('hidden');
     
-    // Dừng timer khi đóng
     if (puzzleGame && puzzleGame.timerInterval) {
       clearInterval(puzzleGame.timerInterval);
     }
   });
   
-  // Đóng khi click bên ngoài wrapper
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
       overlay.classList.add('hidden');
@@ -377,10 +415,6 @@ function initMiniGame() {
     }
   });
 }
-
-// ========================================
-// 🚀 KHỞI ĐỘNG KHI DOM LOADED
-// ========================================
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🎮 Mini Game script loaded');

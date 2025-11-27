@@ -81,6 +81,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  gap: 20px; /* Khoảng cách giữa map selector và board */
 }
 
 /* Game container */
@@ -142,8 +143,8 @@
 
 /* Board */
 .mini-game-overlay #board {
-  width: 1071px;
-  height: 750px;
+  width: 857px;
+  height: 600px;
   background: #e2c49a;
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
@@ -168,7 +169,6 @@
   height: 100%;
   opacity: 0.15;
   pointer-events: none;
-  background-image: url('Picture/puzzle_sample.png');
   background-size: cover;
   background-position: center;
   z-index: 1;
@@ -321,11 +321,69 @@
   box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
 }
 
+/* 🗺️ MAP SELECTOR */
+.map-selector {
+  display: flex;
+  flex-direction: column; /* Đổi thành dọc */
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+}
+
+.map-option {
+  background: rgba(255, 255, 255, 0.9);
+  border: 3px solid transparent;
+  border-radius: 12px;
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  width: 120px; /* Cố định độ rộng */
+}
+
+.map-option img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.map-option span {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.map-option:hover {
+  transform: translateX(-3px); /* Đổi từ translateY thành translateX */
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+}
+
+.map-option.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.map-option.active span {
+  color: white;
+}
+
+.map-option.active img {
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .mini-game-overlay #board {
     width: 90vw;
-    height: calc(90vw * 750 / 1071);
+    height: calc(90vw * 600 / 857);
   }
   
   .mini-game-overlay .game-header {
@@ -336,5 +394,23 @@
   
   .mini-game-title {
     font-size: 18px;
+  }
+  
+  .map-selector {
+    gap: 10px;
+  }
+  
+  .map-option {
+    min-width: 90px;
+    padding: 8px 12px;
+  }
+  
+  .map-option img {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .map-option span {
+    font-size: 12px;
   }
 }
