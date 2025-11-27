@@ -45,21 +45,27 @@ def clean_value(value):
         return value
     return value
 
-def is_open_now(opening_hours_str, check_time=None):
+def is_open_now(opening_hours_str, check_time=None, min_hours_before_close=2, place_name=None):
     """
-    Kiểm tra quán có đang mở cửa không
+    Kiểm tra quán có đang mở cửa không VÀ còn đủ thời gian hoạt động
     
     Args:
-        opening_hours_str: Chuỗi giờ mở cửa từ CSV
-        check_time: Giờ cần check (string 'HH:MM' hoặc time object). Nếu None thì dùng giờ hiện tại
+        opening_hours_str: Chuỗi giờ mở cửa từ CSV (VD: "Mở cửa vào 4:30 · Đóng cửa vào 12:00")
+        check_time: Thời gian cần kiểm tra (HH:MM hoặc time object)
+        min_hours_before_close: Số giờ tối thiểu trước khi đóng cửa (mặc định 2 giờ)
+        place_name: Tên quán (dùng để debug)
+    
+    Returns:
+        True nếu quán đang mở và còn đủ thời gian, False nếu không
     """
+    # Nếu không có thông tin giờ mở cửa → CHẶN LUÔN
     if not opening_hours_str or pd.isna(opening_hours_str):
-        return True  # Không có thông tin => cho qua
+        return False
     
     try:
         import re
         
-        # Parse check_time
+        # Xử lý check_time
         if check_time is None:
             current_time = datetime.now().time()
         elif isinstance(check_time, str):
@@ -70,41 +76,75 @@ def is_open_now(opening_hours_str, check_time=None):
         # Chuẩn hóa: bỏ dấu, lowercase
         hours_str = normalize_text(str(opening_hours_str))
         
-        # Mở cửa 24/7
+        
+        # CHẶN các quán "Không rõ giờ mở cửa"
+        if 'khong ro' in hours_str or 'khong biet' in hours_str or 'chua ro' in hours_str:
+            return False
+        
+        # Kiểm tra quán mở 24/7
         if any(keyword in hours_str for keyword in ['always', '24', 'ca ngay', 'mo ca ngay']):
             return True
         
-        # Parse giờ mở
+        # Parse giờ mở cửa - hỗ trợ cả "Mở cửa vào" và "Mở cửa lúc"
         open_time = None
-        open_match = re.search(r'mo cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        open_match = re.search(r'mo\s*cua\s*(?:vao|luc)?\s*(\d{1,2}):?(\d{2})?', hours_str)
         if open_match:
             hour = int(open_match.group(1))
             minute = int(open_match.group(2)) if open_match.group(2) else 0
             open_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
         
-        # Parse giờ đóng
+        # Parse giờ đóng cửa
         close_time = None
-        close_match = re.search(r'dong cua[^\d]*(\d{1,2}):?(\d{2})?', hours_str)
+        close_match = re.search(r'(?:d)?ong\s*cua\s*(?:vao|luc)?\s*(\d{1,2}):?(\d{2})?', hours_str)
         if close_match:
             hour = int(close_match.group(1))
             minute = int(close_match.group(2)) if close_match.group(2) else 0
             close_time = datetime.strptime(f'{hour:02d}:{minute:02d}', '%H:%M').time()
         
-        # Nếu không parse được => CHO QUA
+        # Nếu không parse được giờ → CHẶN LUÔN (không cho qua như trước)
         if open_time is None or close_time is None:
-            return True
+            return False
         
-        # Kiểm tra giờ
-        if open_time <= close_time:
-            # Trường hợp bình thường: 8:00 - 22:00
-            return open_time <= current_time <= close_time
-        else:
-            # Trường hợp qua đêm: 22:00 - 02:00
-            return current_time >= open_time or current_time <= close_time
+        # Chuyển đổi tất cả sang phút để dễ so sánh
+        current_minutes = current_time.hour * 60 + current_time.minute
+        open_minutes = open_time.hour * 60 + open_time.minute
+        close_minutes = close_time.hour * 60 + close_time.minute
+        
+        # Xử lý trường hợp quán mở qua đêm (VD: 22:00 - 02:00)
+        if close_minutes < open_minutes:
+            # Cộng 24 giờ cho giờ đóng cửa
+            close_minutes += 24 * 60
+            
+            # Nếu giờ check < giờ mở → Coi như sáng hôm sau
+            if current_minutes < open_minutes:
+                current_minutes += 24 * 60
+        
+        # Tính thời gian tối thiểu cần có trước khi đóng cửa (đổi từ giờ sang phút)
+        min_minutes_before_close = min_hours_before_close * 60
+        
+        # 3 điều kiện để quán hợp lệ:
+        # 1. Đã đến giờ mở cửa
+        is_open = (current_minutes >= open_minutes)
+
+        # 2. Chưa đến giờ đóng cửa
+        is_before_close = (current_minutes < close_minutes)
+
+        # 3. Còn đủ thời gian hoạt động (ít nhất 2 giờ trước khi đóng)
+        has_enough_time = ((close_minutes - current_minutes) >= min_minutes_before_close)
+
+        # 🔥 CHẶN CHẶT: Nếu KHÔNG thỏa mãn cả 3 điều kiện → CHẶN LUÔN
+        if not (is_open and is_before_close and has_enough_time):
+            return False
+
+        # ✅ Nếu đến đây → CẢ 3 ĐIỀU KIỆN ĐỀU ĐÚNG
+        result = True
+        
+        return result
             
     except Exception as e:
         print(f"⚠️ Lỗi parse giờ: {opening_hours_str} -> {e}")
-        return True  # Lỗi => CHO QUA
+        # Khi có lỗi → CHẶN LUÔN (không cho qua như trước)
+        return False
 
 # ==================== CẬP NHẬT HÀM LỌC - GIỮ NGUYÊN DẤU ====================
 
@@ -161,7 +201,7 @@ THEME_CATEGORIES = {
         'icon': '🦞'
     },
     'coffee_chill': {
-        'name': 'Cà phê chill',
+        'name': 'Giải khát',
         'keywords': [
             # Món uống
             'cà phê', 'cafe', 'coffee', 'ca phe',
@@ -437,7 +477,6 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
     else:
         theme_list = []
     
-    food_street_count = 0
     skipped_rows = 0
     
     for idx, row in df.iterrows():
@@ -465,10 +504,16 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
             
             # Lọc giờ mở cửa
             gio_mo_cua = row.get('gio_mo_cua', '')
-            if not is_open_now(gio_mo_cua):
-                continue
-            
-            name_normalized = normalize_text_with_accent(str(row.get('ten_quan', '')))
+            check_time_str = filters.get('meal_time')
+            ten_quan = str(row.get('ten_quan', ''))
+            name_normalized = normalize_text_with_accent(ten_quan)  # ← THÊM DÒNG NÀY
+
+            if check_time_str:
+                if not is_open_now(gio_mo_cua, check_time=check_time_str, min_hours_before_close=2, place_name=ten_quan):
+                    continue
+            else:
+                if not is_open_now(gio_mo_cua, min_hours_before_close=2, place_name=ten_quan):
+                    continue
             
             # LỌC THEO THEME
             if theme:
@@ -481,7 +526,6 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                         mo_ta_no_accent = normalize_text(mo_ta)  # Bỏ dấu
                         if 'khu' in mo_ta and 'am thuc' in mo_ta_no_accent:
                             match_found = True
-                            food_street_count += 1
                             break
                     
                     elif single_theme == 'michelin':
@@ -604,7 +648,7 @@ MEAL_THEME_MAP = {
         'fallback': ['asian_fusion', 'seafood', 'spicy_food', 'luxury_dining']
     },
     
-    # TRÀ CHIỀU - Cafe/trà sữa
+    # ĐỒ UỐNG CHIỀU - Cafe/trà sữa
     'afternoon_drink': {
         'preferred': ['coffee_chill', 'dessert_bakery'],
         'fallback': ['coffee_chill']
@@ -757,10 +801,10 @@ def generate_meal_schedule(time_start_str, time_end_str, user_selected_themes):
         return range_start <= target_hour < range_end and start_hour <= target_hour < end_hour
     
     # 🔥 KHUNG GIỜ BỮA SÁNG (6:00 - 10:00)
-    breakfast_time = max(start_hour, 6.5)
+    breakfast_time = max(start_hour, 7)
     if breakfast_time < start_hour:
         breakfast_time += 24
-    if is_in_range(breakfast_time, 6, 10):
+    if is_in_range(breakfast_time, 7, 10):
         plan['breakfast'] = {
             'time': format_time(breakfast_time),
             'title': 'Bữa sáng',
@@ -800,7 +844,7 @@ def generate_meal_schedule(time_start_str, time_end_str, user_selected_themes):
             'icon': '🍚'
         }
     
-    # 🔥 TRÀ CHIỀU (14:00 - 17:00)
+    # 🔥 ĐỒ UỐNG BUỔI CHIỀU (14:00 - 17:00)
     if has_coffee_chill:
         afternoon_drink_time = max(start_hour, 14.5)
         if afternoon_drink_time < start_hour:
@@ -814,7 +858,7 @@ def generate_meal_schedule(time_start_str, time_end_str, user_selected_themes):
         if is_in_range(afternoon_drink_time, 14, 17):
             plan['afternoon_drink'] = {
                 'time': format_time(afternoon_drink_time),
-                'title': 'Trà chiều',
+                'title': 'Giải khát buổi chiều',
                 'categories': ['tra sua', 'cafe', 'coffee'],
                 'icon': '☕'
             }
@@ -925,7 +969,8 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
         filters = {
             'theme': meal_theme,
             'tastes': user_tastes if user_tastes else [],
-            'radius_km': radius_km
+            'radius_km': radius_km,
+            'meal_time': meal['time']
         }
         
         places = find_places_advanced(
@@ -1141,48 +1186,12 @@ def get_food_planner_html():
     fill: white;
 }
 
-/* ========== TABS ========== */
-.tabs-container {
-    display: flex;
-    background: #f8f9fa;
-    border-bottom: 2px solid #e9ecef;
-    flex-shrink: 0;
-}
-
-.tab {
-    flex: 1;
-    padding: 14px;
-    text-align: center;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    font-size: 14px;
-    font-weight: 500;
-    color: #6c757d;
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.tab.active {
-    color: #FF6B35;
-    background: white;
-}
-
-.tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: #FF6B35;
-}
-
 /* ========== CONTENT AREA ========== */
 .panel-content {
     flex: 1;
     overflow-y: auto;
     padding: 20px;
+    padding-top: 10px;
 }
 
 .tab-content {
@@ -1193,156 +1202,285 @@ def get_food_planner_html():
     display: block;
 }
 
-/* ========== FILTERS SECTION ========== */
-.filters-wrapper {
+/* ========== NEW FILTERS DESIGN ========== */
+.filters-wrapper-new {
+    padding: 0;
     margin-bottom: 20px;
+}
+
+.filter-section-new {
+    background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%);
+    border: 2px solid #E9ECEF;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
     transition: all 0.3s ease;
-    overflow: hidden; 
 }
 
-.filters-wrapper.collapsed .filter-section {
-    display: none;
+.filter-section-new:hover {
+    border-color: #FF6B35;
+    box-shadow: 0 6px 24px rgba(255, 107, 53, 0.12);
 }
 
-.filters-wrapper.collapsed .generate-btn {
-    display: none;
-}
-
-.toggle-filters-btn {
-    background: #f8f9fa;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 12px;
-    width: 100%;
-    cursor: pointer;
+.section-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    font-size: 14px;
-    font-weight: 600;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(255, 107, 53, 0.1);
+}
+
+.section-icon {
+    font-size: 28px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
     color: #333;
-    margin-bottom: 15px;
-    transition: all 0.2s ease;
+    margin: 0;
 }
 
-.toggle-filters-btn:hover {
-    background: #e9ecef;
+/* ❤️ THEME GRID REDESIGN */
+.theme-grid-new {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 }
 
-.toggle-filters-btn svg {
-    width: 18px;
-    height: 18px;
+.theme-grid-new .theme-card {
+    background: white;
+    border: 2px solid #E9ECEF;
+    border-radius: 12px;
+    padding: 16px 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-grid-new .theme-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 142, 83, 0.1) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.theme-grid-new .theme-card:hover {
+    border-color: #FF6B35;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(255, 107, 53, 0.2);
+}
+
+.theme-grid-new .theme-card:hover::before {
+    opacity: 1;
+}
+
+.theme-grid-new .theme-card.selected {
+    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+    border-color: #FF6B35;
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
+}
+
+.theme-grid-new .theme-card.selected::before {
+    opacity: 0;
+}
+
+.theme-grid-new .theme-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
     transition: transform 0.3s ease;
 }
 
-.filters-wrapper.collapsed .toggle-filters-btn svg {
-    transform: rotate(180deg);
+.theme-grid-new .theme-card:hover .theme-icon {
+    transform: scale(1.2) rotate(5deg);
 }
 
-.filter-section {
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 15px;
+.theme-grid-new .theme-card.selected .theme-icon {
+    transform: scale(1.1);
 }
 
-.filter-title {
-    font-size: 14px;
+.theme-grid-new .theme-name {
+    font-size: 13px;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 10px;
+    line-height: 1.3;
 }
 
-.theme-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-}
-
-.theme-card {
+/* ⏰ TIME PICKER REDESIGN */
+.time-picker-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid #E9ECEF;
+}
+
+.time-picker-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.time-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
     text-align: center;
 }
 
-.theme-card:hover {
-    border-color: #FF6B35;
-}
-
-.theme-card.selected {
-    background: #FF6B35;
-    border-color: #FF6B35;
-    color: white;
-}
-
-.theme-icon {
-    font-size: 26px;
-    margin-bottom: 5px;
-}
-
-.theme-name {
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.time-inputs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
-
-.time-input-group {
+.time-input-wrapper {
     display: flex;
-    flex-direction: column;
-    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%);
+    padding: 12px;
+    border-radius: 12px;
+    border: 2px solid #FFD699;
 }
 
-.time-input-group label {
-    font-size: 12px;
-    color: #666;
-}
-
-.time-input-group input {
-    padding: 8px 12px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 14px;
+.time-input {
+    width: 52px;
+    height: 48px;
+    padding: 0;
+    border: 2px solid #FF6B35;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    background: white;
+    color: #FF6B35;
     outline: none;
     transition: all 0.2s ease;
 }
 
-.time-input-group input:focus {
-    border-color: #FF6B35;
+.time-input:focus {
+    border-color: #FF8E53;
+    box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1);
+    transform: scale(1.05);
 }
 
-.generate-btn {
+.time-separator {
+    font-size: 24px;
+    font-weight: 700;
+    color: #FF6B35;
+}
+
+.time-arrow {
+    font-size: 24px;
+    color: #FF6B35;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* 🎯 BUTTON REDESIGN */
+.generate-btn-new {
+    width: 100%;
     background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
     color: white;
     border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
+    padding: 18px 24px;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
-    width: 100%;
-    margin-top: 15px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+    position: relative;
+    overflow: hidden;
 }
 
-.generate-btn:hover {
-    opacity: 0.9;
+.generate-btn-new::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
 }
+
+.generate-btn-new:hover::before {
+    left: 100%;
+}
+
+.generate-btn-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(255, 107, 53, 0.4);
+}
+
+.generate-btn-new:active {
+    transform: translateY(0);
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+.btn-text {
+    font-size: 16px;
+}
+
+.btn-arrow {
+    font-size: 20px;
+    transition: transform 0.3s ease;
+}
+
+.generate-btn-new:hover .btn-arrow {
+    transform: translateX(4px);
+}
+
+/* 📱 RESPONSIVE */
+@media (max-width: 768px) {
+    .theme-grid-new {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .time-picker-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .time-arrow {
+        transform: rotate(90deg);
+    }
+    
+    .time-picker-group {
+        width: 100%;
+    }
+}
+
 
 /* ========== SAVED PLANS SECTION ========== */
 .saved-plans-section {
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 15px;
+    background: linear-gradient(135deg, #FFF9F5 0%, #FFF5F0 100%);
+    border: 2px solid #FFE5D9;
+    border-radius: 16px;
+    padding: 20px;
     margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.1);
 }
 
 .saved-plans-header {
@@ -1350,11 +1488,22 @@ def get_food_planner_html():
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: white;
+    border-radius: 12px;
+    transition: all 0.2s ease;
 }
 
 .saved-plans-header:hover {
-    color: #FF6B35;
+    background: #FFF5F0;
+    transform: translateY(-2px);
+}
+
+.saved-plans-header .filter-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: #FF6B35 !important;
 }
 
 .saved-plans-list {
@@ -1370,19 +1519,22 @@ def get_food_planner_html():
 
 .saved-plan-item {
     background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
+    border: 2px solid #FFE5D9;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .saved-plan-item:hover {
     border-color: #FF6B35;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
 }
 
 .saved-plan-info {
@@ -1390,20 +1542,20 @@ def get_food_planner_html():
 }
 
 .saved-plan-name {
-    font-weight: 600;
+    font-weight: 700;
     color: #333;
-    font-size: 14px;
-    margin-bottom: 4px;
-    /* 🔥 RÚT GỌN text khi dài */
-    max-width: 180px; /* Giới hạn chiều rộng */
-    white-space: nowrap; /* Không xuống dòng */
-    overflow: hidden; /* Ẩn phần thừa */
-    text-overflow: ellipsis; /* Thêm dấu ... */
+    font-size: 15px;
+    margin-bottom: 6px;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .saved-plan-date {
-    font-size: 12px;
+    font-size: 13px;
     color: #999;
+    font-weight: 500;
 }
 
 .delete-plan-btn {
@@ -1520,27 +1672,29 @@ def get_food_planner_html():
     background: #FFE5D9;
 }
 
-/* ========== TIMELINE VERTICAL ========== */
+/* ========== TIMELINE VERTICAL - REDESIGN ========== */
 .timeline-container {
     position: relative;
-    padding-left: 0;
+    padding: 20px 0;
     margin-top: 20px;
-    padding-bottom: 10px;
 }
 
 .timeline-line {
     position: absolute;
-    left: 120px; /* 🔥 TĂNG từ 80px lên 120px */
-    top: 12px;
-    bottom: 15px;
-    width: 3px;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
     background: linear-gradient(to bottom, #FF6B35, #FF8E53);
+    transform: translateX(-50%);
+    z-index: 0;
 }
 
 .meal-item {
     position: relative;
-    margin-bottom: 25px;
-    padding-left: 130px;
+    margin-bottom: 30px;
+    padding: 0;
+    z-index: 1;
 }
 
 .meal-item:last-child {
@@ -1551,67 +1705,84 @@ def get_food_planner_html():
     opacity: 0.5;
 }
 
+/* ========== TIME MARKER - TRÊN ĐẦU CARD ========== */
 .time-marker {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 115px; /* 🔥 TĂNG từ 75px lên 115px */
-    text-align: right;
-    padding-right: 15px;
+    position: relative;
+    text-align: center;
+    margin-bottom: 12px;
+    z-index: 2;
 }
 
 .time-badge {
     display: inline-block;
-    background: #FF6B35;
+    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
     color: white;
-    padding: 5px 10px;
-    border-radius: 16px;
-    font-size: 13px;
-    font-weight: 600;
-    box-shadow: 0 2px 6px rgba(255, 107, 53, 0.2);
+    padding: 10px 24px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
     white-space: nowrap;
+    letter-spacing: 0.5px;
+    border: 3px solid white;
 }
 
+/* ========== TIME DOT - ẨN ĐI ========== */
 .time-dot {
-    position: absolute;
-    left: 112px; /* 🔥 TĂNG từ 72px lên 112px */
-    top: 8px;
-    width: 16px;
-    height: 16px;
-    background: #FF6B35;
-    border: 3px solid white;
-    border-radius: 50%;
-    z-index: 2;
-    box-shadow: 0 0 0 2px #FF6B35;
+    display: none;
 }
 
 .meal-card-vertical {
-    background: #FFF5F0;
+    background: linear-gradient(135deg, #FFF9F5 0%, #FFF5F0 100%);
     border: 2px solid #FFE5D9;
-    border-radius: 12px;
-    padding: 14px;
-    transition: all 0.2s ease;
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
     cursor: pointer;
+    position: relative;
+    overflow: visible;
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.1);
+    width: 100%;
+}
+
+.meal-card-vertical::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(to bottom, #FF6B35, #FF8E53);
+    border-radius: 16px 0 0 16px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .meal-card-vertical:hover {
     border-color: #FF6B35;
-    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.15);
+    box-shadow: 0 8px 32px rgba(255, 107, 53, 0.2);
+    transform: translateY(-4px);
+}
+
+.meal-card-vertical:hover::before {
+    opacity: 1;
 }
 
 .meal-card-vertical.edit-mode {
     cursor: default;
+    background: linear-gradient(135deg, #FAFBFC 0%, #F5F7FA 100%);
 }
 
 .meal-card-vertical.empty-slot {
-    background: #f0f9ff;
+    background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
     border: 2px dashed #4caf50;
     cursor: default;
 }
 
 .meal-card-vertical.empty-slot:hover {
     border-color: #45a049;
-    background: #e8f5e9;
+    background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    transform: none;
 }
 
 /* ========== HIGHLIGHT EFFECT KHI SẮP XẾP LẠI ========== */
@@ -1639,6 +1810,18 @@ def get_food_planner_html():
 }
 
 /* ========== DRAG & DROP VISUAL FEEDBACK ========== */
+.meal-item[draggable="true"] {
+    cursor: move;
+}
+
+.meal-item[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.meal-item.dragging {
+    opacity: 0.5;
+}
+
 .meal-item.drag-over {
     transform: scale(1.02);
     transition: transform 0.2s ease;
@@ -1649,7 +1832,6 @@ def get_food_planner_html():
     background: #E8F5E9 !important;
 }
 
-/* Hiệu ứng sau khi thả - giống với repositioned */
 .meal-card-vertical.just-dropped {
     animation: repositionPulse 1.5s ease-in-out;
 }
@@ -1687,13 +1869,26 @@ def get_food_planner_html():
 
 
 .meal-title-vertical {
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     color: #333;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(255, 107, 53, 0.1);
+}
+
+.meal-title-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.meal-title-left > span:first-child {
+    font-size: 24px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .meal-title-left {
@@ -1763,9 +1958,35 @@ def get_food_planner_html():
 
 .place-info-vertical {
     background: white;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 8px;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+.place-name-vertical {
+    font-weight: 700;
+    color: #FF6B35;
+    margin-bottom: 8px;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.place-name-vertical::before {
+    content: '🍽️';
+    font-size: 18px;
+}
+
+.place-address-vertical {
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+    padding-left: 20px;
+    position: relative;
 }
 
 .place-name-vertical {
@@ -1784,10 +2005,26 @@ def get_food_planner_html():
 
 .place-meta-vertical {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
-    font-size: 12px;
-    margin-bottom: 10px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.meta-item-vertical {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%);
+    border-radius: 20px;
+    color: #8B6914;
+    font-weight: 600;
+    border: 1px solid #FFD699;
+}
+
+.meta-item-vertical span {
+    font-size: 16px;
 }
 
 .meta-item-vertical {
@@ -1934,187 +2171,6 @@ def get_food_planner_html():
     gap: 10px;
 }
 
-/* ========== MANUAL MODE ========== */
-.meal-item.drag-over {  
-    background-color: #fff3cd !important;  
-    border: 2px solid #ffc107 !important;
-}
-
-.manual-plans-container {
-    transition: max-height 0.3s ease;
-    overflow: hidden;
-}
-
-.search-box-manual {
-    margin-bottom: 15px;
-}
-
-.search-box-manual input {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 14px;
-    outline: none;
-    transition: all 0.2s ease;
-}
-
-.search-box-manual input:focus {
-    border-color: #FF6B35;
-}
-
-.search-results-manual {
-    max-height: 280px;
-    overflow-y: auto;
-    margin-top: 10px;
-}
-
-.place-result-card {
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.place-result-card:hover {
-    border-color: #FF6B35;
-}
-
-.place-result-name {
-    font-weight: 600;
-    color: #FF6B35;
-    margin-bottom: 4px;
-    font-size: 14px;
-}
-
-.place-result-info {
-    font-size: 12px;
-    color: #666;
-}
-
-.manual-timeline {
-    margin-top: 20px;
-}
-
-.manual-meal-item {
-    background: #FFF5F0;
-    border: 2px solid #FFE5D9;
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 10px;
-}
-
-.manual-meal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.manual-meal-header input[type="time"] {
-    padding: 6px 10px;
-    border: 2px solid #FFE5D9;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.remove-meal-btn {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.remove-meal-btn:hover {
-    background: #c0392b;
-}
-
-.manual-meal-place {
-    background: white;
-    border-radius: 8px;
-    padding: 10px;
-}
-
-.manual-meal-note {
-    margin-top: 8px;
-}
-
-.manual-meal-note input {
-    width: 100%;
-    padding: 8px 10px;
-    border: 2px solid #FFE5D9;
-    border-radius: 6px;
-    font-size: 12px;
-    outline: none;
-}
-
-.manual-meal-note input:focus {
-    border-color: #FF6B35;
-}
-
-.save-manual-plan-btn {
-    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 15px;
-    transition: all 0.2s ease;
-}
-
-.save-manual-plan-btn:hover {
-    opacity: 0.9;
-}
-
-.empty-manual-plan {
-    text-align: center;
-    padding: 40px 20px;
-    color: #999;
-}
-
-.loading-planner {
-    text-align: center;
-    padding: 40px;
-    color: #FF6B35;
-}
-
-.loading-spinner {
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #FF6B35;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.error-message {
-    text-align: center;
-    padding: 30px;
-    color: #e74c3c;
-}
-
 /* ========== STYLE INPUT TÊN CARD ========== */
 .meal-title-input {
     padding: 4px 8px;
@@ -2144,27 +2200,26 @@ def get_food_planner_html():
     }
     
     .timeline-container {
-        padding-left: 0;
+        padding: 20px 0;
     }
     
     .meal-item {
-        padding-left: 130px; /* 🔥 TĂNG từ 100px */
+        padding: 0;
+        margin-bottom: 30px;
     }
     
     .time-dot {
-        left: 112px; /* 🔥 TĂNG từ 72px */
-    }
-    
-    .timeline-line {
-        left: 120px; /* 🔥 THÊM DÒNG NÀY */
-    }
-    
-    .time-marker {
-        width: 115px; /* 🔥 THÊM DÒNG NÀY */
+        width: 16px;
+        height: 16px;
     }
     
     .food-planner-btn {
         right: 20px;
+    }
+    
+    .time-badge {
+        padding: 8px 20px;
+        font-size: 14px;
     }
 }
 
@@ -2196,20 +2251,32 @@ def get_food_planner_html():
     50% { opacity: 0.8; }
 }
 
+/* 🔥 CHẶN SCROLL KHI HOVER VÀO INPUT GIỜ/PHÚT */
+.time-input-hour:hover,
+.time-input-minute:hover {
+    overscroll-behavior: contain;
+}
+
+/* 🔥 CHẶN SCROLL TOÀN BỘ PANEL KHI FOCUS VÀO INPUT */
+.panel-content:has(.time-input-hour:focus),
+.panel-content:has(.time-input-minute:focus) {
+    overflow: hidden !important;
+}
+
 </style>
 
 <!-- Food Planner Button -->
-<div class="food-planner-btn" id="foodPlannerBtn" title="Lên kế hoạch ăn uống">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
-    </svg>
+<div class="food-planner-btn" id="foodPlannerBtn" title="Lịch trình bữa ăn" style="font-size: 28px; display: flex; align-items: center; justify-content: center;">
+    📋
 </div>
 
 <!-- Food Planner Panel -->
 <div class="food-planner-panel" id="foodPlannerPanel">
     <div class="panel-inner">
         <div class="panel-header">
-            <h2>🍽️ Kế hoạch ăn uống</h2>
+            <h2 style="font-size: 22px;">
+                <span style="font-size: 26px;">📋</span> Lịch trình bữa ăn
+            </h2>
             <div class="header-actions">
                 <button class="header-btn" onclick="closeFoodPlanner()" title="Đóng">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -2219,61 +2286,64 @@ def get_food_planner_html():
             </div>
         </div>
         
-        <div class="tabs-container">
-            <button class="tab active" onclick="switchTab('auto', event)">🤖 Tự động tạo</button>
-            <button class="tab" onclick="switchTab('manual', event)">✋ Tự chọn quán</button>
-        </div>
-        
         <div class="panel-content">
             <!-- AUTO MODE -->
             <div class="tab-content active" id="autoTab">
-                <div class="filters-wrapper" id="filtersWrapper">
-                    <button class="toggle-filters-btn" id="toggleFiltersBtn" onclick="toggleFilters()">
-                        <span>⚙️ Tùy chọn lọc</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                        </svg>
-                    </button>
-                    
-                    <div class="filter-section">
-                        <div class="filter-title">🎭 Chọn chủ đề</div>
-                        <div class="theme-grid" id="themeGrid"></div>
+                <div class="filters-wrapper-new">
+                    <!-- ❤️ BẢNG CHỦ ĐỀ ĐẸP -->
+                    <div class="filter-section-new theme-section">
+                        <div class="section-header">
+                            <span class="section-icon">❤️</span>
+                            <h3 class="section-title">Chọn chủ đề yêu thích</h3>
+                        </div>
+                        <div class="theme-grid-new" id="themeGrid"></div>
                     </div>
                     
-                    <div class="filter-section">
-                        <div class="filter-title">⏰ Khoảng thời gian</div>
-                        <div class="time-inputs">
-                            <div class="time-input-group">
-                                <label>Từ</label>
-                                <div style="display: flex; gap: 5px; align-items: center;">
-                                    <input type="number" id="startHour" min="0" max="23" value="07" 
-                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
-                                    <span style="font-weight: bold;">:</span>
-                                    <input type="number" id="startMinute" min="0" max="59" value="00" 
-                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                    <!-- ⏰ KHUNG THỜI GIAN ĐẸP -->
+                    <div class="filter-section-new time-section">
+                        <div class="section-header">
+                            <span class="section-icon">⏰</span>
+                            <h3 class="section-title">Khoảng thời gian</h3>
+                        </div>
+                        <div class="time-picker-container">
+                            <div class="time-picker-group">
+                                <label class="time-label">Từ</label>
+                                <div class="time-input-wrapper">
+                                    <input type="number" id="startHour" min="0" max="23" value="07" class="time-input">
+                                    <span class="time-separator">:</span>
+                                    <input type="number" id="startMinute" min="0" max="59" value="00" class="time-input">
                                 </div>
                             </div>
-                            <div class="time-input-group">
-                                <label>Đến</label>
-                                <div style="display: flex; gap: 5px; align-items: center;">
-                                    <input type="number" id="endHour" min="0" max="23" value="21" 
-                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
-                                    <span style="font-weight: bold;">:</span>
-                                    <input type="number" id="endMinute" min="0" max="59" value="00" 
-                                        style="width: 60px; padding: 8px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; text-align: center;">
+                            
+                            <div class="time-arrow">→</div>
+                            
+                            <div class="time-picker-group">
+                                <label class="time-label">Đến</label>
+                                <div class="time-input-wrapper">
+                                    <input type="number" id="endHour" min="0" max="23" value="21" class="time-input">
+                                    <span class="time-separator">:</span>
+                                    <input type="number" id="endMinute" min="0" max="59" value="00" class="time-input">
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <button class="generate-btn" onclick="generateAutoPlan()">🎯 Tạo kế hoạch tự động</button>
+                    <!-- 🎯 NÚT TẠO KẾ HOẠCH ĐẸP -->
+                    <button class="generate-btn-new" onclick="generateAutoPlan()">
+                        <span class="btn-icon">✨</span>
+                        <span class="btn-text">Tạo kế hoạch tự động</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
                 </div>
                 
                 <!-- Saved Plans Section -->
-                <div class="saved-plans-section" id="savedPlansSection" style="display: none;">
+                <div class="saved-plans-section" id="savedPlansSection" style="display: block;">
                     <div class="saved-plans-header" onclick="toggleSavedPlans()">
-                        <div class="filter-title" style="margin: 0;">📋 Lịch trình đã lưu</div>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; transition: transform 0.3s ease;" id="savedPlansArrow">
+                        <div class="filter-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #FF6B35;">
+                            <span style="font-size: 20px; margin-right: 8px;">📋</span>
+                            Lịch trình đã lưu
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; transition: transform 0.3s ease; color: #FF6B35;" id="savedPlansArrow">
                             <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
                         </svg>
                     </div>
@@ -2281,29 +2351,7 @@ def get_food_planner_html():
                 </div>
                 
                 <div id="planResult"></div>
-            </div>
-            
-            <!-- MANUAL MODE -->
-            <div class="tab-content" id="manualTab">
-                <div class="filter-section">
-                    <div class="filter-title" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleManualPlansSection()">
-                        <span>📋 Kế hoạch của bạn</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; transition: transform 0.3s ease;" id="manualPlansArrow">
-                            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                        </svg>
-                    </div>
-                    
-                    <div class="manual-plans-container" id="manualPlansContainer" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
-                            <span style="font-size: 13px; color: #666;">Danh sách kế hoạch</span>
-                            <button onclick="event.stopPropagation(); createNewManualPlan()" style="background: #4caf50; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">+</button>
-                        </div>
-                        <div id="manualPlansList" style="max-height: 300px; overflow-y: auto;"></div>
-                    </div>
-                </div>
-                
-                <div id="manualPlanContent"></div>
-            </div>
+            </div>  
         </div>
     </div>
 </div>
@@ -2311,19 +2359,14 @@ def get_food_planner_html():
 <script>
 // ========== GLOBAL STATE ==========
 let isPlannerOpen = false;
-let currentTab = 'auto';
 let selectedThemes = []; // Đổi từ selectedTheme thành selectedThemes (array)
 let currentPlan = null;
 let currentPlanId = null;
 let filtersCollapsed = false;
-let manualPlan = [];
-let manualPlans = []; // Danh sách các kế hoạch manual
-let currentManualPlanId = null; // ID của kế hoạch manual đang chỉnh sửa
 let isEditMode = false;
 let draggedElement = null;
 let selectedPlaceForReplacement = null;
 let waitingForPlaceSelection = null;
-let isManualEditMode = false;
 let autoScrollInterval = null;
 let lastDragY = 0;
 let dragDirection = 0;
@@ -2334,7 +2377,7 @@ window.currentPlanName = null;
 const themes = {
     'street_food': { name: 'Ẩm thực đường phố', icon: '🍜' },
     'seafood': { name: 'Hải sản', icon: '🦞' },
-    'coffee_chill': { name: 'Cà phê chill', icon: '☕' },
+    'coffee_chill': { name: 'Giải khát', icon: '☕' },
     'luxury_dining': { name: 'Nhà hàng sang trọng', icon: '🍽️' },
     'asian_fusion': { name: 'Ẩm thực châu Á', icon: '🍱' },
     'vegetarian': { name: 'Món chay', icon: '🥗' },
@@ -2361,13 +2404,15 @@ const mealIcons = {
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', function() {
     initThemeGrid();
-    initManualSearch();
     loadSavedPlans();
 });
 
 function initThemeGrid() {
     const grid = document.getElementById('themeGrid');
     if (!grid) return;
+    
+    // 🔥 THÊM CLASS MỚI
+    grid.className = 'theme-grid-new';
     
     Object.keys(themes).forEach(key => {
         const theme = themes[key];
@@ -2381,10 +2426,6 @@ function initThemeGrid() {
         card.onclick = () => selectTheme(key);
         grid.appendChild(card);
     });
-}
-
-function initManualSearch() {
-    loadManualPlans();
 }
 
 // ========== THEME SELECTION ==========
@@ -2402,27 +2443,26 @@ function selectTheme(themeKey) {
     }
 }
 
-// ========== TOGGLE FILTERS ==========
-function toggleFilters() {
-    const wrapper = document.getElementById('filtersWrapper');
-    filtersCollapsed = !filtersCollapsed;
-    
-    if (filtersCollapsed) {
-        wrapper.classList.add('collapsed');
-    } else {
-        wrapper.classList.remove('collapsed');
-    }
-}
-
 // ========== SAVED PLANS ==========
 function displaySavedPlansList(plans) {
     const listDiv = document.getElementById('savedPlansList');
+
+    // ✅ Bắt đầu với nút "Tạo mới"
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+            <span style="font-size: 14px; font-weight: 600; color: #333;">📋 Danh sách lịch trình</span>
+            <button onclick="createNewEmptyPlan()" style="background: #4caf50; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Tạo lịch trình mới">+</button>
+        </div>
+    `;
+
+    // ✅ Nếu không có plans → chỉ thêm thông báo
     if (!plans || plans.length === 0) {
-        listDiv.innerHTML = '<p style="color: #999; font-size: 13px; padding: 15px; text-align: center;">Chưa có kế hoạch nào</p>';
+        html += '<p style="color: #999; font-size: 13px; padding: 15px; text-align: center;">Chưa có kế hoạch nào</p>';
+        listDiv.innerHTML = html;
         return;
     }
     
-    let html = '';
+    // ✅ Nếu có plans → thêm từng plan vào html (KHÔNG khai báo lại)
     plans.forEach((plan, index) => {
         const date = new Date(plan.savedAt);
         const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -2463,7 +2503,7 @@ function toggleSavedPlans() {
     }
 }
 
-// ========== SAVE PLAN - SỬ DỤNG ARRAY THAY VÌ OBJECT ==========
+// ========== SAVE PLAN - Sử dụng ARRAY THAY VÌ OBJECT ==========
 function savePlan() {
     if (!currentPlan) return;
 
@@ -2499,6 +2539,12 @@ function savePlan() {
         }
     });
 
+    // ✅ KIỂM TRA PLAN CÓ DỮ LIỆU KHÔNG
+    if (planArray.length === 0) {
+        alert('⚠️ Lịch trình trống! Hãy thêm ít nhất 1 quán trước khi lưu.');
+        return;
+    }
+
     // Cập nhật order
     currentPlan._order = planArray.map(x => x.key);
 
@@ -2506,37 +2552,51 @@ function savePlan() {
     const titleElement = document.querySelector('.schedule-title span[contenteditable]');
     let currentDisplayName = titleElement ? titleElement.textContent.trim() : (window.currentPlanName || '');
     
-    // Nếu chưa có tên hoặc là tên mặc định, hỏi user
-    if (!currentDisplayName || currentDisplayName === 'Lịch trình của bạn') {
-        currentDisplayName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
-        if (!currentDisplayName) return; // User cancel
-    } else if (!currentPlanId) {
-        // Plan mới nhưng đã có tên custom → hỏi lại để confirm
-        const newName = prompt('Đặt tên cho kế hoạch:', currentDisplayName);
-        if (!newName) return;
-        currentDisplayName = newName;
+    // ✅ XỬ LÝ TÊN PLAN
+    if (!currentPlanId) {
+        // 🔥 PLAN MỚI (chưa có ID) → BẮT BUỘC PHẢI HỎI TÊN
+        currentDisplayName = prompt('Đặt tên cho kế hoạch:', currentDisplayName || `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
+        if (!currentDisplayName || currentDisplayName.trim() === '') {
+            alert('⚠️ Bạn phải đặt tên để lưu lịch trình!');
+            return;
+        }
+        currentDisplayName = currentDisplayName.trim();
+    } else {
+        // 🔥 PLAN CŨ (đã có ID)
+        if (!currentDisplayName || currentDisplayName === 'Lịch trình của bạn') {
+            // Chưa có tên custom → hỏi
+            currentDisplayName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
+            if (!currentDisplayName) return;
+        }
+        // Đã có tên custom → giữ nguyên, không hỏi
     }
-    // Nếu đã có planId và đã có tên custom → dùng luôn, không hỏi
     
+    // ✅ TẠO HOẶC CẬP NHẬT PLAN
     const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
     
     const planRecord = {
-        id: currentPlanId || Date.now().toString(),
-        name: currentDisplayName, // 🔥 DÙNG TÊN ĐÃ EDIT
-        plan: planArray,  // ← Array có thứ tự
+        id: currentPlanId || Date.now().toString(), // 🔥 TẠO ID MỚI NẾU CHƯA CÓ
+        name: currentDisplayName,
+        plan: planArray,
         savedAt: new Date().toISOString()
     };
     
     if (currentPlanId) {
+        // 🔥 CẬP NHẬT PLAN CŨ
         const index = savedPlans.findIndex(p => p.id === currentPlanId);
         if (index !== -1) {
             savedPlans[index] = planRecord;
+        } else {
+            // Không tìm thấy ID cũ → thêm mới
+            savedPlans.unshift(planRecord);
         }
     } else {
+        // 🔥 THÊM PLAN MỚI
         savedPlans.unshift(planRecord);
-        currentPlanId = planRecord.id;
+        currentPlanId = planRecord.id; // ✅ GÁN ID CHO currentPlanId
     }
     
+    // Giới hạn 20 plans
     if (savedPlans.length > 20) {
         savedPlans.length = 20;
     }
@@ -2547,8 +2607,11 @@ function savePlan() {
     window.currentPlanName = planRecord.name;
     
     alert('✅ Đã lưu kế hoạch thành công!');
+    
+    // ✅ CẬP NHẬT DANH SÁCH PLANS
     loadSavedPlans();
     
+    // ✅ TẮT EDIT MODE SAU KHI LƯU
     if (isEditMode) {
         toggleEditMode();
     }
@@ -2559,21 +2622,13 @@ function loadSavedPlans(planId) {
     const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
     const section = document.getElementById('savedPlansSection');
     
-    // 🔥 HIỂN THỊ SECTION NẾU CÓ PLANS
-    if (savedPlans.length > 0) {
-        section.style.display = 'block';
-    } else {
-        section.style.display = 'none';
-    }
+    // ✅ LUÔN HIỂN THỊ SECTION
+    section.style.display = 'block';
     
     displaySavedPlansList(savedPlans);
     
     // Nếu có planId, load plan đó
     if (planId) {
-        const filtersWrapper = document.getElementById('filtersWrapper');
-        if (filtersWrapper && !filtersWrapper.classList.contains('collapsed')) {
-            toggleFilters(); // Gọi hàm có sẵn để đóng
-        }
         const plan = savedPlans.find(p => p.id === planId);
         
         if (plan) {
@@ -2628,9 +2683,55 @@ function deleteSavedPlan(planId) {
     }
     
     loadSavedPlans();
+}
+
+// ========== TẠO LỊCH TRÌNH TRỐNG MỚI ==========
+function createNewEmptyPlan() {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    const planName = prompt('Đặt tên cho lịch trình:', `Lịch trình ngày ${dateStr}`);
     
-    if (savedPlans.length === 0) {
-        document.getElementById('savedPlansSection').style.display = 'none';
+    if (!planName) return; // User cancel
+    
+    const newPlanId = Date.now().toString();
+    
+    // ✅ TẠO LỊCH TRÌNH TRỐNG VỚI 1 SLOT MẶC ĐỊNH
+    currentPlan = {
+        'custom_1': {
+            time: '07:00',
+            title: 'Bữa sáng',
+            icon: '🍳',
+            place: null
+        },
+        _order: ['custom_1']
+    };
+    
+    currentPlanId = newPlanId;
+    window.currentPlanName = planName;
+    isEditMode = true; // ✅ TỰ ĐỘNG BẬT EDIT MODE
+    waitingForPlaceSelection = null;
+    
+    // ✅ HIỂN THỊ LỊCH TRÌNH MỚI
+    displayPlanVertical(currentPlan, true);
+    
+    // ✅ ĐÓNG "LỊCH TRÌNH ĐÃ LƯU" SAU KHI TẠO
+    const savedPlansList = document.getElementById('savedPlansList');
+    const savedPlansArrow = document.getElementById('savedPlansArrow');
+    if (savedPlansList && savedPlansArrow) {
+        savedPlansList.classList.remove('open');
+        savedPlansArrow.style.transform = 'rotate(0deg)';
+    }
+    
+    // ✅ ĐÓNG FILTERS NẾU ĐANG MỞ
+    const filtersWrapper = document.getElementById('filtersWrapper');
+    if (filtersWrapper && !filtersWrapper.classList.contains('collapsed')) {
+        toggleFilters();
+    }
+    
+    // ✅ SCROLL LÊN TOP
+    const panelContent = document.querySelector('.panel-content');
+    if (panelContent) {
+        panelContent.scrollTop = 0;
     }
 }
 
@@ -2671,25 +2772,6 @@ function toggleEditMode() {
     }
 }
 
-// ========== TAB SWITCHING ==========
-function switchTab(tab, event) {
-    currentTab = tab;
-    
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    if (tab === 'auto') {
-        document.getElementById('autoTab').classList.add('active');
-    } else {
-        document.getElementById('manualTab').classList.add('active');
-        // Reset manual plan content khi chuyển tab
-        if (!currentManualPlanId) {
-            document.getElementById('manualPlanContent').innerHTML = '';
-        }
-    }
-}
-
 // ========== OPEN/CLOSE PLANNER ==========
 document.getElementById('foodPlannerBtn').addEventListener('click', function() {
     if (isPlannerOpen) {
@@ -2704,20 +2786,15 @@ function openFoodPlanner() {
     isPlannerOpen = true;
     loadSavedPlans();
     
-    // Tự động vẽ lại đường đi
+    // ✅ TỰ ĐỘNG VẼ LẠI ĐƯỜNG ĐI NẾU CÓ LỊCH TRÌNH
     setTimeout(() => {
-        if (currentTab === 'auto' && currentPlan && !isEditMode) {
+        if (currentPlan && !isEditMode) {
             const hasPlaces = Object.keys(currentPlan)
                 .filter(k => k !== '_order')
                 .some(k => currentPlan[k] && currentPlan[k].place);
             
             if (hasPlaces) {
                 drawRouteOnMap(currentPlan);
-            }
-        } else if (currentTab === 'manual' && currentManualPlanId && !isManualEditMode) {
-            const hasPlaces = manualPlan.some(item => item.place);
-            if (hasPlaces) {
-                drawManualRouteOnMap();
             }
         }
     }, 300);
@@ -2830,10 +2907,6 @@ async function generateAutoPlan() {
         
         currentPlan = data;
         
-        if (!filtersCollapsed) {
-            toggleFilters();
-        }
-        
         isEditMode = false;
         displayPlanVertical(currentPlan, false);
         
@@ -2909,13 +2982,6 @@ function displayPlanVertical(plan, editMode = false) {
                     <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
                 </svg>
             </button>
-            ${editMode ? `
-            <button class="action-btn add" onclick="addNewMealSlot()" title="Thêm quán mới">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
-            </button>
-            ` : ''}
         </div>
     </div>
     <div class="timeline-container"><div class="timeline-line"></div>
@@ -2955,19 +3021,19 @@ function displayPlanVertical(plan, editMode = false) {
             const isWaitingForSelection = waitingForPlaceSelection === key;
             
             html += `
-                <div class="meal-item" data-meal-key="${key}">
+                <div class="meal-item" draggable="${editMode}" data-meal-key="${key}">
                     <div class="time-marker">
                         ${editMode ? 
-                            `<div style="display: flex; gap: 5px; align-items: center;">
+                            `<div style="display: inline-flex; gap: 5px; align-items: center; justify-content: center; background: white; padding: 6px 12px; border-radius: 25px; box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);">
                                 <input type="number" min="0" max="23" value="${meal.time.split(':')[0]}" 
                                     class="time-input-hour" data-meal-key="${key}"
-                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
-                                <span style="font-weight: bold; color: #FF6B35;">:</span>
+                                    style="width: 60px; padding: 8px 6px; border: 2px solid #FFE5D9; border-radius: 8px; font-size: 16px; text-align: center; font-weight: 700; background: white; line-height: 1;">
+                                <span style="font-weight: bold; color: #FF6B35; font-size: 18px;">:</span>
                                 <input type="number" min="0" max="59" value="${meal.time.split(':')[1]}" 
                                     class="time-input-minute" data-meal-key="${key}"
-                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                                    style="width: 60px; padding: 8px 6px; border: 2px solid #FFE5D9; border-radius: 8px; font-size: 16px; text-align: center; font-weight: 700; background: white; line-height: 1;">
                             </div>` :
-                            `<div class="time-badge">${meal.time}</div>`
+                            `<div class="time-badge">⏰ ${meal.time}</div>`
                         }
                     </div>
                     <div class="time-dot"></div>
@@ -3011,7 +3077,8 @@ function displayPlanVertical(plan, editMode = false) {
         hasPlaces = true;
         const place = meal.place;
         
-        const cardClickEvent = editMode ? '' : `onclick="flyToPlace(${place.lat}, ${place.lon})"`;
+        // ✅ CODE MỚI - TRUYỀN THÊM data_id VÀ ten_quan
+        const cardClickEvent = editMode ? '' : `onclick="flyToPlace(${place.lat}, ${place.lon}, '${place.data_id}', '${place.ten_quan.replace(/'/g, "\\'")}')"`;
         const cardCursor = editMode ? 'cursor: default;' : 'cursor: pointer;';
         
         const isWaitingForSelection = waitingForPlaceSelection === key;
@@ -3020,16 +3087,16 @@ function displayPlanVertical(plan, editMode = false) {
             <div class="meal-item" draggable="${editMode}" data-meal-key="${key}">
                 <div class="time-marker">
                     ${editMode ? 
-                        `<div style="display: flex; gap: 5px; align-items: center;">
+                        `<div style="display: inline-flex; gap: 5px; align-items: center; justify-content: center; background: white; padding: 6px 12px; border-radius: 25px; box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);">
                             <input type="number" min="0" max="23" value="${meal.time.split(':')[0]}" 
                                 class="time-input-hour" data-meal-key="${key}"
-                                style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
-                            <span style="font-weight: bold; color: #FF6B35;">:</span>
+                                style="width: 60px; padding: 8px 6px; border: 2px solid #FFE5D9; border-radius: 8px; font-size: 16px; text-align: center; font-weight: 700; background: white; line-height: 1;">
+                            <span style="font-weight: bold; color: #FF6B35; font-size: 18px;">:</span>
                             <input type="number" min="0" max="59" value="${meal.time.split(':')[1]}" 
                                 class="time-input-minute" data-meal-key="${key}"
-                                style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+                                style="width: 60px; padding: 8px 6px; border: 2px solid #FFE5D9; border-radius: 8px; font-size: 16px; text-align: center; font-weight: 700; background: white; line-height: 1;">
                         </div>` :
-                        `<div class="time-badge">${meal.time}</div>`
+                        `<div class="time-badge">⏰ ${meal.time}</div>`
                     }
                 </div>
                 <div class="time-dot"></div>
@@ -3069,7 +3136,7 @@ function displayPlanVertical(plan, editMode = false) {
                                 <span>⭐</span>
                                 <strong>${place.rating ? parseFloat(place.rating).toFixed(1) : 'N/A'}</strong>
                             </div>
-                            ${place.gia_trung_binh ? `
+                            ${place.gia_trung_binh && !['$', '$$', '$$$', '$$$$'].includes(place.gia_trung_binh.trim()) ? `
                                 <div class="meta-item-vertical">
                                     <span>💰</span>
                                     <strong>${place.gia_trung_binh}</strong>
@@ -3088,6 +3155,34 @@ function displayPlanVertical(plan, editMode = false) {
     }
     
     html += '</div>';
+
+    // 🔥 THÊM NÚT "+" Ở CUỐI TIMELINE (CHỈ KHI EDIT MODE)
+    if (editMode) {
+        html += `
+            <div style="margin-top: 30px; padding: 20px; text-align: center;">
+                <button onclick="addNewMealSlot()" style="
+                    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                    color: white;
+                    border: none;
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 28px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+                    transition: all 0.2s ease;
+                " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';" title="Thêm quán mới">
+                    +
+                </button>
+                <div style="margin-top: 10px; font-size: 14px; color: #4caf50; font-weight: 600;">
+                    Thêm quán mới
+                </div>
+            </div>
+        `;
+    }
 
     if (!hasPlaces && !editMode) {
         resultDiv.innerHTML = `
@@ -3563,229 +3658,6 @@ function drawRouteOnMap(plan) {
     })();
 }
 
-function drawManualRouteOnMap() {
-    if (typeof map === 'undefined' || typeof L === 'undefined') {
-        console.log('Map chưa sẵn sàng');
-        return;
-    }
-    
-    clearRoutes();
-    currentRouteAbortController = new AbortController();
-    const signal = currentRouteAbortController.signal;
-    
-    const drawnSegments = [];
-    const waypoints = [];
-    
-    if (window.currentUserCoords) {
-        waypoints.push({
-            lat: window.currentUserCoords.lat,
-            lon: window.currentUserCoords.lon,
-            name: 'Vị trí của bạn',
-            isUser: true
-        });
-    }
-    
-    const sortedPlan = [...manualPlan].sort((a, b) => a.time.localeCompare(b.time));
-    
-    sortedPlan.forEach(item => {
-        if (item.place) {
-            waypoints.push({
-                lat: item.place.lat,
-                lon: item.place.lon,
-                name: item.place.ten_quan,
-                time: item.time,
-                isUser: false
-            });
-        }
-    });
-    
-    if (waypoints.length < 2) {
-        console.log('Không đủ điểm để vẽ đường');
-        return;
-    }
-    
-    const totalRoutes = waypoints.length - 1;
-    const routeWeight = 6;
-    
-    // 🔥 FUNCTION drawSingleRoute - ĐÚNG CẤU TRÚC
-    async function drawSingleRoute(startPoint, endPoint, index) {
-        try {
-            const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
-            const response = await fetch(url, { signal });
-            const data = await response.json();
-            
-            if (data.code === 'Ok' && data.routes && data.routes[0]) {
-                const route = data.routes[0];
-                const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                const color = getRouteColor(index, totalRoutes);
-                
-                let offsetPixels = 0;
-                for (let i = 0; i < drawnSegments.length; i++) {
-                    if (checkRouteOverlap(coords, drawnSegments[i].coords)) {
-                        const overlapCount = drawnSegments.filter(seg => 
-                            checkRouteOverlap(coords, seg.coords)
-                        ).length;
-                        offsetPixels = (overlapCount % 2 === 0) ? 8 : -8;
-                        break;
-                    }
-                }
-                
-                drawnSegments.push({ coords: coords, index: index });
-                
-                const outlinePolyline = L.polyline(coords, {
-                    color: '#FFFFFF',
-                    weight: routeWeight + 3,
-                    opacity: 0.9,
-                    smoothFactor: 1
-                }).addTo(map);
-                routeLayers.push(outlinePolyline);
-                
-                const mainPolyline = L.polyline(coords, {
-                    color: color,
-                    weight: routeWeight,
-                    opacity: 1,
-                    smoothFactor: 1,
-                    dashArray: null
-                }).addTo(map);
-                
-                if (offsetPixels !== 0) {
-                    if (typeof outlinePolyline.setOffset === 'function') {
-                        outlinePolyline.setOffset(offsetPixels);
-                    }
-                    if (typeof mainPolyline.setOffset === 'function') {
-                        mainPolyline.setOffset(offsetPixels);
-                    }
-                }
-                
-                const tooltipText = index === 0 
-                    ? `🚗 Khởi hành → ${endPoint.name}`
-                    : `${index}. ${startPoint.name} → ${endPoint.name}`;
-                
-                mainPolyline.bindTooltip(tooltipText, {
-                    permanent: false,
-                    direction: 'center',
-                    className: 'route-tooltip'
-                });
-                
-                routeLayers.push(mainPolyline);
-                
-                if (!startPoint.isUser) {
-                    const numberMarker = L.marker([startPoint.lat, startPoint.lon], {
-                        icon: L.divIcon({
-                            className: 'route-number-marker',
-                            html: `<div style="
-                                background: ${color};
-                                color: white;
-                                width: 40px;
-                                height: 40px;
-                                border-radius: 50%;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-weight: bold;
-                                font-size: 18px;
-                                border: 4px solid white;
-                                box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-                                z-index: 1000;
-                            ">${index}</div>`,
-                            iconSize: [40, 40],
-                            iconAnchor: [20, 20]
-                        }),
-                        zIndexOffset: 1000
-                    }).addTo(map);
-                    routeLayers.push(numberMarker);
-                }
-                
-                if (index === totalRoutes - 1 && !endPoint.isUser) {
-                    const lastColor = getRouteColor(totalRoutes - 1, totalRoutes);
-                    const lastNumberMarker = L.marker([endPoint.lat, endPoint.lon], {
-                        icon: L.divIcon({
-                            className: 'route-number-marker',
-                            html: `<div style="
-                                background: ${lastColor};
-                                color: white;
-                                width: 40px;
-                                height: 40px;
-                                border-radius: 50%;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-weight: bold;
-                                font-size: 18px;
-                                border: 4px solid white;
-                                box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-                                z-index: 1000;
-                            ">${totalRoutes}</div>`,
-                            iconSize: [40, 40],
-                            iconAnchor: [20, 20]
-                        }),
-                        zIndexOffset: 1000
-                    }).addTo(map);
-                    routeLayers.push(lastNumberMarker);
-                }
-            } else {
-                console.log('Không tìm thấy route, dùng đường thẳng');
-                const color = getRouteColor(index, totalRoutes);
-                
-                const outlineLine = L.polyline(
-                    [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
-                    { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
-                ).addTo(map);
-                routeLayers.push(outlineLine);
-
-                const mainStraightLine = L.polyline(
-                    [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
-                    { color: color, weight: routeWeight, opacity: 1 }
-                ).addTo(map);
-                routeLayers.push(mainStraightLine);
-            }
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
-                return;
-            }
-            console.error('Lỗi vẽ route:', error);
-            const color = getRouteColor(index, totalRoutes);
-            
-            const outlineLine = L.polyline(
-                [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
-                { color: '#FFFFFF', weight: routeWeight + 3, opacity: 0.9 }
-            ).addTo(map);
-            routeLayers.push(outlineLine);
-
-            const mainStraightLine = L.polyline(
-                [[startPoint.lat, startPoint.lon], [endPoint.lat, endPoint.lon]],
-                { color: color, weight: routeWeight, opacity: 1 }
-            ).addTo(map);
-            routeLayers.push(mainStraightLine);
-        }
-    } // 🔥 ĐÓNG drawSingleRoute() Ở ĐÂY
-    
-    // 🔥 drawAllRoutes() PHẢI NẰM NGOÀI drawSingleRoute()
-    (async function drawAllRoutes() {
-        try {
-            for (let i = 0; i < waypoints.length - 1; i++) {
-                if (signal.aborted) {
-                    console.log('⚠️ Đã dừng vẽ tất cả routes do bị hủy');
-                    return;
-                }
-                await drawSingleRoute(waypoints[i], waypoints[i + 1], i);
-            }
-            
-            if (!signal.aborted) {
-                const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lon]));
-                map.fitBounds(bounds, { padding: [50, 50] });
-                console.log(`✅ Đã vẽ ${waypoints.length - 1} đoạn đường (Manual Mode)`);
-            }
-        } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.error('Lỗi trong drawAllRoutes:', error);
-            }
-        }
-    })();
-} // 🔥 ĐÓNG drawManualRouteOnMap() Ở ĐÂY
-
-
 // ========== DELETE MEAL SLOT ==========
 function deleteMealSlot(mealKey) {
     if (!currentPlan) return;
@@ -3834,12 +3706,14 @@ function replacePlaceInMeal(newPlace) {
         return false;
     }
     
+    // ✅ Tính khoảng cách từ vị trí trước đó
     let prevLat, prevLon;
     if (window.currentUserCoords) {
         prevLat = window.currentUserCoords.lat;
         prevLon = window.currentUserCoords.lon;
     }
     
+    // Tìm quán trước đó (nếu có)
     const allKeys = Object.keys(currentPlan)
         .filter(k => k !== '_order')
         .sort((a, b) => {
@@ -3867,7 +3741,7 @@ function replacePlaceInMeal(newPlace) {
     const suggestLeave = new Date(arriveTime.getTime() - travelTime * 60000);
     const suggestLeaveStr = suggestLeave.toTimeString().substring(0, 5);
     
-    // 🔥 CẬP NHẬT QUÁN
+    // ✅ CẬP NHẬT QUÁN
     currentPlan[mealKey].place = {
         ten_quan: newPlace.ten_quan,
         dia_chi: newPlace.dia_chi,
@@ -3883,12 +3757,37 @@ function replacePlaceInMeal(newPlace) {
         khau_vi: newPlace.khau_vi || ''
     };
     
-    console.log("✅ Da cap nhat quan cho mealKey:", mealKey);
+    console.log("✅ Đã cập nhật quán cho mealKey:", mealKey, currentPlan[mealKey]);
+    
+    // ✅ RESET waiting state
     waitingForPlaceSelection = null;
+    
+    // ✅ RENDER LẠI NGAY LẬP TỨC
     displayPlanVertical(currentPlan, isEditMode);
+    
+    // ✅ SCROLL ĐẾN QUÁN VỪA THÊM
+    setTimeout(() => {
+        const addedItem = document.querySelector(`[data-meal-key="${mealKey}"]`);
+        if (addedItem) {
+            addedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // ✅ HIGHLIGHT CARD VỪA THÊM
+            const card = addedItem.querySelector('.meal-card-vertical');
+            if (card) {
+                card.style.border = '3px solid #4caf50';
+                card.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.5)';
+                
+                setTimeout(() => {
+                    card.style.border = '';
+                    card.style.boxShadow = '';
+                }, 2000);
+            }
+        }
+    }, 100);
     
     return true; // 🔥 RETURN TRUE KHI THÀNH CÔNG
 }
+
 function calculateDistanceJS(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -3915,193 +3814,6 @@ function setupDragAndDrop() {
         container.addEventListener('dragover', handleDragOver);
         container.addEventListener('drop', handleDrop);  // 🔥 THÊM DROP
     }
-}
-
-function setupManualDragAndDrop() {
-    const mealItems = document.querySelectorAll('.meal-item[draggable="true"]');
-    
-    mealItems.forEach(item => {
-        item.addEventListener('dragstart', handleManualDragStart);
-        item.addEventListener('dragend', handleManualDragEnd);
-        item.addEventListener('dragover', handleManualDragOverItem);
-    });
-    
-    const container = document.querySelector('.timeline-container');
-    if (container) {
-        container.addEventListener('dragover', handleManualDragOver);
-        container.addEventListener('drop', handleManualDrop);
-    }
-}
-
-function handleManualDragStart(e) {
-    draggedElement = this;
-    window.draggedElement = this;
-    this.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', this.innerHTML);
-    lastTargetElement = null;
-    startAutoScroll();
-}
-
-function handleManualDragEnd(e) {
-    if (draggedElement) {
-        draggedElement.classList.remove('dragging');
-    }
-    
-    document.querySelectorAll('.meal-card-vertical.drop-target').forEach(card => {
-        card.classList.remove('drop-target');
-    });
-    
-    draggedElement = null;
-    window.draggedElement = null;
-    lastDragY = 0;
-    lastTargetElement = null;
-    stopAutoScroll();
-}
-
-function handleManualDragOverItem(e) {
-    if (e.preventDefault) {
-        e.preventDefault();
-    }
-    
-    if (!draggedElement || draggedElement === this) return;
-    
-    e.dataTransfer.dropEffect = 'move';
-    
-    document.querySelectorAll('.meal-card-vertical.drop-target').forEach(card => {
-        card.classList.remove('drop-target');
-    });
-    
-    const targetCard = this.querySelector('.meal-card-vertical');
-    if (targetCard) {
-        targetCard.classList.add('drop-target');
-    }
-    
-    lastTargetElement = this;
-    lastDragY = e.clientY;
-    return false;
-}
-
-function handleManualDragOver(e) {
-    if (e.preventDefault) {
-        e.preventDefault();
-    }
-    
-    lastDragY = e.clientY;
-    
-    if (!draggedElement) return;
-    
-    e.dataTransfer.dropEffect = 'move';
-    
-    const afterElement = getDragAfterElement(
-        document.querySelector('.timeline-container'),
-        e.clientY
-    );
-    
-    if (afterElement == null) {
-        document.querySelector('.timeline-container').appendChild(draggedElement);
-    } else {
-        document.querySelector('.timeline-container').insertBefore(draggedElement, afterElement);
-    }
-    
-    return false;
-}
-
-function handleManualDrop(e) {
-    if (e.stopPropagation) {
-        e.stopPropagation();
-    }
-    
-    if (!draggedElement || !lastTargetElement) return;
-    if (draggedElement === lastTargetElement) return;
-    
-    const draggedId = parseInt(draggedElement.dataset.mealId);
-    const targetId = parseInt(lastTargetElement.dataset.mealId);
-    
-    // Cập nhật title và time từ DOM trước khi swap
-    const draggedTitleInput = draggedElement.querySelector('.time-input-inline');
-    const draggedHourInput = draggedElement.querySelector('.time-input-hour-manual[data-item-id="' + draggedId + '"]');
-    const draggedMinuteInput = draggedElement.querySelector('.time-input-minute-manual[data-item-id="' + draggedId + '"]');
-    
-    const draggedItem = manualPlan.find(i => i.id === draggedId);
-    if (draggedTitleInput && draggedItem) {
-        draggedItem.title = draggedTitleInput.value;
-    }
-    if (draggedHourInput && draggedMinuteInput && draggedItem) {
-        const hour = draggedHourInput.value.padStart(2, '0');
-        const minute = draggedMinuteInput.value.padStart(2, '0');
-        draggedItem.time = `${hour}:${minute}`;
-    }
-    
-    const targetTitleInput = lastTargetElement.querySelector('.time-input-inline');
-    const targetHourInput = lastTargetElement.querySelector('.time-input-hour-manual[data-item-id="' + targetId + '"]');
-    const targetMinuteInput = lastTargetElement.querySelector('.time-input-minute-manual[data-item-id="' + targetId + '"]');
-    
-    const targetItem = manualPlan.find(i => i.id === targetId);
-    if (targetTitleInput && targetItem) {
-        targetItem.title = targetTitleInput.value;
-    }
-    if (targetHourInput && targetMinuteInput && targetItem) {
-        const hour = targetHourInput.value.padStart(2, '0');
-        const minute = targetMinuteInput.value.padStart(2, '0');
-        targetItem.time = `${hour}:${minute}`;
-    }
-    
-    // Swap data
-    const draggedIndex = manualPlan.findIndex(i => i.id === draggedId);
-    const targetIndex = manualPlan.findIndex(i => i.id === targetId);
-    
-    if (draggedIndex !== -1 && targetIndex !== -1) {
-        [manualPlan[draggedIndex], manualPlan[targetIndex]] = [manualPlan[targetIndex], manualPlan[draggedIndex]];
-    }
-    
-    displayManualPlanTimeline();
-    
-    setTimeout(() => {
-        const draggedCard = document.querySelector(`[data-meal-id="${draggedId}"] .meal-card-vertical`);
-        const targetCard = document.querySelector(`[data-meal-id="${targetId}"] .meal-card-vertical`);
-        
-        if (draggedCard) {
-            draggedCard.classList.add('just-dropped');
-            const direction = draggedIndex < targetIndex ? '⬇️' : '⬆️';
-            const indicator1 = document.createElement('div');
-            indicator1.className = 'reposition-indicator';
-            indicator1.textContent = direction;
-            draggedCard.style.position = 'relative';
-            draggedCard.appendChild(indicator1);
-            
-            const draggedItem = document.querySelector(`[data-meal-id="${draggedId}"]`);
-            if (draggedItem) {
-                draggedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            
-            setTimeout(() => {
-                draggedCard.classList.remove('just-dropped');
-                if (indicator1.parentNode) {
-                    indicator1.remove();
-                }
-            }, 1500);
-        }
-        
-        if (targetCard) {
-            targetCard.classList.add('just-dropped');
-            const direction = targetIndex < draggedIndex ? '⬇️' : '⬆️';
-            const indicator2 = document.createElement('div');
-            indicator2.className = 'reposition-indicator';
-            indicator2.textContent = direction;
-            targetCard.style.position = 'relative';
-            targetCard.appendChild(indicator2);
-            
-            setTimeout(() => {
-                targetCard.classList.remove('just-dropped');
-                if (indicator2.parentNode) {
-                    indicator2.remove();
-                }
-            }, 1500);
-        }
-    }, 100);
-    
-    return false;
 }
 
 function handleDragStart(e) {
@@ -4452,398 +4164,6 @@ function updateMealIcon(mealKey, newIcon) {
 // ========== ICON OPTIONS ==========
 const iconOptions = ['🍳', '🥐', '🍜', '🍚', '🍛', '🍝', '🍕', '🍔', '🌮', '🥗', '🍱', '🍤', '🍣', '🦞', '☕', '🧋', '🍵', '🥤', '🍰', '🍨', '🧁', '🍩', '🍪', '🍽️'];
 
-// ========== MANUAL MODE: PLANS MANAGEMENT ==========
-function toggleManualEditMode() {
-    isManualEditMode = !isManualEditMode;
-    
-    const editBtn = document.getElementById('editManualPlanBtn');
-    if (editBtn) {
-        if (isManualEditMode) {
-            editBtn.classList.add('active');
-            editBtn.title = 'Thoát chỉnh sửa';
-            clearRoutes();
-        } else {
-            editBtn.classList.remove('active');
-            editBtn.title = 'Chỉnh sửa';
-            waitingForPlaceSelection = null;
-        }
-    }
-    
-    // Lưu title từ input trước khi render lại
-    if (isManualEditMode) {
-        const mealItems = document.querySelectorAll('.meal-item');
-        mealItems.forEach(item => {
-            const itemId = parseInt(item.dataset.mealId);
-            const manualItem = manualPlan.find(i => i.id === itemId);
-            if (manualItem) {
-                const titleInput = item.querySelector('input[onchange*="updateManualItemTitle"]');
-                if (titleInput && titleInput.value) {
-                    manualItem.title = titleInput.value;
-                }
-            }
-        });
-    }
-    
-    displayManualPlanTimeline();
-}
-
-function loadManualPlans() {
-    manualPlans = JSON.parse(localStorage.getItem('manual_food_plans') || '[]');
-    displayManualPlansList();
-}
-
-function displayManualPlansList() {
-    const listDiv = document.getElementById('manualPlansList');
-    
-    if (manualPlans.length === 0) {
-        listDiv.innerHTML = '<p style="color: #999; font-size: 13px; padding: 15px; text-align: center;">Chưa có kế hoạch nào</p>';
-        return;
-    }
-    
-    let html = '';
-    manualPlans.forEach((plan) => {
-        const date = new Date(plan.createdAt);
-        const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-        const itemCount = plan.items && Array.isArray(plan.items) ? plan.items.length : 0;
-        html += `
-            <div class="saved-plan-item" onclick="event.stopPropagation(); openManualPlan('${plan.id}')">
-                <div class="saved-plan-info">
-                    <div class="saved-plan-name">${plan.name}</div>
-                    <div class="saved-plan-date">📅 ${dateStr} • ${itemCount} quán</div>
-                </div>
-                <button class="delete-plan-btn" onclick="event.stopPropagation(); deleteManualPlan('${plan.id}')">×</button>
-            </div>
-        `;
-    });
-    
-    listDiv.innerHTML = html;
-}
-
-function toggleManualPlansSection() {
-    const container = document.getElementById('manualPlansContainer');
-    const arrow = document.getElementById('manualPlansArrow');
-    
-    if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
-        container.style.maxHeight = '400px';
-        arrow.style.transform = 'rotate(180deg)';
-    } else {
-        container.style.maxHeight = '0';
-        arrow.style.transform = 'rotate(0deg)';
-    }
-}
-
-function createNewManualPlan() {
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    const planName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ngày ${dateStr}`);
-    
-    if (planName) {
-        const newPlan = {
-            id: Date.now().toString(),
-            name: planName,
-            items: [{
-                id: Date.now(),
-                place: null,
-                time: timeStr,
-                title: 'Bữa mới'
-            }],
-            createdAt: new Date().toISOString()
-        };
-        
-        manualPlans.unshift(newPlan);
-        localStorage.setItem('manual_food_plans', JSON.stringify(manualPlans));
-        
-        displayManualPlansList();  // ← Cập nhật list
-        openManualPlan(newPlan.id); // ← Mở plan và đóng list
-    }
-}
-
-function openManualPlan(planId) {
-    const plan = manualPlans.find(p => p.id === planId);
-    if (!plan) return;
-    
-    currentManualPlanId = planId;
-    manualPlan = plan.items.length > 0 ? [...plan.items] : [];
-    isManualEditMode = false;
-    waitingForPlaceSelection = null;
-    
-    clearRoutes(); // ⚡ THÊM DÒNG NÀY
-    
-    // Đóng "Kế hoạch của bạn"
-    const container = document.getElementById('manualPlansContainer');
-    const arrow = document.getElementById('manualPlansArrow');
-    
-    if (container && arrow) {
-        container.style.maxHeight = '0';
-        container.style.overflow = 'hidden';
-        arrow.style.transform = 'rotate(0deg)';
-    }
-    
-    displayManualPlanTimeline();
-
-    // Scroll lên top
-    const panelContent = document.querySelector('.panel-content');
-    if (panelContent) {
-        panelContent.scrollTop = 0;
-    }
-}
-
-function deleteManualPlan(planId) {
-    if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
-    
-    manualPlans = manualPlans.filter(p => p.id !== planId);
-    localStorage.setItem('manual_food_plans', JSON.stringify(manualPlans));
-    
-    if (currentManualPlanId === planId) {
-        currentManualPlanId = null;
-        manualPlan = [];
-        document.getElementById('manualPlanContent').innerHTML = '';
-    }
-    
-    displayManualPlansList();
-}
-
-function displayManualPlanTimeline() {
-    const contentDiv = document.getElementById('manualPlanContent');
-    
-    const currentPlanData = manualPlans.find(p => p.id === currentManualPlanId);
-    if (!currentPlanData) return;
-    
-    const planName = currentPlanData.name;
-    const editMode = isManualEditMode;
-    
-    // ⚡ Kiểm tra nếu đã xóa hết quán trong edit mode
-    if (manualPlan.length === 0 && editMode) {
-        contentDiv.innerHTML = `
-            <div class="error-message">
-                <h3>🗑️ Đã xóa hết lịch trình</h3>
-                <p>Bạn đã xóa tất cả các quán trong lịch trình này</p>
-                <button onclick="addManualMealSlot();" 
-                    style="margin-top: 15px; padding: 10px 20px; background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
-                    ✨ Thêm quán mới
-                </button>
-            </div>
-        `;
-        clearRoutes();
-        return;
-    }
-    
-    let html = `
-    <div class="schedule-header">
-        <h3 class="schedule-title">
-            <span style="margin-right: 8px;">📅</span>
-            <span ${editMode ? 'contenteditable="true" class="editable" onblur="updateManualPlanName(this.textContent)"' : ''}><span>${planName}</span></span>
-        </h3>
-        <div class="action-buttons">
-            <button class="action-btn edit ${editMode ? 'active' : ''}" id="editManualPlanBtn" onclick="toggleManualEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                </svg>
-            </button>
-            <button class="action-btn primary" onclick="saveManualPlanChanges()" title="Lưu">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-                    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
-                </svg>
-            </button>
-            <button class="action-btn secondary" onclick="shareManualPlan()" title="Chia sẻ kế hoạch">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
-                    <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
-                </svg>
-            </button>
-            ${editMode ? `
-            <button class="action-btn add" onclick="addManualMealSlot()" title="Thêm quán mới">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
-            </button>
-            ` : ''}
-        </div>
-    </div>
-    <div class="timeline-container"><div class="timeline-line"></div>
-    `;
-    
-    manualPlan.sort((a, b) => a.time.localeCompare(b.time));
-    let hasPlaces = false;
-    
-    manualPlan.forEach((item, index) => {
-        const isWaiting = waitingForPlaceSelection === item.id;
-        const icon = item.icon || '🍽️';
-        
-        if (!item.place) {
-            // Card trống
-            html += `
-                <div class="meal-item" data-meal-id="${item.id}" draggable="${editMode}">
-                    <div class="time-marker">
-                        ${editMode ? 
-                            `<div style="display: flex; gap: 5px; align-items: center;">
-                                <input type="number" min="0" max="23" value="${item.time.split(':')[0]}" 
-                                    class="time-input-hour time-input-hour-manual" data-item-id="${item.id}"
-                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
-                                <span style="font-weight: bold; color: #FF6B35;">:</span>
-                                <input type="number" min="0" max="59" value="${item.time.split(':')[1]}" 
-                                    class="time-input-minute time-input-minute-manual" data-item-id="${item.id}"
-                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
-                            </div>` :
-                            `<div class="time-badge">${item.time}</div>`
-                        }
-                    </div>
-                    <div class="time-dot"></div>
-                    <div class="meal-card-vertical empty-slot ${editMode ? 'edit-mode' : ''}">
-                        <div class="meal-title-vertical">
-                            <div class="meal-title-left">
-                                ${editMode ? `
-                                    <select onchange="updateManualItemIcon(${item.id}, this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
-                                        ${iconOptions.map(ico => `<option value="${ico}" ${ico === icon ? 'selected' : ''}>${ico}</option>`).join('')}
-                                    </select>
-                                ` : `<span style="font-size: 22px;">${icon}</span>`}
-                                ${editMode ? 
-                                    `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
-                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">` :
-                                    `<span>${item.title}</span>`
-                                }
-                            </div>
-                            ${editMode ? `
-                            <div class="meal-actions">
-                                <button class="meal-action-btn delete-meal" onclick="deleteManualItem(${item.id})" title="Xóa">
-                                    🗑️
-                                </button>
-                                <button class="meal-action-btn select-meal ${isWaiting ? 'active' : ''}" 
-                                        onclick="selectPlaceForManualItem(${item.id})" title="Chọn quán">
-                                    ${isWaiting ? '⏳' : '✔'}
-                                </button>
-                            </div>
-                            ` : ''}
-                        </div>
-                        <div class="empty-slot-content">
-                            <div class="icon">🪧</div>
-                            <div class="text">${isWaiting ? 'Đang chờ chọn quán...' : 'Chưa có quán'}</div>
-                            ${!editMode ? '<div style="font-size: 12px; margin-top: 8px; color: #999;">Bật chế độ chỉnh sửa để thêm quán</div>' : '<div style="font-size: 12px; margin-top: 8px; color: #999;">Nhấn nút ✔ để chọn quán từ bản đồ</div>'}
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else {
-            hasPlaces = true;
-            const place = item.place;
-            const cardClickEvent = editMode ? '' : `onclick="flyToPlace(${place.lat}, ${place.lon})"`;
-            const cardCursor = editMode ? 'cursor: default;' : 'cursor: pointer;';
-            
-            html += `
-                <div class="meal-item" data-meal-id="${item.id}" draggable="${editMode}">
-                    <div class="time-marker">
-                        ${editMode ? 
-                            `<div style="display: flex; gap: 5px; align-items: center;">
-                                <input type="number" min="0" max="23" value="${item.time.split(':')[0]}" 
-                                    class="time-input-hour time-input-hour-manual" data-item-id="${item.id}"
-                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
-                                <span style="font-weight: bold; color: #FF6B35;">:</span>
-                                <input type="number" min="0" max="59" value="${item.time.split(':')[1]}" 
-                                    class="time-input-minute time-input-minute-manual" data-item-id="${item.id}"
-                                    style="width: 48px; padding: 6px 4px; border: 2px solid #FFE5D9; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
-                            </div>` :
-                            `<div class="time-badge">${item.time}</div>`
-                        }
-                    </div>
-                    <div class="time-dot"></div>
-                    <div class="meal-card-vertical ${editMode ? 'edit-mode' : ''}" ${cardClickEvent} style="${cardCursor}">
-                        <div class="meal-title-vertical">
-                            <div class="meal-title-left">
-                                ${editMode ? `
-                                    <select onchange="updateManualItemIcon(${item.id}, this.value)" style="border: none; background: transparent; font-size: 22px; cursor: pointer; outline: none; padding: 0;" onclick="event.stopPropagation();">
-                                        ${iconOptions.map(ico => `<option value="${ico}" ${ico === icon ? 'selected' : ''}>${ico}</option>`).join('')}
-                                    </select>
-                                ` : `<span style="font-size: 22px;">${icon}</span>`}
-                                ${editMode ? 
-                                    `<input type="text" value="${item.title}" onchange="updateManualItemTitle(${item.id}, this.value)" 
-                                        class="time-input-inline" onclick="event.stopPropagation();" placeholder="Nhập tên bữa ăn">` :
-                                    `<span>${item.title}</span>`
-                                }
-                            </div>
-                            ${editMode ? `
-                            <div class="meal-actions">
-                                <button class="meal-action-btn delete-meal" onclick="event.stopPropagation(); deleteManualItem(${item.id})" title="Xóa quán">
-                                    🗑️
-                                </button>
-                                <button class="meal-action-btn select-meal ${isWaiting ? 'active' : ''}" 
-                                        onclick="event.stopPropagation(); selectPlaceForManualItem(${item.id})" title="Chọn quán mới">
-                                    ${isWaiting ? '⏳' : '✔'}
-                                </button>
-                            </div>
-                            ` : ''}
-                        </div>
-                        <div class="place-info-vertical">
-                            <div class="place-name-vertical">${place.ten_quan}</div>
-                            <div class="place-address-vertical">📍 ${place.dia_chi}</div>
-                            <div class="place-meta-vertical">
-                                <div class="meta-item-vertical">
-                                    <span>⭐</span>
-                                    <strong>${place.rating ? place.rating.toFixed(1) : 'N/A'}</strong>
-                                </div>
-                                ${place.gia_trung_binh ? `
-                                    <div class="meta-item-vertical">
-                                        <span>💰</span>
-                                        <strong>${place.gia_trung_binh}</strong>
-                                    </div>
-                                ` : ''}
-                            </div>
-                            ${place.khau_vi ? `
-                                <div style="margin-top: 8px; padding: 6px 10px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
-                                    👅 Khẩu vị: ${place.khau_vi}
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-    });
-    
-    html += '</div>';
-    contentDiv.innerHTML = html;
-    
-    if (editMode) {
-        setupManualDragAndDrop();
-        setTimeout(() => setupManualModeTimeInputs(), 100);
-    }
-    
-    // Vẽ đường đi khi không ở edit mode
-    if (!editMode && hasPlaces) {
-        setTimeout(() => drawManualRouteOnMap(), 500);
-    } else {
-        clearRoutes();
-    }
-    
-    // Kiểm tra text có dài hơn khung không
-    setTimeout(() => {
-        const titleContainer = document.querySelector('.schedule-title > span:last-child');
-        if (titleContainer && !titleContainer.hasAttribute('contenteditable')) {
-            const textSpan = titleContainer.querySelector('span');
-            if (textSpan && textSpan.scrollWidth > titleContainer.clientWidth) {
-                titleContainer.classList.add('overflow');
-            } else {
-                titleContainer.classList.remove('overflow');
-            }
-        }
-    }, 100);
-}
-
-function updateManualPlanName(newName) {
-    if (!currentManualPlanId) return;
-    
-    const cleanName = newName.trim() || 'Kế hoạch';
-    
-    const plan = manualPlans.find(p => p.id === currentManualPlanId);
-    if (plan) {
-        // 🔥 Nếu tên không đổi thì KHÔNG làm gì
-        if (plan.name === cleanName) return;
-        
-        plan.name = cleanName;
-        localStorage.setItem('manual_food_plans', JSON.stringify(manualPlans));
-        displayManualPlansList();
-    }
-}
-
 function updateAutoPlanName(newName) {
     if (!currentPlanId) return;
     
@@ -4865,323 +4185,158 @@ function updateAutoPlanName(newName) {
     }
 }
 
-function addManualMealSlot() {
-    const lastTime = manualPlan.length > 0 
-        ? manualPlan[manualPlan.length - 1].time 
-        : '07:00';
-    
-    const newTime = addMinutesToTime(lastTime, 60);
-    
-    manualPlan.push({
-        id: Date.now(),
-        place: null,
-        time: newTime,
-        title: 'Bữa ăn mới'
-    });
-    
-    displayManualPlanTimeline();
-    
-    setTimeout(() => {
-        const timeline = document.querySelector('.timeline-container');
-        if (timeline) {
-            timeline.scrollTop = timeline.scrollHeight;
-        }
-    }, 100);
-}
-
-function deleteManualItem(itemId) {
-    if (!confirm('Bạn có chắc muốn xóa bữa ăn này?')) return;
-    
-    manualPlan = manualPlan.filter(item => item.id !== itemId);
-    
-    if (waitingForPlaceSelection === itemId) {
-        waitingForPlaceSelection = null;
-    }
-    
-    displayManualPlanTimeline();
-}
-
-function updateManualItemTime(itemId, newTime) {
-    const item = manualPlan.find(i => i.id === itemId);
-    if (item) {
-        item.time = newTime;
-    }
-}
-
-function updateManualItemTitle(itemId, newTitle) {
-    const item = manualPlan.find(i => i.id === itemId);
-    if (item) {
-        item.title = newTitle;
-    }
-}
-
-function updateManualItemIcon(itemId, newIcon) {
-    const item = manualPlan.find(i => i.id === itemId);
-    if (item) {
-        item.icon = newIcon;
-        displayManualPlanTimeline();
-    }
-}
-
-function selectPlaceForManualItem(itemId) {
-    if (waitingForPlaceSelection === itemId) {
-        waitingForPlaceSelection = null;
-    } else {
-        waitingForPlaceSelection = itemId;
-    }
-    displayManualPlanTimeline();
-}
-
-function resetManualPlan() {
-    if (!confirm('Bạn có chắc muốn reset kế hoạch này?')) return;
-    
-    manualPlan = [];
-    waitingForPlaceSelection = null;
-    displayManualPlanTimeline();
-}
-
-function saveManualPlanChanges() {
-    if (!currentManualPlanId) return;
-
-    // Cập nhật time và title từ DOM
-    const mealItems = document.querySelectorAll('.meal-item');
-    mealItems.forEach(item => {
-        const itemId = parseInt(item.dataset.mealId);
-        const timeInputs = item.querySelectorAll('.time-input-hour-manual, .time-input-minute-manual');
-        
-        if (timeInputs.length === 2) {
-            const manualItem = manualPlan.find(i => i.id === itemId);
-            if (manualItem) {
-                const hour = timeInputs[0].value.padStart(2, '0');
-                const minute = timeInputs[1].value.padStart(2, '0');
-                manualItem.time = `${hour}:${minute}`;
-            }
-        }
-        
-        const titleInput = item.querySelector('.time-input-inline');
-        if (titleInput) {
-            const manualItem = manualPlan.find(i => i.id === itemId);
-            if (manualItem) {
-                manualItem.title = titleInput.value;
-            }
-        }
-    });
-
-    const plan = manualPlans.find(p => p.id === currentManualPlanId);
-    if (plan) {
-        plan.items = [...manualPlan];
-        plan.updatedAt = new Date().toISOString();
-        localStorage.setItem('manual_food_plans', JSON.stringify(manualPlans));
-        
-        // Thoát edit mode sau khi lưu
-        if (isManualEditMode) {
-            toggleManualEditMode();
-        }
-        
-        alert('✅ Đã lưu kế hoạch thành công!');
-        displayManualPlansList();
-    }
-}
-
-// ========== MANUAL MODE: SEARCH PLACES ==========
-async function searchPlacesManual(query) {
-    const resultsDiv = document.getElementById('searchResultsManual');
-    
-    try {
-        const response = await fetch(`/api/places?query=${encodeURIComponent(query)}`);
-        const places = await response.json();
-        
-        if (places.length === 0) {
-            resultsDiv.innerHTML = '<p style="color: #999; font-size: 13px; padding: 15px; text-align: center;">Không tìm thấy quán</p>';
-            return;
-        }
-        
-        let html = '';
-        places.slice(0, 10).forEach(place => {
-            html += `
-                <div class="place-result-card" onclick='addToManualPlan(${JSON.stringify(place).replace(/'/g, "&#39;")})'>
-                    <div class="place-result-name">${place.ten_quan}</div>
-                    <div class="place-result-info">📍 ${place.dia_chi}</div>
-                    <div class="place-result-info" style="margin-top: 4px;">⭐ ${place.rating || 'N/A'} ${place.gia_trung_binh ? ' • 💰 ' + place.gia_trung_binh : ''}</div>
-                </div>
-            `;
-        });
-        
-        resultsDiv.innerHTML = html;
-        
-    } catch (error) {
-        console.error('Search error:', error);
-        resultsDiv.innerHTML = '<p style="color: #e74c3c; font-size: 13px; padding: 15px; text-align: center;">Lỗi tìm kiếm</p>';
-    }
-}
-
-// ========== MANUAL MODE: ADD TO PLAN ==========
-function addToManualPlan(place) {
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    
-    const planItem = {
-        id: Date.now(),
-        place: place,
-        time: timeStr,
-        note: ''
-    };
-    
-    manualPlan.push(planItem);
-    displayManualPlan();
-    
-    document.getElementById('searchPlaceManual').value = '';
-    document.getElementById('searchResultsManual').innerHTML = '';
-}
-
-// ========== MANUAL MODE: DISPLAY PLAN ==========
-function displayManualPlan() {
-    const timelineDiv = document.getElementById('manualTimeline');
-    
-    if (manualPlan.length === 0) {
-        timelineDiv.innerHTML = `
-            <div class="empty-manual-plan">
-                <p>📝 Chưa có quán nào</p>
-                <p style="font-size: 13px; margin-top: 8px;">Hãy tìm và thêm quán vào kế hoạch!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '';
-    
-    manualPlan.forEach((item, index) => {
-        html += `
-            <div class="manual-meal-item">
-                <div class="manual-meal-header">
-                    <input type="time" value="${item.time}" onchange="updateManualTime(${item.id}, this.value)">
-                    <button class="remove-meal-btn" onclick="removeFromManualPlan(${item.id})">×</button>
-                </div>
-                <div class="manual-meal-place">
-                    <div style="font-weight: 600; color: #FF6B35; margin-bottom: 4px; font-size: 14px;">${item.place.ten_quan}</div>
-                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">📍 ${item.place.dia_chi}</div>
-                    <div style="font-size: 12px; color: #666;">⭐ ${item.place.rating || 'N/A'}</div>
-                </div>
-                <div class="manual-meal-note">
-                    <input type="text" placeholder="Thêm ghi chú (vd: Ăn nhẹ, check-in...)" value="${item.note}" 
-                           onchange="updateManualNote(${item.id}, this.value)">
-                </div>
-            </div>
-        `;
-    });
-    
-    html += '<button class="save-manual-plan-btn" onclick="saveManualPlan()">💾 Lưu kế hoạch</button>';
-    
-    timelineDiv.innerHTML = html;
-}
-
-function updateManualTime(id, newTime) {
-    const item = manualPlan.find(p => p.id === id);
-    if (item) {
-        item.time = newTime;
-    }
-}
-
-function updateManualNote(id, newNote) {
-    const item = manualPlan.find(p => p.id === id);
-    if (item) {
-        item.note = newNote;
-    }
-}
-
-function removeFromManualPlan(id) {
-    manualPlan = manualPlan.filter(p => p.id !== id);
-    displayManualPlan();
-}
-
-function saveManualPlan() {
-    if (manualPlan.length === 0) {
-        alert('⚠️ Chưa có quán nào trong kế hoạch!');
-        return;
-    }
-    
-    manualPlan.sort((a, b) => a.time.localeCompare(b.time));
-    
-    const planName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
-    
-    if (planName) {
-        const savedPlans = JSON.parse(localStorage.getItem('manual_food_plans') || '[]');
-        savedPlans.unshift({
-            id: Date.now().toString(),
-            name: planName,
-            plan: manualPlan,
-            savedAt: new Date().toISOString()
-        });
-        
-        if (savedPlans.length > 10) {
-            savedPlans.length = 10;
-        }
-        
-        localStorage.setItem('manual_food_plans', JSON.stringify(savedPlans));
-        
-        alert('✅ Đã lưu kế hoạch thành công!');
-        
-        manualPlan = [];
-        displayManualPlan();
-    }
-}
-
-// ========== FLY TO PLACE ON MAP ==========
-function flyToPlace(lat, lon) {
+function flyToPlace(lat, lon, placeId, placeName) {
     if (typeof map !== 'undefined') {
         map.setView([lat, lon], 17, { animate: true });
         
-        setTimeout(() => {
-            map.eachLayer((layer) => {
-                if (layer instanceof L.Marker) {
-                    const markerLatLng = layer.getLatLng();
-                    if (Math.abs(markerLatLng.lat - lat) < 0.0001 && 
-                        Math.abs(markerLatLng.lng - lon) < 0.0001) {
-                        layer.fire('click');
+        function waitForMapReady() {
+            return new Promise((resolve) => {
+                if (!map._animatingZoom) {
+                    resolve();
+                    return;
+                }
+                
+                map.once('moveend', () => {
+                    setTimeout(resolve, 1500);
+                });
+            });
+        }
+        
+        function tryClick(attempt) {
+            let targetMarker = null;
+            
+            // 🔥 ƯU TIÊN 1: TÌM THEO placeId (chính xác nhất)
+            if (placeId && typeof window.placeMarkersById !== 'undefined') {
+                targetMarker = window.placeMarkersById[placeId];
+                if (targetMarker) {
+                    console.log('✅ Tìm thấy marker theo ID:', placeId);
+                }
+            }
+            
+            // 🔥 ƯU TIÊN 2: TÌM THEO TÊN QUÁN (nếu không có ID)
+            if (!targetMarker && placeName) {
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Marker) {
+                        const data = layer.options.placeData || layer.placeData;
+                        if (data && data.ten_quan === placeName) {
+                            targetMarker = layer;
+                            console.log('✅ Tìm thấy marker theo tên:', placeName);
+                            return;
+                        }
+                    }
+                });
+            }
+            
+            // 🔥 ƯU TIÊN 3: TÌM THEO TỌA ĐỘ (fallback - ít chính xác nhất)
+            if (!targetMarker) {
+                let minDistance = Infinity;
+                
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Marker) {
+                        const markerLatLng = layer.getLatLng();
+                        
+                        const dLat = markerLatLng.lat - lat;
+                        const dLng = markerLatLng.lng - lon;
+                        const distance = Math.sqrt(dLat * dLat + dLng * dLng);
+                        
+                        // 🔥 GIảM NGƯỠNG: 0.0005 → 0.00001 (chỉ chấp nhận marker RẤT GẦN)
+                        if (distance < 0.00001 && distance < minDistance) {
+                            minDistance = distance;
+                            targetMarker = layer;
+                        }
+                    }
+                });
+                
+                if (targetMarker) {
+                    console.log('✅ Tìm thấy marker theo tọa độ, khoảng cách:', minDistance.toFixed(8));
+                }
+            }
+            
+            // 🔥 NẾU TÌM THẤY MARKER → CLICK
+            if (targetMarker) {
+                let placeData = targetMarker.options.placeData || targetMarker.placeData;
+                
+                if (placeData) {
+                    console.log('✅ Marker có dữ liệu:', placeData.ten_quan);
+                } else {
+                    console.warn('⚠️ Marker không có placeData → Tìm trong allPlacesData');
+                    
+                    // Tìm trong allPlacesData
+                    if (typeof allPlacesData !== 'undefined' && allPlacesData.length > 0) {
+                        let foundPlace = null;
+                        
+                        if (placeId) {
+                            foundPlace = allPlacesData.find(p => p.data_id === placeId);
+                        }
+                        
+                        if (!foundPlace && placeName) {
+                            foundPlace = allPlacesData.find(p => p.ten_quan === placeName);
+                        }
+                        
+                        if (!foundPlace) {
+                            foundPlace = allPlacesData.find(p => {
+                                const pLat = parseFloat(p.lat);
+                                const pLon = parseFloat(p.lon);
+                                const dist = Math.sqrt(
+                                    Math.pow(pLat - lat, 2) + 
+                                    Math.pow(pLon - lon, 2)
+                                );
+                                return dist < 0.00001;
+                            });
+                        }
+                        
+                        if (foundPlace) {
+                            console.log('✅ Tìm thấy place trong allPlacesData:', foundPlace.ten_quan);
+                            targetMarker.options.placeData = foundPlace;
+                            targetMarker.placeData = foundPlace;
+                            placeData = foundPlace;
+                        }
                     }
                 }
-            });
-        }, 500);
+                
+                // ✅ CLICK VÀO MARKER **CHỈ 1 LẦN**
+                console.log('🔥 Trigger click vào marker');
+                targetMarker.fire('click');  // ✅ CHỈ CLICK 1 LẦN
+                
+                return true;
+            }
+            
+            // 🔥 NẾU CHƯA TÌM THẤY → RETRY
+            if (attempt < 25) {
+                console.log(`⏳ Lần thử ${attempt + 1}/25 - Chưa tìm thấy marker`);
+                setTimeout(() => tryClick(attempt + 1), 1000);
+            } else {
+                console.error(`❌ Không tìm thấy marker sau 25 lần thử`);
+                
+                if (typeof loadMarkersInViewport === 'function') {
+                    console.log('🔄 Thử reload markers...');
+                    loadMarkersInViewport();
+                    setTimeout(() => tryClick(0), 2000);
+                }
+            }
+            
+            return false;
+        }
+        
+        waitForMapReady().then(() => {
+            tryClick(0);
+        });
     }
 }
 
 // ========== EXPOSE FUNCTIONS TO WINDOW ==========
 window.foodPlannerState = {
     isEditMode: () => {
-        return isEditMode || isManualEditMode;
+        return isEditMode;
     },
     isWaitingForPlaceSelection: () => {
         return waitingForPlaceSelection !== null;
     },
     selectPlace: (place) => {
         if (waitingForPlaceSelection) {
-            if (currentTab === 'manual') {
-                // MANUAL MODE
-                const item = manualPlan.find(i => i.id === waitingForPlaceSelection);
-                if (item) {
-                    item.place = {
-                        ten_quan: place.ten_quan,
-                        dia_chi: place.dia_chi,
-                        rating: place.rating || 0,
-                        lat: place.lat,
-                        lon: place.lon,
-                        data_id: place.data_id,
-                        hinh_anh: place.hinh_anh || '',
-                        gia_trung_binh: place.gia_trung_binh || '',
-                        khau_vi: place.khau_vi || ''
-                    };
-                    waitingForPlaceSelection = null;
-                    displayManualPlanTimeline();
-                    return true;
-                } else {
-                    console.error("❌ Không tìm thấy item trong manualPlan");
-                    return false;
-                }
-            } else {
-                // AUTO MODE
-                const success = replacePlaceInMeal(place);
-                return success;
-            }
+            // AUTO MODE
+            const success = replacePlaceInMeal(place);
+            return success;
         }
         return false;
     }
@@ -5218,111 +4373,70 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!input) return;
         
         let lastValue = parseInt(input.value) || 0;
-        let isSpinnerClick = false; // 🔥 BIẾN ĐÁNH DẤU
         
-        // 🔥 BẮT SPINNER CLICK - DÙNG INPUT EVENT
-        let spinnerTimeout;
-        input.addEventListener('input', function(e) {
-            // Chỉ xử lý khi có thay đổi từ spinner
-            if (document.activeElement === this) {
-                clearTimeout(spinnerTimeout);
-                spinnerTimeout = setTimeout(() => {
-                    let val = parseInt(this.value);
-                    
-                    if (isNaN(val)) {
-                        this.value = '00';
-                        lastValue = 0;
-                        return;
-                    }
-                    
-                    // 🔥 CYCLE LOGIC
-                    if (val > maxValue) {
-                        this.value = 0;
-                        lastValue = 0;
-                    } else if (val < 0) {
-                        this.value = maxValue;
-                        lastValue = maxValue;
-                    } else {
-                        lastValue = val;
-                    }
-                    
-                    this.value = this.value.toString().padStart(2, '0');
-                }, 50);
-            }
+        // 🔥 CHO PHÉP XÓA TỰ DO KHI FOCUS
+        input.addEventListener('focus', function() {
+            this.select(); // Select all để dễ gõ đè
         });
         
-        // Theo dõi mọi thay đổi
-        const observer = new MutationObserver(() => {
-            if (!isSpinnerClick) checkAndCycle();
-        });
-        
-        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
-        
-        input.addEventListener('input', function() {
-            if (!isSpinnerClick) checkAndCycle();
-        });
-        input.addEventListener('change', checkAndCycle);
-        
-        function checkAndCycle() {
-            let val = parseInt(input.value);
-            
-            if (isNaN(val)) {
-                input.value = '00';
+        // 🔥 CHỈ FORMAT KHI BLUR (CLICK RA NGOÀI)
+        input.addEventListener('blur', function() {
+            if (this.value === '' || this.value === null || this.value.trim() === '') {
+                this.value = '00';
                 lastValue = 0;
                 return;
             }
             
-            if (val > maxValue) {
-                input.value = 0;
+            let val = parseInt(this.value);
+            
+            if (isNaN(val)) {
+                this.value = '00';
                 lastValue = 0;
-            } else if (val < 0) {
-                input.value = maxValue;
-                lastValue = maxValue;
-            } else {
-                lastValue = val;
+                return;
             }
-        }
-        
-        // Xử lý blur để format
-        input.addEventListener('blur', function() {
-            let val = parseInt(this.value) || 0;
-            if (val > maxValue) val = 0;
-            if (val < 0) val = maxValue;
+            
+            if (val > maxValue) val = maxValue;
+            if (val < 0) val = 0;
+            
             this.value = val.toString().padStart(2, '0');
             lastValue = val;
         });
         
-        // Xử lý phím mũi tên
+        // 🔥 XỬ LÝ PHÍM MŨI TÊN + CHO PHÉP BACKSPACE/DELETE
         input.addEventListener('keydown', function(e) {
-            const currentValue = parseInt(this.value) || 0;
-            
             if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
-                this.value = this.value.toString().padStart(2, '0');
-                lastValue = parseInt(this.value);
+                let val = parseInt(this.value) || 0;
+                val = val >= maxValue ? 0 : val + 1;
+                this.value = val.toString().padStart(2, '0');
+                lastValue = val;
             } else if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
-                this.value = this.value.toString().padStart(2, '0');
-                lastValue = parseInt(this.value);
+                let val = parseInt(this.value) || 0;
+                val = val <= 0 ? maxValue : val - 1;
+                this.value = val.toString().padStart(2, '0');
+                lastValue = val;
             }
+            // 🔥 CHO PHÉP XÓA BẰNG BACKSPACE/DELETE - KHÔNG BLOCK
+            // else if (e.key === 'Backspace' || e.key === 'Delete') {
+            //     // Không làm gì, cho phép xóa tự nhiên
+            // }
         });
         
-        // Xử lý scroll chuột
+        // 🔥 SCROLL CHUỘT
         input.addEventListener('wheel', function(e) {
             e.preventDefault();
-            const currentValue = parseInt(this.value) || 0;
+            let val = parseInt(this.value) || 0;
             
             if (e.deltaY < 0) {
-                this.value = currentValue >= maxValue ? 0 : currentValue + 1;
+                val = val >= maxValue ? 0 : val + 1;
             } else {
-                this.value = currentValue <= 0 ? maxValue : currentValue - 1;
+                val = val <= 0 ? maxValue : val - 1;
             }
             
-            this.value = this.value.toString().padStart(2, '0');
-            lastValue = parseInt(this.value);
-        });
+            this.value = val.toString().padStart(2, '0');
+            lastValue = val;
+        }, { passive: false });
     }
     
     // Áp dụng cho tất cả input
@@ -5338,8 +4452,24 @@ function setupEditModeTimeInputs() {
         const maxValue = isHour ? 23 : 59;
         
         // Xử lý wheel scroll
+        let scrollTimeout = null;
         input.addEventListener('wheel', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            // 🔥 CHẶN SCROLL PANEL KHI ĐANG LĂN
+            const panel = document.querySelector('.panel-content');
+            if (panel) {
+                panel.style.overflow = 'hidden';
+                
+                // Bật lại sau 300ms
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    panel.style.overflow = '';
+                }, 300);
+            }
+            
             let val = parseInt(this.value) || 0;
             
             if (e.deltaY < 0) {
@@ -5350,7 +4480,9 @@ function setupEditModeTimeInputs() {
             
             this.value = val.toString().padStart(2, '0');
             updateTimeFromInputs(this);
-        }, { passive: false });
+            
+            return false;
+        }, { passive: false, capture: true });
         
         // Xử lý arrow keys
         input.addEventListener('keydown', function(e) {
@@ -5466,130 +4598,6 @@ function updateTimeFromInputs(input) {
                     }, 1500);
                 }
             }, 100);
-        }
-    }
-}
-// ========== SETUP CYCLIC TIME INPUTS FOR MANUAL MODE ==========
-function setupManualModeTimeInputs() {
-    document.querySelectorAll('.time-input-hour-manual, .time-input-minute-manual').forEach(input => {
-        const isHour = input.classList.contains('time-input-hour-manual');
-        const maxValue = isHour ? 23 : 59;
-        
-        input.addEventListener('wheel', function(e) {
-            e.preventDefault();
-            let val = parseInt(this.value) || 0;
-            
-            if (e.deltaY < 0) {
-                val = val >= maxValue ? 0 : val + 1;
-            } else {
-                val = val <= 0 ? maxValue : val - 1;
-            }
-            
-            this.value = val.toString().padStart(2, '0');
-            updateManualTimeFromInputs(this);
-        }, { passive: false });
-        
-        input.addEventListener('keydown', function(e) {
-            let val = parseInt(this.value) || 0;
-            
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                val = val >= maxValue ? 0 : val + 1;
-                this.value = val.toString().padStart(2, '0');
-                updateManualTimeFromInputs(this);
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                val = val <= 0 ? maxValue : val - 1;
-                this.value = val.toString().padStart(2, '0');
-                updateManualTimeFromInputs(this);
-            }
-        });
-        
-        input.addEventListener('blur', function() {
-            let val = parseInt(this.value) || 0;
-            if (val > maxValue) val = maxValue;
-            if (val < 0) val = 0;
-            this.value = val.toString().padStart(2, '0');
-            updateManualTimeFromInputs(this);
-        });
-        
-        input.addEventListener('change', function() {
-            let val = parseInt(this.value) || 0;
-            if (val > maxValue) val = 0;
-            if (val < 0) val = maxValue;
-            this.value = val.toString().padStart(2, '0');
-            updateManualTimeFromInputs(this);
-        });
-    });
-}
-
-function updateManualTimeFromInputs(input) {
-    const itemId = parseInt(input.dataset.itemId);
-    const parent = input.closest('.time-marker');
-    if (!parent) return;
-    
-    const hourInput = parent.querySelector('.time-input-hour-manual');
-    const minuteInput = parent.querySelector('.time-input-minute-manual');
-    
-    if (hourInput && minuteInput) {
-        const hour = hourInput.value.padStart(2, '0');
-        const minute = minuteInput.value.padStart(2, '0');
-        const newTime = `${hour}:${minute}`;
-        
-        const item = manualPlan.find(i => i.id === itemId);
-        if (item) {
-            // Lưu vị trí cũ
-            const oldOrder = [...manualPlan];
-            const oldIndex = oldOrder.findIndex(i => i.id === itemId);
-            
-            // Cập nhật time
-            item.time = newTime;
-            
-            // Cập nhật title nếu có
-            const mealCard = document.querySelector(`[data-meal-id="${itemId}"]`);
-            if (mealCard) {
-                const titleInput = mealCard.querySelector('input[onchange*="updateManualItemTitle"]');
-                if (titleInput && titleInput.value) {
-                    item.title = titleInput.value;
-                }
-            }
-            
-            // Sort lại theo thời gian
-            manualPlan.sort((a, b) => a.time.localeCompare(b.time));
-            
-            const newIndex = manualPlan.findIndex(i => i.id === itemId);
-            
-            // Render lại
-            displayManualPlanTimeline();
-            
-            // Highlight card vừa di chuyển
-            if (oldIndex !== newIndex) {
-                setTimeout(() => {
-                    const movedCard = document.querySelector(`[data-meal-id="${itemId}"] .meal-card-vertical`);
-                    if (movedCard) {
-                        movedCard.classList.add('repositioned');
-                        
-                        const direction = newIndex < oldIndex ? '⬆️' : '⬇️';
-                        const indicator = document.createElement('div');
-                        indicator.className = 'reposition-indicator';
-                        indicator.textContent = direction;
-                        movedCard.style.position = 'relative';
-                        movedCard.appendChild(indicator);
-                        
-                        const mealItem = document.querySelector(`[data-meal-id="${itemId}"]`);
-                        if (mealItem) {
-                            mealItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                        
-                        setTimeout(() => {
-                            movedCard.classList.remove('repositioned');
-                            if (indicator.parentNode) {
-                                indicator.remove();
-                            }
-                        }, 1500);
-                    }
-                }, 100);
-            }
         }
     }
 }
