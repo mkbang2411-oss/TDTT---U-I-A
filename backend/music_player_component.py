@@ -99,7 +99,7 @@ def get_music_player_html() -> str:
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 999;
+        z-index: 99999999;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border: 2px solid rgba(255, 255, 255, 0.6);
         backdrop-filter: blur(10px);
@@ -224,7 +224,7 @@ def get_music_player_html() -> str:
             0 24px 60px rgba(203, 92, 37, 0.18),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
         overflow: hidden;
-        z-index: 1000000;
+        z-index: 100000000;
         opacity: 0;
         transform: translateY(24px) scale(0.95);
         pointer-events: none;

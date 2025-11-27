@@ -143,8 +143,16 @@ def serve_index():
 
     music_player_html = get_music_player_html()
     
-    # Inject cả 2 vào trước </body>
-    html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}\n{music_player_html}</body>")
+    # Inject vào div#insert-chatbot-and-map thay vì </body>
+    insert_point = '<div id="insert-chatbot-and-map">'
+    if insert_point in html_content:
+        html_content = html_content.replace(
+            insert_point,
+            f'{insert_point}\n{chatbot_html}\n{food_planner_html}\n{music_player_html}'
+        )
+    else:
+        # Fallback: inject trước </body> nếu không tìm thấy
+        html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}\n{music_player_html}</body>")
     
     return html_content
 
