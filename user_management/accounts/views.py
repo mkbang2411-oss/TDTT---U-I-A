@@ -16,6 +16,8 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
 from .models import FriendRequest, Friendship
+from datetime import date, timedelta
+from django.views.decorators.csrf import csrf_exempt
 
 # ------------------------LẤY DỮ LIỆU REVIEW--------------------------
 
@@ -862,3 +864,123 @@ def reset_puzzle_progress(request, map_name):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
+# ===============================
+# 🔥 STREAK SYSTEM APIs
+# ===============================
+
+@login_required
+@require_http_methods(["GET", "POST"])
+@csrf_exempt  # ✅ THÊM DECORATOR NÀY
+
+def streak_handler(request):
+    user = request.user
+    
+    if request.method == 'GET':
+        try:
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            today = date.today()
+            
+            print(f"🔍 GET Streak - User: {user.username}")
+            print(f"   Current streak: {profile.current_streak}")
+            print(f"   Last update: {profile.last_streak_date}")
+            print(f"   Today: {today}")
+            
+            if profile.last_streak_date:
+                days_diff = (today - profile.last_streak_date).days
+                print(f"   Days diff: {days_diff}")
+                
+                if days_diff > 1:
+                    profile.current_streak = 0
+                    profile.streak_frozen = True
+                    profile.save()
+                    print("   ❄️ STREAK FROZEN")
+            
+            return JsonResponse({
+                'status': 'success',
+                'streak': profile.current_streak,
+                'longest_streak': profile.longest_streak,
+                'is_frozen': profile.streak_frozen,
+                'last_update': profile.last_streak_date.isoformat() if profile.last_streak_date else None
+            })
+            
+        except Exception as e:
+            print(f"❌ Error GET streak: {e}")
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+    
+    elif request.method == 'POST':
+        try:
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            today = date.today()
+            
+            print(f"\n🔥 POST Streak - User: {user.username}")
+            print(f"   Current streak: {profile.current_streak}")
+            print(f"   Last update: {profile.last_streak_date}")
+            print(f"   Today: {today}")
+            
+            # Nếu đã update hôm nay rồi thì không tăng nữa
+            if profile.last_streak_date == today:
+                print("   ⭐ Already updated today - SKIP")
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Already updated today',
+                    'streak': profile.current_streak,
+                    'longest_streak': profile.longest_streak,
+                    'increased': False
+                })
+            
+            # Kiểm tra liên tiếp
+            if profile.last_streak_date:
+                days_diff = (today - profile.last_streak_date).days
+                print(f"   Days diff: {days_diff}")
+                
+                if days_diff == 1:
+                    # Tăng streak
+                    profile.current_streak += 1
+                    profile.streak_frozen = False
+                    print(f"   ✅ INCREASED to {profile.current_streak}")
+                elif days_diff > 1:
+                    # Mất streak, reset về 1
+                    profile.current_streak = 1
+                    profile.streak_frozen = False
+                    print(f"   🔄 RESET to 1 (gap of {days_diff} days)")
+            else:
+                # Lần đầu tiên
+                profile.current_streak = 1
+                profile.streak_frozen = False
+                print("   🆕 FIRST TIME - Set to 1")
+            
+            # Cập nhật longest streak
+            if profile.current_streak > profile.longest_streak:
+                profile.longest_streak = profile.current_streak
+            
+            profile.last_streak_date = today
+            profile.save()
+            
+            print(f"   💾 SAVED: streak={profile.current_streak}, date={profile.last_streak_date}")
+            
+            # Kiểm tra milestone
+            milestone = None
+            if profile.current_streak in [3, 7, 14, 30, 50, 100, 365]:
+                milestone = profile.current_streak
+                print(f"   🎉 MILESTONE: {milestone} days!")
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Streak updated',
+                'streak': profile.current_streak,
+                'longest_streak': profile.longest_streak,
+                'increased': True,
+                'milestone': milestone
+            })
+            
+        except Exception as e:
+            print(f"❌ Error POST streak: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)

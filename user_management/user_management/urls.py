@@ -22,6 +22,8 @@ urlpatterns = [
     path('api/accounts/', include('accounts.urls')),  # ← QUAN TRỌNG!
     path('api/reviews/<str:place_id>', account_views.reviews_api, name='reviews_api'),
 
+    path('api/streak/', account_views.streak_handler, name='streak_handler_direct'),
+
     path('api/check-auth/', account_views.check_auth_status, name='check_auth_status'),
     path('api/save-chat/', account_views.save_chat_message, name='save_chat_message'),
     path('api/load-chat/', account_views.load_chat_history, name='load_chat_history'),

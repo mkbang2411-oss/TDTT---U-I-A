@@ -1,6 +1,209 @@
 import streamlit.components.v1 as components
+import pandas as pd
+import json
 
-def get_chatbot_html(gemini_api_key):
+def extract_menu_from_csv(csv_path: str = "Data_with_flavor.csv"):
+    """Trích xuất món ăn THÔNG MINH - Giữ dấu tiếng Việt"""
+    try:
+        df = pd.read_csv(csv_path, encoding='utf-8')
+        
+        # HÀM HỖ TRỢ: Bỏ dấu tiếng Việt
+        def remove_accents(text):
+            if not text:
+                return ''
+            import unicodedata
+            nfd = unicodedata.normalize('NFD', text)
+            return ''.join([c for c in nfd if not unicodedata.combining(c)])
+        
+        # ===== TỪ ĐIỂN TẠM (CÓ DẤU TIẾNG VIỆT) =====
+        TEMP_DICTIONARY = [
+            # Món Việt - Phở
+            'phở', 'phở bò', 'phở gà', 'phở tái', 'phở chín', 
+            'phở sốt vang', 'phở cuốn', 'phở xào', 'phở khô',
+            
+            # Món Việt - Bún
+            'bún', 'bún bò', 'bún bò huế', 'bún chả', 'bún đậu', 
+            'bún riêu', 'bún thịt nướng', 'bún mắm', 'bún ốc', 
+            'bún cá', 'bún mọc', 'bún măng vịt', 'bún bò nam bộ', 'bún sườn',
+            'bún giò heo', 'bún nem', 'bún xào',
+            
+            # Món Việt - Cơm
+            'cơm', 'cơm tấm', 'cơm gà', 'cơm chiên', 'cơm sườn', 
+            'cơm bì', 'cơm chả', 'cơm niêu', 'cơm rang', 'cơm hến',
+            'cơm gà xối mỡ', 'cơm gà teriyaki', 'cơm thịt kho',
+            'cơm canh', 'cơm chay', 'cơm văn phòng',
+            
+            # Món Việt - Bánh
+            'bánh', 'bánh mì', 'bánh mỳ', 'bánh xèo', 'bánh cuốn',
+            'bánh bèo', 'bánh bao', 'bánh bột lọc', 'bánh canh',
+            'bánh đa cua', 'bánh tráng', 'bánh flan', 'bánh bông lan',
+            'bánh giò', 'bánh chưng', 'bánh tét', 'bánh ít',
+            'bánh khọt', 'bánh tôm', 'bánh ướt', 'bánh ép',
+            
+            # Món Việt - Mì/Miến/Hủ tiếu
+            'mì', 'mì xào', 'mì quảng', 'mì vằn thắn', 'mì ý',
+            'miến', 'miến gà', 'miến lươn', 'miến xào', 'mỳ cay', 'mì cay',
+            'hủ tiếu', 'hủ tiếu nam vang', 'hủ tiếu mì', 'hủ tiếu xào',
+            
+            # Món Việt - Gỏi/Nem/Chả
+            'gỏi cuốn', 'gỏi', 'gỏi ngó sen', 'gỏi đu đủ', 'gỏi gà',
+            'nem', 'nem nướng', 'nem rán', 'nem chua', 'nem lụi',
+            'chả giò', 'chả cá', 'chả lụa', 'chả tôm',
+            
+            # Món Việt - Xôi/Cháo
+            'xôi', 'xôi xéo', 'xôi gà', 'xôi lạc', 'xôi thịt',
+            'cháo', 'cháo lòng', 'cháo gà', 'cháo vịt', 'cháo cá',
+            
+            # Món Việt - Canh/Lẩu
+            'canh', 'canh chua', 'canh khổ qua', 'canh bầu',
+            'lẩu', 'lẩu thái', 'lẩu cá', 'lẩu nấm', 'lẩu bò',
+            'lẩu hải sản', 'lẩu gà', 'lẩu dê', 'lẩu ếch',
+            
+            # Món Việt - Thịt/Gà/Vịt
+            'gà rán', 'gà nướng', 'gà quay', 'gà xối mỡ',
+            'vịt quay', 'vịt nướng', 'chân giò', 
+            'sườn nướng', 'sườn xào', 'thịt kho', 'thịt xiên',
+            'bò bít tết', 'bò lúc lắc', 'bò nướng',
+            
+            # Đồ uống Việt
+            'trà sữa', 'matcha', 'trà đào', 'trà chanh', 'trà sen',
+            'trà atiso', 'trà gừng', 'trà vải', 'trà sữa trân châu',
+            'cà phê', 'cafe', 'coffee', 'caphe', 'cà phê sữa',
+            'cà phê đen', 'cà phê bạc xỉu', 'cà phê trứng',
+            'sinh tố', 'nước ép', 'nước cam', 'nước dừa',
+            'sữa chua', 'sữa đậu nành', 'sữa tươi',
+            'chè', 'chè thái', 'chè khúc bạch', 'chè ba màu',
+            'chè bưởi', 'chè đậu đỏ', 'chè sương sa hạt lựu',
+            'nước mía', 'nước rau má', 'nước chanh', 'đá chanh',
+            
+            # Món Âu/Mỹ
+            'pizza', 'burger', 'hamburger', 'cheeseburger',
+            'pasta', 'spaghetti', 'carbonara', 'bolognese',
+            'salad', 'caesar salad', 'greek salad',
+            'steak', 'ribeye', 'beef steak', 'pork chop',
+            'sandwich', 'hot dog', 'french fries', 'fries',
+            'chicken wings', 'wings', 'fried chicken',
+            'lasagna', 'tortilla', 'taco', 'burrito',
+            'bbq', 'ribs', 'grilled', 'roasted',
+            
+            # Món Nhật
+            'sushi', 'sashimi', 'ramen', 'udon', 'soba',
+            'mochi', 'tempura', 'takoyaki', 'okonomiyaki',
+            'teriyaki', 'katsu', 'tonkatsu', 'gyoza',
+            'yakitori', 'donburi', 'bento', 'onigiri',
+            'miso', 'edamame', 'wasabi',
+            
+            # Món Hàn
+            'kimchi', 'bibimbap', 'bulgogi', 'japchae',
+            'tokbokki', 'tteokbokki', 'ramyeon', 'samgyeopsal',
+            'gimbap', 'jjigae', 'galbi', 'bossam',
+            'dakgalbi', 'sundubu', 'hotteok',
+            
+            # Món Trung
+            'dimsum', 'dim sum', 'bánh bao', 'xíu mại',
+            'há cảo', 'mandu', 'wonton', 'dumpling',
+            'peking duck', 'mapo tofu', 'kung pao',
+            'sweet sour', 'fried rice', 'chow mein',
+            'spring roll', 'congee',
+            
+            # Món Thái
+            'pad thai', 'tom yum', 'tom kha', 'green curry',
+            'red curry', 'massaman', 'som tam', 'larb',
+            'pad krapow', 'khao pad', 'satay',
+            
+            # Món Ấn/Trung Đông
+            'curry', 'tikka masala', 'biryani', 'naan',
+            'tandoori', 'samosa', 'kebab', 'falafel',
+            'hummus', 'shawarma', 'gyro',
+            
+            # Tráng miệng/Ngọt
+            'kem', 'ice cream', 'yogurt', 'pudding',
+            'tiramisu', 'cheesecake', 'brownie', 'mousse',
+            'macaron', 'croissant', 'donut', 'waffle',
+            'pancake', 'crepe', 'tart', 'pie',
+        ]
+        
+        # TẠO MAP: không dấu -> có dấu (để map ngược lại sau khi check)
+        temp_dict_map = {}
+        for dish_origin in TEMP_DICTIONARY:
+            dish_no_accent = remove_accents(dish_origin.lower().strip())
+            temp_dict_map[dish_no_accent] = dish_origin
+        
+        # TỪ ĐIỂN CHÍNH (lưu món CÓ DẤU đã match)
+        main_dictionary = set()
+        main_dict_no_accent = set()  # Để check nhanh món đã thêm chưa (không dấu)
+        all_flavors = set()
+        unmatched_restaurants = []
+        
+        # DUYỆT QUA TỪNG QUÁN
+        for idx, row in df.iterrows():
+            restaurant_name = str(row.get('ten_quan', '')).strip()
+            restaurant_name_no_accent = remove_accents(restaurant_name.lower())
+            
+            matched = False
+            
+            # Check từng món trong từ điển tạm
+            for dish_no_accent, dish_origin in temp_dict_map.items():
+                # Nếu món này đã có trong từ điển chính → Bỏ qua (matched = True để không log)
+                if dish_no_accent in main_dict_no_accent:
+                    # Nếu quán này chứa món đã có trong từ điển → Coi như matched
+                    if dish_no_accent in restaurant_name_no_accent:
+                        matched = True
+                    continue
+                
+                # Match nếu tên quán CHỨA món (không dấu)
+                if dish_no_accent in restaurant_name_no_accent:
+                    # Thêm món GỐC CÓ DẤU vào từ điển chính
+                    main_dictionary.add(dish_origin)
+                    main_dict_no_accent.add(dish_no_accent)
+                    matched = True
+                    print(f"✅ Thêm món: '{dish_origin}' từ quán '{restaurant_name}'")
+                    break
+            
+            # CHỈ LƯU QUÁN KHÔNG MATCH BẤT KỲ KEYWORD NÀO
+            if not matched:
+                unmatched_restaurants.append(restaurant_name)
+            
+            # TRÍCH KHẨU VỊ
+            flavors = str(row.get('khau_vi', ''))
+            if flavors and flavors != 'nan':
+                all_flavors.update([f.strip() for f in flavors.split(',')])
+        
+        # Sắp xếp danh sách món (giữ nguyên dấu)
+        dishes_list = sorted(list(main_dictionary))
+        
+        # IN THỐNG KÊ CHI TIẾT
+        print(f"\n📊 THỐNG KÊ:")
+        print(f"- Tổng số quán trong CSV: {len(df)}")
+        print(f"- Số món đã extract: {len(dishes_list)}")
+        print(f"- Số quán ĐÃ MATCH: {len(df) - len(unmatched_restaurants)}")
+        print(f"- Số quán CHƯA MATCH: {len(unmatched_restaurants)}")
+        print(f"- Tỷ lệ match: {(len(df) - len(unmatched_restaurants))/len(df)*100:.1f}%")
+        
+        # HIỂN THỊ TẤT CẢ QUÁN CHƯA MATCH (thực sự không chứa keyword nào)
+        if unmatched_restaurants:
+            print(f"\n❌ TẤT CẢ {len(unmatched_restaurants)} quán CHƯA MATCH (để bổ sung từ điển):")
+            for i, name in enumerate(unmatched_restaurants, 1):
+                print(f"   {i}. {name}")
+        
+        return {
+            'dishes': dishes_list,
+            'flavors': sorted(list(all_flavors)),
+            'total_restaurants': len(df)
+        }
+    
+    except Exception as e:
+        print(f"Lỗi đọc CSV: {e}")
+        return {'dishes': [], 'flavors': [], 'total_restaurants': 0}
+
+def get_chatbot_html(gemini_api_key, menu_data=None):
+    # Trích xuất menu nếu chưa có
+    if menu_data is None:
+        menu_data = extract_menu_from_csv()
+    
+    # Chuyển thành JSON để nhúng vào JavaScript
+    menu_json = json.dumps(menu_data, ensure_ascii=False)
+
     """
     Trả về HTML string của chatbot để nhúng vào Flask
     
@@ -22,6 +225,286 @@ def get_chatbot_html(gemini_api_key):
         <style>
             * {{
                 box-sizing: border-box;
+            }}
+
+            /* ===== HIỆU ỨNG LỬA CHO SỐ STREAK ===== */
+            .speech-bubble-text {{
+                font-size: 15px;
+                color: #1a1a1a;
+                font-weight: 600;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+                line-height: 1.4;
+                letter-spacing: -0.2px;
+                pointer-events: none;
+            }}
+
+            /* Hiệu ứng gradient lửa cho bubble khi streak cao */
+            .speech-bubble.fire-mode {{
+                background: linear-gradient(135deg, #FFF5EE 0%, #FFE5D9 50%, #FFCCB3 100%);
+                border: 2px solid #FF6B35;
+                box-shadow: 0 6px 25px rgba(255,107,53,0.4);
+                animation: fireGlow 2s ease-in-out infinite;
+            }}
+
+            @keyframes fireGlow {{
+                0%, 100% {{
+                    box-shadow: 0 6px 25px rgba(255,107,53,0.4);
+                    border-color: #FF6B35;
+                }}
+                50% {{
+                    box-shadow: 0 8px 35px rgba(255,107,53,0.7), 0 0 20px rgba(255,140,97,0.5);
+                    border-color: #FF8C61;
+                }}
+            }}
+
+            /* Hiệu ứng đóng băng cho bubble khi streak frozen */
+            .speech-bubble.frozen-mode {{
+                background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 50%, #90CAF9 100%);
+                border: 2px solid #42A5F5;
+                box-shadow: 0 6px 25px rgba(66,165,245,0.3);
+                animation: frozenGlow 2s ease-in-out infinite;
+            }}
+
+            @keyframes frozenGlow {{
+                0%, 100% {{
+                    box-shadow: 0 6px 25px rgba(66,165,245,0.3);
+                    border-color: #42A5F5;
+                }}
+                50% {{
+                    box-shadow: 0 8px 35px rgba(66,165,245,0.6), 0 0 20px rgba(144,202,249,0.5);
+                    border-color: #64B5F6;
+                }}
+            }}
+
+            /* Animation nhấp nháy cho emoji lửa */
+            @keyframes emberPulse {{
+                0%, 100% {{
+                    transform: scale(1);
+                    filter: brightness(1);
+                }}
+                25% {{
+                    transform: scale(1.15);
+                    filter: brightness(1.3) hue-rotate(10deg);
+                }}
+                50% {{
+                    transform: scale(1.05);
+                    filter: brightness(1.1);
+                }}
+                75% {{
+                    transform: scale(1.2);
+                    filter: brightness(1.4) hue-rotate(-10deg);
+                }}
+            }}
+
+            /* ===== STREAK SYSTEM ===== */
+            .streak-container {{
+                position: absolute;
+                top: 18px;
+                right: 60px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 20px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                z-index: 10;
+                user-select: none;
+                
+                /* 🔥 THÊM VIỀN NỔI BẬT */
+                border: 2.5px solid rgba(255,107,53,0.75);
+                box-shadow: 0 4px 12px rgba(255,107,53,0.4),
+                            inset 0 1px 2px rgba(255,255,255,0.5);
+            }}
+
+            .streak-container:hover {{
+                background: rgba(255, 255, 255, 1);
+                transform: scale(1.08);
+                border-color: rgba(255,107,53,0.95);
+                box-shadow: 0 6px 16px rgba(255,107,53,0.6),
+                            inset 0 1px 2px rgba(255,255,255,0.6);
+            }}
+
+            .streak-icon {{
+                font-size: 20px;
+                filter: drop-shadow(0 2px 4px rgba(255,107,53,0.3));
+                animation: flameFlicker 2s ease-in-out infinite;
+            }}
+
+            @keyframes flameFlicker {{
+                0%, 100% {{ transform: scale(1) rotate(-5deg); }}
+                25% {{ transform: scale(1.1) rotate(5deg); }}
+                50% {{ transform: scale(0.95) rotate(-3deg); }}
+                75% {{ transform: scale(1.05) rotate(3deg); }}
+            }}
+
+            .streak-icon.frozen {{
+                animation: none;
+                filter: drop-shadow(0 2px 8px rgba(147,197,253,0.5));
+            }}
+
+            .streak-number {{
+                font-size: 18px;
+                font-weight: 800;
+                color: #EF4444;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                min-width: 20px;
+                text-align: center;
+                text-shadow: none;
+            }}
+
+            .streak-number.frozen {{
+                color: #3B82F6;
+            }}
+
+            /* Animation số chạy */
+            @keyframes countUp {{
+                0% {{
+                    transform: translateY(20px) scale(1.5);
+                    opacity: 0;
+                }}
+                50% {{
+                    transform: translateY(-5px) scale(1.2);
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translateY(0) scale(1);
+                    opacity: 1;
+                }}
+            }}
+
+            .streak-number.counting {{
+                animation: countUp 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            }}
+
+            /* Hiệu ứng đóng băng */
+            @keyframes freeze {{
+                0% {{
+                    filter: hue-rotate(0deg) brightness(1);
+                    transform: scale(1);
+                }}
+                25% {{
+                    filter: hue-rotate(90deg) brightness(1.2);
+                    transform: scale(1.2) rotate(-10deg);
+                }}
+                50% {{
+                    filter: hue-rotate(180deg) brightness(0.8);
+                    transform: scale(0.9) rotate(10deg);
+                }}
+                75% {{
+                    filter: hue-rotate(240deg) brightness(1.1);
+                    transform: scale(1.1) rotate(-5deg);
+                }}
+                100% {{
+                    filter: hue-rotate(200deg) brightness(1);
+                    transform: scale(1) rotate(0deg);
+                }}
+            }}
+
+            .streak-icon.freezing {{
+                animation: freeze 1.2s ease-in-out forwards;
+            }}
+
+            /* Particle effects khi tăng streak */
+            .streak-particle {{
+                position: absolute;
+                pointer-events: none;
+                font-size: 12px;
+                animation: particleRise 1s ease-out forwards;
+            }}
+
+            @keyframes particleRise {{
+                0% {{
+                    transform: translateY(0) scale(1);
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translateY(-50px) scale(0.5);
+                    opacity: 0;
+                }}
+            }}
+
+            /* Popup thông báo milestone */
+            .streak-milestone-popup {{
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0);
+                background: linear-gradient(135deg, #FF6B35 0%, #FF8C61 100%);
+                color: white;
+                padding: 30px 40px;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(255,107,53,0.4);
+                z-index: 1000002;
+                text-align: center;
+                animation: popupBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+            }}
+
+            @keyframes popupBounce {{
+                0% {{
+                    transform: translate(-50%, -50%) scale(0);
+                    opacity: 0;
+                }}
+                50% {{
+                    transform: translate(-50%, -50%) scale(1.1);
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 1;
+                }}
+            }}
+
+            .streak-milestone-popup .milestone-icon {{
+                font-size: 60px;
+                margin-bottom: 15px;
+                animation: rotate360 1s ease-in-out;
+            }}
+
+            @keyframes rotate360 {{
+                from {{ transform: rotate(0deg); }}
+                to {{ transform: rotate(360deg); }}
+            }}
+
+            .streak-milestone-popup .milestone-text {{
+                font-size: 24px;
+                font-weight: 700;
+                margin-bottom: 10px;
+            }}
+
+            .streak-milestone-popup .milestone-subtitle {{
+                font-size: 16px;
+                opacity: 0.9;
+            }}
+
+            @media (max-width: 480px) {{
+                .streak-container {{
+                    top: 15px;
+                    right: 50px;
+                    padding: 5px 10px;
+                }}
+                
+                .streak-icon {{
+                    font-size: 18px;
+                }}
+                
+                .streak-number {{
+                    font-size: 14px;
+                }}
+                
+                .streak-milestone-popup {{
+                    width: 80%;
+                    padding: 25px 30px;
+                }}
+                
+                .streak-milestone-popup .milestone-icon {{
+                    font-size: 50px;
+                }}
+                
+                .streak-milestone-popup .milestone-text {{
+                    font-size: 20px;
+                }}
             }}
             
             body {{
@@ -357,6 +840,13 @@ def get_chatbot_html(gemini_api_key):
                 color: #FF6B35;
                 font-weight: 700;
                 font-size: 14.5px;
+                cursor: pointer; /* 👈 THÊM */
+                transition: all 0.2s ease; /* 👈 THÊM */
+            }}
+
+            .dish-name:hover {{
+                color: #ff8c61;
+                text-decoration: underline;
             }}
             
             .message-time {{
@@ -408,6 +898,11 @@ def get_chatbot_html(gemini_api_key):
                 white-space: nowrap;
                 scrollbar-width: none;
                 flex-shrink: 0;
+                cursor: grab;
+            }}
+
+            .suggestions-area:active {{
+                cursor: grabbing;
             }}
             
             .suggestions-area::-webkit-scrollbar {{
@@ -502,8 +997,68 @@ def get_chatbot_html(gemini_api_key):
                 justify-content: center;
                 transition: all 0.3s ease;
                 flex-shrink: 0;
+                position: relative;
             }}
-            
+
+            /* Nút khi đang loading (countdown) */
+            .send-button.loading {{
+                background: linear-gradient(135deg, #FF6B35 0%, #FF8C61 100%);
+                cursor: default;
+                pointer-events: all; /* 👈 ĐỔI none → all */
+            }}
+
+            /* Khi hover vào nút loading → hiện Cancel (đỏ) */
+            .send-button.loading:hover {{
+                background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+                cursor: pointer;
+                transform: scale(1.05); /* 👈 THÊM hiệu ứng phóng to */
+            }}
+
+            /* Vòng tròn countdown SVG */
+            .countdown-ring {{
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                transform: rotate(-90deg); /* Bắt đầu từ trên cùng */
+            }}
+
+            .countdown-ring circle {{
+                fill: none;
+                stroke: rgba(255, 255, 255, 0.3);
+                stroke-width: 3;
+            }}
+
+            .countdown-ring .progress {{
+                stroke: white;
+                stroke-width: 3;
+                stroke-linecap: round;
+                transition: stroke-dashoffset 0.1s linear;
+            }}
+
+            /* Icon bên trong nút */
+            .send-button-icon {{
+                position: relative;
+                z-index: 1;
+                transition: all 0.3s ease;
+            }}
+
+            /* Icon khi hover vào loading button */
+            .send-button.loading:hover .send-button-icon {{
+                transform: scale(1.1);
+            }}
+
+            /* Animation xoay cho loading icon */
+            @keyframes spin {{
+                from {{ transform: rotate(0deg); }}
+                to {{ transform: rotate(360deg); }}
+            }}
+
+            .send-button.loading .send-button-icon.spinning {{
+                animation: spin 1s linear infinite;
+            }}
+                        
             .send-button:hover {{
                 transform: scale(1.1) rotate(15deg);
                 box-shadow: 0 4px 12px rgba(255,107,53,0.4);
@@ -906,6 +1461,93 @@ def get_chatbot_html(gemini_api_key):
                     height: 300px; /* 👈 Giới hạn chiều cao trên mobile */
                 }}
             }}
+
+            /* ===== STREAK NOTIFICATION POPUP ===== */
+            .streak-notification {{
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0);
+                background: linear-gradient(135deg, #FF6B35 0%, #FF8C61 100%);
+                color: white;
+                padding: 40px 50px;
+                border-radius: 25px;
+                box-shadow: 0 20px 60px rgba(255,107,53,0.5);
+                z-index: 1000003;
+                text-align: center;
+                animation: popupBounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+                max-width: 90%;
+            }}
+
+            .streak-notification.freeze {{
+                background: linear-gradient(135deg, #60A5FA 0%, #93C5FD 100%);
+                box-shadow: 0 20px 60px rgba(96,165,250,0.5);
+            }}
+
+            .streak-notification-icon {{
+                font-size: 80px;
+                margin-bottom: 20px;
+                animation: rotate360 1s ease-in-out;
+                display: block;
+            }}
+
+            .streak-notification-title {{
+                font-size: 28px;
+                font-weight: 800;
+                margin-bottom: 15px;
+                line-height: 1.3;
+            }}
+
+            .streak-notification-subtitle {{
+                font-size: 18px;
+                opacity: 0.95;
+                line-height: 1.5;
+            }}
+
+            @keyframes popupBounceIn {{
+                0% {{
+                    transform: translate(-50%, -50%) scale(0);
+                    opacity: 0;
+                }}
+                50% {{
+                    transform: translate(-50%, -50%) scale(1.15);
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 1;
+                }}
+            }}
+
+            @keyframes popupBounceOut {{
+                0% {{
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 1;
+                }}
+                100% {{
+                    transform: translate(-50%, -50%) scale(0);
+                    opacity: 0;
+                }}
+            }}
+
+            @media (max-width: 480px) {{
+                .streak-notification {{
+                    padding: 30px 35px;
+                }}
+                
+                .streak-notification-icon {{
+                    font-size: 60px;
+                }}
+                
+                .streak-notification-title {{
+                    font-size: 22px;
+                }}
+                
+                .streak-notification-subtitle {{
+                    font-size: 15px;
+                }}
+            }}
+            
         </style>
     </head>
     <body>
@@ -939,6 +1581,13 @@ def get_chatbot_html(gemini_api_key):
                         <div class="chat-status">Online</div>
                     </div>
                 </div>
+
+                <!-- 🔥 THÊM STREAK CONTAINER -->
+                <div class="streak-container" id="streakContainer" title="Chuỗi ngày liên tiếp">
+                    <span class="streak-icon" id="streakIcon">🔥</span>
+                    <span class="streak-number" id="streakNumber">0</span>
+                </div>
+
                 <button class="close-button" id="closeBtn">✕</button>
             </div>
             
@@ -952,10 +1601,32 @@ def get_chatbot_html(gemini_api_key):
                     <button class="emoji-button" id="emojiBtn"> 😊</button>
                 </div>
                 <button class="send-button" id="sendBtn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    <!-- SVG Countdown Ring (ẩn mặc định) -->
+                    <svg class="countdown-ring" id="countdownRing" style="display: none;">
+                        <circle cx="21" cy="21" r="18"></circle>
+                        <circle class="progress" cx="21" cy="21" r="18" id="countdownProgress"></circle>
                     </svg>
+                    
+                    <!-- Icon bên trong nút -->
+                    <div class="send-button-icon" id="sendBtnIcon">
+                        <!-- Send Icon (mặc định) -->
+                        <svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        
+                        <!-- Loading Icon (ẩn) -->
+                        <svg id="loadingIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                            <circle cx="12" cy="12" r="10" stroke-opacity="0.3"></circle>
+                            <path d="M12 2 A10 10 0 0 1 22 12" stroke-linecap="round"></path>
+                        </svg>
+                        
+                        <!-- Cancel Icon (ẩn) -->
+                        <svg id="cancelIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </div>
                 </button>
 
                 <!-- Emoji Picker -->
@@ -969,7 +1640,10 @@ def get_chatbot_html(gemini_api_key):
             const GEMINI_API_KEY = '{gemini_api_key}';
 
             const API_BASE_URL = 'http://127.0.0.1:8000/api'; 
-
+            // ===== THÊM ĐOẠN NÀY =====
+            const MENU_DATA = {menu_json};
+            console.log('📋 Menu loaded:', MENU_DATA.dishes.length, 'món');
+            // ==========================
             console.log('🚀 Chatbot script loaded');
 
             // ===== TÍNH NĂNG MỚI 1: DANH SÁCH TỪ TỤC TIỂU =====
@@ -1670,6 +2344,48 @@ def get_chatbot_html(gemini_api_key):
                 "Vỡ tannnn😿"
             ];
 
+            const streakBubbleMessages = {{
+                frozen: [
+                    "Ối! Streak của bạn đã đóng băng rồi 🧊 Nhắn tin ngay để khởi động lại nhé!",
+                    "Chuỗi streak bị đóng băng rồi nè ❄️ Chat với mình để mở khóa lại đi!",
+                    "Streak đã bị đứt rồi 😢 Nhưng không sao! Nhắn tin để bắt đầu lại nào!",
+                    "Hôm nay chưa chat với mình à? 🧊 Streak đang chờ bạn đó~",
+                    "Ê ê, streak đóng băng rồi! ❄️ Nhắn tin ngay để rã đông nhé!"
+                ],
+                
+                high: [ // Streak >= 7 ngày
+                    "Streak 🔥 {{COUNT}} 🔥 ngày rồi đó! Giữ vững phong độ nha bạn ơi!",
+                    "Wow 🔥 {{COUNT}} 🔥 ngày liên tục! ⭐ Bạn quá đỉnh! Tiếp tục nhé!",
+                    "🔥 {{COUNT}} ngày 🔥 streak rồi nè! 💪 Hôm nay ăn gì cho xứng đáng?",
+                    "Chuỗi 🔥 {{COUNT}} ngày 🔥 không nghỉ! 🏆 Bạn là huyền thoại luôn!",
+                    "🔥 {{COUNT}} ngày 🔥 rồi đấy! 🌟 Mình siêu tự hào về bạn!"
+                ],
+                
+                medium: [ // Streak 3-6 ngày
+                    "Đang có 🔥 {{COUNT}} ngày 🔥 streak đấy! Cố gắng giữ nha~",
+                    "Streak 🔥 {{COUNT}} ngày 🔥 rồi! 💫 Sắp đến mốc 7 ngày rồi!",
+                    "🔥 {{COUNT}} ngày 🔥 liên tục rồi! ✨ Đừng để đứt nhé!",
+                    "Chuỗi 🔥 {{COUNT}} ngày 🔥 đang tốt lắm! 🌈 Tiếp tục đi!",
+                    "Đã 🔥 {{COUNT}} ngày 🔥 rồi đấy! 🎯 Hôm nay ăn gì nhỉ?"
+                ],
+                
+                low: [ // Streak 1-2 ngày
+                    "Mới 🔥 {{COUNT}} ngày 🔥 thôi! 🌱 Cố gắng chat mỗi ngày để xây streak nhé!",
+                    "Đang 🔥 {{COUNT}} ngày 🔥 đấy! Hãy giữ vững nha!",
+                    "Streak 🔥 {{COUNT}} ngày 🔥 rồi! ⚡ Xây dựng thêm nào!",
+                    "🔥 {{COUNT}} ngày 🔥 rồi đó! 💪 Tiếp tục để đạt mốc 7 ngày nha!",
+                    "Đã chat 🔥 {{COUNT}} ngày 🔥! 🌟 Đừng bỏ cuộc giữa chừng nhé!"
+                ],
+                
+                zero: [
+                    "Bắt đầu xây streak với mình đi! 🚀 Chat mỗi ngày để nhận thành tích nha~",
+                    "Chào bạn! 👋 Hãy chat với mình mỗi ngày để giữ streak nhé!",
+                    "Streak đang ở 0 nè! 🌱 Hôm nay là ngày đầu tiên, bắt đầu thôi!",
+                    "Muốn xây streak không? 🔥 Nhắn tin với mình mỗi ngày là được!",
+                    "Cùng bắt đầu hành trình streak nào! ✨ Chat hôm nay là ngày đầu tiên!"
+                ]
+            }};
+
             const welcomeMessages = [
                 "Xin chào bạn iu~ 🌸 Mình là UIAboss đây, hôm nay bạn muốn mình gợi ý món ngon kiểu gì nhỉ? 💕",
                 "Chào cưng nè~ 😘 Mình biết nhiều quán cực xịn luôn, muốn ăn gì thì nói mình nghe nha~",
@@ -1805,6 +2521,14 @@ def get_chatbot_html(gemini_api_key):
             let currentSessionId = null;
             let isFirstLoad = true;
 
+            // 🆕 THÊM BIẾN MỚI
+            let isGenerating = false; // Đang tạo response
+            let cancelGeneration = false; // Cờ để cancel
+            let countdownInterval = null; // Interval cho countdown
+            let generationStartTime = null; // Thời điểm bắt đầu generate
+            const GENERATION_TIMEOUT = 30000; // 30 giây timeout
+            let abortController = null;
+
             async function fetchConversationList() {{
                 try {{
                     const response = await fetch(`${{API_BASE_URL}}/conversations/`, {{ 
@@ -1872,9 +2596,13 @@ def get_chatbot_html(gemini_api_key):
                 }}
             }}
 
-            // 2.3. Lưu tin nhắn (Gửi tin nhắn mới)
             async function sendMessageToAPI(sender, content) {{
                 try {{
+                    console.log('💾 [SAVE CHAT] Đang lưu tin nhắn...');
+                    console.log('   - Sender:', sender);
+                    console.log('   - Content:', content.substring(0, 50) + '...');
+                    console.log('   - Current conversation ID:', currentConversationID);
+                    
                     const response = await fetch(`${{API_BASE_URL}}/save-chat/`, {{
                         method: 'POST',
                         credentials: 'include',
@@ -1884,37 +2612,58 @@ def get_chatbot_html(gemini_api_key):
                         body: JSON.stringify({{
                             sender: sender,
                             content: content,
-                            conversation_id: currentConversationID // Gửi ID hiện tại (null nếu là chat mới)
+                            conversation_id: currentConversationID
                         }})
                     }});
 
                     if (response.ok) {{
                         const data = await response.json();
+                        console.log('📦 [SAVE CHAT] Response:', data);
+                        
                         if (data.status === 'success') {{
+                            console.log('🔍 [SAVE CHAT] Kiểm tra điều kiện tăng streak:');
+                            console.log('   - currentConversationID (trước):', currentConversationID);
+                            console.log('   - data.conversation_id:', data.conversation_id);
+                            console.log('   - Điều kiện (!currentConversationID && data.conversation_id):', !currentConversationID && data.conversation_id);
+                            
                             // LOGIC QUAN TRỌNG:
                             // Nếu trước đó là chat mới (ID=null) và giờ Server trả về ID mới
                             if (!currentConversationID && data.conversation_id) {{
                                 currentConversationID = data.conversation_id;
-                                console.log('🆕 Đã tạo đoạn chat mới với ID:', currentConversationID);
+                                console.log('🆕 [SAVE CHAT] ĐÃ TẠO ĐOẠN CHAT MỚI!');
+                                console.log('   - ID mới:', currentConversationID);
+                                console.log('   - Title:', data.title);
                                 
-                                // Cập nhật lại URL (để F5 không mất)
-                                // history.pushState({{}}, '', `?conversation_id=${{currentConversationID}}`);
+                                console.log('🎯 [SAVE CHAT] Chuẩn bị gọi incrementStreak()...');
                                 
-                                // Gọi lại API lấy danh sách để Sidebar cập nhật tiêu đề mới ngay lập tức
+                                // 🔥 GỌI TĂNG STREAK
+                                await incrementStreak();
+                                
+                                console.log('✅ [SAVE CHAT] Đã hoàn thành gọi incrementStreak()');
+
+                                // Gọi lại API lấy danh sách để Sidebar cập nhật
                                 fetchConversationList();
+                            }} else {{
+                                console.log('ℹ️ [SAVE CHAT] Không gọi incrementStreak() vì:');
+                                if (currentConversationID) {{
+                                    console.log('   - Đã có conversation ID sẵn:', currentConversationID);
+                                }}
+                                if (!data.conversation_id) {{
+                                    console.log('   - Server không trả về conversation_id');
+                                }}
                             }}
                         }}
                     }}
                 }} catch (error) {{
-                    console.error('Lỗi lưu tin nhắn:', error);
+                    console.error('❌ [SAVE CHAT] Lỗi:', error);
                 }}
             }}
 
             // 3.1. Chuyển về chế độ Chat Mới (Giao diện trắng)
-            function switchToNewChat() {{
+            async function switchToNewChat() {{
                 console.log("🔄 Chuyển sang Chat Mới");
                 currentConversationID = null;
-                
+
                 // Xóa tin nhắn trên màn hình
                 const messagesArea = document.getElementById('messagesArea');
                 messagesArea.innerHTML = ''; 
@@ -1930,8 +2679,343 @@ def get_chatbot_html(gemini_api_key):
                 renderHistoryList(null);
             }}
 
+            // ===== STREAK SYSTEM =====
+            let currentStreak = 0;
+            let isStreakFrozen = false;
+
+            // Lấy thông tin streak khi mở chatbot
+            async function loadStreakData() {{
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🔵 [LOAD STREAK] Bắt đầu tải streak data...');
+                
+                try {{
+                    const response = await fetch(`${{API_BASE_URL}}/streak/`, {{
+                        method: 'GET',
+                        credentials: 'include'
+                    }});
+                    
+                    console.log('📡 [LOAD STREAK] Response status:', response.status);
+                    console.log('📡 [LOAD STREAK] Response ok:', response.ok);
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        console.log('📦 [LOAD STREAK] Response data:', data);
+                        
+                        if (data.status === 'success') {{
+                            currentStreak = data.streak;
+                            isStreakFrozen = data.is_frozen;
+                            
+                            console.log('✅ [LOAD STREAK] Current streak:', currentStreak);
+                            console.log('✅ [LOAD STREAK] Longest streak:', data.longest_streak);
+                            console.log('✅ [LOAD STREAK] Is frozen:', isStreakFrozen);
+                            console.log('✅ [LOAD STREAK] Last update:', data.last_update);
+                            
+                            updateStreakUI();
+
+                            // 🎯 CẬP NHẬT BUBBLE TEXT DỰA TRÊN STREAK
+                            updateBubbleTextBasedOnStreak();
+
+                            // Nếu bị đóng băng, hiển thị popup
+                            if (isStreakFrozen && currentStreak === 0) {{
+                                setTimeout(() => {{
+                                    showStreakNotification('freeze', 0); // ✅ DÙNG POPUP
+                                }}, 1500);
+                            }}
+
+                        }}
+
+                    }} else {{
+                        console.error('❌ [LOAD STREAK] Response không OK');
+                    }}
+                }} catch (error) {{
+                    console.error('❌ [LOAD STREAK] Lỗi:', error);
+                }}
+                
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }}
+
+            // ===== HÀM CHỌN BUBBLE MESSAGE DỰA TRÊN STREAK =====
+            function getStreakBasedBubbleMessage() {{
+                let messagePool;
+                
+                if (isStreakFrozen) {{
+                    // ❄️ Streak bị đóng băng
+                    messagePool = streakBubbleMessages.frozen;
+                }} else if (currentStreak === 0) {{
+                    // 🆕 Chưa có streak hoặc mới reset
+                    messagePool = streakBubbleMessages.zero;
+                }} else if (currentStreak >= 7) {{
+                    // 🔥 Streak cao (7+ ngày)
+                    messagePool = streakBubbleMessages.high;
+                }} else if (currentStreak >= 3) {{
+                    // ⚡ Streak trung bình (3-6 ngày)
+                    messagePool = streakBubbleMessages.medium;
+                }} else {{
+                    // 🌱 Streak thấp (1-2 ngày)
+                    messagePool = streakBubbleMessages.low;
+                }}
+                
+                // Lấy message ngẫu nhiên từ pool
+                const randomMsg = messagePool[Math.floor(Math.random() * messagePool.length)];
+                
+                // ✅ Thay thế {{COUNT}} bằng số streak thực tế
+                return randomMsg.replace(/{{COUNT}}/g, currentStreak);
+            }}
+
+            // ===== CẬP NHẬT BUBBLE TEXT DỰA TRÊN STREAK =====
+            function updateBubbleTextBasedOnStreak() {{
+                const bubbleText = document.getElementById('bubbleText');
+                const speechBubble = document.getElementById('speechBubble');
+                if (!bubbleText || !speechBubble) return;
+                
+                const message = getStreakBasedBubbleMessage();
+                bubbleText.innerHTML = message; // ← Đổi từ textContent sang innerHTML để hỗ trợ emoji
+                
+                // 🎨 Thêm class đặc biệt dựa trên trạng thái streak
+                speechBubble.classList.remove('fire-mode', 'frozen-mode', 'high-streak');
+                
+                if (isStreakFrozen) {{
+                    // ❄️ Streak đóng băng
+                    speechBubble.classList.add('frozen-mode');
+                }} else if (currentStreak >= 7) {{
+                    // 🔥 Streak cao (7+ ngày)
+                    speechBubble.classList.add('fire-mode');
+                }} else if (currentStreak >= 3) {{
+                    // ⚡ Streak trung bình (3-6 ngày)
+                    speechBubble.classList.add('fire-mode');
+                }}
+                
+                console.log('💬 [BUBBLE] Updated message:', message);
+                
+                speechBubble.style.animation = 'none';
+                setTimeout(() => {{
+                    speechBubble.style.animation = 'bubblePop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+                }}, 10);
+            }}
+
+            // Cập nhật UI streak
+            function updateStreakUI() {{
+                const streakIcon = document.getElementById('streakIcon');
+                const streakNumber = document.getElementById('streakNumber');
+                
+                if (!streakIcon || !streakNumber) return;
+                
+                if (isStreakFrozen) {{
+                    streakIcon.textContent = '🧊';
+                    streakIcon.classList.add('frozen');
+                    streakNumber.classList.add('frozen');
+                }} else {{
+                    streakIcon.textContent = '🔥';
+                    streakIcon.classList.remove('frozen');
+                    streakNumber.classList.remove('frozen');
+                }}
+                
+                streakNumber.textContent = currentStreak;
+            }}
+
+            // Tăng streak với hiệu ứng popup
+            async function incrementStreak() {{
+                console.log('\n🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥');
+                console.log('🔥 [INCREMENT] incrementStreak() ĐƯỢC GỌI');
+                console.log('🔥 [INCREMENT] Thời gian:', new Date().toLocaleString('vi-VN'));
+                console.log('🔥 [INCREMENT] Current streak trước khi gọi API:', currentStreak);
+                console.log('🔥 [INCREMENT] Is frozen:', isStreakFrozen);
+                
+                try {{
+                    console.log('📤 [INCREMENT] Đang gửi POST request đến:', `${{API_BASE_URL}}/streak/`);
+                    
+                    const response = await fetch(`${{API_BASE_URL}}/streak/`, {{
+                        method: 'POST',
+                        credentials: 'include'
+                    }});
+                    
+                    console.log('📡 [INCREMENT] Response status:', response.status);
+                    console.log('📡 [INCREMENT] Response ok:', response.ok);
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        console.log('📦 [INCREMENT] Response data:', JSON.stringify(data, null, 2));
+                        
+                        if (data.status === 'success' && data.increased) {{
+                            const oldStreak = currentStreak;
+                            currentStreak = data.streak;
+                            isStreakFrozen = false;
+                            
+                            console.log('✅ [INCREMENT] STREAK TĂNG THÀNH CÔNG!');
+                            console.log('   📈 Streak cũ:', oldStreak);
+                            console.log('   📈 Streak mới:', currentStreak);
+                            
+                            // 🎬 Animation số chạy lên
+                            animateStreakIncrease(oldStreak, currentStreak);
+                            
+                            // 🎉 HIỂN THỊ POPUP THÔNG BÁO
+                            setTimeout(() => {{
+                                showStreakNotification('increase', currentStreak);
+                            }}, 800);
+                            
+                            updateBubbleTextBasedOnStreak();
+                            
+                            // Kiểm tra milestone
+                            if (data.milestone) {{
+                                console.log(`🎉 [INCREMENT] MILESTONE ĐẠT ĐƯỢC: ${{data.milestone}} ngày!`);
+                                setTimeout(() => {{
+                                    showMilestonePopup(data.milestone);
+                                }}, 2500);
+                            }}
+                            
+                        }} else if (data.status === 'success' && !data.increased) {{
+                            console.log('⭐ [INCREMENT] Streak KHÔNG tăng');
+                            console.log('   📝 Lý do:', data.message);
+                        }}
+                    }}
+                }} catch (error) {{
+                    console.error('❌ [INCREMENT] Lỗi exception:', error);
+                }}
+                
+                console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n');
+            }}
+
+            // 🎉 Hiển thị popup thông báo streak
+            function showStreakNotification(type, streakCount) {{
+                const notification = document.createElement('div');
+                notification.className = `streak-notification ${{type === 'freeze' ? 'freeze' : ''}}`;
+                
+                let icon, title, subtitle;
+                
+                if (type === 'increase') {{
+                    icon = '🔥';
+                    title = `Chuỗi streak của bạn với UIAboss<br>đã tăng lên ${{streakCount}} ngày!`;
+                    subtitle = 'Hãy cùng giữ chuỗi này nhé~ 💪✨';
+                }} else if (type === 'freeze') {{
+                    icon = '🧊';
+                    title = 'Chuỗi streak đã bị đóng băng!';
+                    subtitle = 'Nhắn tin hôm nay để khởi động lại nhé~ 💙';
+                }}
+                
+                notification.innerHTML = `
+                    <div class="streak-notification-icon">${{icon}}</div>
+                    <div class="streak-notification-title">${{title}}</div>
+                    <div class="streak-notification-subtitle">${{subtitle}}</div>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Tự động đóng sau 3.5 giây
+                setTimeout(() => {{
+                    notification.style.animation = 'popupBounceOut 0.4s forwards';
+                    setTimeout(() => {{
+                        notification.remove();
+                    }}, 400);
+                }}, 3500);
+            }}
+
+            // Animation số chạy lên
+            function animateStreakIncrease(from, to) {{
+                const streakNumber = document.getElementById('streakNumber');
+                const streakIcon = document.getElementById('streakIcon');
+                const container = document.getElementById('streakContainer');
+                
+                if (!streakNumber || !streakIcon) return;
+                
+                // Thêm class animation
+                streakNumber.classList.add('counting');
+                
+                // Tạo particles
+                createStreakParticles(container);
+                
+                // Đếm từ from đến to
+                let current = from;
+                const duration = 600; // ms
+                const steps = to - from;
+                const stepTime = duration / steps;
+                
+                const counter = setInterval(() => {{
+                    current++;
+                    streakNumber.textContent = current;
+                    
+                    if (current >= to) {{
+                        clearInterval(counter);
+                        setTimeout(() => {{
+                            streakNumber.classList.remove('counting');
+                        }}, 300);
+                    }}
+                }}, stepTime);
+                
+                // Cập nhật icon
+                updateStreakUI();
+            }}
+
+            // Tạo particles bay lên
+            function createStreakParticles(container) {{
+                const particles = ['🔥', '✨', '⭐', '💫', '🌟'];
+                const rect = container.getBoundingClientRect();
+                
+                for (let i = 0; i < 5; i++) {{
+                    setTimeout(() => {{
+                        const particle = document.createElement('div');
+                        particle.className = 'streak-particle';
+                        particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+                        particle.style.left = rect.left + rect.width / 2 + (Math.random() - 0.5) * 50 + 'px';
+                        particle.style.top = rect.top + 'px';
+                        document.body.appendChild(particle);
+                        
+                        setTimeout(() => {{
+                            particle.remove();
+                        }}, 1000);
+                    }}, i * 100);
+                }}
+            }}
+
+            // Hiển thị popup milestone
+            function showMilestonePopup(days) {{
+                const messages = {{
+                    3: {{ icon: '🔥', text: 'Cháy lên nào!', subtitle: '3 ngày liên tiếp' }},
+                    7: {{ icon: '✨', text: 'Tuần đầu hoàn hảo!', subtitle: '1 tuần streak' }},
+                    14: {{ icon: '⭐', text: 'Quá đỉnh!', subtitle: '2 tuần không nghỉ' }},
+                    30: {{ icon: '🏆', text: 'Huyền thoại!', subtitle: '1 tháng streak' }},
+                    50: {{ icon: '👑', text: 'Vua streak!', subtitle: '50 ngày liên tục' }},
+                    100: {{ icon: '💎', text: 'Kim cương!', subtitle: '100 ngày streak' }},
+                    365: {{ icon: '🌟', text: 'Thần thoại!', subtitle: 'Trọn 1 năm streak' }}
+                }};
+                
+                const msg = messages[days];
+                if (!msg) return;
+                
+                const popup = document.createElement('div');
+                popup.className = 'streak-milestone-popup';
+                popup.innerHTML = `
+                    <div class="milestone-icon">${{msg.icon}}</div>
+                    <div class="milestone-text">${{msg.text}}</div>
+                    <div class="milestone-subtitle">${{msg.subtitle}}</div>
+                `;
+                
+                document.body.appendChild(popup);
+                
+                // Tự động đóng sau 3 giây
+                setTimeout(() => {{
+                    popup.style.animation = 'popupBounce 0.3s reverse';
+                    setTimeout(() => {{
+                        popup.remove();
+                    }}, 300);
+                }}, 3000);
+            }}
+
+            // Click vào streak để xem thông tin
+            document.getElementById('streakContainer')?.addEventListener('click', () => {{
+                const msg = isStreakFrozen 
+                    ? `Streak hiện tại: ${{currentStreak}} ngày Streak đã bị đóng băng vì bạn nghỉ 1 ngày! 🧊\\n\\nNhắn tin hôm nay để khởi động lại nhé! 💪`
+                    : `Streak hiện tại: ${{currentStreak}} ngày 🔥 Tiếp tục duy trì để đạt milestone mới nhé! ✨`;
+                
+                alert(msg);
+            }});            
+
             // 4.1. Khi bấm nút mở Chatbot
             async function openChatWindow() {{
+            
+                console.log('\n🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪');
+                console.log('🚪 [OPEN] Mở chat window');
+                console.log('🚪 [OPEN] Current conversation ID:', currentConversationID);
+
                 const chatWindow = document.getElementById('chatWindow');
                 const chatbotBtn = document.getElementById('chatbotBtn');
                 const speechBubble = document.getElementById('speechBubble');
@@ -1941,17 +3025,26 @@ def get_chatbot_html(gemini_api_key):
                 chatbotBtn.style.display = 'none';
                 speechBubble.style.display = 'none';
 
+                console.log('🔄 [OPEN] Fetch conversation list...');
+                
                 // Lần đầu mở lên: Tải danh sách sidebar + Tải đoạn chat mới nhất (hoặc chat mới)
                 await fetchConversationList();
-                
+
+                const messagesArea = document.getElementById('messagesArea');
+                console.log('📊 [OPEN] Số tin nhắn hiện tại:', messagesArea.children.length);
+
                 // Logic: Nếu chưa có ID nào, load chat mới nhất của user
                 // (Bạn có thể tùy chỉnh logic này: luôn mở chat mới hay mở chat cũ)
                 if (conversationList.length > 0 && !currentConversationID) {{
                     // Tải đoạn chat gần nhất
+                    console.log('📂 [OPEN] Load chat gần nhất:', conversationList[0].id);
                     loadConversationDetails(conversationList[0].id);
                 }} else if (!currentConversationID) {{
+                    console.log('🆕 [OPEN] Chuyển sang chat mới');
                     switchToNewChat();
                 }}
+
+                console.log('🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪🚪\n');
             }}
 
             // 4.2. Khi bấm nút "Chat mới" (+) ở Sidebar
@@ -2126,7 +3219,37 @@ def get_chatbot_html(gemini_api_key):
             initializeApp();
 
             function updateBubbleText() {{
-                bubbleText.textContent = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
+                // Random chọn giữa teaseMessages hoặc streakBubbleMessages
+                const useStreakMessage = Math.random() < 0.4; // 40% chance dùng streak message
+                
+                if (useStreakMessage && currentStreak !== undefined) {{
+                    // Dùng streak-based message
+                    const message = getStreakBasedBubbleMessage();
+                    bubbleText.innerHTML = message; // Dùng innerHTML để hiển thị emoji
+                    
+                    // Thêm class đặc biệt dựa trên trạng thái streak
+                    speechBubble.classList.remove('fire-mode', 'frozen-mode');
+                    
+                    if (isStreakFrozen) {{
+                        speechBubble.classList.add('frozen-mode');
+                    }} else if (currentStreak >= 7) {{
+                        speechBubble.classList.add('fire-mode');
+                    }} else if (currentStreak >= 3) {{
+                        speechBubble.classList.add('fire-mode');
+                    }}
+                }} else {{
+                    // Dùng tease message thông thường
+                    bubbleText.textContent = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
+                    
+                    // Bỏ các class đặc biệt
+                    speechBubble.classList.remove('fire-mode', 'frozen-mode');
+                }}
+                
+                // Thêm animation mỗi lần đổi text
+                speechBubble.style.animation = 'none';
+                setTimeout(() => {{
+                    speechBubble.style.animation = 'bubblePop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+                }}, 10);
             }}
 
             function getRandomSuggestions() {{
@@ -2172,6 +3295,51 @@ def get_chatbot_html(gemini_api_key):
                     }});
                 }};
                 suggestionsArea.appendChild(moreBtn);
+            }}
+
+            // ====== SCROLL NGANG BẰNG BÁNH CHUỘT ======
+            function enableHorizontalScroll(element) {{
+                let isDown = false;
+                let startX;
+                let scrollLeft;
+
+                // Scroll bằng bánh chuột
+                element.addEventListener('wheel', (e) => {{
+                    if (e.deltaY !== 0) {{
+                        e.preventDefault();
+                        element.scrollLeft += e.deltaY;
+                    }}
+                }}, {{ passive: false }});
+
+                // Kéo bằng chuột (drag to scroll)
+                element.addEventListener('mousedown', (e) => {{
+                    isDown = true;
+                    element.style.cursor = 'grabbing';
+                    startX = e.pageX - element.offsetLeft;
+                    scrollLeft = element.scrollLeft;
+                }});
+
+                element.addEventListener('mouseleave', () => {{
+                    isDown = false;
+                    element.style.cursor = 'grab';
+                }});
+
+                element.addEventListener('mouseup', () => {{
+                    isDown = false;
+                    element.style.cursor = 'grab';
+                }});
+
+                element.addEventListener('mousemove', (e) => {{
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const x = e.pageX - element.offsetLeft;
+                    const walk = (x - startX) * 2;
+                    element.scrollLeft = scrollLeft - walk;
+                }});
+            }}
+
+            if (suggestionsArea) {{
+                enableHorizontalScroll(suggestionsArea);
             }}
 
             function resetInactivityTimer() {{
@@ -2348,11 +3516,17 @@ def get_chatbot_html(gemini_api_key):
                 const text = messageInput.value.trim();
                 if (!text) return;
 
+                console.log('\n📝📝📝📝📝📝📝📝📝📝📝📝📝📝📝');
+                console.log('📝 [SEND MESSAGE] User gửi tin nhắn');
+                console.log('📝 [SEND MESSAGE] Nội dung:', text.substring(0, 50) + '...');
+                console.log('📝 [SEND MESSAGE] Current conversation ID:', currentConversationID);
+
                 const lang = detectLanguage(text);
                 const result = containsProfanity(text, lang);
 
                 // --- TRƯỜNG HỢP 1: CÓ TỪ TỤC ---
                 if (result.found) {{
+                    console.log('🚫 [SEND MESSAGE] Phát hiện từ tục - Không lưu');
                     const censored = censorProfanity(text);   
                     addMessage('user', censored);             
                     
@@ -2376,6 +3550,8 @@ def get_chatbot_html(gemini_api_key):
                 }}
 
                 // --- TRƯỜNG HỢP 2: TIN NHẮN SẠCH ---
+                console.log('✅ [SEND MESSAGE] Tin nhắn hợp lệ - Tiến hành lưu');
+
                 const userText = text;  // ← THÊM DÒNG NÀY (lưu text trước)
                 messageInput.value = '';  // ← DI CHUYỂN LÊN ĐÂY (xóa input ngay)
                 sendBtn.disabled = true;
@@ -2383,16 +3559,63 @@ def get_chatbot_html(gemini_api_key):
                 addMessage('user', userText);  // ← ĐỔI text → userText
 
                 showTyping();
+                isGenerating = true; // 👈 THÊM
+                cancelGeneration = false; // 👈 THÊM
+                updateSendButtonState('loading'); // 👈 THÊM
+
+                console.log('💾 [SEND MESSAGE] Gọi sendMessageToAPI()...');
 
                 // [SỬA] Dùng hàm API mới (Quan trọng: await để cập nhật ID nếu là chat mới)
                 await sendMessageToAPI('user', userText);  // ← ĐỔI text → userText
                 
+                console.log('🤖 [SEND MESSAGE] Gọi AI API...');
+
                 // Gọi AI (Trong hàm này cũng sẽ sửa đoạn lưu tin nhắn AI)
                 callGeminiAPI(text); 
                 resetInactivityTimer();
+
+                console.log('📝📝📝📝📝📝📝📝📝📝📝📝📝📝📝\n');
             }}
 
-            sendBtn.addEventListener('click', sendMessage);
+            // sendBtn.addEventListener('click', sendMessage);
+
+            // 🆕 XỬ LÝ CLICK NÚT GỬI (Gộp send + cancel)
+            if (sendBtn) {{
+                sendBtn.addEventListener('click', async (e) => {{
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Nếu đang generating → Cancel
+                    if (isGenerating) {{
+                        console.log('❌ User clicked cancel button');
+                        cancelAIGeneration();
+                        return;
+                    }}
+                    
+                    // Nếu không đang generating → Gửi tin nhắn
+                    await sendMessage();
+                }});
+            }}
+
+            // 🆕 HOVER: Hiện icon Cancel khi hover vào loading button
+            if (sendBtn && loadingIcon && cancelIcon) {{
+                sendBtn.addEventListener('mouseenter', () => {{
+                    if (isGenerating) {{
+                        loadingIcon.style.display = 'none';
+                        cancelIcon.style.display = 'block';
+                        console.log('🖱️ Hover: Showing cancel icon');
+                    }}
+                }});
+                
+                sendBtn.addEventListener('mouseleave', () => {{
+                    if (isGenerating) {{
+                        loadingIcon.style.display = 'block';
+                        cancelIcon.style.display = 'none';
+                        console.log('🖱️ Leave: Hiding cancel icon');
+                    }}
+                }});
+            }}
+
             messageInput.addEventListener('keypress', (e) => {{
                 if (e.key === 'Enter') sendMessage();
             }});
@@ -2400,6 +3623,36 @@ def get_chatbot_html(gemini_api_key):
                 sendBtn.disabled = !messageInput.value.trim();
                 resetInactivityTimer();
             }});
+
+            // 🆕 EVENT: Hover vào loading button → hiện Cancel icon
+            {{const sendBtn = document.getElementById('sendBtn');
+            const loadingIcon = document.getElementById('loadingIcon');
+            const cancelIcon = document.getElementById('cancelIcon');
+
+            if (sendBtn) {{
+                sendBtn.addEventListener('mouseenter', () => {{
+                    if (isGenerating) {{
+                        loadingIcon.style.display = 'none';
+                        cancelIcon.style.display = 'block';
+                    }}
+                }});
+                
+                sendBtn.addEventListener('mouseleave', () => {{
+                    if (isGenerating) {{
+                        loadingIcon.style.display = 'block';
+                        cancelIcon.style.display = 'none';
+                    }}
+                }});
+                
+                // 🆕 EVENT: Click vào loading button → Cancel
+                sendBtn.addEventListener('click', (e) => {{
+                    if (isGenerating) {{
+                        e.preventDefault();
+                        e.stopPropagation();
+                        cancelAIGeneration();
+                    }}
+                }});
+            }}}}
 
             function addMessage(type, text, saveToHistory = true) {{
                 hideTyping();
@@ -2660,7 +3913,21 @@ def get_chatbot_html(gemini_api_key):
                     }}
                 }}
 
-                const prompt = `You are UIAboss, a friendly and attentive customer service staff at a Vietnamese restaurant.
+            const prompt = `You are UIAboss, a friendly and attentive customer service staff at a Vietnamese restaurant.
+
+            === AVAILABLE MENU DATABASE ===
+            CRITICAL: You can ONLY suggest dishes from this list of ${{MENU_DATA.dishes.length}} available dishes:
+            ${{MENU_DATA.dishes.map((d, i) => `${{i + 1}}. ${{d}}`).join('\n')}}
+
+            Available flavors in our restaurant: ${{MENU_DATA.flavors.join(', ')}}
+
+            IMPORTANT RULES:
+                - NEVER suggest dishes NOT in the list above
+                - If user asks for a dish not in the list, politely say we don't have it and suggest similar available dishes
+                - Always verify your suggestions are from the AVAILABLE MENU DATABASE
+                - ❌ NEVER mention the number of dishes in the menu (e.g., "Tìm thấy trong menu: 372")
+                - ❌ DO NOT say things like "I found 5 dishes in the menu" or "There are 200 dishes available"
+                - Just suggest the dishes naturally without mentioning database statistics
 
             === PRIORITY CHECK #1: TOPIC RESTRICTION ===
             CRITICAL - CHECK THIS FIRST BEFORE ANYTHING ELSE:
@@ -2689,6 +3956,11 @@ def get_chatbot_html(gemini_api_key):
             - Detect and match: Vietnamese, English, Chinese, Japanese, Korean, Thai, French, Spanish, German, Italian, Indonesian, etc.
             - Match the user's language naturally and fluently
 
+            PRESENTATION STYLE:
+            - ❌ NEVER mention menu statistics like "(Tìm thấy trong menu: 372)" or "I found 5 dishes"
+            - ✅ Just suggest dishes naturally: "Mình gợi ý cho bạn mấy món này nhé: 1. Phở bò, 2. Bún chả..."
+            - Keep responses conversational and natural, not like a database query result
+
             AVOID REPEAT SUGGESTIONS:
             ${{suggestedDishesContext}}
             - When suggesting dishes, NEVER suggest dishes from the list above
@@ -2696,10 +3968,52 @@ def get_chatbot_html(gemini_api_key):
             - Keep track of what's been mentioned
 
             DISH RECOMMENDATIONS (when appropriate):
-            - Suggest 6-8 different dishes when user wants recommendations
+            - Suggest 8-10 different dishes when user wants recommendations
             - Provide variety: different types (soup, rice, noodles, snacks, drinks)
             - Number them clearly (1. Dish Name, 2. Dish Name, etc.)
             - Give brief description for each dish (1-2 sentences)
+
+            - CRITICAL NAMING RULES - READ CAREFULLY:
+
+            ✅ RULE 1: Dish names - LANGUAGE PRIORITY
+            → ALWAYS write dish name in the USER'S LANGUAGE first
+            → Then add Vietnamese name in parentheses if different
+
+            Examples based on user language:
+
+            **If user speaks ENGLISH:**
+            - "Cơm tấm" → "Broken Rice (Cơm tấm)"
+            - "Phở bò" → "Beef Noodle Soup (Phở bò)"
+            - "Bánh mì" → "Vietnamese Sandwich (Bánh mì)"
+            - "Cà phê" → "Vietnamese Coffee (Cà phê)"
+            - "Pizza" → "Pizza" (no Vietnamese needed - already English)
+
+            **If user speaks CHINESE:**
+            - "Phở bò" → "越南牛肉河粉 (Phở bò)"
+            - "Bánh mì" → "越南法棍三明治 (Bánh mì)"
+            - "Cà phê" → "越南咖啡 (Cà phê)"
+
+            **If user speaks JAPANESE:**
+            - "Phở bò" → "ベトナム牛肉フォー (Phở bò)"
+            - "Bánh mì" → "バインミー (Bánh mì)"
+            - "Cà phê" → "ベトナムコーヒー (Cà phê)"
+
+            **If user speaks KOREAN:**
+            - "Phở bò" → "베트남 쌀국수 (Phở bò)"
+            - "Bánh mì" → "반미 (Bánh mì)"
+            - "Cà phê" → "베트남 커피 (Cà phê)"
+
+            **If user speaks VIETNAMESE:**
+            → Just use Vietnamese name directly, NO parentheses
+            Examples:
+            - "Phở bò" → Just "Phở bò"
+            - "Bánh mì" → Just "Bánh mì"
+            - "Cà phê" → Just "Cà phê"
+
+            ⚠️ IMPORTANT DETECTION:
+            - Detect user's language from their message
+            - Match the language style consistently throughout response
+            - Keep dish descriptions also in user's language
 
             ${{preferencesContext}}
 
@@ -2723,64 +4037,139 @@ def get_chatbot_html(gemini_api_key):
 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${{GEMINI_API_KEY}}`;
 
-                try {{
-                    const res = await fetch(apiUrl, {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{
-                            contents: [{{
-                                parts: [{{ text: prompt }}]
-                            }}]
-                        }})
-                    }});
+                // ✅ THÊM CƠ CHẾ RETRY - PHẦN MỚI BẮT ĐẦU TỪ ĐÂY
+                const MAX_RETRIES = 3;
+                const RETRY_DELAY = 2000;
+                const TIMEOUT_MS = 30000;
 
-                    if (!res.ok) {{
-                        const errorText = await res.text();
-                        console.error('❌ API Error Response:', errorText);
+                let retryCount = 0;
+                const startTime = Date.now();
+
+                while (retryCount < MAX_RETRIES) {{
+                    if (Date.now() - startTime > TIMEOUT_MS) {{
+                        console.error('⌛ Timeout: Quá lâu không có phản hồi');
                         addMessage('bot', `Ới! Có lỗi xảy ra rồi bạn ơi 😢\nMình đang gặp chút vấn đề kỹ thuật, bạn thử lại sau nhé!`);
                         sendBtn.disabled = false;
                         return;
                     }}
 
-                    const data = await res.json();
-                    let botReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    try {{
+                        console.log(`🔄 Thử gọi API lần ${{retryCount + 1}}/${{MAX_RETRIES}}...`);
 
-                    if (botReply) {{
-                        botReply = cleanMarkdown(botReply);
-                        console.log('💬 Bot reply (cleaned):', botReply);
+                        // 🆕 CHECK: Nếu đã cancel → dừng ngay
+                        if (cancelGeneration) {{
+                            console.log('❌ Generation cancelled by user');
+                            isGenerating = false;
+                            stopCountdown();
+                            updateSendButtonState('idle');
+                            return;
+                        }}
 
-                        extractPreferences(userMessage, botReply);
+                        // 🆕 Tạo AbortController mới cho request này
+                        abortController = new AbortController();
 
-                        // Extract và lưu các món đã gợi ý (chỉ khi KHÔNG phải greeting/vô nghĩa)
-                        if (!isGreeting) {{
-                            const dishMatches = botReply.match(/\d+\.\s*([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]+(?:\s+[a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđA-Z]+)*)/g);
-                            if (dishMatches) {{
-                                dishMatches.forEach(match => {{
-                                    const dish = match.replace(/^\d+\.\s*/, '').trim();
-                                    if (dish.length > 3 && !suggestedDishes.includes(dish)) {{
-                                        suggestedDishes.push(dish);
-                                        console.log('📝 Đã lưu món:', dish);
-                                    }}
-                                }});
-                                console.log('📋 Danh sách món đã gợi ý:', suggestedDishes);
+                        const res = await fetch(apiUrl, {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{
+                                contents: [{{
+                                    parts: [{{ text: prompt }}]
+                                }}]
+                            }}),
+                            signal: abortController.signal // ← THÊM DÒNG NÀY
+                        }});
+
+                        if (!res.ok) {{
+                            const errorText = await res.text();
+                            console.error(`❌ API Error (Lần ${{retryCount + 1}}):`, errorText);
+                            
+                            retryCount++;
+                            if (retryCount < MAX_RETRIES) {{
+                                console.log(`⏳ Đợi ${{RETRY_DELAY}}ms trước khi thử lại...`);
+                                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                                continue;
+                            }} else {{
+                                addMessage('bot', `Ới! Có lỗi xảy ra rồi bạn ơi 😢\nMình đang gặp chút vấn đề kỹ thuật, bạn thử lại sau nhé!`);
+                                sendBtn.disabled = false;
+                                return;
                             }}
                         }}
 
-                        addMessage('bot', botReply);
-                        await sendMessageToAPI('ai', botReply);
+                        const data = await res.json();
+                        let botReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-                        resetInactivityTimer();
-                    }} else {{
-                        console.error('❌ Không tìm thấy text trong response:', data);
-                        addMessage('bot', 'Xin lỗi bạn nhé! Mình đang hơi bận, thử lại sau nhé! 😅');
+                        if (botReply) {{
+                            // GIỮ NGUYÊN phần xử lý botReply như cũ
+                            botReply = cleanMarkdown(botReply);
+                            console.log('💬 Bot reply (cleaned):', botReply);
+                            extractPreferences(userMessage, botReply);
+
+                            if (!isGreeting) {{
+                                const dishMatches = botReply.match(/\d+\.\s*([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]+(?:\s+[a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđA-Z]+)*)/g);
+                                if (dishMatches) {{
+                                    dishMatches.forEach(match => {{
+                                        const dish = match.replace(/^\d+\.\s*/, '').trim();
+                                        if (dish.length > 3 && !suggestedDishes.includes(dish)) {{
+                                            suggestedDishes.push(dish);
+                                            console.log('📝 Đã lưu món:', dish);
+                                        }}
+                                    }});
+                                    console.log('📋 Danh sách món đã gợi ý:', suggestedDishes);
+                                }}
+                            }}
+
+                            addMessage('bot', botReply);
+                            isGenerating = false; // 👈 THÊM
+                            stopCountdown(); // 👈 THÊM
+                            updateSendButtonState('idle'); // 👈 THÊM
+                            abortController = null;
+
+                            await sendMessageToAPI('ai', botReply);
+                            resetInactivityTimer();
+                            
+                            sendBtn.disabled = false;
+                            return;
+
+                        }} else {{
+                            console.error('❌ Không tìm thấy text trong response:', data);
+                            retryCount++;
+                            if (retryCount < MAX_RETRIES) {{
+                                console.log(`⏳ Đợi ${{RETRY_DELAY}}ms trước khi thử lại...`);
+                                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                                continue;
+                            }} else {{
+                                addMessage('bot', 'Xin lỗi bạn nhé! Mình đang hơi bận, thử lại sau nhé! 😅');
+                                sendBtn.disabled = false;
+                                return;
+                            }}
+                        }}
+
+                    }} catch (e) {{
+                        console.error(`❌ Fetch Error (Lần ${{retryCount + 1}}):`, e);
+                        
+                        // 🆕 Kiểm tra nếu là lỗi abort (user hủy)
+                        if (e.name === 'AbortError') {{
+                            console.log('✅ Request cancelled successfully');
+                            isGenerating = false;
+                            stopCountdown();
+                            updateSendButtonState('idle');
+                            return; // ← QUAN TRỌNG: Dừng hẳn, không retry
+                        }}
+                        
+                        retryCount++;
+                        
+                        if (retryCount < MAX_RETRIES) {{
+                            console.log(`⏳ Đợi ${{RETRY_DELAY}}ms trước khi thử lại...`);
+                            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                            continue;
+                        }} else {{
+                            addMessage('bot', `Ối! Mình bị lỗi kết nối rồi 😢\nBạn kiểm tra mạng và thử lại sau nhé!`);
+                            sendBtn.disabled = false;
+                            return;
+                        }}
                     }}
-                }} catch (e) {{
-                    console.error('❌ Fetch Error:', e);
-                    addMessage('bot', `Ới! Mình bị lỗi kết nối rồi 😢\nBạn kiểm tra mạng và thử lại nhé!`);
                 }}
-                sendBtn.disabled = false;
             }}
-
             console.log('✅ Chatbot initialization complete');
 
             // ====== EMOJI PICKER FUNCTIONALITY ======
@@ -2811,6 +4200,172 @@ def get_chatbot_html(gemini_api_key):
                     emojiPicker.classList.add('hidden');
                 }}
             }});
+
+            // ====== CLICK TÊN MÓN ĐỂ TÌM QUÁN ======
+            document.addEventListener('click', (e) => {{
+                // Kiểm tra xem có click vào tên món không
+                if (e.target.classList.contains('dish-name')) {{
+                    const dishText = e.target.textContent.trim();
+                    console.log('🍽️ Clicked dish:', dishText);
+                    
+                    // ✅ Trích xuất TÊN TIẾNG VIỆT từ format "Tên nước ngoài (Tên Việt)"
+                    let vietnameseName = dishText;
+                    
+                    // Nếu có dấu ngoặc → lấy phần trong ngoặc
+                    const match = dishText.match(/\(([^)]+)\)/);
+                    if (match && match[1]) {{
+                        vietnameseName = match[1].trim();
+                        console.log('✅ Extracted Vietnamese name:', vietnameseName);
+                    }}
+                    
+                    // ✅ Gọi hàm search của map (trong script.js)
+                    const searchInput = parent.document.getElementById('query');
+                    const searchBtn = parent.document.getElementById('btnSearch');
+                    
+                    if (searchInput && searchBtn) {{
+                        // Điền tên món vào ô search
+                        searchInput.value = vietnameseName;
+                        
+                        // ✅ Đóng chatbox để user nhìn thấy kết quả
+                        const chatWindow = document.getElementById('chatWindow');
+                        const chatbotBtn = document.getElementById('chatbotBtn');
+                        const speechBubble = document.getElementById('speechBubble');
+                        
+                        if (chatWindow) chatWindow.classList.remove('open');
+                        if (chatWindow) chatWindow.style.display = 'none';
+                        if (chatbotBtn) chatbotBtn.style.display = 'flex';
+                        if (chatbotBtn) chatbotBtn.classList.remove('hidden');
+                        if (speechBubble) speechBubble.style.display = 'block';
+                        if (speechBubble) speechBubble.classList.remove('hidden');
+                        
+                        // ✅ Trigger search
+                        setTimeout(() => {{
+                            searchBtn.click();
+                            console.log('🔍 Auto-search triggered for:', vietnameseName);
+                        }}, 300);
+                    }} else {{
+                        console.error('❌ Không tìm thấy search input/button');
+                    }}
+                }}
+            }});
+
+            // ========================================
+            // 🚀 KHỞI TẠO ỨNG DỤNG KHI TRANG LOAD
+            // ========================================
+            async function initializeApp() {{
+                console.log("🚀 Đang khởi động ứng dụng...");
+                
+                // 1. 🔥 Load streak data trước (nếu user đã login)
+                try {{
+                    await loadStreakData();
+                    console.log('✅ Streak data loaded successfully');
+                }} catch (error) {{
+                    console.log('⚠️ Could not load streak (user not logged in?):', error);
+                }}
+                
+                // 2. Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)
+                console.log("✨ Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)");
+                switchToNewChat();
+            }}
+
+            // Gọi hàm khởi tạo ngay lập tức
+            initializeApp();
+
+            console.log('✅ Chatbot initialization complete');
+
+            function updateSendButtonState(state) {{
+                const sendBtn = document.getElementById('sendBtn');
+                const sendIcon = document.getElementById('sendIcon');
+                const loadingIcon = document.getElementById('loadingIcon');
+                const cancelIcon = document.getElementById('cancelIcon');
+                const countdownRing = document.getElementById('countdownRing');
+                const countdownProgress = document.getElementById('countdownProgress');
+                
+                if (!sendBtn) return;
+                
+                // Reset tất cả
+                sendBtn.classList.remove('loading');
+                sendIcon.style.display = 'none';
+                loadingIcon.style.display = 'none';
+                cancelIcon.style.display = 'none';
+                countdownRing.style.display = 'none';
+                
+                if (state === 'idle') {{
+                    // 🟢 Trạng thái bình thường
+                    sendBtn.disabled = !messageInput.value.trim();
+                    sendIcon.style.display = 'block';
+                    
+                }} else if (state === 'loading') {{
+                    // 🟠 Đang generate
+                    sendBtn.disabled = false; // 👈 QUAN TRỌNG: Phải enable để click được
+                    sendBtn.classList.add('loading');
+                    loadingIcon.style.display = 'block'; // 👈 Mặc định hiện loading icon
+                    loadingIcon.parentElement.classList.add('spinning');
+                    countdownRing.style.display = 'block';
+                    
+                    // Thiết lập countdown circle
+                    const radius = 18;
+                    const circumference = 2 * Math.PI * radius;
+                    countdownProgress.style.strokeDasharray = circumference;
+                    countdownProgress.style.strokeDashoffset = 0;
+                    
+                    // Bắt đầu countdown
+                    startCountdown(circumference);
+                }}
+            }}
+
+            // 🆕 HÀM MỚI: Countdown animation
+            function startCountdown(circumference) {{
+                if (countdownInterval) clearInterval(countdownInterval);
+                
+                generationStartTime = Date.now();
+                const countdownProgress = document.getElementById('countdownProgress');
+                
+                countdownInterval = setInterval(() => {{
+                    const elapsed = Date.now() - generationStartTime;
+                    const progress = Math.min(elapsed / GENERATION_TIMEOUT, 1);
+                    const offset = circumference * (1 - progress);
+                    
+                    if (countdownProgress) {{
+                        countdownProgress.style.strokeDashoffset = offset;
+                    }}
+                    
+                    // Timeout → tự động cancel
+                    if (progress >= 1) {{
+                        console.log('⏱️ Timeout → Auto cancel');
+                        cancelAIGeneration();
+                    }}
+                }}, 100);
+            }}
+
+            // 🆕 HÀM MỚI: Dừng countdown
+            function stopCountdown() {{
+                if (countdownInterval) {{
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }}
+            }}
+
+            function cancelAIGeneration() {{
+                console.log('❌ User cancelled AI generation');
+                
+                // 🆕 Abort request đang chạy
+                if (abortController) {{
+                    abortController.abort();
+                    abortController = null;
+                }}
+                
+                cancelGeneration = true;
+                isGenerating = false;
+                
+                stopCountdown();
+                hideTyping();
+                updateSendButtonState('idle');
+                
+                // Hiển thị thông báo
+                addMessage('bot', 'Đã hủy yêu cầu của bạn. Bạn muốn hỏi gì khác không? 😊', false);
+            }}
+
         </script>
     </body>
     </html>
@@ -2827,7 +4382,8 @@ def render_food_chatbot(gemini_api_key):
         gemini_api_key (str): API key của Gemini AI
     """
     
-    chatbot_html = get_chatbot_html(gemini_api_key)
+    menu_data = extract_menu_from_csv()
+    chatbot_html = get_chatbot_html(gemini_api_key, menu_data)
     
     # Sử dụng components.html với height phù hợp
     components.html(chatbot_html, height=700, scrolling=False)

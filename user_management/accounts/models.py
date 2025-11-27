@@ -81,6 +81,11 @@ class UserProfile(models.Model):
     # upload_to='avatars/' nghĩa là ảnh sẽ chui vào thư mục media/avatars/
     avatar = models.ImageField(upload_to='avatars/', default='avatars/default.png', blank=True)
 
+    current_streak = models.IntegerField(default=0)
+    longest_streak = models.IntegerField(default=0)
+    last_streak_date = models.DateField(null=True, blank=True)
+    streak_frozen = models.BooleanField(default=False)
+
     def __str__(self):
         return self.user.username
     
