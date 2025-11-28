@@ -11,8 +11,6 @@ class JigsawPuzzle {
       return;
     }
     
-    this.svg.style.display = 'block';
-
     this.defs = this.svg.querySelector("defs");
     this.layer = document.getElementById("pieces");
     this.piecePaths = [...this.defs.querySelectorAll("path")];
@@ -37,19 +35,13 @@ class JigsawPuzzle {
   }
   
   async init() {
-    // Load progress async - không block
-    this.loadUserProgress().then(() => {
-        this.updateMapButtons();
-    }).catch(() => {
-        console.log('Chưa có progress');
-    });
-    
-    // Tạo pieces
+    await this.loadUserProgress(); // 🆕 Load tiến độ trước
     this.createPieces();
     this.setupEventListeners();
     this.setupMapSelector();
     
-    // Shuffle sau - cho DOM render trước
+    // 🆕 Kiểm tra xem map hiện tại đã hoàn thành chưa
+    // ✅ CHỜ 200MS ĐỂ ĐẢM BẢO DOM ĐÃ SẴN SÀNG
     setTimeout(() => {
       if (this.isMapCompleted(this.currentMap)) {
         this.showCompletedState();
@@ -57,7 +49,7 @@ class JigsawPuzzle {
         this.shuffle();
         this.startTimer();
       }
-    }, 50);
+    }, 200);
   }
   
   // 🆕 LOAD TIẾN ĐỘ USER
@@ -226,20 +218,44 @@ class JigsawPuzzle {
     }
   }
   
-  setupMapSelector() {
-    const mapButtons = document.querySelectorAll('.map-option');
-    
-    mapButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const newMap = btn.dataset.map;
-        
-        mapButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        this.changeMap(newMap);
-      });
+ setupMapSelector() {
+  // 🆕 1. XỬ LÝ TAB SWITCHING
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.dataset.tab;
+      
+      // Remove active từ tất cả
+      tabButtons.forEach(b => b.classList.remove('active'));
+      tabContents.forEach(c => c.classList.remove('active'));
+      
+      // Add active cho tab được chọn
+      btn.classList.add('active');
+      document.getElementById(`tab-${targetTab}`).classList.add('active');
+      
+      // 🆕 Nếu click vào tab Achievements → Load achievements
+      if (targetTab === 'achievements') {
+        this.loadAchievements();
+      }
     });
-  }
+  });
+  
+  // 🆕 2. XỬ LÝ CLICK MAP OPTIONS (giữ nguyên logic cũ)
+  const mapButtons = document.querySelectorAll('.map-option');
+  
+  mapButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newMap = btn.dataset.map;
+      
+      mapButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      this.changeMap(newMap);
+    });
+  });
+}
   
   changeMap(mapName) {
     this.currentMap = mapName;
@@ -261,24 +277,27 @@ class JigsawPuzzle {
       }
     });
     
-    // 3. Đổi ảnh nền mờ
-    const oldBgImg = this.svg.querySelector('#bg-hint-img');
-    if (oldBgImg) {
-      oldBgImg.remove();
-    }
-    
-    const newBgImg = document.createElementNS(this.svgNS, 'image');
-    newBgImg.id = 'bg-hint-img';
-    newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
-    newBgImg.setAttribute('x', '0');
-    newBgImg.setAttribute('y', '0');
-    newBgImg.setAttribute('width', '1071');
-    newBgImg.setAttribute('height', '750');
-    newBgImg.setAttribute('preserveAspectRatio', 'none');
-    newBgImg.setAttribute('opacity', '0.18');
-    newBgImg.style.pointerEvents = 'none';
-    
-    this.svg.insertBefore(newBgImg, this.layer);
+
+   // 3. Đổi ảnh nền mờ
+const oldBgImg = this.svg.querySelector('#bg-hint-img');
+if (oldBgImg) {
+  oldBgImg.remove();
+  console.log('🗑️ Đã xóa background cũ');
+}
+
+const newBgImg = document.createElementNS(this.svgNS, 'image');
+newBgImg.id = 'bg-hint-img';
+newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
+newBgImg.setAttribute('x', '0');
+newBgImg.setAttribute('y', '0');
+newBgImg.setAttribute('width', '1071');
+newBgImg.setAttribute('height', '750');
+newBgImg.setAttribute('preserveAspectRatio', 'none');
+newBgImg.setAttribute('opacity', '0.18');
+newBgImg.style.pointerEvents = 'none';
+
+this.svg.insertBefore(newBgImg, this.layer);
+console.log('✅ Đã thêm background mới:', imagePath);
     
     // 🆕 Kiểm tra map mới đã hoàn thành chưa
     if (this.isMapCompleted(mapName)) {
@@ -506,74 +525,331 @@ class JigsawPuzzle {
   }
   
   // 🆕 LƯU TIẾN ĐỘ HOÀN THÀNH
-  async saveCompletion(completionTime, moves) {
-    try {
-      const response = await fetch('http://127.0.0.1:8000/api/puzzle/complete/', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          map_name: this.currentMap,
-          completion_time: completionTime,
-          moves_count: moves
-        })
-      });
+  // 🆕 LƯU TIẾN ĐỘ HOÀN THÀNH
+async saveCompletion(completionTime, moves) {
+  try {
+    // 1️⃣ Lưu tiến độ puzzle
+    const response = await fetch('http://127.0.0.1:8000/api/puzzle/complete/', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        map_name: this.currentMap,
+        completion_time: completionTime,
+        moves_count: moves
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      console.log('✅ Đã lưu tiến độ hoàn thành');
       
-      const data = await response.json();
+      // Cập nhật local progress
+      this.userProgress[this.currentMap] = {
+        completed: true,
+        completion_time: completionTime,
+        moves_count: moves
+      };
       
-      if (data.status === 'success') {
-        console.log('✅ Đã lưu tiến độ hoàn thành');
-        
-        // Cập nhật local progress
-        this.userProgress[this.currentMap] = {
-          completed: true,
-          completion_time: completionTime,
-          moves_count: moves
-        };
-        
-        // Cập nhật giao diện map buttons
-        this.updateMapButtons();
-      }
-    } catch (error) {
-      console.log('ℹ️ Chưa đăng nhập, không lưu tiến độ');
+      // Cập nhật giao diện map buttons
+      this.updateMapButtons();
+      
+      // 2️⃣ 🆕 TỰ ĐỘNG UNLOCK FOOD STORY
+      await this.unlockFoodStory();
     }
+  } catch (error) {
+    console.log('ℹ️ Chưa đăng nhập, không lưu tiến độ');
+  }
+}
+
+// 🆕 UNLOCK FOOD STORY
+async unlockFoodStory() {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/food-story/unlock/${this.currentMap}/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success' && data.is_new) {
+      console.log('🎉 Đã unlock food story:', data.story_preview.title);
+      // Sẽ hiển thị trong completion modal
+    }
+  } catch (error) {
+    console.log('ℹ️ Không thể unlock food story');
+  }
+}
+  
+  async showCompletionModal() {
+  const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  
+  const overlay = document.getElementById('miniGameOverlay');
+  const modal = document.createElement('div');
+  modal.className = 'completion-modal show';
+  
+  // 🆕 LẤY THÔNG TIN FOOD STORY
+  let storyUnlockHTML = '';
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/food-story/${this.currentMap}/`, {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    
+    if (data.status === 'unlocked') {
+      const story = data.story;
+      storyUnlockHTML = `
+        <div class="story-unlock-section">
+          <div class="unlock-badge">🎉 ĐÃ MỞ KHÓA 🎉</div>
+          <h3>📖 ${story.title}</h3>
+          <p class="story-desc">${story.description}</p>
+          <div class="story-stats">
+            <span>💡 ${story.fun_facts.length} Fun Facts</span>
+            <span>🍽️ ${story.variants.length} Biến thể</span>
+            ${story.unesco_recognized ? '<span>🏆 UNESCO nhận nhận</span>' : ''}
+          </div>
+          <button class="btn-view-story" data-map="${this.currentMap}">
+            Xem câu chuyện đầy đủ →
+          </button>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.log('Không thể load food story');
   }
   
-  showCompletionModal() {
-    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-    const minutes = Math.floor(elapsed / 60);
-    const seconds = elapsed % 60;
+  modal.innerHTML = `
+    <div class="modal-content">
+      <h2>🎉 Chúc mừng! 🎉</h2>
+      <p>Bạn đã hoàn thành puzzle!</p>
+      <div class="stats">
+        <div>⏱️ Thời gian: ${minutes}:${seconds.toString().padStart(2, '0')}</div>
+        <div>🔄 Số bước: ${this.moves}</div>
+      </div>
+      
+      ${storyUnlockHTML}
+      
+      <button class="btn-play-again">Đóng</button>
+    </div>
+  `;
+  
+  overlay.appendChild(modal);
+  
+  // Event: Đóng modal
+  modal.querySelector('.btn-play-again').addEventListener('click', () => {
+    modal.remove();
+    this.showCompletedState();
+  });
+  
+  // 🆕 Event: Xem Food Story
+  const btnViewStory = modal.querySelector('.btn-view-story');
+  if (btnViewStory) {
+    btnViewStory.addEventListener('click', () => {
+      modal.remove();
+      this.showFoodStoryModal(btnViewStory.dataset.map);
+    });
+  }
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+      this.showCompletedState();
+    }
+  });
+}
+// 🆕 HIỂN THỊ FOOD STORY ĐẦY ĐỦ
+async showFoodStoryModal(mapName) {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/food-story/${mapName}/`, {
+      credentials: 'include'
+    });
+    const data = await response.json();
     
+    if (data.status !== 'unlocked') {
+      alert('Bạn cần hoàn thành puzzle để xem câu chuyện!');
+      return;
+    }
+    
+    const story = data.story;
     const overlay = document.getElementById('miniGameOverlay');
     const modal = document.createElement('div');
-    modal.className = 'completion-modal show';
+    modal.className = 'food-story-modal show';
+    
+    // Tạo HTML Fun Facts
+    const funFactsHTML = story.fun_facts.map(fact => 
+      `<li>${fact}</li>`
+    ).join('');
+    
+    // Tạo HTML Variants
+    const variantsHTML = story.variants.map(variant => 
+      `<span class="variant-tag">${variant}</span>`
+    ).join('');
+    
     modal.innerHTML = `
-      <div class="modal-content">
-        <h2>🎉 Chúc mừng! 🎉</h2>
-        <p>Bạn đã hoàn thành puzzle!</p>
-        <div class="stats">
-          <div>⏱️ Thời gian: ${minutes}:${seconds.toString().padStart(2, '0')}</div>
-          <div>🔄 Số bước: ${this.moves}</div>
+      <div class="story-modal-content">
+        <button class="story-close-btn">×</button>
+        
+        <div class="story-header">
+          <img src="${story.image_url}" alt="${story.title}" />
+          <div class="story-title-section">
+            <h2>${story.title}</h2>
+            <p class="story-origin">📍 ${story.origin_region}</p>
+            ${story.unesco_recognized ? `
+              <div class="unesco-badge">
+                🏆 ${story.recognition_text}
+              </div>
+            ` : ''}
+          </div>
         </div>
-        <button class="btn-play-again">Đóng</button>
+        
+        <div class="story-body">
+          <section class="story-section">
+            <h3>📜 Lịch Sử Hình Thành</h3>
+            <p class="story-text">${story.history.trim()}</p>
+          </section>
+          
+          <section class="story-section">
+            <h3>💡 Fun Facts</h3>
+            <ul class="fun-facts-list">
+              ${funFactsHTML}
+            </ul>
+          </section>
+          
+          <section class="story-section">
+            <h3>🍽️ Các Biến Thể Phổ Biến</h3>
+            <div class="variants-container">
+              ${variantsHTML}
+            </div>
+          </section>
+          
+          ${story.video_url ? `
+            <section class="story-section">
+              <h3>🎥 Video Giới Thiệu</h3>
+              <a href="${story.video_url}" target="_blank" class="btn-watch-video">
+                Xem video →
+              </a>
+            </section>
+          ` : ''}
+        </div>
       </div>
     `;
     
     overlay.appendChild(modal);
     
-    modal.querySelector('.btn-play-again').addEventListener('click', () => {
-      modal.remove();
-      // Không reset nữa, để giữ trạng thái đã hoàn thành
-      this.showCompletedState();
-    });
+    // Event đóng modal
+    const closeBtn = modal.querySelector('.story-close-btn');
+    closeBtn.addEventListener('click', () => modal.remove());
     
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.remove();
-        this.showCompletedState();
-      }
+      if (e.target === modal) modal.remove();
     });
+    
+  } catch (error) {
+    console.error('Lỗi load food story:', error);
+    alert('Không thể tải thông tin món ăn!');
   }
+}
+// 🆕 LOAD VÀ HIỂN THỊ DANH SÁCH THÀNH TỰU
+async loadAchievements() {
+  const container = document.querySelector('.achievements-container');
+  
+  // Hiển thị loading
+  container.innerHTML = '<p class="loading-achievements">Đang tải thành tựu...</p>';
+  
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/food-stories/unlocked/', {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      if (data.count === 0) {
+        // Chưa có thành tựu nào
+        container.innerHTML = `
+          <div class="empty-achievements">
+            <div class="empty-achievements-icon">🏆</div>
+            <p class="empty-achievements-text">
+              Bạn chưa có thành tựu nào!<br>
+              Hoàn thành puzzle để mở khóa.
+            </p>
+          </div>
+        `;
+        return;
+      }
+      
+      // Có thành tựu → Hiển thị danh sách
+      this.renderAchievements(data.stories);
+    }
+  } catch (error) {
+    console.error('Lỗi load achievements:', error);
+    container.innerHTML = `
+      <div class="empty-achievements">
+        <div class="empty-achievements-icon">⚠️</div>
+        <p class="empty-achievements-text">
+          Không thể tải thành tựu.<br>
+          Vui lòng đăng nhập để xem!
+        </p>
+      </div>
+    `;
+  }
+}
+
+// 🆕 RENDER DANH SÁCH THÀNH TỰU
+// 🆕 RENDER DANH SÁCH THÀNH TỰU - GỌNG HƠN
+async renderAchievements(unlockedStories) {
+  const container = document.querySelector('.achievements-container');
+  
+  // Danh sách TẤT CẢ các món (bao gồm locked và unlocked)
+  const allMaps = [
+    { map_name: 'banh_mi', title: 'Bánh Mì', image: 'Picture/banh_mi.png' },
+    { map_name: 'com_tam', title: 'Cơm Tấm', image: 'Picture/com_tam.png' },
+    { map_name: 'bun_bo_hue', title: 'Bún Bò Huế', image: 'Picture/bun_bo_hue.png' }
+  ];
+  
+  // Tạo Set các map đã unlock để check nhanh
+  const unlockedMapNames = new Set(unlockedStories.map(s => s.map_name));
+  
+  let html = '';
+  
+  for (const mapInfo of allMaps) {
+    const isUnlocked = unlockedMapNames.has(mapInfo.map_name);
+    
+    if (isUnlocked) {
+      // ✅ ĐÃ MỞ KHÓA - Card xanh lá
+      html += `
+        <div class="achievement-card unlocked" data-map="${mapInfo.map_name}">
+          <span class="achievement-badge">✅</span>
+          <img src="${mapInfo.image}" alt="${mapInfo.title}" class="achievement-icon">
+          <h4 class="achievement-title">${mapInfo.title}</h4>
+        </div>
+      `;
+    } else {
+      // 🔒 CHƯA MỞ KHÓA - Card xám
+      html += `
+        <div class="achievement-card locked">
+          <span class="achievement-badge">🔒</span>
+          <img src="${mapInfo.image}" alt="${mapInfo.title}" class="achievement-icon">
+          <h4 class="achievement-title">${mapInfo.title}</h4>
+        </div>
+      `;
+    }
+  }
+  
+  container.innerHTML = html;
+  
+  // 🆕 THÊM EVENT CLICK VÀO CÁC CARD ĐÃ MỞ KHÓA
+  const unlockedCards = container.querySelectorAll('.achievement-card.unlocked');
+  unlockedCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const mapName = card.dataset.map;
+      this.showFoodStoryModal(mapName);
+    });
+  });
+}
   
   reset() {
     this.moves = 0;
@@ -597,19 +873,34 @@ class JigsawPuzzle {
     this.shuffle();
     this.startTimer();
   }
+  // ✅ CLEANUP KHI ĐÓNG MINI GAME
+    cleanup() {
+      // Xóa ảnh background hint
+      if (this.svg) {
+        const bgHint = this.svg.querySelector('#bg-hint-img');
+        if (bgHint) {
+          bgHint.remove();
+          console.log('🗑️ Đã xóa background hint image');
+        }
+      }
+      
+      // Dừng timer
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+      }
+    }
 }
 
+
+
+    
+
 // ========================================
-// 🎮 MỞ/ĐÓNG MINI GAME - OPTIMIZED
+// 🎮 MỞ/ĐÓNG MINI GAME
 // ========================================
 
 let puzzleGame = null;
-
-function ensurePuzzleReady() {
-  if (!puzzleGame) {
-    puzzleGame = new JigsawPuzzle();
-  }
-}
 
 function initMiniGame() {
   const openBtn = document.getElementById('miniGameBtn');
@@ -620,71 +911,47 @@ function initMiniGame() {
     console.error('Không tìm thấy các element mini game');
     return;
   }
-    
+  
   openBtn.addEventListener('click', () => {
-    // 🚀 MỞ OVERLAY TRƯỚC TIÊN
     overlay.classList.remove('hidden');
-
-    // ⚡ ĐÓNG CHATBOT ĐỒNG BỘ (nhanh)
-    const chatWindow = document.getElementById('chatWindow');
-    const chatbotBtn = document.getElementById('chatbotBtn');
-    const speechBubble = document.getElementById('speechBubble');
-    const chatHistorySidebar = document.getElementById('chatHistorySidebar');
-
-    if (chatWindow) {
-      chatWindow.classList.remove('open');
-      chatWindow.style.display = 'none';
-    }
-    if (chatbotBtn) {
-      chatbotBtn.style.display = 'flex';
-      chatbotBtn.classList.remove('hidden');
-    }
-    if (speechBubble) {
-      speechBubble.style.display = 'block';
-      speechBubble.classList.remove('hidden');
-    }
-    if (chatHistorySidebar) {
-      chatHistorySidebar.classList.remove('open');
-    }
-
-    // ✅ ĐẢM BẢO PUZZLE ĐÃ ĐƯỢC TẠO SẴN (nhẹ hơn rất nhiều)
-    ensurePuzzleReady();
-
-    // Khi user mở game thì reset lại timer + shuffle
-    if (puzzleGame.isMapCompleted(puzzleGame.currentMap)) {
-      puzzleGame.showCompletedState();
-    } else {
-      puzzleGame.reset();
-    }
-  });
-
-  closeBtn.addEventListener('click', () => {
-    overlay.classList.add('hidden');
     
-    if (puzzleGame && puzzleGame.timerInterval) {
-      clearInterval(puzzleGame.timerInterval);
+    if (!puzzleGame) {
+      setTimeout(() => {
+        puzzleGame = new JigsawPuzzle();
+      }, 100);
+    } else {
+      // Khi mở lại, kiểm tra map hiện tại đã hoàn thành chưa
+      if (puzzleGame.isMapCompleted(puzzleGame.currentMap)) {
+        puzzleGame.showCompletedState();
+      } else {
+        puzzleGame.reset();
+      }
     }
   });
   
+  // ✅ FIX: Gọi cleanup khi click nút X
+  closeBtn.addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    
+    if (puzzleGame) {
+      puzzleGame.cleanup(); // ✅ Thêm dòng này
+    }
+  });
+  
+  // ✅ FIX: Gọi cleanup khi click overlay
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
       overlay.classList.add('hidden');
-      if (puzzleGame && puzzleGame.timerInterval) {
-        clearInterval(puzzleGame.timerInterval);
+      
+      if (puzzleGame) {
+        puzzleGame.cleanup(); // ✅ Thêm dòng này
       }
     }
   });
 }
 
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🎮 Mini Game script loaded');
   initMiniGame();
-
-  // 🔥 Preload puzzle ở background để lần đầu bấm không bị lag
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(ensurePuzzleReady);   // browser rảnh thì dựng puzzle
-  } else {
-    setTimeout(ensurePuzzleReady, 500);       // đợi trang render xong rồi mới dựng
-  }
 });
-
