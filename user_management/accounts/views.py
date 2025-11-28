@@ -1086,3 +1086,145 @@ def get_friend_favorites(request, friend_id):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+    # ==========================================================
+# 📖 FOOD STORY APIs
+# ==========================================================
+
+from .models import FoodStory, UnlockedStory
+
+@login_required
+@require_http_methods(["GET"])
+def get_food_story(request, map_name):
+    """
+    Lấy thông tin Food Story của một món ăn
+    GET /api/food-story/<map_name>/
+    """
+    try:
+        story = FoodStory.objects.get(map_name=map_name)
+        
+        # Kiểm tra user đã unlock chưa
+        is_unlocked = UnlockedStory.objects.filter(
+            user=request.user,
+            story=story
+        ).exists()
+        
+        # Nếu chưa unlock -> chỉ trả về thông tin cơ bản
+        if not is_unlocked:
+            return JsonResponse({
+                'status': 'locked',
+                'message': 'Hoàn thành puzzle để mở khóa câu chuyện này!',
+                'title': story.title,
+                'description': story.description,
+                'image_url': story.image_url
+            })
+        
+        # Nếu đã unlock -> trả về đầy đủ thông tin
+        return JsonResponse({
+            'status': 'unlocked',
+            'story': {
+                'map_name': story.map_name,
+                'title': story.title,
+                'description': story.description,
+                'history': story.history,
+                'fun_facts': story.fun_facts,
+                'variants': story.variants,
+                'origin_region': story.origin_region,
+                'image_url': story.image_url,
+                'video_url': story.video_url,
+                'unesco_recognized': story.unesco_recognized,
+                'recognition_text': story.recognition_text
+            }
+        })
+        
+    except FoodStory.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông tin món ăn'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def unlock_food_story(request, map_name):
+    """
+    Unlock Food Story khi user hoàn thành puzzle
+    POST /api/food-story/unlock/<map_name>/
+    """
+    try:
+        story = FoodStory.objects.get(map_name=map_name)
+        
+        # Tạo record unlock (hoặc bỏ qua nếu đã unlock)
+        unlocked, created = UnlockedStory.objects.get_or_create(
+            user=request.user,
+            story=story
+        )
+        
+        if created:
+            return JsonResponse({
+                'status': 'success',
+                'message': f'🎉 Đã mở khóa câu chuyện: {story.title}',
+                'is_new': True,
+                'story_preview': {
+                    'title': story.title,
+                    'description': story.description,
+                    'fun_facts_count': len(story.fun_facts),
+                    'variants_count': len(story.variants)
+                }
+            })
+        else:
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Bạn đã mở khóa câu chuyện này rồi',
+                'is_new': False
+            })
+            
+    except FoodStory.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông tin món ăn'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_all_unlocked_stories(request):
+    """
+    Lấy danh sách tất cả story user đã unlock
+    GET /api/food-stories/unlocked/
+    """
+    try:
+        unlocked = UnlockedStory.objects.filter(user=request.user).select_related('story')
+        
+        stories_data = []
+        for unlock in unlocked:
+            stories_data.append({
+                'map_name': unlock.story.map_name,
+                'title': unlock.story.title,
+                'description': unlock.story.description,  # ✅ Đã có sẵn
+                'image_url': unlock.story.image_url,
+                'unlocked_at': unlock.unlocked_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'count': len(stories_data),
+            'stories': stories_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

@@ -119,3 +119,47 @@ class PuzzleProgress(models.Model):
     def __str__(self):
         status = "✅" if self.completed else "⏳"
         return f"{status} {self.user.username} - {self.map_name}"
+
+class FoodStory(models.Model):
+    """
+    Lưu thông tin câu chuyện/lịch sử của món ăn
+    """
+    map_name = models.CharField(max_length=50, unique=True)  # 'banh_mi', 'com_tam', 'bun_bo_hue'
+    title = models.CharField(max_length=200)  # "Bánh Mì - Hương Vị Đặc Trưng Việt Nam"
+    description = models.TextField()  # Mô tả ngắn
+    
+    # Nội dung chính
+    history = models.TextField()  # Lịch sử hình thành
+    fun_facts = models.JSONField(default=list)  # List các fun facts ['fact1', 'fact2']
+    variants = models.JSONField(default=list)  # Các biến thể ['Bánh mì pate', 'Bánh mì thit nuong']
+    origin_region = models.CharField(max_length=100)  # "Miền Nam" / "Huế"
+    
+    # Media
+    image_url = models.CharField(max_length=500, blank=True)
+    video_url = models.CharField(max_length=500, blank=True)
+    
+    # UNESCO Recognition (optional)
+    unesco_recognized = models.BooleanField(default=False)
+    recognition_text = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"📖 {self.title}"
+
+
+class UnlockedStory(models.Model):
+    """
+    Theo dõi story nào user đã unlock
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='unlocked_stories')
+    story = models.ForeignKey(FoodStory, on_delete=models.CASCADE)
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'story')
+        ordering = ['-unlocked_at']
+
+    def __str__(self):
+        return f"✅ {self.user.username} - {self.story.title}"

@@ -39,6 +39,10 @@ urlpatterns = [
     path('api/puzzle/progress/', account_views.get_puzzle_progress, name='get_puzzle_progress'),
     path('api/puzzle/complete/', account_views.save_puzzle_completion, name='save_puzzle_completion'),
     path('api/puzzle/reset/<str:map_name>/', account_views.reset_puzzle_progress, name='reset_puzzle_progress'),
+     # 📖 Food Story APIs
+    path('api/food-story/<str:map_name>/', account_views.get_food_story, name='get_food_story'),
+    path('api/food-story/unlock/<str:map_name>/', account_views.unlock_food_story, name='unlock_food_story'),
+    path('api/food-stories/unlocked/', account_views.get_all_unlocked_stories, name='get_all_unlocked_stories'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
