@@ -42,7 +42,7 @@ def create_food_stories():
                 'Bánh mì heo quay'
             ],
             'origin_region': 'Thành phố Hồ Chí Minh (Sài Gòn)',
-            'image_url': '../frontend/Picture/banh_mi.png',
+            'image_url': 'Picture/banh_mi.png',
             'video_url': '', 
             'unesco_recognized': False,
             'recognition_text': ''
@@ -80,7 +80,7 @@ def create_food_stories():
                 'Cơm tấm phong cách mới (thêm trứng ốp la, pate)'
             ],
             'origin_region': 'Thành phố Hồ Chí Minh (Sài Gòn)',
-            'image_url': '../frontend/Picture/com_tam.png',
+            'image_url': 'Picture/com_tam.png',
             'video_url': '', 
             'unesco_recognized': False,
             'recognition_text': ''
@@ -119,7 +119,7 @@ def create_food_stories():
                 'Bún bò cung đình (nhiều topping cao cấp)'
             ],
             'origin_region': 'Thành phố Huế',
-            'image_url': '../frontend/Picture/bun_bo_hue.png',
+            'image_url': 'Picture/bun_bo_hue.png',
             'video_url': '', 
             'unesco_recognized': True,
             'recognition_text': 'Năm 2023, Bún Bò Huế được UNESCO công nhận là Di sản ẩm thực phi vật thể của nhân loại'

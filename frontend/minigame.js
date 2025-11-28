@@ -277,24 +277,27 @@ class JigsawPuzzle {
       }
     });
     
-    // 3. Đổi ảnh nền mờ
-    const oldBgImg = this.svg.querySelector('#bg-hint-img');
-    if (oldBgImg) {
-      oldBgImg.remove();
-    }
-    
-    const newBgImg = document.createElementNS(this.svgNS, 'image');
-    newBgImg.id = 'bg-hint-img';
-    newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
-    newBgImg.setAttribute('x', '0');
-    newBgImg.setAttribute('y', '0');
-    newBgImg.setAttribute('width', '1071');
-    newBgImg.setAttribute('height', '750');
-    newBgImg.setAttribute('preserveAspectRatio', 'none');
-    newBgImg.setAttribute('opacity', '0.18');
-    newBgImg.style.pointerEvents = 'none';
-    
-    this.svg.insertBefore(newBgImg, this.layer);
+
+   // 3. Đổi ảnh nền mờ
+const oldBgImg = this.svg.querySelector('#bg-hint-img');
+if (oldBgImg) {
+  oldBgImg.remove();
+  console.log('🗑️ Đã xóa background cũ');
+}
+
+const newBgImg = document.createElementNS(this.svgNS, 'image');
+newBgImg.id = 'bg-hint-img';
+newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
+newBgImg.setAttribute('x', '0');
+newBgImg.setAttribute('y', '0');
+newBgImg.setAttribute('width', '1071');
+newBgImg.setAttribute('height', '750');
+newBgImg.setAttribute('preserveAspectRatio', 'none');
+newBgImg.setAttribute('opacity', '0.18');
+newBgImg.style.pointerEvents = 'none';
+
+this.svg.insertBefore(newBgImg, this.layer);
+console.log('✅ Đã thêm background mới:', imagePath);
     
     // 🆕 Kiểm tra map mới đã hoàn thành chưa
     if (this.isMapCompleted(mapName)) {
@@ -870,12 +873,28 @@ async renderAchievements(unlockedStories) {
     this.shuffle();
     this.startTimer();
   }
+  // ✅ CLEANUP KHI ĐÓNG MINI GAME
+    cleanup() {
+      // Xóa ảnh background hint
+      if (this.svg) {
+        const bgHint = this.svg.querySelector('#bg-hint-img');
+        if (bgHint) {
+          bgHint.remove();
+          console.log('🗑️ Đã xóa background hint image');
+        }
+      }
+      
+      // Dừng timer
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+      }
+    }
 }
 
 
+
     
-
-
 
 // ========================================
 // 🎮 MỞ/ĐÓNG MINI GAME
@@ -892,8 +911,6 @@ function initMiniGame() {
     console.error('Không tìm thấy các element mini game');
     return;
   }
-
-  
   
   openBtn.addEventListener('click', () => {
     overlay.classList.remove('hidden');
@@ -903,7 +920,7 @@ function initMiniGame() {
         puzzleGame = new JigsawPuzzle();
       }, 100);
     } else {
-      // 🆕 Khi mở lại, kiểm tra map hiện tại đã hoàn thành chưa
+      // Khi mở lại, kiểm tra map hiện tại đã hoàn thành chưa
       if (puzzleGame.isMapCompleted(puzzleGame.currentMap)) {
         puzzleGame.showCompletedState();
       } else {
@@ -912,23 +929,27 @@ function initMiniGame() {
     }
   });
   
+  // ✅ FIX: Gọi cleanup khi click nút X
   closeBtn.addEventListener('click', () => {
     overlay.classList.add('hidden');
     
-    if (puzzleGame && puzzleGame.timerInterval) {
-      clearInterval(puzzleGame.timerInterval);
+    if (puzzleGame) {
+      puzzleGame.cleanup(); // ✅ Thêm dòng này
     }
   });
   
+  // ✅ FIX: Gọi cleanup khi click overlay
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
       overlay.classList.add('hidden');
-      if (puzzleGame && puzzleGame.timerInterval) {
-        clearInterval(puzzleGame.timerInterval);
+      
+      if (puzzleGame) {
+        puzzleGame.cleanup(); // ✅ Thêm dòng này
       }
     }
   });
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🎮 Mini Game script loaded');
