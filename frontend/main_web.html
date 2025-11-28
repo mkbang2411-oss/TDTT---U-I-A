@@ -333,20 +333,41 @@
 
         <!-- Khu vực board ghép hình -->
         <div class="mini-game-content">
-            <!-- 🗺️ MAP SELECTOR -->
-            <div class="map-selector">
-                <button class="map-option active" data-map="banh_mi">
-                    <img src="Picture/banh_mi.png" alt="Bánh Mì">
-                    <span>Bánh Mì</span>
-                </button>
-                <button class="map-option" data-map="com_tam">
-                    <img src="Picture/com_tam.png" alt="Cơm Tấm">
-                    <span>Cơm Tấm</span>
-                </button>
-                <button class="map-option" data-map="bun_bo_hue">
-                    <img src="Picture/bun_bo_hue.png" alt="Bún Bò Huế">
-                    <span>Bún Bò Huế</span>
-                </button>
+           <!-- 🗺️ MAP SELECTOR -->
+<div class="map-selector">
+    <!-- 🆕 TAB SWITCHER -->
+    <div class="tab-switcher">
+        <button class="tab-btn active" data-tab="maps">
+            🎮 Chọn Map
+        </button>
+        <button class="tab-btn" data-tab="achievements">
+            🏆 Thành Tựu
+        </button>
+    </div>
+
+                <!-- 🆕 TAB CONTENT: MAPS -->
+                <div class="tab-content active" id="tab-maps">
+                    <button class="map-option active" data-map="banh_mi">
+                        <img src="Picture/banh_mi.png" alt="Bánh Mì">
+                        <span>Bánh Mì</span>
+                    </button>
+                    <button class="map-option" data-map="com_tam">
+                        <img src="Picture/com_tam.png" alt="Cơm Tấm">
+                        <span>Cơm Tấm</span>
+                    </button>
+                    <button class="map-option" data-map="bun_bo_hue">
+                        <img src="Picture/bun_bo_hue.png" alt="Bún Bò Huế">
+                        <span>Bún Bò Huế</span>
+                    </button>
+                </div>
+
+                <!-- 🆕 TAB CONTENT: ACHIEVEMENTS -->
+                <div class="tab-content" id="tab-achievements">
+                    <div class="achievements-container">
+                        <!-- JavaScript sẽ render nội dung vào đây -->
+                        <p class="loading-achievements">Đang tải thành tựu...</p>
+                    </div>
+                </div>
             </div>
 
             <!-- ✅ THÊM PHẦN NÀY - GAME CONTAINER -->
@@ -362,7 +383,7 @@
                 <!-- PUZZLE BOARD -->
                 <div id="jigsawBoard" class="jigsaw-board">
                     <div id="board">
-                        <svg id="puzzle" viewBox="0 0 1071 750" style="display:none"
+                        <svg id="puzzle" viewBox="0 0 1071 750"
                              xmlns="http://www.w3.org/2000/svg"
                              xmlns:xlink="http://www.w3.org/1999/xlink">
 
@@ -449,121 +470,6 @@
     setTimeout(() => {
         showNotification(3);
     }, 2000);
-    </script>
-
-    <script>
-        // ✅ QUẢN LÝ Z-INDEX ĐỘNG - OPTIMIZED VERSION
-        document.addEventListener('DOMContentLoaded', () => {
-            const chatWindow = document.querySelector('.chat-window');
-            const chatbotBtn = document.querySelector('.chatbot-button');
-            const foodPlannerPanel = document.querySelector('.food-planner-panel');
-            const musicPanel = document.querySelector('.music-panel');
-            const musicBtn = document.querySelector('.music-player-btn');
-            const miniGameOverlay = document.getElementById('miniGameOverlay');
-            
-            // ⚡ CACHE Z-INDEX VALUES (không phải tính lại mỗi lần)
-            const Z_INDEX = {
-                MINI_GAME_ACTIVE: {
-                    chat: '999999',
-                    food: '999999',
-                    music: '10000002',
-                    musicBtn: '10000002'
-                },
-                CHAT_ACTIVE: {
-                    chat: '10000001',
-                    food: '9999999',
-                    music: '9999998',
-                    musicBtn: '999997'
-                },
-                FOOD_ACTIVE: {
-                    chat: '9999999',
-                    food: '10000001',
-                    music: '9999998',
-                    musicBtn: '999997'
-                },
-                MUSIC_ACTIVE: {
-                    chat: '9999999',
-                    food: '9999999',
-                    music: '10000001',
-                    musicBtn: '999997'
-                },
-                DEFAULT: {
-                    chat: '1000000',
-                    food: '9999999',
-                    music: '99999998',
-                    musicBtn: '999997'
-                }
-            };
-            
-            // 🚀 HÀM UPDATE Z-INDEX - SIMPLIFIED
-            function updateZIndex() {
-                const isMiniGameOpen = miniGameOverlay && !miniGameOverlay.classList.contains('hidden');
-                const isChatOpen = chatWindow && chatWindow.classList.contains('open');
-                const isFoodOpen = foodPlannerPanel && foodPlannerPanel.classList.contains('active');
-                const isMusicOpen = musicPanel && musicPanel.classList.contains('open');
-                
-                let zIndexSet;
-                
-                // Xác định state và lấy z-index tương ứng
-                if (isMiniGameOpen) {
-                    zIndexSet = Z_INDEX.MINI_GAME_ACTIVE;
-                } else if (isChatOpen) {
-                    zIndexSet = Z_INDEX.CHAT_ACTIVE;
-                } else if (isFoodOpen) {
-                    zIndexSet = Z_INDEX.FOOD_ACTIVE;
-                } else if (isMusicOpen) {
-                    zIndexSet = Z_INDEX.MUSIC_ACTIVE;
-                } else {
-                    zIndexSet = Z_INDEX.DEFAULT;
-                }
-                
-                // Apply z-index một lần (batch update)
-                if (chatWindow) chatWindow.style.zIndex = zIndexSet.chat;
-                if (foodPlannerPanel) foodPlannerPanel.style.zIndex = zIndexSet.food;
-                if (musicPanel) musicPanel.style.zIndex = zIndexSet.music;
-                if (musicBtn) musicBtn.style.zIndex = zIndexSet.musicBtn;
-            }
-            
-            // ⚡ DEBOUNCED UPDATE (tránh gọi nhiều lần liên tục)
-            let updateTimeout;
-            function scheduleUpdate() {
-                if (updateTimeout) return; // Nếu đang có schedule rồi thì bỏ qua
-                
-                updateTimeout = requestAnimationFrame(() => {
-                    updateZIndex();
-                    updateTimeout = null;
-                });
-            }
-            
-            // 🎯 LẮNG NGHE THAY ĐỔI
-            if (chatbotBtn) {
-                chatbotBtn.addEventListener('click', scheduleUpdate);
-            }
-            
-            if (foodPlannerPanel) {
-                new MutationObserver(scheduleUpdate).observe(foodPlannerPanel, { 
-                    attributes: true, 
-                    attributeFilter: ['class'] 
-                });
-            }
-            
-            if (musicPanel) {
-                new MutationObserver(scheduleUpdate).observe(musicPanel, { 
-                    attributes: true, 
-                    attributeFilter: ['class'] 
-                });
-            }
-            
-            if (miniGameOverlay) {
-                new MutationObserver(scheduleUpdate).observe(miniGameOverlay, { 
-                    attributes: true, 
-                    attributeFilter: ['class'] 
-                });
-            }
-            
-            // Khởi tạo lần đầu
-            updateZIndex();
-        });
     </script>
 
 </body>
