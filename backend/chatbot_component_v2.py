@@ -104,7 +104,7 @@ def extract_menu_from_csv(csv_path: str = "Data_with_flavor.csv"):
             'há cảo', 'mandu', 'wonton', 'dumpling',
             'peking duck', 'mapo tofu', 'kung pao',
             'sweet sour', 'fried rice', 'chow mein',
-            'spring roll', 'congee',
+            'spring roll', 'congee', 'há cảo', 'sủi cảo',
             
             # Món Thái
             'pad thai', 'tom yum', 'tom kha', 'green curry',
@@ -1560,7 +1560,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
         <!-- Chat History Sidebar -->
         <div class="chat-history-sidebar" id="chatHistorySidebar">
             <div class="history-header">
-                <span>📋 Lịch sử chat</span>
+                <span>Lịch sử chat</span>
                 <div class="history-header-right">
                     <button class="history-new-btn" id="historyNewBtn" title="Tạo chat mới">+</button>
                     <button class="history-close" id="historyCloseBtn">✕</button>
