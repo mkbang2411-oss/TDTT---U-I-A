@@ -2003,10 +2003,47 @@ document.addEventListener("DOMContentLoaded", () => {
             // A. Điền tên quán vào ô nhập
             searchInput.value = searchName;
             
+            // ✅ XÓA BÁN KÍNH VÀ GPS ĐỂ TRÁNH BẮT NHẬP VỊ TRÍ
+            const radiusInput = document.getElementById('radius');
+            const budgetInput = document.getElementById('budget');
+            const gpsInput = document.getElementById('gpsInput');
+            
+            if (radiusInput) radiusInput.value = '';
+            if (budgetInput) budgetInput.value = '';
+            if (gpsInput) gpsInput.value = '';
+            
+            // ✅ Reset radio buttons
+            const radiusRadios = document.querySelectorAll('input[name="radius"]');
+            radiusRadios.forEach(r => r.checked = false);
+            
+            const budgetRadios = document.querySelectorAll('input[name="budget"]');
+            budgetRadios.forEach(b => b.checked = false);
+            
+            // ✅ Reset text hiển thị trên nút dropdown
+            const radiusBtn = document.getElementById('radiusBtn');
+            const budgetBtn = document.getElementById('budgetBtn');
+            
+            if (radiusBtn) {
+                const radiusText = radiusBtn.querySelector('.selected-flavors');
+                if (radiusText) {
+                    radiusText.textContent = 'Bán kính tìm kiếm';
+                    radiusText.classList.add('empty');
+                }
+            }
+            
+            if (budgetBtn) {
+                const budgetText = budgetBtn.querySelector('.selected-flavors');
+                if (budgetText) {
+                    budgetText.textContent = 'Ngân sách mặc định ▼';
+                    budgetText.classList.add('empty');
+                }
+            }
+            
             // B. Đợi 1 chút cho bản đồ load xong thì tự bấm nút tìm
             setTimeout(() => {
-                searchBtn.click(); // 👈 Giả lập cú click chuột
-            }, 0); // Đợi 0.5 giây
+                searchBtn.click();
+                console.log('🔍 Auto-search triggered for:', searchName);
+            }, 500); // Đợi 0.5 giây
         }
     }
 });
