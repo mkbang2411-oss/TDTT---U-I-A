@@ -1076,7 +1076,7 @@ def get_food_planner_html():
 /* ========== FLOATING BUTTON ========== */
 .food-planner-btn {
     position: fixed;
-    bottom: 200px; /* đặt cao hơn nút 🍜 khoảng 80px */
+    bottom: 230px; /* đặt cao hơn nút 🍜 khoảng 80px */
     right: 30px;
     width: 56px;
     height: 56px;

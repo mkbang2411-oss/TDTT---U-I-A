@@ -302,23 +302,100 @@
 /* Nút mở mini game trên map */
 .mini-game-btn {
   position: fixed;
-  bottom: 100px;
-  right: 20px;
+  bottom: 90px;
+  left: 30px;
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
   border: none;
   border-radius: 50%;
-  font-size: 28px;
+  font-size: 0; /* ← ẨN TEXT GỐC */
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  transition: all 0.3s ease;
+  box-shadow: 
+    0 8px 32px rgba(255, 107, 53, 0.45),
+    0 0 0 0 rgba(255, 107, 53, 0.4);
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   z-index: 1000;
+  position: relative;
+  overflow: hidden;
+  
+  /* 🔥 VIỀN SÁNG */
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  
+  /* 🔥 ANIMATION NHẤP NHÁY */
+  animation: puzzle-pulse 2s ease-in-out infinite;
 }
 
+/* 🔥 ANIMATION NHẤP NHÁY VÒNG SÁNG */
+@keyframes puzzle-pulse {
+    0%, 100% {
+        box-shadow: 
+            0 8px 32px rgba(255, 107, 53, 0.45),
+            0 0 0 0 rgba(255, 107, 53, 0.4);
+    }
+    50% {
+        box-shadow: 
+            0 8px 32px rgba(255, 107, 53, 0.45),
+            0 0 0 12px rgba(255, 107, 53, 0);
+    }
+}
+
+/* 🔥 ÁNH SÁNG QUÉT */
+.mini-game-btn::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+    );
+    animation: shine 3s infinite;
+    z-index: 0;
+}
+
+@keyframes shine {
+    0% { transform: translate(-100%, -100%) rotate(45deg); }
+    100% { transform: translate(100%, 100%) rotate(45deg); }
+}
+
+/* 🧩 ICON TRẮNG */
+.mini-game-btn::after {
+    content: "🧩";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    filter: brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+    z-index: 1;
+}
+
+/* HOVER */
 .mini-game-btn:hover {
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+    transform: translateY(-6px) scale(1.08);
+    box-shadow: 
+        0 16px 48px rgba(255, 107, 53, 0.6),
+        0 0 0 0 rgba(255, 107, 53, 0.4);
+}
+
+.mini-game-btn:hover::after {
+    animation: puzzle-bounce 0.6s ease-in-out infinite;
+}
+
+@keyframes puzzle-bounce {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* ACTIVE - ẤN XUỐNG */
+.mini-game-btn:active {
+    transform: translateY(-2px) scale(1.02);
 }
 
 /* 🗺️ MAP SELECTOR */
@@ -1032,8 +1109,4 @@
 
 .food-story-modal.show .story-modal-content {
   animation: fadeInModal 0.4s ease;
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> ce3dc4549d6f4eb76c5a96aab8db1babffacfc9d

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  flask-backend:
+    build:
+      context: .  # ✅ Build từ thư mục ROOT (TDIT--U-I-A)
+      dockerfile: backend/Dockerfile  # ✅ Chỉ định Dockerfile trong backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - ./frontend:/frontend
+    networks:
+      - app-network
+    depends_on:
+      - django-backend
+
+  django-backend:
+    build:
+      context: ./user_management
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./user_management:/app
+      - ./backend:/backend
+      - ./frontend:/frontend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

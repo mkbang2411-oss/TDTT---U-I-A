@@ -10,6 +10,8 @@ class JigsawPuzzle {
       console.error("Không tìm thấy SVG #puzzle");
       return;
     }
+
+    this.svg.style.display = 'block';
     
     this.defs = this.svg.querySelector("defs");
     this.layer = document.getElementById("pieces");
@@ -35,7 +37,13 @@ class JigsawPuzzle {
   }
   
   async init() {
-    await this.loadUserProgress(); // 🆕 Load tiến độ trước
+    // Load progress async - không block
+    this.loadUserProgress().then(() => {
+        this.updateMapButtons();
+    }).catch(() => {
+        console.log('Chưa có progress');
+    });
+
     this.createPieces();
     this.setupEventListeners();
     this.setupMapSelector();
@@ -49,7 +57,7 @@ class JigsawPuzzle {
         this.shuffle();
         this.startTimer();
       }
-    }, 200);
+    }, 50);
   }
   
   // 🆕 LOAD TIẾN ĐỘ USER
@@ -902,6 +910,12 @@ async renderAchievements(unlockedStories) {
 
 let puzzleGame = null;
 
+function ensurePuzzleReady() {
+  if (!puzzleGame) {
+    puzzleGame = new JigsawPuzzle();
+  }
+}
+
 function initMiniGame() {
   const openBtn = document.getElementById('miniGameBtn');
   const closeBtn = document.getElementById('miniGameCloseBtn');
@@ -911,48 +925,71 @@ function initMiniGame() {
     console.error('Không tìm thấy các element mini game');
     return;
   }
-  
-  openBtn.addEventListener('click', () => {
-    overlay.classList.remove('hidden');
     
-    if (!puzzleGame) {
-      setTimeout(() => {
-        puzzleGame = new JigsawPuzzle();
-      }, 100);
+  openBtn.addEventListener('click', () => {
+    // 🚀 MỞ OVERLAY TRƯỚC TIÊN
+    overlay.classList.remove('hidden');
+
+    // ⚡ ĐÓNG CHATBOT ĐỒNG BỘ (nhanh)
+    const chatWindow = document.getElementById('chatWindow');
+    const chatbotBtn = document.getElementById('chatbotBtn');
+    const speechBubble = document.getElementById('speechBubble');
+    const chatHistorySidebar = document.getElementById('chatHistorySidebar');
+
+    if (chatWindow) {
+      chatWindow.classList.remove('open');
+      chatWindow.style.display = 'none';
+    }
+    if (chatbotBtn) {
+      chatbotBtn.style.display = 'flex';
+      chatbotBtn.classList.remove('hidden');
+    }
+    if (speechBubble) {
+      speechBubble.style.display = 'block';
+      speechBubble.classList.remove('hidden');
+    }
+    if (chatHistorySidebar) {
+      chatHistorySidebar.classList.remove('open');
+    }
+
+    // ✅ ĐẢM BẢO PUZZLE ĐÃ ĐƯỢC TẠO SẴN (nhẹ hơn rất nhiều)
+    ensurePuzzleReady();
+
+    // Khi user mở game thì reset lại timer + shuffle
+    if (puzzleGame.isMapCompleted(puzzleGame.currentMap)) {
+      puzzleGame.showCompletedState();
     } else {
-      // Khi mở lại, kiểm tra map hiện tại đã hoàn thành chưa
-      if (puzzleGame.isMapCompleted(puzzleGame.currentMap)) {
-        puzzleGame.showCompletedState();
-      } else {
-        puzzleGame.reset();
-      }
+      puzzleGame.reset();
     }
   });
-  
-  // ✅ FIX: Gọi cleanup khi click nút X
+
   closeBtn.addEventListener('click', () => {
     overlay.classList.add('hidden');
     
-    if (puzzleGame) {
-      puzzleGame.cleanup(); // ✅ Thêm dòng này
+    if (puzzleGame && puzzleGame.timerInterval) {
+      clearInterval(puzzleGame.timerInterval);
     }
   });
   
-  // ✅ FIX: Gọi cleanup khi click overlay
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
       overlay.classList.add('hidden');
-      
-      if (puzzleGame) {
-        puzzleGame.cleanup(); // ✅ Thêm dòng này
+      if (puzzleGame && puzzleGame.timerInterval) {
+        clearInterval(puzzleGame.timerInterval);
       }
     }
   });
 }
 
-
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🎮 Mini Game script loaded');
   initMiniGame();
+
+  // 🔥 Preload puzzle ở background để lần đầu bấm không bị lag
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(ensurePuzzleReady);   // browser rảnh thì dựng puzzle
+  } else {
+    setTimeout(ensurePuzzleReady, 500);       // đợi trang render xong rồi mới dựng
+  }
 });
 

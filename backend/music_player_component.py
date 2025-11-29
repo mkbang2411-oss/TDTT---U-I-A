@@ -86,8 +86,8 @@ def get_music_player_html() -> str:
     /* ========== FLOATING MUSIC BUTTON (CAM GIỐNG FOOD PLANNER) ========== */
     .music-player-btn {
         position: fixed;
-        bottom: 370px;
-        right: 30px;
+        bottom: 230px;
+        left: 30px;
         width: 64px;
         height: 64px;
         border-radius: 50%;
@@ -208,8 +208,8 @@ def get_music_player_html() -> str:
     /* ========== GLASSMORPHIC PANEL (TONE FOOD PLANNER) ========== */
     .music-panel {
         position: fixed;
-        right: 110px;
-        bottom: 338px;
+        left: 110px;
+        bottom: 168px;
         width: 420px;
         max-width: calc(100% - 120px);
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -620,7 +620,7 @@ def get_music_player_html() -> str:
     @media (max-width: 768px) {
         .music-player-btn {
             bottom: 240px;
-            right: 20px;
+            left: 20px;
             width: 56px;
             height: 56px;
         }
@@ -631,8 +631,8 @@ def get_music_player_html() -> str:
         }
 
         .music-panel {
-            right: 16px;
-            left: 16px;
+            left: 16px;  /* 👈 ĐỔI từ right thành left */
+            right: auto;  /* 👈 THÊM để reset right */
             bottom: 120px;
             width: auto;
             max-width: none;
@@ -682,7 +682,7 @@ def get_music_player_html() -> str:
         transform: translateY(-10px);
         pointer-events: none;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 10000001;  /* Cao hơn panel */
+        z-index: 999999999;  /* Cao hơn panel */
         min-width: 180px;
     }
 
@@ -782,7 +782,7 @@ def get_music_player_html() -> str:
         transform: translateX(10px) scale(0.95);
         pointer-events: none;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 10000001;
+        z-index: 999999999;
         display: flex;
         flex-direction: column;
         align-items: center;
