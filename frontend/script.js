@@ -1861,7 +1861,22 @@ document.addEventListener("click", (e) => {
 // 🖼️ CLICK ẢNH -> PHÓNG TO
 // =========================
 document.addEventListener("click", (e) => {
-  if (e.target.tagName === "IMG" && e.target.closest(".tab-content")) {
+  // ✅ LOẠI TRỪ ẢNH TRONG MINI GAME
+  const isInMiniGame = e.target.closest('.mini-game-overlay');
+  const isInMapSelector = e.target.closest('.map-selector');
+  const isInAchievements = e.target.closest('.achievements-container');
+  const isInMapOption = e.target.closest('.map-option');
+  const isInAchievementCard = e.target.closest('.achievement-card');
+  
+  // Chỉ xử lý ảnh trong sidebar (tab-content), KHÔNG phải mini game
+  if (e.target.tagName === "IMG" && 
+      e.target.closest(".tab-content") &&
+      !isInMiniGame && 
+      !isInMapSelector && 
+      !isInAchievements &&
+      !isInMapOption &&
+      !isInAchievementCard) {
+    
     const src = e.target.src;
     const modal = document.getElementById("imageModal");
     const modalImg = document.getElementById("modalImg");

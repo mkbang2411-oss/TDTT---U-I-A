@@ -4222,9 +4222,45 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     const searchInput = parent.document.getElementById('query');
                     const searchBtn = parent.document.getElementById('btnSearch');
                     
-                    if (searchInput && searchBtn) {{
+                     if (searchInput && searchBtn) {{
                         // Điền tên món vào ô search
                         searchInput.value = vietnameseName;
+                        
+                        // ✅ XÓA BÁN KÍNH VÀ GPS ĐỂ TRÁNH BẮT NHẬP VỊ TRÍ
+                        const radiusInput = parent.document.getElementById('radius');
+                        const budgetInput = parent.document.getElementById('budget');
+                        const gpsInput = parent.document.getElementById('gpsInput');
+                        
+                        if (radiusInput) radiusInput.value = '';
+                        if (budgetInput) budgetInput.value = '';
+                        if (gpsInput) gpsInput.value = '';
+                        
+                        // ✅ Reset radio buttons
+                        const radiusRadios = parent.document.querySelectorAll('input[name="radius"]');
+                        radiusRadios.forEach(r => r.checked = false);
+                        
+                        const budgetRadios = parent.document.querySelectorAll('input[name="budget"]');
+                        budgetRadios.forEach(b => b.checked = false);
+                        
+                        // ✅ Reset text hiển thị trên nút dropdown
+                        const radiusBtn = parent.document.getElementById('radiusBtn');
+                        const budgetBtn = parent.document.getElementById('budgetBtn');
+                        
+                        if (radiusBtn) {{
+                            const radiusText = radiusBtn.querySelector('.selected-flavors');
+                            if (radiusText) {{
+                                radiusText.textContent = 'Bán kính tìm kiếm';
+                                radiusText.classList.add('empty');
+                            }}
+                        }}
+                        
+                        if (budgetBtn) {{
+                            const budgetText = budgetBtn.querySelector('.selected-flavors');
+                            if (budgetText) {{
+                                budgetText.textContent = 'Ngân sách mặc định ▼';
+                                budgetText.classList.add('empty');
+                            }}
+                        }}
                         
                         // ✅ Đóng chatbox để user nhìn thấy kết quả
                         const chatWindow = document.getElementById('chatWindow');
