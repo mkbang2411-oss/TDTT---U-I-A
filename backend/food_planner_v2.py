@@ -303,12 +303,17 @@ THEME_CATEGORIES = {
             'nấm', 'mushroom',
             'chay thanh tịnh', 'an lạc',
             'chay tịnh', 'món chay',
-            'thực dưỡng', 'thuần chay'
+            'thực dưỡng', 'thuần chay',
+            # 🔥 THÊM KEYWORDS MỚI 🔥
+            'chay zen', 'chay buffet', 'quán chay',
+            'ăn chay', 'thực phẩm chay', 'chay healthy',
+            'bánh mì chay', 'lẩu chay', 'nướng chay',
+            'cà ri chay', 'mì chay', 'hủ tiếu chay'
         ],
         'icon': '🥗'
     },
     'dessert_bakery': {
-        'name': 'Tráng miệng & Bánh ngọt',
+        'name': 'Tráng miệng',
         'keywords': [
             # Bánh
             'bánh', 'cake', 'bakery',
@@ -377,7 +382,12 @@ MEAL_TYPE_KEYWORDS = {
     'breakfast': [
         # Món Việt sáng
         'phở', 'bún', 'bánh mì', 'cháo', 'xôi', 'hủ tiếu', 'bánh cuốn', 
-        'bánh bèo', 'cơm tấm', 'mì quảng'
+        'bánh bèo', 'cơm tấm', 'mì quảng',
+        # 🔥 THÊM KEYWORDS MÓN CHAY CHO BỮA SÁNG 🔥
+        'chay', 'vegetarian', 'vegan', 'healthy', 'rau củ', 'rau sạch',
+        'cơm chay', 'bún chay', 'phở chay', 'đậu hũ', 'tofu', 'nấm'
+        # 🔥 THÊM KEYWORDS NHÀ HÀNG SANG TRỌNG 🔥
+        'nhà hàng', 'restaurant', 'buffet', 'resort', 'fine dining', 'luxury'
     ],
     
     'morning_drink': [
@@ -395,6 +405,8 @@ MEAL_TYPE_KEYWORDS = {
         # Món chính
         'cơm', 'bún', 'mì', 'phở', 'hủ tiếu', 'cơm tấm', 'miến',
         'bánh mì', 'bánh xèo', 'cao lầu', 'mì quảng'
+        # 🔥 THÊM KEYWORDS NHÀ HÀNG SANG TRỌNG 🔥
+        'nhà hàng', 'restaurant', 'buffet', 'resort', 'fine dining', 'luxury'
     ],
     
     'afternoon_drink': [
@@ -414,6 +426,8 @@ MEAL_TYPE_KEYWORDS = {
         'cơm', 'lẩu', 'nướng', 'hải sản', 'bún', 'mì', 'phở',
         'cơm tấm', 'nem', 'gỏi', 'cháo', 'hotpot', 'bbq',
         'sushi', 'ramen', 'dimsum', 'steak', 'bò', 'gà', 'cá', 'tôm', 'buffet'
+        # 🔥 THÊM KEYWORDS NHÀ HÀNG SANG TRỌNG 🔥
+        'nhà hàng', 'restaurant', 'buffet', 'resort', 'fine dining', 'luxury'
     ],
     
     'dessert': [
@@ -430,19 +444,25 @@ MEAL_TYPE_KEYWORDS = {
     'meal': [
         # Bữa chính đa dạng
         'cơm', 'bún', 'phở', 'mì', 'hủ tiếu', 'cơm tấm', 'bánh mì',
-        'bánh xèo', 'nem', 'gỏi', 'cháo', 'xôi', 'cao lầu'
+        'bánh xèo', 'nem', 'gỏi', 'cháo', 'xôi', 'cao lầu',
+        # 🔥 THÊM NHÀ HÀNG 🔥
+        'nhà hàng', 'restaurant', 'buffet'
     ],
     
     'meal1': [
         # Bữa chính 1
         'cơm', 'bún', 'phở', 'mì', 'hủ tiếu', 'cơm tấm', 'bánh mì',
-        'bánh xèo', 'miến', 'cao lầu', 'mì quảng'
+        'bánh xèo', 'miến', 'cao lầu', 'mì quảng',
+        # 🔥 THÊM NHÀ HÀNG 🔥
+        'nhà hàng', 'restaurant', 'buffet'
     ],
     
     'meal2': [
         # Bữa phụ nhẹ hơn
         'cơm', 'bún', 'phở', 'mì', 'bánh mì', 'nem', 'gỏi cuốn',
-        'bánh xèo', 'bánh', 'xôi', 'chè'
+        'bánh xèo', 'bánh', 'xôi', 'chè',
+        # 🔥 THÊM NHÀ HÀNG 🔥
+        'nhà hàng', 'restaurant'
     ],
     
     'drink': [
@@ -529,9 +549,11 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                             break
                     
                     elif single_theme == 'michelin':
-                        mo_ta = str(row.get('mo_ta', '')).strip().lower()
-                        # 🔥 SỬA: Kiểm tra chứa từ "michelin"
-                        if 'michelin' in mo_ta:
+                        mo_ta = str(row.get('mo_ta', '')).strip()
+                        
+                        # 🔥 THÊM LOG DEBUG
+                        if mo_ta.lower() == 'michelin':
+                            print(f"✅ [MICHELIN MATCH] {row.get('ten_quan')} | Giờ: {row.get('gio_mo_cua')} | Check time: {filters.get('meal_time')}")
                             match_found = True
                             break
                     
@@ -691,7 +713,10 @@ def get_theme_for_meal(meal_key, user_selected_themes):
     
     Logic:
     1. Nếu user CHỌN theme → DÙNG theme ưu tiên phù hợp với bữa
-    2. Nếu KHÔNG → dùng theme mặc định theo bữa
+    2. 🔥 FOOD_STREET / MICHELIN → TÌMẦN BÌNH THƯỜNG (không dùng theme đặc biệt cho bữa chính)
+    3. Nếu KHÔNG → dùng theme mặc định theo bữa
+    
+    ⚠️ HÀM NÀY CHỈ DÙNG CHO 3 BỮA CHÍNH - KHÔNG ẢNH HƯỞNG ĐẾN CARD GỢI Ý
     """
     # ⚡ DANH SÁCH THEME KHÔNG PHÙ HỢP CHO TỪNG BỮA
     MEAL_RESTRICTIONS = {
@@ -703,12 +728,54 @@ def get_theme_for_meal(meal_key, user_selected_themes):
     
     # 🔥 NẾU USER ĐÃ CHỌN THEME
     if user_selected_themes:
+        # 🔥 ✅ XỬ LÝ ĐẶC BIỆT: CHỈ CHỌN DUY NHẤT food_street HOẶC michelin
+        if len(user_selected_themes) == 1:
+            if user_selected_themes[0] in ['food_street', 'michelin']:
+                # ✅ TRẢ VỀ ĐÚNG THEME ĐẶC BIỆT
+                return user_selected_themes[0]
+        
+        # 🔥🔥🔥 TẠO BẢN SAO ĐỂ KHÔNG GHI ĐÈ user_selected_themes GỐC 🔥🔥🔥
+        themes_for_meal = user_selected_themes.copy()
+        
+        # 🔥🔥🔥 Xử lý cho NHIỀU THEME (có food_street/michelin + theme khác) 🔥🔥🔥
+        if 'food_street' in themes_for_meal or 'michelin' in themes_for_meal:
+            # Loại bỏ food_street VÀ michelin ra khỏi danh sách BỮA CHÍNH
+            themes_without_special = [t for t in themes_for_meal if t not in ['food_street', 'michelin']]
+            
+            if themes_without_special:
+                # Có theme khác → Dùng theme khác CHO BỮA NÀY
+                themes_for_meal = themes_without_special
+            else:
+                # 🔥 CHỈ CÓ MỘT MÌNH food_street/michelin (nhưng đã xử lý ở trên rồi)
+                meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
+                return meal_map['preferred'][0]
+        
         # Lọc bỏ theme không phù hợp với bữa này
         restricted = MEAL_RESTRICTIONS.get(meal_key, [])
-        suitable_themes = [t for t in user_selected_themes if t not in restricted]
+        suitable_themes = [t for t in themes_for_meal if t not in restricted]
         
-        # ⚡ NẾU LÀ BỮA DRINK → ƯU TIÊN coffee_chill
-        if meal_key in ['morning_drink', 'afternoon_drink', 'drink']:
+        # 🔥 XÁC ĐỊNH LOẠI BỮA ĂN
+        is_main_meal = meal_key in ['breakfast', 'lunch', 'dinner', 'meal', 'meal1', 'meal2']
+        is_drink = meal_key in ['morning_drink', 'afternoon_drink', 'drink']
+        is_dessert = meal_key == 'dessert'
+        
+        # ⚡ Nếu LÀ BỮA ĂN CHÍNH → 🔥🔥 LOẠI BỎ COFFEE_CHILL VÀ DESSERT_BAKERY 🔥🔥
+        if is_main_meal:
+            food_themes = ['street_food', 'asian_fusion', 'seafood', 'spicy_food', 'luxury_dining', 'vegetarian']
+            
+            # 🔥 CHỈ LẤY THEME ĂN, LOẠI BỎ COFFEE/DESSERT
+            suitable_food_themes = [t for t in suitable_themes if t in food_themes]
+            
+            if suitable_food_themes:
+                # ✅ CÓ THEME ĂN → DÙNG THEME ĐẦU TIÊN
+                return suitable_food_themes[0]
+            else:
+                # ❌ KHÔNG CÓ THEME ĂN → DÙNG MẶC ĐỊNH
+                meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
+                return meal_map['preferred'][0]
+        
+        # ⚡ Nếu LÀ BỮA DRINK → ưu tiên coffee_chill
+        elif is_drink:
             if 'coffee_chill' in suitable_themes:
                 return 'coffee_chill'
             elif 'dessert_bakery' in suitable_themes:
@@ -718,38 +785,33 @@ def get_theme_for_meal(meal_key, user_selected_themes):
             else:
                 return 'coffee_chill'
         
-        # ⚡ NẾU LÀ TRÁNG MIỆNG → ƯU TIÊN dessert_bakery
-        if meal_key == 'dessert':
+        # ⚡ Nếu LÀ TRÁNG MIỆNG → ưu tiên dessert_bakery
+        elif is_dessert:
+            # 🔥🔥 ƯU TIÊN THỨ TỰ MỚI - LOẠI BỎ LUXURY_DINING 🔥🔥
             if 'dessert_bakery' in suitable_themes:
                 return 'dessert_bakery'
-            elif 'street_food' in suitable_themes:  # 🔥 ƯU TIÊN street_food TRƯỚC coffee_chill
+            elif 'street_food' in suitable_themes:
                 return 'street_food'
-            elif 'asian_fusion' in suitable_themes:  # 🔥 ƯU TIÊN asian_fusion TRƯỚC coffee_chill
+            elif 'asian_fusion' in suitable_themes:
                 return 'asian_fusion'
-            elif 'coffee_chill' in suitable_themes:  # 🔥 coffee_chill cuối cùng (chỉ khi không có lựa chọn khác)
+            elif 'coffee_chill' in suitable_themes:
                 return 'coffee_chill'
             elif suitable_themes:
+                # 🔥 KIỂM TRA THÊM: Nếu theme còn lại là luxury_dining → dùng mặc định
+                if suitable_themes[0] == 'luxury_dining':
+                    return 'dessert_bakery'  # ✅ FALLBACK về tráng miệng
                 return suitable_themes[0]
             else:
                 return 'dessert_bakery'
         
-        # 🔥 CÁC BỮA ĂN CHÍNH → ƯU TIÊN THEME PHÙ HỢP NHẤT
-        # Ưu tiên: street_food > asian_fusion > seafood > spicy_food > luxury_dining
-        priority_order = ['street_food', 'asian_fusion', 'seafood', 'spicy_food', 'luxury_dining', 'vegetarian', 'food_street', 'michelin']
-        
-        for theme in priority_order:
-            if theme in suitable_themes:
-                return theme
-        
-        # Nếu không có theme nào trong priority → lấy theme đầu tiên
+        # Fallback: lấy theme đầu tiên
         if suitable_themes:
             return suitable_themes[0]
         else:
-            # Không có theme phù hợp → dùng mặc định
             meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
             return meal_map['preferred'][0]
     
-    # 🔥 NẾU USER KHÔNG CHỌN THEME → Tự động chọn theo bữa
+    # 🔥 Nếu USER KHÔNG CHỌN THEME → Tự động chọn theo bữa
     meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
     return meal_map['preferred'][0]
 
@@ -926,6 +988,214 @@ def generate_meal_schedule(time_start_str, time_end_str, user_selected_themes):
     
     return plan
 
+# ==================== ĐIỀU CHỈNH MEAL SCHEDULE DỰA TRÊN THEME ====================
+
+def filter_meal_schedule_by_themes(plan, user_selected_themes):
+    """
+    🔥 LỌC VÀ ĐIỀU CHỈNH LỊCH TRÌNH DỰA TRÊN THEME USER CHỌN
+    
+    Logic:
+    1. CHỈ chọn coffee_chill → CHỈ GIỮ 2 buổi nước (morning_drink, afternoon_drink)
+    2. CHỈ chọn dessert_bakery → CHỈ GIỮ 1 buổi tráng miệng (dessert)
+    3. Chọn CẢ coffee_chill + dessert_bakery (KHÔNG có theme ăn khác)
+       → GIỮ 2 buổi nước + 1 tráng miệng
+    4. Chọn coffee_chill/dessert_bakery + theme ăn khác 
+       → GIỮ NGUYÊN (3 bữa ăn + 2 nước + 1 tráng miệng)
+    5. Chọn theme ăn (street_food, asian_fusion, v.v.) 
+       → GIỮ NGUYÊN
+    6. KHÔNG chọn theme → GIỮ NGUYÊN
+    
+    Args:
+        plan: Dict lịch trình từ generate_meal_schedule()
+        user_selected_themes: List theme user đã chọn
+    
+    Returns:
+        Dict lịch trình đã lọc
+    """
+    # ❌ KHÔNG có theme → GIỮ NGUYÊN
+    if not user_selected_themes or len(user_selected_themes) == 0:
+        return plan
+    
+    # 🔥 ĐỊNH NGHĨA THEME "ĂN"
+    food_themes = {
+        'street_food', 'asian_fusion', 'seafood', 'spicy_food', 
+        'luxury_dining', 'vegetarian', 'michelin', 'food_street'
+    }
+    
+    # 🔥 KIỂM TRA USER CÓ CHỌN THEME ĂN KHÔNG
+    has_food_theme = any(theme in food_themes for theme in user_selected_themes)
+    has_coffee = 'coffee_chill' in user_selected_themes
+    has_dessert = 'dessert_bakery' in user_selected_themes
+    
+    # ✅ TRƯỜNG HỢP 1: CÓ THEME ĂN → GIỮ NGUYÊN
+    if has_food_theme:
+        return plan
+    
+    # ✅ TRƯỜNG HỢP 2: CHỈ CÓ COFFEE_CHILL
+    if has_coffee and not has_dessert:
+        filtered_plan = {}
+        
+        # CHỈ GIỮ CÁC BỮA NƯỚC
+        drink_keys = ['morning_drink', 'afternoon_drink', 'drink']
+        
+        for key in drink_keys:
+            if key in plan:
+                filtered_plan[key] = plan[key]
+        
+        # ✅ NẾU KHÔNG CÓ BỮA NÀO → TẠO 2 BUỔI NƯỚC MẶC ĐỊNH
+        if len(filtered_plan) == 0:
+            filtered_plan['morning_drink'] = {
+                'time': '09:30',
+                'title': 'Giải khát buổi sáng',
+                'categories': ['tra sua', 'cafe', 'coffee'],
+                'icon': '🧋'
+            }
+            filtered_plan['afternoon_drink'] = {
+                'time': '14:30',
+                'title': 'Giải khát buổi chiều',
+                'categories': ['tra sua', 'cafe', 'coffee'],
+                'icon': '☕'
+            }
+        
+        # Nếu chỉ có 1 buổi nước → Thêm 1 buổi nữa
+        elif len(filtered_plan) == 1:
+            existing_key = list(filtered_plan.keys())[0]
+            existing_time = filtered_plan[existing_key]['time']
+            
+            # Tính thời gian buổi thứ 2 (cách 3 tiếng)
+            from datetime import datetime, timedelta
+            time_obj = datetime.strptime(existing_time, '%H:%M')
+            new_time_obj = time_obj + timedelta(hours=3)
+            new_time = new_time_obj.strftime('%H:%M')
+            
+            # Thêm buổi nước thứ 2
+            if existing_key == 'morning_drink':
+                filtered_plan['afternoon_drink'] = {
+                    'time': new_time,
+                    'title': 'Giải khát buổi chiều',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '☕'
+                }
+            else:
+                filtered_plan['morning_drink'] = {
+                    'time': new_time,
+                    'title': 'Giải khát buổi sáng',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '🧋'
+                }
+        
+        # 🔥🔥 QUAN TRỌNG: Cập nhật _order theo đúng thứ tự thời gian 🔥🔥
+        filtered_plan['_order'] = sorted(
+            [k for k in filtered_plan.keys() if k != '_order'],
+            key=lambda k: filtered_plan[k]['time']
+        )
+        
+        print(f"✅ Filter coffee_chill: {list(filtered_plan.keys())}")
+        return filtered_plan
+    
+    # ✅ TRƯỜNG HỢP 3: CHỈ CÓ DESSERT_BAKERY
+    if has_dessert and not has_coffee:
+        filtered_plan = {}
+        
+        # CHỈ GIỮ BỮA TRÁNG MIỆNG
+        if 'dessert' in plan:
+            filtered_plan['dessert'] = plan['dessert']
+        else:
+            # ✅ TẠO TRÁNG MIỆNG MẶC ĐỊNH
+            filtered_plan['dessert'] = {
+                'time': '20:00',
+                'title': 'Tráng miệng',
+                'categories': ['banh kem', 'kem', 'tra sua'],
+                'icon': '🍰'
+            }
+        
+        filtered_plan['_order'] = ['dessert']
+        print(f"✅ Filter dessert_bakery: {list(filtered_plan.keys())}")
+        return filtered_plan
+    
+    # ✅ TRƯỜNG HỢP 4: CẢ COFFEE + DESSERT (KHÔNG CÓ THEME ĂN)
+    if has_coffee and has_dessert:
+        filtered_plan = {}
+        
+        # GIỮ 2 BUỔI NƯỚC
+        drink_keys = ['morning_drink', 'afternoon_drink', 'drink']
+        drink_count = 0
+        
+        for key in drink_keys:
+            if key in plan and drink_count < 2:
+                filtered_plan[key] = plan[key]
+                drink_count += 1
+        
+        # ✅ NẾU KHÔNG ĐỦ 2 BUỔI NƯỚC → TẠO THÊM
+        if drink_count == 0:
+            filtered_plan['morning_drink'] = {
+                'time': '09:30',
+                'title': 'Giải khát buổi sáng',
+                'categories': ['tra sua', 'cafe', 'coffee'],
+                'icon': '🧋'
+            }
+            filtered_plan['afternoon_drink'] = {
+                'time': '14:30',
+                'title': 'Giải khát buổi chiều',
+                'categories': ['tra sua', 'cafe', 'coffee'],
+                'icon': '☕'
+            }
+            drink_count = 2
+        elif drink_count == 1:
+            existing_key = [k for k in drink_keys if k in filtered_plan][0]
+            existing_time = filtered_plan[existing_key]['time']
+            
+            from datetime import datetime, timedelta
+            time_obj = datetime.strptime(existing_time, '%H:%M')
+            new_time_obj = time_obj + timedelta(hours=3)
+            new_time = new_time_obj.strftime('%H:%M')
+            
+            if existing_key == 'morning_drink':
+                filtered_plan['afternoon_drink'] = {
+                    'time': new_time,
+                    'title': 'Giải khát buổi chiều',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '☕'
+                }
+            else:
+                filtered_plan['morning_drink'] = {
+                    'time': new_time,
+                    'title': 'Giải khát buổi sáng',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '🧋'
+                }
+            drink_count = 2
+        
+        # GIỮ 1 TRÁNG MIỆNG
+        if 'dessert' in plan:
+            filtered_plan['dessert'] = plan['dessert']
+        else:
+            # Tính thời gian tráng miệng (sau buổi nước cuối 2 tiếng)
+            last_drink_time = max([filtered_plan[k]['time'] for k in filtered_plan.keys() if k != '_order'])
+            from datetime import datetime, timedelta
+            time_obj = datetime.strptime(last_drink_time, '%H:%M')
+            dessert_time_obj = time_obj + timedelta(hours=2)
+            dessert_time = dessert_time_obj.strftime('%H:%M')
+            
+            filtered_plan['dessert'] = {
+                'time': dessert_time,
+                'title': 'Tráng miệng',
+                'categories': ['banh kem', 'kem', 'tra sua'],
+                'icon': '🍰'
+            }
+        
+        # 🔥🔥 Cập nhật _order theo đúng thứ tự thời gian 🔥🔥
+        filtered_plan['_order'] = sorted(
+            [k for k in filtered_plan.keys() if k != '_order'],
+            key=lambda k: filtered_plan[k]['time']
+        )
+        
+        print(f"✅ Filter coffee + dessert: {list(filtered_plan.keys())}")
+        return filtered_plan
+    
+    # ✅ MẶC ĐỊNH: GIỮ NGUYÊN
+    return plan
+
 def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00', radius_km=None):
     """Tạo kế hoạch ăn uống thông minh"""
     
@@ -945,26 +1215,30 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
         elif isinstance(theme, list):
             user_selected_themes = theme
     
-    # 🔥 TRUYỀN user_selected_themes VÀO generate_meal_schedule
+    # 🔥 TẠO MEAL SCHEDULE
     plan = generate_meal_schedule(start_time, end_time, user_selected_themes)
+    
+    # 🔥🔥🔥 LỌC LỊCH TRÌNH DỰA TRÊN THEME 🔥🔥🔥
+    plan = filter_meal_schedule_by_themes(plan, user_selected_themes)
+    
+    # 🔥🔥 THÊM DÒNG DEBUG 🔥🔥
+    print(f"🔍 Plan sau filter: {list(plan.keys())}")
     
     current_lat, current_lon = user_lat, user_lon
     used_place_ids = set()
     
-    # 🔥 PARSE USER THEMES
-    user_selected_themes = []
-    if theme:
-        if isinstance(theme, str):
-            user_selected_themes = [t.strip() for t in theme.split(',')]
-        elif isinstance(theme, list):
-            user_selected_themes = theme
-    
     places_found = 0
-    keys_to_remove = []  # 🔥 THÊM LIST ĐỂ LƯU KEY CẦN XÓA
+    keys_to_remove = []
     
     for key, meal in plan.items():
+        # 🔥🔥 BỎ QUA KEY _order 🔥🔥
+        if key == '_order':
+            continue
+            
         # 🔥 CHỌN THEME PHÙ HỢP CHO TỪNG BỮA
         meal_theme = get_theme_for_meal(key, user_selected_themes)
+        
+        print(f"🔍 Tìm quán cho {key} với theme {meal_theme}")
         
         filters = {
             'theme': meal_theme,
@@ -1076,7 +1350,7 @@ def get_food_planner_html():
 /* ========== FLOATING BUTTON ========== */
 .food-planner-btn {
     position: fixed;
-    bottom: 230px; /* đặt cao hơn nút 🍜 khoảng 80px */
+    bottom: 200px; /* đặt cao hơn nút 🍜 khoảng 80px */
     right: 30px;
     width: 56px;
     height: 56px;
@@ -1786,6 +2060,88 @@ def get_food_planner_html():
     transform: none;
 }
 
+/* 🔥 CARD VÀNG GOLD CHO KHU ẨM THỰC & MICHELIN - GIỐNG CARD GỢI Ý */
+.meal-card-vertical.gold-card {
+    background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%) !important;
+    border: 3px dashed #FFB84D !important;
+    box-shadow: 
+        0 6px 20px rgba(255, 184, 77, 0.25),
+        0 2px 8px rgba(255, 184, 77, 0.15) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ✨ HOVER STATE */
+.meal-card-vertical.gold-card:hover {
+    border-color: #FFA500 !important;
+    box-shadow: 
+        0 8px 28px rgba(255, 165, 0, 0.35),
+        0 4px 12px rgba(255, 184, 77, 0.25) !important;
+    transform: translateY(-4px);
+}
+
+/* 📝 PHẦN TIÊU ĐỀ */
+.meal-card-vertical.gold-card .meal-title-vertical {
+    border-bottom: 2px solid rgba(255, 184, 77, 0.2) !important;
+}
+
+/* 📦 PHẦN THÔNG TIN QUÁN */
+.meal-card-vertical.gold-card .place-info-vertical {
+    background: #FFFEF5 !important;
+    border: 1px solid rgba(255, 184, 77, 0.2) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 🏷️ TÊN QUÁN */
+.meal-card-vertical.gold-card .place-name-vertical {
+    color: #FF6B35 !important;
+    font-weight: 700 !important;
+}
+
+/* 📊 META ITEMS */
+.meal-card-vertical.gold-card .meta-item-vertical {
+    background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%) !important;
+    border: 1px solid #FFD699 !important;
+    color: #8B6914 !important;
+    font-weight: 600 !important;
+}
+
+/* 🔧 EDIT MODE */
+.meal-card-vertical.gold-card.edit-mode {
+    background: linear-gradient(135deg, #FFF9E6 0%, #FFEFC7 100%) !important;
+    border-color: #FFB84D !important;
+    border-style: solid !important;
+}
+
+/* 🎆 HIỆU ỨNG KHI DRAG/DROP */
+.meal-card-vertical.gold-card.just-dropped,
+.meal-card-vertical.gold-card.repositioned {
+    animation: goldPulse 1.5s ease-in-out;
+}
+
+@keyframes goldPulse {
+    0%, 100% {
+        background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+        border-color: #FFB84D;
+        box-shadow: 0 0 0 0 rgba(255, 184, 77, 0);
+    }
+    25% {
+        background: linear-gradient(135deg, #FFE5B3 0%, #FFD699 100%);
+        border-color: #FFA500;
+        box-shadow: 0 0 0 8px rgba(255, 184, 77, 0.3);
+    }
+    50% {
+        background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+        border-color: #FFB84D;
+        box-shadow: 0 0 0 0 rgba(255, 184, 77, 0);
+    }
+    75% {
+        background: linear-gradient(135deg, #FFE5B3 0%, #FFD699 100%);
+        border-color: #FFA500;
+        box-shadow: 0 0 0 8px rgba(255, 184, 77, 0.3);
+    }
+}
+
 /* ========== HIGHLIGHT EFFECT KHI SẮP XẾP LẠI ========== */
 @keyframes repositionPulse {
     0%, 100% {
@@ -2304,8 +2660,33 @@ def get_food_planner_html():
     top: 0;
     background: white;
     z-index: 10;
-    padding: 8px 16px;
-    border-bottom: 1px solid #eee;
+    padding: 16px 20px; /* 🔥 TĂNG PADDING */
+    border-bottom: 2px solid #FFE5D9; /* 🔥 VIỀN ĐẬM HƠN */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* 🔥 THÊM SHADOW */
+    margin: 0; /* 🔥 BỎ MARGIN */
+    margin-bottom: 0 !important; /* 🔥 BỎ MARGIN BOTTOM */
+}
+
+/* 🔥 ĐẢM BẢO PANEL CONTENT KHÔNG CÓ PADDING TOP */
+.panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0; /* 🔥 BỎ PADDING TOP */
+    padding-bottom: 20px; /* 🔥 CHỈ GIỮ PADDING BOTTOM */
+}
+
+/* 🔥 THÊM PADDING CHO NỘI DUNG BÊN TRONG */
+.filters-wrapper-new,
+.saved-plans-section,
+#planResult {
+    margin: 20px; /* 🔥 THÊM MARGIN CHO CÁC PHẦN TỬ CON */
+}
+
+/* 🔥 TIMELINE CONTAINER KHÔNG CẦN PADDING TOP */
+.timeline-container {
+    position: relative;
+    padding: 0 0 20px 0; /* 🔥 BỎ PADDING TOP */
+    margin-top: 0; /* 🔥 BỎ MARGIN TOP */
 }
 
 .schedule-title {
@@ -2660,6 +3041,7 @@ let selectedThemes = []; // Đổi từ selectedTheme thành selectedThemes (arr
 let currentPlan = null;
 let currentPlanId = null;
 let suggestedFoodStreet = null;
+let suggestedMichelin = null; 
 let filtersCollapsed = false;
 let isEditMode = false;
 let draggedElement = null;
@@ -2679,7 +3061,7 @@ const themes = {
     'luxury_dining': { name: 'Nhà hàng sang trọng', icon: '🍽️' },
     'asian_fusion': { name: 'Ẩm thực châu Á', icon: '🍱' },
     'vegetarian': { name: 'Món chay', icon: '🥗' },
-    'dessert_bakery': { name: 'Tráng miệng & Bánh', icon: '🍰' },
+    'dessert_bakery': { name: 'Tráng miệng', icon: '🍰' },
     'spicy_food': { name: 'Đồ cay', icon: '🌶️' },
     'food_street': { name: 'Khu ẩm thực', icon: '🏪' },
     'michelin': { name: 'Michelin', icon: '⭐' }
@@ -2727,7 +3109,7 @@ function initThemeGrid() {
             columns: 2
         },
         {
-            title: 'Khu du lịch',
+            title: 'Địa điểm nổi bật',
             icon: '🏙️',
             themes: ['food_street', 'michelin'],
             columns: 2
@@ -2779,6 +3161,22 @@ function initThemeGrid() {
         sectionDiv.appendChild(themeGrid);
         grid.appendChild(sectionDiv);
     });
+
+    // Chọn sẵn 3 theme khi lần đầu mở
+    setTimeout(() => {
+        const defaultThemes = ['coffee_chill', 'dessert_bakery', 'food_street'];
+        
+        defaultThemes.forEach(themeKey => {
+            if (!selectedThemes.includes(themeKey)) {
+                selectedThemes.push(themeKey);
+            }
+            
+            const card = document.querySelector(`[data-theme="${themeKey}"]`);
+            if (card) {
+                card.classList.add('selected');
+            }
+        });
+    }, 100);
 }
 
 // ========== THEME SELECTION ==========
@@ -2900,8 +3298,10 @@ function savePlan() {
 
     // Cập nhật order
     currentPlan._order = planArray.map(x => x.key);
+
     // Xóa quán gợi ý trước khi lưu
     suggestedFoodStreet = null;
+    suggestedMichelin = null;
 
     // 🔥 LẤY TÊN TỪ DOM (nếu user đã edit inline)
     const titleElement = document.querySelector('.schedule-title span[contenteditable]');
@@ -3006,6 +3406,7 @@ function loadSavedPlans(planId) {
             window.currentRadius = plan.radius || '10';  // 🔥 THÊM DÒNG NÀY
             isEditMode = false;
             suggestedFoodStreet = null; // Xóa gợi ý khi load plan cũ
+            suggestedMichelin = null;
             displayPlanVertical(currentPlan, false);
 
             setTimeout(() => drawRouteOnMap(currentPlan), 500);
@@ -3191,6 +3592,423 @@ function getSelectedFlavors() {
     
     return selectedFlavors;
 }
+// ========== RANDOM LẠI QUÁN GỢI Ý ==========
+async function randomSuggestedPlace(themeType) {
+    try {
+        let userLat, userLon;
+        
+        if (window.currentUserCoords) {
+            userLat = window.currentUserCoords.lat;
+            userLon = window.currentUserCoords.lon;
+        } else {
+            return null;
+        }
+        
+        const radiusInput = document.getElementById('radius');
+        const radius = radiusInput?.value || window.currentRadius || '10';
+        
+        // 🔥 GIỜ THOẢI MÁI - RANDOM TỪ 0-23 GIỜ
+        const randomHour = Math.floor(Math.random() * 24);
+        const randomMinute = Math.floor(Math.random() * 60);
+        const searchTime = `${randomHour.toString().padStart(2, '0')}:${randomMinute.toString().padStart(2, '0')}`;
+        
+        const randomSeed = Date.now();
+        const url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${searchTime}&end_time=${searchTime}&radius_km=${radius}&theme=${themeType}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        
+        const data = await response.json();
+        if (data.error || !data) return null;
+        
+        for (const key in data) {
+            if (key !== '_order' && data[key] && data[key].place) {
+                return data[key].place;
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error(`Lỗi random ${themeType}:`, error);
+        return null;
+    }
+}
+
+// 🔥 HÀM CẬP NHẬT TRỰC TIẾP CARD GỢI Ý (KHÔNG RENDER LẠI TOÀN BỘ)
+function updateSuggestedCard(themeType, place) {
+    // 🔥 TÌM CARD BẰNG TITLE CỤ THỂ (an toàn hơn icon)
+    const titleToFind = themeType === 'food_street' ? 'Khu ẩm thực đêm' : 'Nhà hàng Michelin';
+    
+    let targetCard = null;
+    
+    // Tìm tất cả các div có "Gợi ý cho bạn"
+    const allSuggestionCards = document.querySelectorAll('#planResult > div');
+    
+    allSuggestionCards.forEach(card => {
+        // 🔥 KIỂM TRA CẢ "Gợi ý" VÀ TITLE CỤ THỂ
+        const cardHTML = card.innerHTML;
+        if (cardHTML.includes('Gợi ý cho bạn') && cardHTML.includes(titleToFind)) {
+            targetCard = card;
+            console.log(`✅ Tìm thấy card ${themeType}:`, titleToFind);
+        }
+    });
+    
+    if (!targetCard) {
+        console.error(`❌ Không tìm thấy card ${themeType}`);
+        return;
+    }
+    
+    // Format giờ mở cửa (giữ nguyên code cũ)
+    const gioMoCua = place.gio_mo_cua || '';
+    let displayTime = '';
+    
+    if (!gioMoCua || gioMoCua.trim() === '') {
+        displayTime = 'Không rõ thời gian';
+    } else {
+        const gioNormalized = gioMoCua.toLowerCase();
+        
+        if (gioNormalized.includes('always') || gioNormalized.includes('24') || 
+            gioNormalized.includes('cả ngày') || gioNormalized.includes('mở cả ngày') ||
+            gioNormalized.includes('ca ngay') || gioNormalized.includes('mo ca ngay')) {
+            displayTime = 'Mở cả ngày';
+        } else if (gioNormalized.includes('mở') || gioNormalized.includes('đóng') ||
+                gioNormalized.includes('ong') || gioNormalized.includes('mo cua') || 
+                gioNormalized.includes('dong cua') || gioNormalized.includes('mo') || 
+                gioNormalized.includes('dong')) {
+            displayTime = gioMoCua;
+        } else {
+            displayTime = 'Không rõ thời gian';
+        }
+    }
+    
+    // 🔥 THÊM ICON VÀO BIẾN
+    const cardIcon = themeType === 'food_street' ? '🪔' : '⭐';
+    const cardTitle = themeType === 'food_street' ? 'Khu ẩm thực đêm' : 'Nhà hàng Michelin';
+    
+    // Tạo HTML mới cho card (giữ nguyên phần còn lại)
+    const newHTML = `
+        <div style="margin-top: 40px; padding: 0 20px;">
+            <div style="
+                background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+                border: 3px dashed #FFB84D;
+                border-radius: 20px;
+                padding: 20px;
+                position: relative;
+                box-shadow: 0 6px 20px rgba(255, 184, 77, 0.25);
+                max-width: 100%;
+            ">
+                
+                <!-- TAG Gợi ý -->
+                <div style="
+                    position: absolute;
+                    top: -12px;
+                    left: 20px;
+                    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                    color: white;
+                    padding: 6px 16px;
+                    border-radius: 20px;
+                    font-size: 13px;
+                    font-weight: 700;
+                    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                ">
+                    <span style="font-size: 16px;">✨</span>
+                    <span>Gợi ý cho bạn</span>
+                </div>
+                
+                <!-- HEADER -->
+                <div style="margin-top: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">${cardIcon}</span>
+                    <div>
+                        <div style="font-size: 16px; font-weight: 700; color: #6B5410; margin-bottom: 4px;">
+                            ${cardTitle}
+                        </div>
+                        <div style="font-size: 13px; color: #8B6914; font-weight: 500;">
+                            🕐 ${displayTime}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NỘI DUNG -->
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 16px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                    border: 1px solid rgba(255, 184, 77, 0.2);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                " onclick="flyToPlace(${place.lat}, ${place.lon}, '${place.data_id}', '${place.ten_quan.replace(/'/g, "\\'")}')"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.1)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.04)';">
+                    <div style="font-weight: 700; color: #FF6B35; margin-bottom: 8px; font-size: 15px; display: flex; align-items: center; gap: 6px;">
+                        <span>🍽️</span>
+                        <span>${place.ten_quan}</span>
+                    </div>
+                    <div style="color: #666; font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+                        📍 ${place.dia_chi}
+                    </div>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
+                        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                            <span style="font-size: 16px;">⭐</span>
+                            <strong>${place.rating ? parseFloat(place.rating).toFixed(1) : 'N/A'}</strong>
+                        </div>
+                        ${place.gia_trung_binh && !['$', '$$', '$$$', '$$$$'].includes(place.gia_trung_binh.trim()) ? `
+                            <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                                <span style="font-size: 16px;">💰</span>
+                                <strong>${place.gia_trung_binh}</strong>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${place.khau_vi ? `
+                        <div style="margin-top: 12px; padding: 8px 12px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                            👅 Khẩu vị: ${place.khau_vi}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- 2 NÚT -->
+                <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="event.stopPropagation(); random${themeType === 'food_street' ? 'FoodStreet' : 'Michelin'}();" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';">
+                        <span style="font-size: 18px;">🔄</span>
+                        <span>Đổi quán khác</span>
+                    </button>
+                    
+                    <button onclick="event.stopPropagation(); addSuggestedToSchedule(suggested${themeType === 'food_street' ? 'FoodStreet' : 'Michelin'}, '${themeType}');" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';">
+                        <span style="font-size: 18px;">➕</span>
+                        <span>Thêm vào lịch</span>
+                    </button>
+                </div>
+                
+                <!-- FOOTER -->
+                <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
+                    👆 Nhấn vào card để xem trên bản đồ
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // ✅ THAY THẾ HTML CŨ BẰNG HTML MỚI
+    targetCard.outerHTML = newHTML;
+    
+    console.log(`✅ Đã update card ${themeType}:`, place.ten_quan);
+}
+
+// 🔥 HÀM RANDOM LẠI KHU ẨM THỰC
+async function randomFoodStreet() {
+    const btn = event.target.closest('button');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span style="font-size: 18px;">⏳</span> Đang tìm...';
+    }
+    
+    const newPlace = await randomSuggestedPlace('food_street');
+    
+    if (newPlace) {
+        suggestedFoodStreet = newPlace;
+        
+        // ✅ CHỈ CẬP NHẬT CARD GỢI Ý - KHÔNG RENDER LẠI TOÀN BỘ
+        updateSuggestedCard('food_street', newPlace);
+    } else {
+        alert('⚠️ Không tìm thấy khu ẩm thực khác trong bán kính này');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span style="font-size: 18px;">🔄</span> Đổi quán khác';
+        }
+    }
+}
+
+// 🔥 HÀM RANDOM LẠI MICHELIN
+async function randomMichelin() {
+    const btn = event.target.closest('button');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span style="font-size: 18px;">⏳</span> Đang tìm...';
+    }
+    
+    // 🔥 RETRY 3 LẦN VỚI GIỜ 18:30
+    let newPlace = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            let userLat, userLon;
+            
+            if (window.currentUserCoords) {
+                userLat = window.currentUserCoords.lat;
+                userLon = window.currentUserCoords.lon;
+            } else {
+                break;
+            }
+            
+            const radiusInput = document.getElementById('radius');
+            const radius = radiusInput?.value || window.currentRadius || '10';
+            
+            const searchTime = '18:30';  // 🔥 CỐ ĐỊNH 18:30
+            const randomSeed = Date.now() + attempt * 1000;
+            const url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${searchTime}&end_time=${searchTime}&radius_km=${radius}&theme=michelin`;
+            
+            const response = await fetch(url);
+            if (!response.ok) continue;
+            
+            const data = await response.json();
+            if (data.error || !data) continue;
+            
+            for (const key in data) {
+                if (key !== '_order' && data[key] && data[key].place) {
+                    newPlace = data[key].place;
+                    break;
+                }
+            }
+            
+            if (newPlace) break;
+        } catch (error) {
+            console.error('Lỗi retry Michelin:', error);
+        }
+    }
+    
+    if (newPlace) {
+        suggestedMichelin = newPlace;
+        updateSuggestedCard('michelin', newPlace);
+    } else {
+        alert('⚠️ Không tìm thấy nhà hàng Michelin khác');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span style="font-size: 18px;">🔄</span> Đổi quán khác';
+        }
+    }
+}
+
+// 🔥 HÀM THÊM QUÁN GỢI Ý VÀO LỊCH TRÌNH
+function addSuggestedToSchedule(suggestedPlace, themeType) {
+    if (!suggestedPlace) return;
+    
+    if (!currentPlan) {
+        currentPlan = {};
+    }
+    
+    // Tạo key mới
+    const newKey = 'custom_' + Date.now();
+    
+    // Tính thời gian mới (sau quán cuối 1 tiếng)
+    const lastMealTime = getLastMealTime();
+    const newTime = addMinutesToTime(lastMealTime, 60);
+    
+    // Tính khoảng cách từ vị trí trước đó
+    let prevLat, prevLon;
+    if (window.currentUserCoords) {
+        prevLat = window.currentUserCoords.lat;
+        prevLon = window.currentUserCoords.lon;
+    }
+    
+    // Tìm quán trước đó (nếu có)
+    const allKeys = Object.keys(currentPlan)
+        .filter(k => k !== '_order')
+        .sort((a, b) => {
+            const timeA = currentPlan[a]?.time || '00:00';
+            const timeB = currentPlan[b]?.time || '00:00';
+            return timeA.localeCompare(timeB);
+        });
+    
+    for (let i = allKeys.length - 1; i >= 0; i--) {
+        const prevMeal = currentPlan[allKeys[i]];
+        if (prevMeal && prevMeal.place) {
+            prevLat = prevMeal.place.lat;
+            prevLon = prevMeal.place.lon;
+            break;
+        }
+    }
+    
+    const distance = calculateDistanceJS(prevLat, prevLon, suggestedPlace.lat, suggestedPlace.lon);
+    const travelTime = Math.round((distance / 25) * 60);
+    
+    const arriveTime = new Date(`2000-01-01 ${newTime}`);
+    const suggestLeave = new Date(arriveTime.getTime() - travelTime * 60000);
+    const suggestLeaveStr = suggestLeave.toTimeString().substring(0, 5);
+    
+    // Tạo meal mới
+    currentPlan[newKey] = {
+        time: newTime,
+        title: themeType === 'food_street' ? 'Khu ẩm thực' : 'Nhà hàng Michelin',
+        icon: themeType === 'food_street' ? '🪔' : '⭐',
+        place: {
+            ten_quan: suggestedPlace.ten_quan,
+            dia_chi: suggestedPlace.dia_chi,
+            rating: parseFloat(suggestedPlace.rating) || 0,
+            lat: suggestedPlace.lat,
+            lon: suggestedPlace.lon,
+            distance: Math.round(distance * 100) / 100,
+            travel_time: travelTime,
+            suggest_leave: suggestLeaveStr,
+            data_id: suggestedPlace.data_id,
+            hinh_anh: suggestedPlace.hinh_anh || '',
+            gia_trung_binh: suggestedPlace.gia_trung_binh || '',
+            khau_vi: suggestedPlace.khau_vi || '',
+            gio_mo_cua: suggestedPlace.gio_mo_cua || ''
+        }
+    };
+    
+    if (!currentPlan._order) {
+        currentPlan._order = [];
+    }
+    currentPlan._order.push(newKey);
+    
+    // Render lại
+    displayPlanVertical(currentPlan, isEditMode);
+    
+    // Scroll đến quán vừa thêm
+    setTimeout(() => {
+        const addedItem = document.querySelector(`[data-meal-key="${newKey}"]`);
+        if (addedItem) {
+            addedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            const card = addedItem.querySelector('.meal-card-vertical');
+            if (card) {
+                card.style.border = '3px solid #4caf50';
+                card.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.5)';
+                
+                setTimeout(() => {
+                    card.style.border = '';
+                    card.style.boxShadow = '';
+                }, 2000);
+            }
+        }
+    }, 100);
+    
+    alert('✅ Đã thêm quán vào lịch trình!');
+}
 
 // ========== TÌM KHU ẨM THỰC GỢI Ý (18:00 - 02:00) ==========
 async function findSuggestedFoodStreet() {
@@ -3231,7 +4049,47 @@ async function findSuggestedFoodStreet() {
         
         return null;
     } catch (error) {
-        console.error('Lá»—i tÃ¬m khu áº©m thá»±c gá»£i Ã½:', error);
+        console.error('Lỗi tìm khu ẩm thực gợi ý:', error);
+        return null;
+    }
+}
+
+// Tìm quán Michelin (17:00 - 00:00)
+async function findSuggestedMichelin() {
+    try {
+        let userLat, userLon;
+        
+        if (window.currentUserCoords) {
+            userLat = window.currentUserCoords.lat;
+            userLon = window.currentUserCoords.lon;
+        } else {
+            return null;
+        }
+        
+        const radiusInput = document.getElementById('radius');
+        const radius = radiusInput?.value || window.currentRadius || '10';
+        const searchTime = '18:30';
+        const randomSeed = Date.now();
+        
+        const url = `/api/food-plan?lat=${userLat}&lon=${userLon}&random=${randomSeed}&start_time=${searchTime}&end_time=${searchTime}&radius_km=${radius}&theme=michelin`;
+        
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        
+        const data = await response.json();
+        if (data.error) return null;
+        
+        // Tìm quán trong response
+        for (const key in data) {
+            if (key !== '_order' && data[key]?.place) {
+                return data[key].place;
+            }
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('Error finding Michelin restaurant:', error);
         return null;
     }
 }
@@ -3239,6 +4097,10 @@ async function findSuggestedFoodStreet() {
 // ========== AUTO MODE: GENERATE PLAN ==========
 async function generateAutoPlan() {
     const resultDiv = document.getElementById('planResult');
+
+    // ✅ THÊM 2 DÒNG NÀY
+    suggestedFoodStreet = null;
+    suggestedMichelin = null;
     
     resultDiv.innerHTML = `
         <div class="loading-planner">
@@ -3324,16 +4186,33 @@ async function generateAutoPlan() {
         }
         
         currentPlan = data;
-        
         isEditMode = false;
-        displayPlanVertical(currentPlan, false);
-        // Tìm khu ẩm thực gợi ý (CHỈ KHI KHÔNG CHỌN THEME food_street)
-        if (!selectedThemes.includes('food_street')) {
+
+        console.log('🔍 [Generate] Selected themes:', selectedThemes);
+        console.log('🔍 [Generate] BEFORE fetch - suggestedMichelin:', suggestedMichelin);
+
+        // 🔥 TÌM FOOD STREET TRƯỚC
+        if (selectedThemes.includes('food_street')) {
+            console.log('🔍 Đang fetch Food Street...');
             suggestedFoodStreet = await findSuggestedFoodStreet();
-            if (suggestedFoodStreet) {
-                displayPlanVertical(currentPlan, false);
-            }
+            console.log('📍 After fetch Food Street:', suggestedFoodStreet?.ten_quan || 'NULL');
         }
+
+        // 🔥 SAU ĐÓ TÌM MICHELIN
+        if (selectedThemes.includes('michelin')) {
+            console.log('🔍 Đang fetch Michelin...');
+            suggestedMichelin = await findSuggestedMichelin();
+            console.log('📍 After fetch Michelin:', suggestedMichelin?.ten_quan || 'NULL');
+        }
+
+        // 🔥 RENDER 1 LẦN DUY NHẤT SAU KHI CẢ 2 XONG
+        console.log('🎨 [Final] Render với:', {
+            foodStreet: suggestedFoodStreet?.ten_quan || 'null',
+            michelin: suggestedMichelin?.ten_quan || 'null',
+            selectedThemes: selectedThemes
+        });
+
+        displayPlanVertical(currentPlan, false);
         
     } catch (error) {
         console.error('Error:', error);
@@ -3489,54 +4368,6 @@ function displayPlanVertical(plan, editMode = false) {
         </div>
     </div>
 
-    <!-- 📍 Bán Kính Tìm Kiếm -->
-    <div style="
-        background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
-        border: 2px solid #FFB84D;
-        border-radius: 16px;
-        padding: 16px 20px;
-        margin: 16px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
-    ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 28px;">📍</span>
-            <div>
-                <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">Bán kính tìm kiếm</div>
-                <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
-                    ${window.currentRadius || '10'} km
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 💰 Tổng Kinh Phí -->
-    <div style="
-        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-        border: 2px solid #4caf50;
-        border-radius: 16px;
-        padding: 16px 20px;
-        margin: 16px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
-    ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 28px;">💰</span>
-            <div>
-                <div style="font-size: 13px; color: #2e7d32; font-weight: 600; margin-bottom: 4px;">Tổng kinh phí dự kiến</div>
-                <div style="font-size: 20px; font-weight: 700; color: #1b5e20;">
-                        ${budget.hasOverPrice ? 'Trên ' : ''}${formatMoney(budget.total)}
-                        ${budget.unknown > 0 ? `<span style="font-size: 13px; font-weight: 500; color: #666; margin-left: 8px;">(Không tính ${budget.unknown} quán)</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="timeline-container"><div class="timeline-line"></div>
     `;
     
@@ -3655,7 +4486,31 @@ function displayPlanVertical(plan, editMode = false) {
                     }
                 </div>
                 <div class="time-dot"></div>
-                <div class="meal-card-vertical ${editMode ? 'edit-mode' : ''}" ${cardClickEvent} style="${cardCursor}">
+                <div class="meal-card-vertical ${editMode ? 'edit-mode' : ''} ${(() => {
+                    // 🔥 KIỂM TRA NHIỀU NGUỒN: mo_ta, title, icon
+                    const moTa = (place.mo_ta || '').toLowerCase();
+                    const title = (meal.title || '').toLowerCase();
+                    const icon = meal.icon || '';
+                    
+                    // Kiểm tra từ MÔ TẢ (mo_ta)
+                    const isKhuAmThucFromMoTa = moTa.includes('khu') && moTa.includes('am thuc');
+                    const isMichelinFromMoTa = moTa === 'michelin';
+                    
+                    // Kiểm tra từ TITLE của meal
+                    const isKhuAmThucFromTitle = title.includes('khu') && title.includes('ẩm thực');
+                    const isMichelinFromTitle = title.includes('michelin');
+                    
+                    // Kiểm tra từ ICON
+                    const isKhuAmThucFromIcon = icon === '🪔';
+                    const isMichelinFromIcon = icon === '⭐';
+                    
+                    // TRẢ VỀ CLASS
+                    const isGold = isKhuAmThucFromMoTa || isMichelinFromMoTa || 
+                                isKhuAmThucFromTitle || isMichelinFromTitle ||
+                                isKhuAmThucFromIcon || isMichelinFromIcon;
+                    
+                    return isGold ? 'gold-card' : '';
+                })()}" ${cardClickEvent} style="${cardCursor}">
                     <div class="meal-title-vertical">
                         <div class="meal-title-left">
                             ${editMode ? `
@@ -3701,11 +4556,11 @@ function displayPlanVertical(plan, editMode = false) {
                         ${editMode ? `
                         <div class="meal-actions">
                             <button class="meal-action-btn select-meal ${isWaitingForSelection ? 'active' : ''}" 
-                                    onclick="selectPlaceForMeal('${key}')" title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán khác trên bản đồ...' : 'Nhấn để đổi sang quán khác'}">
+                                    onclick="event.stopPropagation(); selectPlaceForMeal('${key}')" title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán khác trên bản đồ...' : 'Nhấn để đổi sang quán khác'}">
                                 <span class="btn-icon">${isWaitingForSelection ? '⏳' : '✏️'}</span>
                                 <span class="btn-text">${isWaitingForSelection ? 'Đang đổi...' : 'Đổi quán'}</span>
                             </button>
-                            <button class="meal-action-btn delete-meal" onclick="deleteMealSlot('${key}')" title="Xóa bữa ăn này">
+                            <button class="meal-action-btn delete-meal" onclick="event.stopPropagation(); deleteMealSlot('${key}')" title="Xóa bữa ăn này">
                                 <span class="btn-icon">🗑️</span>
                                 <span class="btn-text">Xóa</span>
                             </button>
@@ -3738,130 +4593,9 @@ function displayPlanVertical(plan, editMode = false) {
         `;
     }
     
-    html += '</div>';
+    html += '</div>'; // Đóng timeline-container
 
-    // CARD GỢI Ý KHU ẨM THỰC (CHỈ KHI KHÔNG EDIT MODE VÀ KHÔNG CHỌN THEME food_street)
-    const shouldShowSuggestion = !editMode && 
-                                suggestedFoodStreet && 
-                                !selectedThemes.includes('food_street');
-
-    if (shouldShowSuggestion) {
-        html += `
-            <div style="margin-top: 40px; padding: 0 20px;">
-                <div style="
-                    background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
-                    border: 3px dashed #FFB84D;
-                    border-radius: 20px;
-                    padding: 20px;
-                    position: relative;
-                    box-shadow: 0 6px 20px rgba(255, 184, 77, 0.25);
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                " onclick="flyToPlace(${suggestedFoodStreet.lat}, ${suggestedFoodStreet.lon}, '${suggestedFoodStreet.data_id}', '${suggestedFoodStreet.ten_quan.replace(/'/g, "\\'")}')"
-                onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 28px rgba(255, 184, 77, 0.35)';"
-                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(255, 184, 77, 0.25)';">
-                    
-                    <!-- TAG Gợi ý -->
-                    <div style="
-                        position: absolute;
-                        top: -12px;
-                        left: 20px;
-                        background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
-                        color: white;
-                        padding: 6px 16px;
-                        border-radius: 20px;
-                        font-size: 13px;
-                        font-weight: 700;
-                        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-                        display: flex;
-                        align-items: center;
-                        gap: 6px;
-                    ">
-                        <span style="font-size: 16px;">✨</span>
-                        <span>Gợi ý cho bạn</span>
-                    </div>
-                    
-                    <!-- HEADER -->
-                    <div style="margin-top: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🪔</span>
-                        <div>
-                            <div style="font-size: 16px; font-weight: 700; color: #6B5410; margin-bottom: 4px;">
-                                Khu ẩm thực đêm
-                            </div>
-                            ${(() => {
-                                const gioMoCua = suggestedFoodStreet.gio_mo_cua || '';
-                                let displayTime = '';
-                                
-                                if (!gioMoCua || gioMoCua.trim() === '') {
-                                    displayTime = 'Không rõ thời gian';
-                                } else {
-                                    const gioNormalized = gioMoCua.toLowerCase();
-                                    
-                                    if (gioNormalized.includes('always') || gioNormalized.includes('24') || 
-                                        gioNormalized.includes('cả ngày') || gioNormalized.includes('mở cả ngày') ||
-                                        gioNormalized.includes('ca ngay') || gioNormalized.includes('mo ca ngay')) {
-                                        displayTime = 'Mở cả ngày';
-                                    } else if (gioNormalized.includes('mở') || gioNormalized.includes('đóng') ||
-                                            gioNormalized.includes('ong') || gioNormalized.includes('mo cua') || 
-                                            gioNormalized.includes('dong cua') || gioNormalized.includes('mo') || 
-                                            gioNormalized.includes('dong')) {
-                                        displayTime = gioMoCua;
-                                    } else {
-                                        displayTime = 'Không rõ thời gian';
-                                    }
-                                }
-                                
-                                return `<div style="font-size: 13px; color: #8B6914; font-weight: 500;">
-                                    🕐 ${displayTime}
-                                </div>`;
-                            })()}
-                        </div>
-                    </div>
-                    
-                    <!-- NỘI DUNG -->
-                    <div style="
-                        background: white;
-                        border-radius: 12px;
-                        padding: 16px;
-                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-                        border: 1px solid rgba(255, 184, 77, 0.2);
-                    ">
-                        <div style="font-weight: 700; color: #FF6B35; margin-bottom: 8px; font-size: 15px; display: flex; align-items: center; gap: 6px;">
-                            <span>🍽️</span>
-                            <span>${suggestedFoodStreet.ten_quan}</span>
-                        </div>
-                        <div style="color: #666; font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
-                            📍 ${suggestedFoodStreet.dia_chi}
-                        </div>
-                        <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
-                            <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
-                                <span style="font-size: 16px;">⭐</span>
-                                <strong>${suggestedFoodStreet.rating ? parseFloat(suggestedFoodStreet.rating).toFixed(1) : 'N/A'}</strong>
-                            </div>
-                            ${suggestedFoodStreet.gia_trung_binh && !['$', '$$', '$$$', '$$$$'].includes(suggestedFoodStreet.gia_trung_binh.trim()) ? `
-                                <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
-                                    <span style="font-size: 16px;">💰</span>
-                                    <strong>${suggestedFoodStreet.gia_trung_binh}</strong>
-                                </div>
-                            ` : ''}
-                        </div>
-                        ${suggestedFoodStreet.khau_vi ? `
-                            <div style="margin-top: 12px; padding: 8px 12px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
-                                👅 Khẩu vị: ${suggestedFoodStreet.khau_vi}
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <!-- FOOTER -->
-                    <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
-                        👆 Nhấn để xem trên bản đồ
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    // 🔥 THÊM NÚT "+" Ở CUỐI TIMELINE (CHỈ KHI EDIT MODE)
+    // 🔥 NÚT THÊM/XÓA (CHỈ KHI EDIT MODE)
     if (editMode) {
         html += `
             <div style="margin-top: 30px; padding: 20px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 30px;">
@@ -3889,10 +4623,10 @@ function displayPlanVertical(plan, editMode = false) {
                     </div>
                 </div>
                 
-                <!-- NÚT XÓA TẤT CẢ -->
+                <!-- NÚT LÀM TRỐNG -->
                 <div style="display: flex; flex-direction: column; align-items: center;">
                     <button onclick="deleteAllMeals()" style="
-                        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                        background: linear-gradient(135deg, #FF6B35 0%, #FFB84D 100%);
                         color: white;
                         border: none;
                         width: 56px;
@@ -3903,18 +4637,435 @@ function displayPlanVertical(plan, editMode = false) {
                         display: inline-flex;
                         align-items: center;
                         justify-content: center;
-                        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+                        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
                         transition: all 0.2s ease;
-                    " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(231, 76, 60, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(231, 76, 60, 0.3)';" title="Xóa tất cả quán">
-                        🗑️
+                    " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';" title="Làm trống lịch trình">
+                        📋
                     </button>
-                    <div style="margin-top: 10px; font-size: 14px; color: #e74c3c; font-weight: 600;">
-                        Xóa tất cả
+                    <div style="margin-top: 10px; font-size: 14px; color: #FF6B35; font-weight: 600;">
+                        Làm trống
                     </div>
                 </div>
             </div>
         `;
     }
+
+    // 📍 Bán Kính Tìm Kiếm
+    html += `
+    <div style="
+        background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+        border: 2px solid #FFB84D;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin: 24px 20px 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
+    ">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 28px;">📍</span>
+            <div>
+                <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">
+                    Bán kính tìm kiếm
+                    <span style="
+                        display: inline-block;
+                        background: rgba(255, 107, 53, 0.15);
+                        color: #FF6B35;
+                        padding: 2px 8px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 700;
+                        margin-left: 8px;
+                        border: 1px solid rgba(255, 107, 53, 0.3);
+                    ">Thay đổi bán kính<br>ở thanh lọc bán kính</span>
+                </div>
+                <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
+                    ${window.currentRadius || '10'} km
+                </div>
+            </div>
+        </div>
+        <div style="
+            background: rgba(255, 184, 77, 0.2);
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #8B6914;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.5;
+            min-width: 140px;
+        ">
+            ℹ️ Bán kính mặc định: 10km
+        </div>
+    </div>
+
+    <!-- 💰 Tổng Kinh Phí -->
+    <div style="
+        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+        border: 2px solid #4caf50;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+    ">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 28px;">💰</span>
+            <div>
+                <div style="font-size: 13px; color: #2e7d32; font-weight: 600; margin-bottom: 4px;">Tổng kinh phí dự kiến</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1b5e20;">
+                    ${budget.hasOverPrice ? 'Trên ' : ''}${formatMoney(budget.total)}
+                    ${budget.unknown > 0 ? `<span style="font-size: 13px; font-weight: 500; color: #666; margin-left: 8px;">(Không tính ${budget.unknown} quán)</span>` : ''}
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+// 🔥 CARD GỢI Ý MICHELIN (17:00 - 00:00)
+console.log('🔍 [displayPlanVertical] Check Michelin:', {
+    suggestedMichelin: suggestedMichelin,
+    tenQuan: suggestedMichelin?.ten_quan,
+    selectedThemes: selectedThemes,
+    hasMichelinTheme: selectedThemes.includes('michelin')
+});
+
+const shouldShowMichelinSuggestion = suggestedMichelin && 
+                                      selectedThemes.includes('michelin');
+
+console.log('🎯 shouldShowMichelinSuggestion:', shouldShowMichelinSuggestion);
+
+if (shouldShowMichelinSuggestion) {
+    console.log('✅ RENDER Michelin card:', suggestedMichelin.ten_quan);
+    html += `
+        <div style="margin-top: 40px; padding: 0 20px;">
+            <div style="
+                background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+                border: 3px dashed #FFB84D;
+                border-radius: 20px;
+                padding: 20px;
+                position: relative;
+                box-shadow: 0 6px 20px rgba(255, 184, 77, 0.25);
+                max-width: 100%;
+            ">
+                
+                <!-- ✅ TAG Gợi ý cho bạn -->
+                <div style="
+                    position: absolute;
+                    top: -12px;
+                    left: 20px;
+                    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                    color: white;
+                    padding: 6px 16px;
+                    border-radius: 20px;
+                    font-size: 13px;
+                    font-weight: 700;
+                    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                ">
+                    <span style="font-size: 16px;">✨</span>
+                    <span>Gợi ý cho bạn</span>
+                </div>
+                
+                <!-- HEADER -->
+                <div style="margin-top: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">⭐</span>
+                    <div>
+                        <div style="font-size: 16px; font-weight: 700; color: #6B5410; margin-bottom: 4px;">
+                            Nhà hàng Michelin
+                        </div>
+                        ${(() => {
+                            const gioMoCua = suggestedMichelin.gio_mo_cua || '';
+                            let displayTime = '';
+                            
+                            if (!gioMoCua || gioMoCua.trim() === '') {
+                                displayTime = 'Không rõ thời gian';
+                            } else {
+                                const gioNormalized = gioMoCua.toLowerCase();
+                                
+                                if (gioNormalized.includes('always') || gioNormalized.includes('24') || 
+                                    gioNormalized.includes('cả ngày') || gioNormalized.includes('mở cả ngày') ||
+                                    gioNormalized.includes('ca ngay') || gioNormalized.includes('mo ca ngay')) {
+                                    displayTime = 'Mở cả ngày';
+                                } else if (gioNormalized.includes('mở') || gioNormalized.includes('đóng') ||
+                                        gioNormalized.includes('ong') || gioNormalized.includes('mo cua') || 
+                                        gioNormalized.includes('dong cua') || gioNormalized.includes('mo') || 
+                                        gioNormalized.includes('dong')) {
+                                    displayTime = gioMoCua;
+                                } else {
+                                    displayTime = 'Không rõ thời gian';
+                                }
+                            }
+                            
+                            return `<div style="font-size: 13px; color: #8B6914; font-weight: 500;">
+                                🕐 ${displayTime}
+                            </div>`;
+                        })()}
+                    </div>
+                </div>
+                
+                <!-- NỘI DUNG -->
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 16px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                    border: 1px solid rgba(255, 184, 77, 0.2);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                " onclick="flyToPlace(${suggestedMichelin.lat}, ${suggestedMichelin.lon}, '${suggestedMichelin.data_id}', '${suggestedMichelin.ten_quan.replace(/'/g, "\\'")}')"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.1)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.04)';">
+                    <div style="font-weight: 700; color: #FF6B35; margin-bottom: 8px; font-size: 15px; display: flex; align-items: center; gap: 6px;">
+                        <span>🍽️</span>
+                        <span>${suggestedMichelin.ten_quan}</span>
+                    </div>
+                    <div style="color: #666; font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+                        📍 ${suggestedMichelin.dia_chi}
+                    </div>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
+                        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                            <span style="font-size: 16px;">⭐</span>
+                            <strong>${suggestedMichelin.rating ? parseFloat(suggestedMichelin.rating).toFixed(1) : 'N/A'}</strong>
+                        </div>
+                        ${suggestedMichelin.gia_trung_binh && !['$', '$$', '$$$', '$$$$'].includes(suggestedMichelin.gia_trung_binh.trim()) ? `
+                            <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                                <span style="font-size: 16px;">💰</span>
+                                <strong>${suggestedMichelin.gia_trung_binh}</strong>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${suggestedMichelin.khau_vi ? `
+                        <div style="margin-top: 12px; padding: 8px 12px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                            👅 Khẩu vị: ${suggestedMichelin.khau_vi}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- 🔥 2 NÚT MỚI -->
+                <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="event.stopPropagation(); randomMichelin();" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';">
+                        <span style="font-size: 18px;">🔄</span>
+                        <span>Đổi quán khác</span>
+                    </button>
+                    
+                    <button onclick="event.stopPropagation(); addSuggestedToSchedule(suggestedMichelin, 'michelin');" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';">
+                        <span style="font-size: 18px;">➕</span>
+                        <span>Thêm vào lịch</span>
+                    </button>
+                </div>
+                
+                <!-- FOOTER -->
+                <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
+                    👆 Nhấn vào card để xem trên bản đồ
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 🔥 CARD GỢI Ý KHU ẨM THỰC (GIỮ NGUYÊN - CÓ TAG "GỢI Ý")
+const shouldShowFoodStreetSuggestion = suggestedFoodStreet && 
+                                        selectedThemes.includes('food_street');
+
+if (shouldShowFoodStreetSuggestion) {
+    html += `
+        <div style="margin-top: 40px; padding: 0 20px;">
+            <div style="
+                background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+                border: 3px dashed #FFB84D;
+                border-radius: 20px;
+                padding: 20px;
+                position: relative;
+                box-shadow: 0 6px 20px rgba(255, 184, 77, 0.25);
+                max-width: 100%;
+            ">
+                
+                <!-- TAG Gợi ý -->
+                <div style="
+                    position: absolute;
+                    top: -12px;
+                    left: 20px;
+                    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                    color: white;
+                    padding: 6px 16px;
+                    border-radius: 20px;
+                    font-size: 13px;
+                    font-weight: 700;
+                    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                ">
+                    <span style="font-size: 16px;">✨</span>
+                    <span>Gợi ý cho bạn</span>
+                </div>
+                
+                <!-- HEADER -->
+                <div style="margin-top: 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🪔</span>
+                    <div>
+                        <div style="font-size: 16px; font-weight: 700; color: #6B5410; margin-bottom: 4px;">
+                            Khu ẩm thực đêm
+                        </div>
+                        ${(() => {
+                            const gioMoCua = suggestedFoodStreet.gio_mo_cua || '';
+                            let displayTime = '';
+                            
+                            if (!gioMoCua || gioMoCua.trim() === '') {
+                                displayTime = 'Không rõ thời gian';
+                            } else {
+                                const gioNormalized = gioMoCua.toLowerCase();
+                                
+                                if (gioNormalized.includes('always') || gioNormalized.includes('24') || 
+                                    gioNormalized.includes('cả ngày') || gioNormalized.includes('mở cả ngày') ||
+                                    gioNormalized.includes('ca ngay') || gioNormalized.includes('mo ca ngay')) {
+                                    displayTime = 'Mở cả ngày';
+                                } else if (gioNormalized.includes('mở') || gioNormalized.includes('đóng') ||
+                                        gioNormalized.includes('ong') || gioNormalized.includes('mo cua') || 
+                                        gioNormalized.includes('dong cua') || gioNormalized.includes('mo') || 
+                                        gioNormalized.includes('dong')) {
+                                    displayTime = gioMoCua;
+                                } else {
+                                    displayTime = 'Không rõ thời gian';
+                                }
+                            }
+                            
+                            return `<div style="font-size: 13px; color: #8B6914; font-weight: 500;">
+                                🕐 ${displayTime}
+                            </div>`;
+                        })()}
+                    </div>
+                </div>
+                
+                <!-- NỘI DUNG -->
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 16px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                    border: 1px solid rgba(255, 184, 77, 0.2);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                " onclick="flyToPlace(${suggestedFoodStreet.lat}, ${suggestedFoodStreet.lon}, '${suggestedFoodStreet.data_id}', '${suggestedFoodStreet.ten_quan.replace(/'/g, "\\'")}')"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.1)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.04)';">
+                    <div style="font-weight: 700; color: #FF6B35; margin-bottom: 8px; font-size: 15px; display: flex; align-items: center; gap: 6px;">
+                        <span>🍽️</span>
+                        <span>${suggestedFoodStreet.ten_quan}</span>
+                    </div>
+                    <div style="color: #666; font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+                        📍 ${suggestedFoodStreet.dia_chi}
+                    </div>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
+                        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                            <span style="font-size: 16px;">⭐</span>
+                            <strong>${suggestedFoodStreet.rating ? parseFloat(suggestedFoodStreet.rating).toFixed(1) : 'N/A'}</strong>
+                        </div>
+                        ${suggestedFoodStreet.gia_trung_binh && !['$', '$$', '$$$', '$$$$'].includes(suggestedFoodStreet.gia_trung_binh.trim()) ? `
+                            <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFF5E6 0%, #FFE5CC 100%); border-radius: 20px; color: #8B6914; font-weight: 600; border: 1px solid #FFD699;">
+                                <span style="font-size: 16px;">💰</span>
+                                <strong>${suggestedFoodStreet.gia_trung_binh}</strong>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${suggestedFoodStreet.khau_vi ? `
+                        <div style="margin-top: 12px; padding: 8px 12px; background: #FFF5E6; border-left: 3px solid #FFB84D; border-radius: 6px; font-size: 12px; color: #8B6914;">
+                            👅 Khẩu vị: ${suggestedFoodStreet.khau_vi}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- 🔥 2 NÚT MỚI -->
+                <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="event.stopPropagation(); randomFoodStreet();" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';">
+                        <span style="font-size: 18px;">🔄</span>
+                        <span>Đổi quán khác</span>
+                    </button>
+                    
+                    <button onclick="event.stopPropagation(); addSuggestedToSchedule(suggestedFoodStreet, 'food_street');" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';">
+                        <span style="font-size: 18px;">➕</span>
+                        <span>Thêm vào lịch</span>
+                    </button>
+                </div>
+                
+                <!-- FOOTER -->
+                <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
+                    👆 Nhấn vào card để xem trên bản đồ
+                </div>
+            </div>
+        </div>
+    `;
+}
 
     if (!hasPlaces && !editMode) {
         resultDiv.innerHTML = `
@@ -3985,13 +5136,21 @@ function addNewMealSlot() {
     waitingForPlaceSelection = newKey;
     displayPlanVertical(currentPlan, isEditMode);
     
+    // 🔥 THÊM: Kích hoạt refresh sidebar
+    if (typeof window.refreshCurrentSidebar === 'function') {
+        setTimeout(() => {
+            console.log('🔄 Refresh sidebar sau khi thêm quán mới');
+            window.refreshCurrentSidebar();
+        }, 100);
+    }
+    
     // Scroll to bottom
     setTimeout(() => {
         const timeline = document.querySelector('.timeline-container');
         if (timeline) {
             timeline.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
-    }, 100);
+    }, 200); // 🔥 Tăng thời gian chờ để sidebar kịp refresh
 }
 
 function getLastMealTime() {

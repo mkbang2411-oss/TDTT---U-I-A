@@ -374,7 +374,7 @@
     <!-- JAVASCRIPT -->
     <script>
 
-        const API_URL = 'http://127.0.0.1:8000/api/accounts';
+        const API_URL = '/api/accounts';
         let CURRENT_USER_ID = null;
         let isLoadingUser = false;  // ✅ Thêm flag
 
@@ -747,7 +747,7 @@
                         console.log('💾 Đã lưu vào localStorage');
                         
                         // Chuyển sang trang map
-                        window.location.href = 'http://127.0.0.1:5000/?view=friend-favorites';
+                        window.location.href = '/?view=friend-favorites';
                     } else {
                         console.warn('⚠️ Không có quán yêu thích');
                         Swal.fire('Thông báo', `${friendName} chưa có quán yêu thích nào`, 'info');
@@ -791,7 +791,7 @@
                 cancelButtonText: 'Hủy'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('http://127.0.0.1:8000/accounts/logout/', {
+                    fetch('/accounts/logout/', {
                         method: 'POST',
                         headers: {
                             'X-CSRFToken': getCookie('csrftoken'),
@@ -808,7 +808,7 @@
                     .then(data => {
                         Swal.fire('Đã đăng xuất!', 'Bạn đã đăng xuất thành công.', 'success');
                         setTimeout(() => {
-                            window.location.href = 'http://127.0.0.1:5000/';
+                            window.location.href = '/';
                         }, 2000);
                     })
                     .catch(error => {
@@ -883,7 +883,7 @@
           }).then((result) => {
             if (result.isConfirmed) {
               // Nếu người dùng đồng ý, gọi API đăng xuất của Django
-              fetch("http://127.0.0.1:8000/accounts/logout/", {
+              fetch("/accounts/logout/", {
                 method: "POST",
                 headers: {
                   // Django đọc CSRF token từ cookie
@@ -911,7 +911,7 @@
 
                   // Chờ 2 giây rồi chuyển về trang chủ
                   setTimeout(() => {
-                    window.location.href = "http://127.0.0.1:5000/";
+                    window.location.href = "/";
                   }, 2000);
                 })
                 .catch((error) => {
@@ -926,7 +926,7 @@
             }
           });
         });
-      const BACKEND_URL = "http://127.0.0.1:8000";
+      const BACKEND_URL = "";
 
       // Các biến toàn cục cho Modal
       let selectedFile = null;
@@ -1134,7 +1134,7 @@
         try {
           // 1. Gọi API sang Django (Port 8000)
           const response = await fetch(
-            "http://127.0.0.1:8000/api/get-favorites/",
+            "/api/get-favorites/",
             {
               method: "GET",
               headers: { "Content-Type": "application/json" },
@@ -1147,7 +1147,7 @@
             listContainer.innerHTML = `
                         <div style="text-align:center; padding: 20px; width: 100%;">
                             <p>⚠️ Bạn chưa đăng nhập!</p>
-                            <a href="http://127.0.0.1:8000/accounts/login/" target="_blank" style="color: blue; text-decoration: underline;">
+                            <a href="/accounts/login/" target="_blank" style="color: blue; text-decoration: underline;">
                                 Bấm vào đây để đăng nhập
                             </a>
                         </div>`;
@@ -1175,7 +1175,7 @@
                     <div class="fav-card">
                         <img src="${place.hinh_anh}" alt="${
                 place.ten_quan
-              }" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
+              }" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22%3E%3Crect fill=%22%23ddd%22 width=%22150%22 height=%22150%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2214%22 fill=%22%23999%22%3ENo Image%3C/text%3E%3C/svg%3E'">
                         <div class="fav-info">
                             <h4>${place.ten_quan}</h4>
                             <p class="address"><i class="fa-solid fa-location-dot"></i> ${

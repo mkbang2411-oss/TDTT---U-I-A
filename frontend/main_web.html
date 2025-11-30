@@ -90,8 +90,8 @@
 
             <!-- Nút Sign Up/Sign In - CHỈ HIỆN KHI CHƯA ĐĂNG NHẬP -->
             <div class="guest-only">
-                <a href="http://127.0.0.1:8000/accounts/signup" class="button-SignUp">Đăng Kí</a>
-                <a href="http://127.0.0.1:8000/accounts/login" class="button-SignIn">Đăng Nhập</a>
+                <a href="/accounts/signup/" class="button-SignUp">Đăng Ký</a>
+                <a href="/accounts/login/" class="button-SignIn">Đăng Nhập</a>
             </div>
         </div>
     </header>
@@ -286,7 +286,7 @@
             const userButton = document.querySelector('.user-only');
 
             // Gọi API trên server Django
-            fetch('http://127.0.0.1:8000/api/check-auth/', {
+            fetch('/api/check-auth/', {
                 method: 'GET',
                 // BẮT BUỘC: Gửi cookie (session) cùng với yêu cầu
                 credentials: 'include' 

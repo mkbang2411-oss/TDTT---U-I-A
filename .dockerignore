@@ -1,0 +1,57 @@
+# Node modules
+**/node_modules
+**/.next
+**/dist
+**/build
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.Python
+**/.pytest_cache
+**/.tox
+
+# Virtual environments
+**/venv
+**/env
+**/.venv
+
+# IDE
+**/.vscode
+**/.idea
+**/*.swp
+**/*.swo
+
+# Git
+**/.git
+**/.gitignore
+
+# Logs
+**/*.log
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# Database
+**/*.db
+**/*.sqlite3
+
+# Frontend build artifacts (GIỮ source nhưng BỎ build)
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/dist
+frontend/build
+
+# Backend artifacts
+backend/__pycache__
+backend/*.pyc
+backend/.pytest_cache
+
+# User management artifacts
+user_management/__pycache__
+user_management/*.pyc
+user_management/db.sqlite3

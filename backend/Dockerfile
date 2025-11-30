@@ -2,15 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# ✅ Copy requirements từ backend/
+# Copy requirements trước
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# ✅ Copy code backend
+# ✅ THÊM timeout và retry
+RUN pip install --no-cache-dir \
+    --default-timeout=1000 \
+    --retries 5 \
+    -r requirements.txt
+
+# Copy ONLY backend code
 COPY backend/ .
-
-# ✅ Copy frontend vào container
-COPY frontend/ /frontend
 
 EXPOSE 5000
 
