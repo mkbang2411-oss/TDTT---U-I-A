@@ -2862,7 +2862,7 @@ def get_food_planner_html():
     align-items: center;
     justify-content: center;
     z-index: 99999999999;
-    box-shadow: -6px 0 20px rgba(255, 107, 53, 0.4);
+    box-shadow: none;
     transition: right 0.3s ease, transform 0.3s ease, width 0.3s ease, box-shadow 0.3s ease, background 0.3s ease; /* ✅ CHỈ GIỮ TRANSITION CẦN THIẾT */
     overflow: hidden;
 }
@@ -2885,6 +2885,7 @@ def get_food_planner_html():
 /* ✅ KHI PANEL MỞ → NÚT XUẤT HIỆN */
 .food-planner-panel.active .close-panel-btn {
     right: 550px !important; /* ✅ LỒI RA BÊN TRÁI PANEL */
+    box-shadow: -6px 0 20px rgba(255, 107, 53, 0.4);
 }
 
 .close-panel-btn:hover {
