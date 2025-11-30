@@ -735,7 +735,7 @@ if (placeId) {
 
     // 📡 Tải reviews từ API
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/reviews/${place_id}`, {
+      const res = await fetch(`/api/reviews/${place_id}`, {
         credentials: "include",
       });
 
@@ -860,7 +860,7 @@ if (placeId) {
 
     favoriteBtn.addEventListener("click", async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/api/favorite/${place_id}/`, {
+        const response = await fetch(`/api/favorite/${place_id}/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -950,7 +950,7 @@ if (placeId) {
         }
 
         try {
-          const response = await fetch(`http://127.0.0.1:8000/api/reviews/${place_id}`, {
+          const response = await fetch(`/api/reviews/${place_id}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -1164,7 +1164,7 @@ if (placeId) {
 // =========================
 async function showFavoritePlaces() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/get-favorites/", {
+    const res = await fetch("/api/get-favorites/", {
       method: "GET",
       credentials: "include",
     });
@@ -1291,6 +1291,8 @@ async function fetchPlaces(
   try {
     const res = await fetch("/api/places");
     let data = await res.json();
+    allPlacesData = [];
+    visibleMarkers.clear(); 
 
     // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH (chỉ bỏ dấu phụ như ă, ơ, ê)
     function normalizeKeepTone(str) {
@@ -1900,25 +1902,30 @@ document.getElementById("imageModal").addEventListener("click", (e) => {
 // =========================
 
 async function geocodeAddress(address) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-    address
-  )}&limit=1`;
+  const url = `/api/accounts/geocode/?address=${encodeURIComponent(address)}`;
+  
   try {
     const res = await fetch(url);
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    
     const data = await res.json();
 
-    if (data && data.length > 0) {
+    if (data.lat && data.lon) {
       return {
-        lat: parseFloat(data[0].lat),
-        lon: parseFloat(data[0].lon),
+        lat: parseFloat(data.lat),
+        lon: parseFloat(data.lon),
       };
     }
 
     alert("❌ Không tìm thấy địa điểm này!");
     return null;
+    
   } catch (err) {
     console.error("Lỗi khi geocode:", err);
-    alert("❌ Lỗi khi tìm địa điểm!");
+    alert("❌ Lỗi khi tìm địa điểm: " + err.message);
     return null;
   }
 }

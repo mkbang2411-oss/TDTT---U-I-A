@@ -1,12 +1,23 @@
-version: '3.8'
-
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"  # ← Chỉ expose port này ra ngoài
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html/static:ro
+    networks:
+      - app-network
+    depends_on:
+      - flask-backend
+      - django-backend
+    restart: unless-stopped
+
   flask-backend:
     build:
-      context: .  # ✅ Build từ thư mục ROOT (TDIT--U-I-A)
-      dockerfile: backend/Dockerfile  # ✅ Chỉ định Dockerfile trong backend
-    ports:
-      - "5000:5000"
+      context: .
+      dockerfile: backend/Dockerfile
+    # ❌ BỎ ports - không expose ra ngoài nữa
     volumes:
       - ./backend:/app
       - ./frontend:/frontend
@@ -14,19 +25,20 @@ services:
       - app-network
     depends_on:
       - django-backend
+    restart: unless-stopped
 
   django-backend:
     build:
       context: ./user_management
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    # ❌ BỎ ports - không expose ra ngoài nữa
     volumes:
       - ./user_management:/app
       - ./backend:/backend
       - ./frontend:/frontend
     networks:
       - app-network
+    restart: unless-stopped
 
 networks:
   app-network:

@@ -163,8 +163,8 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Cấu hình hành vi đăng nhập
-LOGIN_REDIRECT_URL = 'http://127.0.0.1:5000/'
-LOGOUT_REDIRECT_URL = 'http://127.0.0.1:5000/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
 
 # Cấu hình email
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
@@ -185,3 +185,32 @@ MEDIA_URL = '/media/'
 
 # Đường dẫn thư mục thực tế trên máy tính để lưu file
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# ✅ THÊM VÀO CUỐI settings.py
+
+# Cho phép Nginx làm reverse proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Tin tưởng Nginx header
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+# Session & Cookie settings cho Nginx
+SESSION_COOKIE_SAMESITE = 'Lax'  # Cho phép cross-origin với credentials
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # True nếu dùng HTTPS
+
+# CSRF settings
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False  # False để JavaScript đọc được
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
+]
+
+# CORS settings (nếu có django-cors-headers)
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
+]

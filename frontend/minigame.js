@@ -63,7 +63,7 @@ class JigsawPuzzle {
   // 🆕 LOAD TIẾN ĐỘ USER
   async loadUserProgress() {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/puzzle/progress/', {
+      const response = await fetch('/api/puzzle/progress/', {
         credentials: 'include'
       });
       const data = await response.json();
@@ -193,7 +193,7 @@ class JigsawPuzzle {
     if (!confirm('Bạn có chắc muốn reset tiến độ map này?')) return;
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/puzzle/reset/${this.currentMap}/`, {
+      const response = await fetch(`/api/puzzle/reset/${this.currentMap}/`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
@@ -537,7 +537,7 @@ console.log('✅ Đã thêm background mới:', imagePath);
 async saveCompletion(completionTime, moves) {
   try {
     // 1️⃣ Lưu tiến độ puzzle
-    const response = await fetch('http://127.0.0.1:8000/api/puzzle/complete/', {
+    const response = await fetch('/api/puzzle/complete/', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -574,7 +574,7 @@ async saveCompletion(completionTime, moves) {
 // 🆕 UNLOCK FOOD STORY
 async unlockFoodStory() {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/food-story/unlock/${this.currentMap}/`, {
+    const response = await fetch(`/api/food-story/unlock/${this.currentMap}/`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' }
@@ -603,7 +603,7 @@ async unlockFoodStory() {
   // 🆕 LẤY THÔNG TIN FOOD STORY
   let storyUnlockHTML = '';
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/food-story/${this.currentMap}/`, {
+    const response = await fetch(`/api/food-story/${this.currentMap}/`, {
       credentials: 'include'
     });
     const data = await response.json();
@@ -672,7 +672,7 @@ async unlockFoodStory() {
 // 🆕 HIỂN THỊ FOOD STORY ĐẦY ĐỦ
 async showFoodStoryModal(mapName) {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/food-story/${mapName}/`, {
+    const response = await fetch(`/api/food-story/${mapName}/`, {
       credentials: 'include'
     });
     const data = await response.json();
@@ -769,7 +769,7 @@ async loadAchievements() {
   container.innerHTML = '<p class="loading-achievements">Đang tải thành tựu...</p>';
   
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/food-stories/unlocked/', {
+    const response = await fetch('/api/food-stories/unlocked/', {
       credentials: 'include'
     });
     const data = await response.json();

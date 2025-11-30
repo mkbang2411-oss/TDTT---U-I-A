@@ -4,7 +4,6 @@ WORKDIR /app
 
 # Copy requirements
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend
 COPY backend/ .
@@ -24,6 +23,15 @@ COPY frontend/font /frontend/font
 # - Picture/ (36MB) - đã lên Cloudinary
 # - disc_covers/ (0.1MB) - đã lên Cloudinary
 # - music/ (172MB) - bỏ qua
+
+# ✅ THÊM timeout và retry
+RUN pip install --no-cache-dir \
+    --default-timeout=1000 \
+    --retries 5 \
+    -r requirements.txt
+
+# Copy ONLY backend code
+COPY backend/ .
 
 EXPOSE 5000
 

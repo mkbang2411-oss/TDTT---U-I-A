@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/streak/', views.streak_handler, name='streak_handler'),
     path('friend/unfriend/', views.unfriend, name='unfriend'),
     path('friend/<int:friend_id>/favorites/', views.get_friend_favorites, name='get_friend_favorites'),
+    path('geocode/', views.geocode_proxy, name='geocode'),
 ]

@@ -90,8 +90,8 @@
 
             <!-- Nút Sign Up/Sign In - CHỈ HIỆN KHI CHƯA ĐĂNG NHẬP -->
             <div class="guest-only">
-                <a href="http://127.0.0.1:8000/accounts/signup" class="button-SignUp">Đăng Kí</a>
-                <a href="http://127.0.0.1:8000/accounts/login" class="button-SignIn">Đăng Nhập</a>
+                <a href="/accounts/signup/" class="button-SignUp">Đăng Ký</a>
+                <a href="/accounts/login/" class="button-SignIn">Đăng Nhập</a>
             </div>
         </div>
     </header>
@@ -286,7 +286,7 @@
             const userButton = document.querySelector('.user-only');
 
             // Gọi API trên server Django
-            fetch('http://127.0.0.1:8000/api/check-auth/', {
+            fetch('/api/check-auth/', {
                 method: 'GET',
                 // BẮT BUỘC: Gửi cookie (session) cùng với yêu cầu
                 credentials: 'include' 
@@ -481,6 +481,7 @@
             const musicPanel = document.querySelector('.music-panel');
             const musicBtn = document.querySelector('.music-player-btn');
             const miniGameOverlay = document.getElementById('miniGameOverlay');
+            const sidebar = document.getElementById('sidebar'); 
             
             // ⚡ CACHE Z-INDEX VALUES (không phải tính lại mỗi lần)
             const Z_INDEX = {
@@ -488,31 +489,36 @@
                     chat: '999999',
                     food: '999999',
                     music: '10000002',
-                    musicBtn: '10000002'
+                    musicBtn: '10000002',
+                    sidebar: '10000003'
                 },
                 CHAT_ACTIVE: {
                     chat: '10000001',
                     food: '9999999',
                     music: '9999998',
-                    musicBtn: '999997'
+                    musicBtn: '999997',
+                    sidebar: '10000002'
                 },
                 FOOD_ACTIVE: {
                     chat: '9999999',
                     food: '10000001',
                     music: '9999998',
-                    musicBtn: '999997'
+                    musicBtn: '999997',
+                    sidebar: '10000002'
                 },
                 MUSIC_ACTIVE: {
                     chat: '9999999',
                     food: '9999999',
                     music: '10000001',
-                    musicBtn: '999997'
+                    musicBtn: '999997',
+                    sidebar: '10000002'
                 },
                 DEFAULT: {
                     chat: '1000000',
                     food: '9999999',
                     music: '99999998',
-                    musicBtn: '999997'
+                    musicBtn: '999997',
+                    sidebar: '100000000'
                 }
             };
             
@@ -543,6 +549,7 @@
                 if (foodPlannerPanel) foodPlannerPanel.style.zIndex = zIndexSet.food;
                 if (musicPanel) musicPanel.style.zIndex = zIndexSet.music;
                 if (musicBtn) musicBtn.style.zIndex = zIndexSet.musicBtn;
+                if (sidebar) sidebar.style.zIndex = zIndexSet.sidebar;
             }
             
             // ⚡ DEBOUNCED UPDATE (tránh gọi nhiều lần liên tục)

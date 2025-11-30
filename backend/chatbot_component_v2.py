@@ -1639,7 +1639,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
         <script>
             const GEMINI_API_KEY = '{gemini_api_key}';
 
-            const API_BASE_URL = 'http://127.0.0.1:8000/api'; 
+            const API_BASE_URL = '/api';
             // ===== THÊM ĐOẠN NÀY =====
             const MENU_DATA = {menu_json};
             console.log('📋 Menu loaded:', MENU_DATA.dishes.length, 'món');
@@ -2131,34 +2131,44 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         console.log(`    ✅ Word "${{w}}" is clean`);
                     }}
 
-                    // 3. CHECK CHUOI DINH NHAU - KIEM TRA CHUA TU TUC
-                    console.log('🔍 [STICKY CHECK] Checking continuous string...');
-                    const compactNorm = normalizeToken(compact);
-                    const compactNoTone = removeVietnameseTones(compact);
+                    // 3. CHECK STICKY - CHỈ CHECK TRÊN TỪNG TỪ RIÊNG LẺ
+                    console.log('🔍 [STICKY CHECK] Checking individual words...');
 
-                    // ✅ KIEM TRA CA BAN CO DAU VA KHONG DAU
-                    for (const testStr of [compactNorm, compactNoTone]) {{
-                        if (testStr.length < 4) continue;
+                    // Tách text thành từng từ (ngăn cách bởi khoảng cách)
+                    const stickyWords = raw.split(/\s+/);  
 
-                        console.log(`  🔎 Testing string: "${{testStr}}"`);
-
-                        // DO TOAN BO TU TRONG TU DIEN XEM CO CHUA TRONG CHUOI KHONG
-                        for (const badWord of langSet) {{
-                            // Chi check tu >= 3 ky tu (tranh false positive)
-                            if (badWord.length >= 3) {{
-                                // CHECK CA BAN CO DAU VA KHONG DAU CUA BAD WORD
-                                const badWordNoTone = removeVietnameseTones(badWord);
-                                
-                                // Neu testStr chua badWord (co dau hoac khong dau)
-                                if (testStr.includes(badWord) || testStr.includes(badWordNoTone)) {{
-                                    console.log(`    🔥 [STICKY MATCH] Found "${{badWord}}" (or no-tone version) inside "${{testStr}}"`);
-                                    console.log(`    ❌ [PROFANITY DETECTED] Match: "${{badWord}}"`);
-                                    return {{ found: true, lang: detectedLang, match: testStr }};
+                    for (const word of stickyWords) {{
+                        // Bỏ qua từ quá ngắn
+                        if (word.length < 4) continue;
+                        
+                        const wordNorm = normalizeToken(word);
+                        const wordNoTone = removeVietnameseTones(word);
+                        
+                        console.log(`  🔎 Checking word: "${{word}}" → normalized: "${{wordNorm}}", no-tone: "${{wordNoTone}}"`);
+                        
+                        // Check trên cả 2 version (có dấu và không dấu)
+                        for (const testStr of [wordNorm, wordNoTone]) {{
+                            if (testStr.length < 4) continue;
+                            
+                            // Dò từng từ tục xem có nằm trong word này không
+                            for (const badWord of langSet) {{
+                                // Chỉ check từ tục >= 3 ký tự (tránh false positive)
+                                if (badWord.length >= 3) {{
+                                    const badWordNoTone = removeVietnameseTones(badWord);
+                                    
+                                    // Nếu testStr CHỨA badWord (có dấu hoặc không dấu)
+                                    if (testStr.includes(badWord) || testStr.includes(badWordNoTone)) {{
+                                        console.log(`    🔥 [STICKY MATCH] Found "${{badWord}}" inside word "${{word}}"`);
+                                        console.log(`    ❌ [PROFANITY DETECTED] Match: "${{badWord}}"`);
+                                        return {{ found: true, lang: detectedLang, match: word }};
+                                    }}
                                 }}
                             }}
                         }}
                     }}
-                    console.log('    ✅ No sticky profanity found');
+
+                    console.log('    ✅ No sticky profanity found in individual words');
+
                 }}
 
                 // ==============
@@ -3675,6 +3685,24 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 // 👇 Xử lý format nội dung, có xuống dòng giữa các món
                 const normalized = text.replace(/\\r\\n/g, '\\n').replace(/\\n{2,}/g, '\\n').trim();
                 const lines = normalized.split('\\n');
+
+                // ✅ FORMAT TÊN MÓN - WRAP BẰNG <span class="dish-name">
+                const formattedLines = lines.map(line => {{
+                    // Tìm số thứ tự (1., 2., 3., …) và tên món
+                    const match = line.match(/^(\d+\.)\s+([^:]+):/);  // ✅ ĐỔI: \s+ tách riêng
+                    if (match) {{
+                        const num = match[1];  // "1."
+                        const dishName = match[2].trim();  // "Phở bò" (đã trim khoảng trắng thừa)
+                        
+                        // Tìm vị trí của dấu ":" đầu tiên SAU tên món
+                        const colonIndex = line.indexOf(':', match[0].length - (line.length - match[0].length));
+                        const rest = line.substring(colonIndex + 1);  // phần sau dấu ":"
+                        
+                        // ✅ CHUẨN HÓA: "1. <tên món>:" (chỉ 1 khoảng trắng)
+                        return `${{num}} <span class="dish-name">${{dishName}}</span>:${{rest}}`;
+                    }}
+                    return line;
+                }});
 
                 let htmlParts = [];
                 let inOl = false;
