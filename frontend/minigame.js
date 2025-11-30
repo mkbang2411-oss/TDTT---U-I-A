@@ -813,9 +813,9 @@ async renderAchievements(unlockedStories) {
   
   // Danh sách TẤT CẢ các món (bao gồm locked và unlocked)
   const allMaps = [
-    { map_name: 'banh_mi', title: 'Bánh Mì', image: 'Picture/banh_mi.png' },
-    { map_name: 'com_tam', title: 'Cơm Tấm', image: 'Picture/com_tam.png' },
-    { map_name: 'bun_bo_hue', title: 'Bún Bò Huế', image: 'Picture/bun_bo_hue.png' }
+    { map_name: 'banh_mi', title: 'Bánh Mì', image: 'https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png' },
+    { map_name: 'com_tam', title: 'Cơm Tấm', image: 'https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/com_tam.png' },
+    { map_name: 'bun_bo_hue', title: 'Bún Bò Huế', image: 'https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/bun_bo_hue.png' }
   ];
   
   // Tạo Set các map đã unlock để check nhanh

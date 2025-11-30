@@ -75,43 +75,43 @@ let lastSearchParams = {
 // =========================
 const icons = {
   pho: L.icon({
-    iconUrl: "icons/pho.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/pho.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   cafe: L.icon({
-    iconUrl: "icons/coffee.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/coffee.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   tra_sua: L.icon({
-    iconUrl: "icons/tra_sua.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/tra_sua.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   bun: L.icon({
-    iconUrl: "icons/bun.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/bun.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   banh_mi: L.icon({
-    iconUrl: "icons/banh_mi.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_mi.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   banh_ngot: L.icon({
-    iconUrl: "icons/banh_ngot.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_ngot.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   my_cay: L.icon({
-    iconUrl: "icons/my_cay.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/my_cay.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
@@ -123,45 +123,45 @@ const icons = {
     className: 'fixed-size-icon'  
   }),
   banh_kem: L.icon({
-    iconUrl: "icons/banh_kem.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_kem.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
 
   kem: L.icon({
-    iconUrl: "icons/kem.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/kem.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
 
   lau: L.icon({
-    iconUrl: "icons/lau.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/lau.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   mi: L.icon({
-    iconUrl: "icons/ramen.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/ramen.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }), 
   khu_am_thuc: L.icon({
-  iconUrl: "icons/street_food.png", // 👉 Bạn đặt file này trong thư mục /icons
+  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/street_food.png", // 👉 Bạn đặt file này trong thư mục /icons
   iconSize: [26, 26],
   iconAnchor: [13, 26],
   className: 'fixed-size-icon'  
   }),
   default: L.icon({
-    iconUrl: "icons/default.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/default.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-  iconUrl: "icons/star.png", // đặt file PNG vào thư mục /icons
+  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png", // đặt file PNG vào thư mục /icons
   iconSize: [26, 26],
   iconAnchor: [13, 26],
   className: 'fixed-size-icon'  
@@ -1119,7 +1119,7 @@ if (placeId) {
           return L.marker(wp.latLng, {
             icon: i === 0
               ? L.icon({
-                  iconUrl: "Picture/home.gif",
+                  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
                   iconSize: [120, 100],
                   iconAnchor: [60, 100],
                 })
@@ -1540,7 +1540,7 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
     window.startMarker = L.marker([coords.lat, coords.lon], {
       icon: L.icon({
-          iconUrl: "Picture/home.gif",
+          iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
           iconSize: [120, 100],
           iconAnchor: [60, 100],
       }),
@@ -1952,7 +1952,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
       // ✅ Thêm marker mới cho điểm xuất phát
       window.startMarker = L.marker([userLat, userLon], {
         icon: L.icon({
-          iconUrl: "Picture/home.gif",
+          iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
           iconSize: [120, 100],
           iconAnchor: [60, 100],
         }),
@@ -2003,10 +2003,47 @@ document.addEventListener("DOMContentLoaded", () => {
             // A. Điền tên quán vào ô nhập
             searchInput.value = searchName;
             
+            // ✅ XÓA BÁN KÍNH VÀ GPS ĐỂ TRÁNH BẮT NHẬP VỊ TRÍ
+            const radiusInput = document.getElementById('radius');
+            const budgetInput = document.getElementById('budget');
+            const gpsInput = document.getElementById('gpsInput');
+            
+            if (radiusInput) radiusInput.value = '';
+            if (budgetInput) budgetInput.value = '';
+            if (gpsInput) gpsInput.value = '';
+            
+            // ✅ Reset radio buttons
+            const radiusRadios = document.querySelectorAll('input[name="radius"]');
+            radiusRadios.forEach(r => r.checked = false);
+            
+            const budgetRadios = document.querySelectorAll('input[name="budget"]');
+            budgetRadios.forEach(b => b.checked = false);
+            
+            // ✅ Reset text hiển thị trên nút dropdown
+            const radiusBtn = document.getElementById('radiusBtn');
+            const budgetBtn = document.getElementById('budgetBtn');
+            
+            if (radiusBtn) {
+                const radiusText = radiusBtn.querySelector('.selected-flavors');
+                if (radiusText) {
+                    radiusText.textContent = 'Bán kính tìm kiếm';
+                    radiusText.classList.add('empty');
+                }
+            }
+            
+            if (budgetBtn) {
+                const budgetText = budgetBtn.querySelector('.selected-flavors');
+                if (budgetText) {
+                    budgetText.textContent = 'Ngân sách mặc định ▼';
+                    budgetText.classList.add('empty');
+                }
+            }
+            
             // B. Đợi 1 chút cho bản đồ load xong thì tự bấm nút tìm
             setTimeout(() => {
-                searchBtn.click(); // 👈 Giả lập cú click chuột
-            }, 0); // Đợi 0.5 giây
+                searchBtn.click();
+                console.log('🔍 Auto-search triggered for:', searchName);
+            }, 500); // Đợi 0.5 giây
         }
     }
 });

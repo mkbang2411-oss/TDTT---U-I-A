@@ -1,0 +1,40 @@
+# ⭐ Loại bỏ folder ảnh (đã lên Cloudinary)
+frontend/images/
+frontend/icons/
+frontend/Picture/
+frontend/disc_covers/
+frontend/music/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+backend/__pycache__/
+
+# IDE
+.vscode/
+.idea/
+.devcontainer/
+frontend/.devcontainer/
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Test
+.pytest_cache/
