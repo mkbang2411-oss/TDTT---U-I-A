@@ -12,7 +12,7 @@ COPY backend/ .
 COPY frontend/*.html /frontend/
 COPY frontend/*.css /frontend/
 COPY frontend/*.js /frontend/
-COPY frontend/.gitignore /frontend/
+
 
 # Copy font
 COPY frontend/font /frontend/font
@@ -35,4 +35,4 @@ COPY backend/ .
 
 EXPOSE 5000
 
-CMD ["python", "main_web.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "main_web:app"]

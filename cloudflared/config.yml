@@ -1,0 +1,5 @@
+tunnel: 5f26d6d3-92d6-4bae-9d68-bc05e7573b65
+credentials-file: /etc/cloudflared/5f26d6d3-92d6-4bae-9d68-bc05e7573b65.json
+
+ingress:
+  - service: http://nginx:80

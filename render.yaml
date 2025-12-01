@@ -1,0 +1,39 @@
+@"
+services:
+  # Django Backend Service
+  - type: web
+    name: foodmap-django
+    runtime: python
+    buildCommand: pip install -r user_management/requirements.txt && python user_management/manage.py collectstatic --no-input && python user_management/manage.py migrate
+    startCommand: cd user_management && gunicorn user_management.wsgi:application --bind 0.0.0.0:8000
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: foodmap-db
+          property: connectionString
+      - key: DJANGO_SETTINGS_MODULE
+        value: user_management.settings
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DEBUG
+        value: false
+
+  # Flask Backend Service
+  - type: web
+    name: foodmap-flask
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn main_web:app --bind 0.0.0.0:5000
+    envVars:
+      - key: DJANGO_API_URL
+        value: https://foodmap-django.onrender.com
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+databases:
+  - name: foodmap-db
+    databaseName: foodmap
+    user: foodmap_user
+"@ | Out-File -FilePath render.yaml -Encoding UTF8

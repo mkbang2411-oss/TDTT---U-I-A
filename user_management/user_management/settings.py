@@ -16,9 +16,9 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -142,16 +142,8 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-# Cho phép server 5000 được phép gọi API
-CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:5000",
-    "http://localhost:5000",
-]
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://127.0.0.1:5000",
-    "http://localhost:5000",
-]
+
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -186,7 +178,9 @@ MEDIA_URL = '/media/'
 # Đường dẫn thư mục thực tế trên máy tính để lưu file
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# ✅ THÊM VÀO CUỐI settings.py
+# ===================================================
+# ✅ PRODUCTION SETTINGS - CLOUDFLARE TUNNEL
+# ===================================================
 
 # Cho phép Nginx làm reverse proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -195,22 +189,53 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
-# Session & Cookie settings cho Nginx
-SESSION_COOKIE_SAMESITE = 'Lax'  # Cho phép cross-origin với credentials
+# Session & Cookie settings
+SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = False  # True nếu dùng HTTPS
+SESSION_COOKIE_SECURE = False  # ✅ Đổi thành False để test local + tunnel
 
 # CSRF settings
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_HTTPONLY = False  # False để JavaScript đọc được
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = False  # ✅ Đổi thành False để test
+
+# ✅ CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost',
     'http://127.0.0.1',
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
+    'https://raising-crm-neighbors-dave.trycloudflare.com',
+    'https://resolve-shanghai-hanging-critical.trycloudflare.com',
 ]
 
-# CORS settings (nếu có django-cors-headers)
+# ✅ CORS settings
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost',
     'http://127.0.0.1',
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
+    'https://raising-crm-neighbors-dave.trycloudflare.com',
+    'https://resolve-shanghai-hanging-critical.trycloudflare.com',
 ]
+
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+    'x-requested-with',
+    'authorization',
+]
+
+# ===================================================
+# ✅ DJANGO-ALLAUTH SETTINGS
+# ===================================================
+
+# Bắt buộc dùng HTTPS cho callback
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+
+# Cho phép đăng nhập bằng social ngay lập tức
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# Không yêu cầu email verification
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'

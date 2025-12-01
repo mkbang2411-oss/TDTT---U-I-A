@@ -174,4 +174,4 @@ if __name__ == "__main__":
     print(f"🤖 Chatbot đã được tích hợp!")
     print(f"🍽️ Food Planner đã được tích hợp!")
     print(f"🎵 Music player đã được tích hợp!")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)  # ← Tắt debug
