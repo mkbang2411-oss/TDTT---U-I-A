@@ -1469,12 +1469,21 @@ def get_food_planner_html():
     padding-top: 10px;
 }
 
+/* THAY BẰNG */
 .tab-content {
-    display: none;
+    height: auto;
+    min-height: 500px; /* Nếu muốn giữ chiều cao tối thiểu */
 }
 
-.tab-content.active {
-    display: block;
+.food-planner-panel .tab-content {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+}
+
+.food-planner-panel .tab-content.active {
+    height: auto !important;
+    display: block !important;
 }
 
 /* ========== NEW FILTERS DESIGN ========== */
