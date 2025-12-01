@@ -104,7 +104,7 @@ def extract_menu_from_csv(csv_path: str = "Data_with_flavor.csv"):
             'há cảo', 'mandu', 'wonton', 'dumpling',
             'peking duck', 'mapo tofu', 'kung pao',
             'sweet sour', 'fried rice', 'chow mein',
-            'spring roll', 'congee', 'há cảo', 'sủi cảo',
+            'spring roll', 'congee', 'há cảo', 'sủi cảo', 'mì sủi cảo',
             
             # Món Thái
             'pad thai', 'tom yum', 'tom kha', 'green curry',

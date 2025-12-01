@@ -819,7 +819,7 @@ if (placeId) {
       reviewFormHTML = `
         <div class="review-form">
           <h3>📝 Thêm đánh giá của bạn</h3>
-          <p>Vui lòng <a href="http://127.0.0.1:8000/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
+          <p>Vui lòng <a href="/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
         </div>
       `;
     }
