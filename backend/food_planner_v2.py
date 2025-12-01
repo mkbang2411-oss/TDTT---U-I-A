@@ -2952,7 +2952,6 @@ def get_food_planner_html():
         height: 70px;
     }
 }
-
 </style>
 
 <!-- Food Planner Button -->
@@ -3223,7 +3222,7 @@ function displaySavedPlansList(plans) {
         return;
     }
     
-    // ✅ Nếu có plans → thêm từng plan vào html (KHÔNG khai báo lại)
+    // ✅ Nếu có plans → thêm từng plan vào html
     plans.forEach((plan, index) => {
         const date = new Date(plan.savedAt);
         const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -3243,40 +3242,63 @@ function displaySavedPlansList(plans) {
     listDiv.innerHTML = html;
 }
 
+// ========== TOGGLE SAVED PLANS - SỬA LẠI ĐƠN GIẢN HƠN ==========
 function toggleSavedPlans() {
     const listDiv = document.getElementById('savedPlansList');
     const arrow = document.getElementById('savedPlansArrow');
     
-    // 🔥 NẾU ĐANG MỞ "LỊCH TRÌNH ĐÃ LƯU" → ĐÓNG FILTERS
-    if (!listDiv.classList.contains('open')) {
-        const filtersWrapper = document.getElementById('filtersWrapper');
-        if (filtersWrapper && !filtersWrapper.classList.contains('collapsed')) {
-            toggleFilters(); // Đóng filters trước khi mở lịch trình
-        }
+    if (!listDiv || !arrow) {
+        console.error('❌ Không tìm thấy savedPlansList hoặc savedPlansArrow');
+        return;
     }
     
-    if (listDiv.classList.contains('open')) {
+    // 🔥 TOGGLE CLASS 'open'
+    const isOpen = listDiv.classList.contains('open');
+    
+    if (isOpen) {
+        // Đang mở → đóng lại
         listDiv.classList.remove('open');
         arrow.style.transform = 'rotate(0deg)';
+        console.log('✅ Đóng saved plans');
     } else {
+        // Đang đóng → mở ra
         listDiv.classList.add('open');
         arrow.style.transform = 'rotate(180deg)';
+        console.log('✅ Mở saved plans');
+        
+        // 🔥 ĐÓNG FILTERS nếu đang mở
+        const filtersWrapper = document.querySelector('.filters-wrapper-new');
+        if (filtersWrapper && !filtersWrapper.classList.contains('collapsed')) {
+            const filterHeader = document.querySelector('.section-header');
+            if (filterHeader && typeof filterHeader.click === 'function') {
+                // Không làm gì - giữ nguyên filters
+            }
+        }
     }
 }
 
-// ========== SAVE PLAN - Sử dụng ARRAY THAY VÌ OBJECT ==========
-function savePlan() {
+// ========== SAVE PLAN - Lưu vào Database Django ==========
+async function savePlan() {
     if (!currentPlan) return;
 
-    // 🔥 LƯỚI ĐÚNG THỨ TỰ VỀ DOM
+    // 🔥 KIỂM TRA ĐĂNG NHẬP
+    const checkAuth = await fetch('/api/check-auth/');
+    const authData = await checkAuth.json();
+    
+    if (!authData.is_logged_in) {
+        alert('⚠️ Bạn cần đăng nhập để lưu lịch trình!');
+        window.location.href = '/accounts/login/';
+        return;
+    }
+
+    // 🔥 LƯU THỨ TỰ VỀ DOM
     const mealItems = document.querySelectorAll('.meal-item');
     const planArray = [];
     
-    // Lấy thứ tự từ DOM (user đã kéo thả)
     mealItems.forEach(item => {
         const mealKey = item.dataset.mealKey;
         if (mealKey && currentPlan[mealKey]) {
-            // 🔥 CẬP NHẬT THỜI GIAN từ input giờ/phút
+            // Cập nhật thời gian từ input
             const hourInput = item.querySelector('.time-input-hour[data-meal-key="' + mealKey + '"]');
             const minuteInput = item.querySelector('.time-input-minute[data-meal-key="' + mealKey + '"]');
             
@@ -3286,16 +3308,15 @@ function savePlan() {
                 currentPlan[mealKey].time = `${hour}:${minute}`;
             }
             
-            // 🔥 CẬP NHẬT TITLE từ input (CHỈ GIỮ 1 LẦN)
+            // Cập nhật TITLE từ input
             const titleInput = item.querySelector('input[onchange*="updateMealTitle"]');
             if (titleInput && titleInput.value) {
                 currentPlan[mealKey].title = titleInput.value;
             }
             
-            // Thêm vào array
             planArray.push({
                 key: mealKey,
-                data: JSON.parse(JSON.stringify(currentPlan[mealKey])) // Deep copy
+                data: JSON.parse(JSON.stringify(currentPlan[mealKey]))
             });
         }
     });
@@ -3306,152 +3327,161 @@ function savePlan() {
         return;
     }
 
-    // Cập nhật order
     currentPlan._order = planArray.map(x => x.key);
 
     // Xóa quán gợi ý trước khi lưu
     suggestedFoodStreet = null;
     suggestedMichelin = null;
 
-    // 🔥 LẤY TÊN TỪ DOM (nếu user đã edit inline)
+    // 🔥 LẤY TÊN TỪ DOM
     const titleElement = document.querySelector('.schedule-title span[contenteditable]');
     let currentDisplayName = titleElement ? titleElement.textContent.trim() : (window.currentPlanName || '');
     
     // ✅ XỬ LÝ TÊN PLAN
-    if (!currentPlanId) {
-        // 🔥 PLAN MỚI (chưa có ID) → BẮT BUỘC PHẢI HỎI TÊN
-        currentDisplayName = prompt('Đặt tên cho kế hoạch:', currentDisplayName || `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
+    if (!currentDisplayName || currentDisplayName === 'Lịch trình của bạn') {
+        currentDisplayName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
         if (!currentDisplayName || currentDisplayName.trim() === '') {
             alert('⚠️ Bạn phải đặt tên để lưu lịch trình!');
             return;
         }
         currentDisplayName = currentDisplayName.trim();
-    } else {
-        // 🔥 PLAN CŨ (đã có ID)
-        if (!currentDisplayName || currentDisplayName === 'Lịch trình của bạn') {
-            // Chưa có tên custom → hỏi
-            currentDisplayName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
-            if (!currentDisplayName) return;
-        }
-        // Đã có tên custom → giữ nguyên, không hỏi
     }
-    
-    // ✅ TẠO HOẶC CẬP NHẬT PLAN
-    const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
-    
-    const planRecord = {
-        id: currentPlanId || Date.now().toString(), // 🔥 TẠO ID MỚI NẾU CHƯA CÓ
-        name: currentDisplayName,
-        plan: planArray,
-        savedAt: new Date().toISOString(),
-        radius: window.currentRadius || '10'  // 🔥 THÊM DÒNG NÀY
-    };
-    
-    if (currentPlanId) {
-        // 🔥 CẬP NHẬT PLAN CŨ
-        const index = savedPlans.findIndex(p => p.id === currentPlanId);
-        if (index !== -1) {
-            savedPlans[index] = planRecord;
+
+    // 🔥 GỌI API DJANGO ĐỂ LƯU
+    try {
+        const response = await fetch('/api/accounts/food-plan/save/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: currentDisplayName,
+                plan_data: planArray
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('✅ Đã lưu kế hoạch thành công!');
+            window.currentPlanName = currentDisplayName;
+            
+            // ✅ TẮT EDIT MODE SAU KHI LƯU
+            if (isEditMode) {
+                toggleEditMode();
+            }
+            
+            // ✅ LOAD LẠI DANH SÁCH PLANS
+            await loadSavedPlans();
         } else {
-            // Không tìm thấy ID cũ → thêm mới
-            savedPlans.unshift(planRecord);
+            alert('❌ Lỗi: ' + result.message);
         }
-    } else {
-        // 🔥 THÊM PLAN MỚI
-        savedPlans.unshift(planRecord);
-        currentPlanId = planRecord.id; // ✅ GÁN ID CHO currentPlanId
-    }
-    
-    // Giới hạn 20 plans
-    if (savedPlans.length > 20) {
-        savedPlans.length = 20;
-    }
-    
-    localStorage.setItem('food_plans', JSON.stringify(savedPlans));
-    
-    // 🔥 CẬP NHẬT TÊN HIỂN THỊ
-    window.currentPlanName = planRecord.name;
-    
-    alert('✅ Đã lưu kế hoạch thành công!');
-    
-    // ✅ CẬP NHẬT DANH SÁCH PLANS
-    loadSavedPlans();
-    
-    // ✅ TẮT EDIT MODE SAU KHI LƯU
-    if (isEditMode) {
-        toggleEditMode();
+    } catch (error) {
+        console.error('Error saving plan:', error);
+        alert('❌ Không thể lưu lịch trình!');
     }
 }
 
-// ========== LOAD SAVED PLAN - RESTORE TỪARAY VỀ OBJECT ==========
-function loadSavedPlans(planId) {
-    const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
-    const section = document.getElementById('savedPlansSection');
-    
-    // ✅ LUÔN HIỂN THỊ SECTION
-    section.style.display = 'block';
-    
-    displaySavedPlansList(savedPlans);
-    
-    // Nếu có planId, load plan đó
-    if (planId) {
-        const plan = savedPlans.find(p => p.id === planId);
+// ========== LOAD SAVED PLAN - Từ Database Django ==========
+async function loadSavedPlans(planId) {
+    try {
+        // 🔥 GỌI API DJANGO
+        const response = await fetch('/api/accounts/food-plan/list/');
+        const data = await response.json();
         
-        if (plan) {
-            currentPlan = {};
+        if (data.status !== 'success') {
+            console.error('Lỗi load plans:', data.message);
+            return;
+        }
+        
+        const savedPlans = data.plans || [];
+        const section = document.getElementById('savedPlansSection');
+        
+        // ✅ LUÔN HIỂN THỊ SECTION
+        section.style.display = 'block';
+        
+        displaySavedPlansList(savedPlans);
+        
+        // Nếu có planId, load plan đó
+        if (planId) {
+            const plan = savedPlans.find(p => p.id === planId);
             
-            if (Array.isArray(plan.plan)) {
-                const orderList = [];
-                plan.plan.forEach(item => {
-                    currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
-                    orderList.push(item.key);
-                });
-                currentPlan._order = orderList;
-            } else {
-                Object.assign(currentPlan, plan.plan);
-            }
+            if (plan) {
+                currentPlan = {};
+                
+                // 🔥 CHUYỂN ĐỔI TỪ plan_data
+                const planData = plan.plan_data;
+                if (Array.isArray(planData)) {
+                    const orderList = [];
+                    planData.forEach(item => {
+                        currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
+                        orderList.push(item.key);
+                    });
+                    currentPlan._order = orderList;
+                } else {
+                    Object.assign(currentPlan, planData);
+                }
 
-            currentPlanId = planId;
-            window.currentPlanName = plan.name;
-            window.currentRadius = plan.radius || '10';  // 🔥 THÊM DÒNG NÀY
-            isEditMode = false;
-            suggestedFoodStreet = null; // Xóa gợi ý khi load plan cũ
-            suggestedMichelin = null;
-            displayPlanVertical(currentPlan, false);
+                currentPlanId = planId;
+                window.currentPlanName = plan.name;
+                window.currentRadius = '10';
+                isEditMode = false;
+                suggestedFoodStreet = null;
+                suggestedMichelin = null;
+                displayPlanVertical(currentPlan, false);
 
-            setTimeout(() => drawRouteOnMap(currentPlan), 500);
-            
-            const savedPlansList = document.getElementById('savedPlansList');
-            const savedPlansArrow = document.getElementById('savedPlansArrow');
-            
-            if (savedPlansList && savedPlansArrow) {
-                savedPlansList.classList.remove('open');
-                savedPlansArrow.style.transform = 'rotate(0deg)';
-            }
-            
-            if (section) {
-                section.style.display = 'block';
+                setTimeout(() => drawRouteOnMap(currentPlan), 500);
+                
+                const savedPlansList = document.getElementById('savedPlansList');
+                const savedPlansArrow = document.getElementById('savedPlansArrow');
+                
+                if (savedPlansList && savedPlansArrow) {
+                    savedPlansList.classList.remove('open');
+                    savedPlansArrow.style.transform = 'rotate(0deg)';
+                }
+                
+                if (section) {
+                    section.style.display = 'block';
+                }
             }
         }
+    } catch (error) {
+        console.error('Error loading plans:', error);
     }
 }
 
-function deleteSavedPlan(planId) {
+// ========== DELETE PLAN - Xóa từ Database Django ==========
+async function deleteSavedPlan(planId) {
     if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
     
-    let savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
-    savedPlans = savedPlans.filter(p => p.id !== planId);
-    
-    localStorage.setItem('food_plans', JSON.stringify(savedPlans));
-    
-    if (currentPlanId === planId) {
-        currentPlanId = null;
-        currentPlan = null;
-        document.getElementById('planResult').innerHTML = '';
-        isEditMode = false;
+    try {
+        const response = await fetch(`/api/accounts/food-plan/delete/${planId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('✅ Đã xóa kế hoạch!');
+            
+            if (currentPlanId === planId) {
+                currentPlanId = null;
+                currentPlan = null;
+                document.getElementById('planResult').innerHTML = '';
+                isEditMode = false;
+            }
+            
+            await loadSavedPlans();
+        } else {
+            alert('❌ Lỗi: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting plan:', error);
+        alert('❌ Không thể xóa lịch trình!');
     }
-    
-    loadSavedPlans();
 }
 
 // ========== TẠO LỊCH TRÌNH TRỐNG MỚI ==========
@@ -6107,24 +6137,16 @@ function updateMealIcon(mealKey, newIcon) {
 const iconOptions = ['🍳', '🥐', '🍜', '🍚', '🍛', '🍝', '🍕', '🍔', '🌮', '🥗', '🍱', '🍤', '🍣', '🦞', '☕', '🧋', '🍵', '🥤', '🍰', '🍨', '🧁', '🍩', '🍪', '🍽️'];
 
 function updateAutoPlanName(newName) {
+    // Nếu chưa có plan đang mở thì khỏi làm gì
     if (!currentPlanId) return;
-    
-    const cleanName = newName.trim() || 'Kế hoạch';
-    
-    // 🔥 Nếu tên không đổi thì KHÔNG làm gì
+
+    const cleanName = (newName || '').trim() || 'Kế hoạch';
+
+    // Tên không đổi thì thôi
     if (window.currentPlanName === cleanName) return;
-    
-    const savedPlans = JSON.parse(localStorage.getItem('food_plans') || '[]');
-    const plan = savedPlans.find(p => p.id === currentPlanId);
-    
-    if (plan) {
-        plan.name = cleanName;
-        window.currentPlanName = plan.name;
-        localStorage.setItem('food_plans', JSON.stringify(savedPlans));
-        
-        // 🔥 CẬP NHẬT LIST "LỊCH TRÌNH ĐÃ LƯU"
-        displaySavedPlansList(savedPlans);
-    }
+
+    // Cập nhật lại tên hiện tại đang dùng trong UI / khi bấm "Lưu"
+    window.currentPlanName = cleanName;
 }
 
 function flyToPlace(lat, lon, placeId, placeName) {
