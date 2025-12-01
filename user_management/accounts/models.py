@@ -163,3 +163,132 @@ class UnlockedStory(models.Model):
 
     def __str__(self):
         return f"✅ {self.user.username} - {self.story.title}"
+    
+class EmailOTP(models.Model):
+    """
+    Model lưu mã OTP gửi về email
+    """
+    MAX_ATTEMPTS = 5  # Số lần thử tối đa
+    
+    email = models.EmailField()
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_verified = models.BooleanField(default=False)
+    attempts = models.IntegerField(default=0)  # Số lần thử sai
+    is_locked = models.BooleanField(default=False)  # Khóa sau nhiều lần thử sai
+    
+    class Meta:
+        verbose_name = "Email OTP"
+        verbose_name_plural = "Email OTPs"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.email} - {self.otp_code}"
+    
+    def is_valid(self):
+        from django.utils import timezone
+        return not self.is_verified and not self.is_locked and self.expires_at > timezone.now()
+    
+    def mark_as_verified(self):
+        self.is_verified = True
+        self.save()
+    
+    def increment_attempts(self):
+        """Tăng số lần thử và khóa nếu vượt quá giới hạn"""
+        self.attempts += 1
+        if self.attempts >= self.MAX_ATTEMPTS:
+            self.is_locked = True
+        self.save()
+        return self.attempts
+    
+    @staticmethod
+    def cleanup_expired():
+        from django.utils import timezone
+        EmailOTP.objects.filter(expires_at__lt=timezone.now()).delete()
+    
+    @classmethod
+    def generate_otp(cls, email):
+        import random
+        from datetime import timedelta
+        from django.utils import timezone
+        
+        # Xóa OTP cũ của email này
+        cls.objects.filter(email=email).delete()
+        
+        # Tạo OTP 6 số
+        otp_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        
+        # Thời gian hết hạn: 5 phút
+        expires_at = timezone.now() + timedelta(minutes=5)
+        
+        # Tạo record mới
+        otp = cls.objects.create(
+            email=email,
+            otp_code=otp_code,
+            expires_at=expires_at
+        )
+        
+        return otp
+
+
+class PasswordResetOTP(models.Model):
+    """
+    Model lưu mã OTP cho reset password
+    """
+    MAX_ATTEMPTS = 5
+    
+    email = models.EmailField()
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_verified = models.BooleanField(default=False)
+    attempts = models.IntegerField(default=0)
+    is_locked = models.BooleanField(default=False)
+    
+    class Meta:
+        verbose_name = "Password Reset OTP"
+        verbose_name_plural = "Password Reset OTPs"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.email} - Reset OTP - {self.otp_code}"
+    
+    def is_valid(self):
+        from django.utils import timezone
+        return not self.is_verified and not self.is_locked and self.expires_at > timezone.now()
+    
+    def mark_as_verified(self):
+        self.is_verified = True
+        self.save()
+    
+    def increment_attempts(self):
+        self.attempts += 1
+        if self.attempts >= self.MAX_ATTEMPTS:
+            self.is_locked = True
+        self.save()
+        return self.attempts
+    
+    @classmethod
+    def generate_otp(cls, email):
+        import random
+        from datetime import timedelta
+        from django.utils import timezone
+        
+        # Xóa OTP cũ của email này
+        cls.objects.filter(email=email).delete()
+        
+        # Tạo OTP 6 số
+        otp_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        
+        # Thời gian hết hạn: 5 phút
+        expires_at = timezone.now() + timedelta(minutes=5)
+        
+        # Tạo record mới
+        otp = cls.objects.create(
+            email=email,
+            otp_code=otp_code,
+            expires_at=expires_at
+        )
+        
+        return otp
