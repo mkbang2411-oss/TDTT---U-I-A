@@ -1462,34 +1462,37 @@ async function fetchPlaces(
       });
     }
 
-    // ========== 4️⃣ Lọc bán kính ==========
-    if (radius !== "") {
-      const r = parseFloat(radius);
+   // ========== 4️⃣ Lọc bán kính ==========
+if (radius && radius !== "" && radius !== "all") {  // ✅ Chỉ lọc khi thực sự chọn
+  const r = parseFloat(radius);
+  
+  if (isNaN(r) || r <= 0) return; // validate thêm
+  
+  if (
+    !window.currentUserCoords ||
+    !window.currentUserCoords.lat ||
+    !window.currentUserCoords.lon
+  ) {
+    alert(
+      "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
+    );
+    return; // ⭐ Dừng lại, không filter
+  } else {
+    const userLat = parseFloat(window.currentUserCoords.lat);
+    const userLon = parseFloat(window.currentUserCoords.lon);
 
-      if (
-        !window.currentUserCoords ||
-        !window.currentUserCoords.lat ||
-        !window.currentUserCoords.lon
-      ) {
-        alert(
-          "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
-        );
-      } else {
-        const userLat = parseFloat(window.currentUserCoords.lat);
-        const userLon = parseFloat(window.currentUserCoords.lon);
+    filtered = filtered.filter((p) => {
+      if (!p.lat || !p.lon) return false;
 
-        filtered = filtered.filter((p) => {
-          if (!p.lat || !p.lon) return false;
+      const plat = parseFloat(p.lat.toString().replace(",", "."));
+      const plon = parseFloat(p.lon.toString().replace(",", "."));
+      if (isNaN(plat) || isNaN(plon)) return false;
 
-          const plat = parseFloat(p.lat.toString().replace(",", "."));
-          const plon = parseFloat(p.lon.toString().replace(",", "."));
-          if (isNaN(plat) || isNaN(plon)) return false;
-
-          const d = distance(userLat, userLon, plat, plon);
-          return d <= r;
-        });
-      }
-    }
+      const d = distance(userLat, userLon, plat, plon);
+      return d <= r;
+    });
+  }
+}
 
     const ok = displayPlaces(filtered, shouldZoom);
     return ok;
