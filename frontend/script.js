@@ -1087,6 +1087,7 @@ if (placeId) {
           hinh_anh: p.hinh_anh || "",
           gia_trung_binh: p.gia_trung_binh || "",
           khau_vi: p.khau_vi || "",
+          gio_mo_cua: p.gio_mo_cua || ""
         };
 
         if (typeof window.foodPlannerState.selectPlace === "function") {

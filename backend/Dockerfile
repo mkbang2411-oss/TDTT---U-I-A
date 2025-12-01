@@ -13,9 +13,7 @@ COPY frontend/*.html /frontend/
 COPY frontend/*.css /frontend/
 COPY frontend/*.js /frontend/
 
-
 # Copy font
-COPY frontend/font /frontend/font
 
 # KHÔNG COPY:
 # - images/ (1.5GB) - đã lên Cloudinary
