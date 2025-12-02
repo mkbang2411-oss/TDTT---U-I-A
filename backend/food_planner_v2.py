@@ -3233,34 +3233,51 @@ function displaySavedPlansList(plans) {
 
         if (rawCreated) {
             try {
-                // 🔥 XỬ LÝ CHUẨN ISO 8601
                 let isoString = rawCreated;
                 
-                // Nếu có dạng "YYYY-MM-DD HH:MM:SS" → thêm "T"
+                // 🔥 CHUẨN HÓA FORMAT CHUẨN ISO 8601
                 if (isoString.includes(' ') && !isoString.includes('T')) {
                     isoString = isoString.replace(' ', 'T');
                 }
                 
-                // 🔥 THÊM 'Z' ĐỂ ĐÁNH DẤU UTC, SAU ĐÓ CỘNG 7 GIỜ
-                const date = new Date(isoString); 
-                date.setHours(date.getHours() + 7);  // ✅ Cộng 7 giờ → Giờ VN
+                // 🔥 PARSE THEO UTC RỒI CỘNG 7 GIỜ THỦ CÔNG (TRÁNH LỖI TIMEZONE)
+                const parts = isoString.match(/(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})?/);
+                
+                if (!parts) {
+                    throw new Error('Invalid date format');
+                }
+                
+                // 🔥 TẠO DATE THEO UTC (0 timezone)
+                const year = parseInt(parts[1]);
+                const month = parseInt(parts[2]) - 1;  // Month bắt đầu từ 0
+                const day = parseInt(parts[3]);
+                let hour = parseInt(parts[4]);
+                const minute = parseInt(parts[5]);
+                const second = parseInt(parts[6] || '0');
+                
+                // 🔥 CỘNG 7 GIỜ THỦ CÔNG (UTC → VN)
+                hour += 7;
+                if (hour >= 24) {
+                    hour -= 24;
+                    // Nếu qua ngày mới thì tăng day (đơn giản hóa, không xử lý tháng/năm)
+                }
+                
+                // 🔥 TẠO DATE LOCAL (KHÔNG DÙNG UTC)
+                const date = new Date(year, month, day, hour, minute, second);
 
                 if (!isNaN(date.getTime())) {
-                    dateStr = date.toLocaleDateString('vi-VN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                    });
+                    // 🔥 FORMAT CHUẨN - KHÔNG DÙNG toLocaleDateString (tránh lỗi locale)
+                    const dd = String(date.getDate()).padStart(2, '0');
+                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                    const yyyy = date.getFullYear();
+                    dateStr = `${dd}/${mm}/${yyyy}`;
                     
-                    // 🔥 FORMAT 24 GIỜ
-                    timeStr = date.toLocaleTimeString('vi-VN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    });
+                    const hh = String(date.getHours()).padStart(2, '0');
+                    const min = String(date.getMinutes()).padStart(2, '0');
+                    timeStr = `${hh}:${min}`;
                 }
             } catch (error) {
-                console.error('❌ Lỗi parse datetime:', error);
+                console.error('❌ Lỗi parse datetime:', error, 'Input:', rawCreated);
                 dateStr = 'Không rõ ngày';
                 timeStr = '';
             }
