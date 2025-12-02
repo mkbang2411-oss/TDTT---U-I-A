@@ -3061,6 +3061,7 @@ let lastDragY = 0;
 let dragDirection = 0;
 let lastTargetElement = null;
 window.currentPlanName = null;
+window.loadedFromSavedPlan = false;
 
 // Themes data
 const themes = {
@@ -3224,21 +3225,58 @@ function displaySavedPlansList(plans) {
     
     // ✅ Nếu có plans → thêm từng plan vào html
     plans.forEach((plan, index) => {
-        const date = new Date(plan.savedAt);
-        const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-        
+        // 🔥 CODE FIX TIMEZONE PHẢI Ở TRONG forEach - TỪNG PLAN
+        const rawCreated = plan.created_at || plan.savedAt || null;
+
+        let dateStr = 'Không rõ ngày';
+        let timeStr = '';
+
+        if (rawCreated) {
+            try {
+                // 🔥 XỬ LÝ CHUẨN ISO 8601
+                let isoString = rawCreated;
+                
+                // Nếu có dạng "YYYY-MM-DD HH:MM:SS" → thêm "T"
+                if (isoString.includes(' ') && !isoString.includes('T')) {
+                    isoString = isoString.replace(' ', 'T');
+                }
+                
+                // 🔥 THÊM 'Z' ĐỂ ĐÁNH DẤU UTC, SAU ĐÓ CỘNG 7 GIỜ
+                const date = new Date(isoString); 
+                date.setHours(date.getHours() + 7);  // ✅ Cộng 7 giờ → Giờ VN
+
+                if (!isNaN(date.getTime())) {
+                    dateStr = date.toLocaleDateString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                    
+                    // 🔥 FORMAT 24 GIỜ
+                    timeStr = date.toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+            } catch (error) {
+                console.error('❌ Lỗi parse datetime:', error);
+                dateStr = 'Không rõ ngày';
+                timeStr = '';
+            }
+        }
+
         html += `
-            <div class="saved-plan-item" onclick="loadSavedPlans('${plan.id}')">
+            <div class="saved-plan-item" onclick="loadSavedPlans(${plan.id})">
                 <div class="saved-plan-info">
                     <div class="saved-plan-name">${plan.name}</div>
                     <div class="saved-plan-date">📅 ${dateStr} • ⏰ ${timeStr}</div>
                 </div>
-                <button class="delete-plan-btn" onclick="event.stopPropagation(); deleteSavedPlan('${plan.id}')">×</button>
+                <button class="delete-plan-btn" onclick="event.stopPropagation(); deleteSavedPlan(${plan.id})">×</button>
             </div>
         `;
     });
-    
+
     listDiv.innerHTML = html;
 }
 
@@ -3424,7 +3462,7 @@ async function loadSavedPlans(planId) {
 
                 currentPlanId = planId;
                 window.currentPlanName = plan.name;
-                window.currentRadius = '10';
+                window.loadedFromSavedPlan = true;
                 isEditMode = false;
                 suggestedFoodStreet = null;
                 suggestedMichelin = null;
@@ -3507,6 +3545,7 @@ function createNewEmptyPlan() {
     
     currentPlanId = newPlanId;
     window.currentPlanName = planName;
+    window.loadedFromSavedPlan = true;
     isEditMode = true; // ✅ TỰ ĐỘNG BẬT EDIT MODE
     waitingForPlaceSelection = null;
     
@@ -4138,6 +4177,8 @@ async function findSuggestedMichelin() {
 async function generateAutoPlan() {
     const resultDiv = document.getElementById('planResult');
 
+    window.loadedFromSavedPlan = false;
+
     // ✅ THÊM 2 DÒNG NÀY
     suggestedFoodStreet = null;
     suggestedMichelin = null;
@@ -4690,57 +4731,60 @@ function displayPlanVertical(plan, editMode = false) {
         `;
     }
 
-    // 📍 Bán Kính Tìm Kiếm
-    html += `
-    <div style="
-        background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
-        border: 2px solid #FFB84D;
-        border-radius: 16px;
-        padding: 16px 20px;
-        margin: 24px 20px 16px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
-    ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 28px;">📍</span>
-            <div>
-                <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">
-                    Bán kính tìm kiếm
-                    <span style="
-                        display: inline-block;
-                        background: rgba(255, 107, 53, 0.15);
-                        color: #FF6B35;
-                        padding: 2px 8px;
-                        border-radius: 12px;
-                        font-size: 11px;
-                        font-weight: 700;
-                        margin-left: 8px;
-                        border: 1px solid rgba(255, 107, 53, 0.3);
-                    ">Thay đổi bán kính<br>ở thanh lọc bán kính</span>
-                </div>
-                <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
-                    ${window.currentRadius || '10'} km
+    // 📍 Bán Kính Tìm Kiếm - CHỈ HIỆN KHI TẠO MỚI
+    if (!window.loadedFromSavedPlan) {
+        html += `
+        <div style="
+            background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+            border: 2px solid #FFB84D;
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin: 24px 20px 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
+        ">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">📍</span>
+                <div>
+                    <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">
+                        Bán kính tìm kiếm
+                        <span style="
+                            display: inline-block;
+                            background: rgba(255, 107, 53, 0.15);
+                            color: #FF6B35;
+                            padding: 2px 8px;
+                            border-radius: 12px;
+                            font-size: 11px;
+                            font-weight: 700;
+                            margin-left: 8px;
+                            border: 1px solid rgba(255, 107, 53, 0.3);
+                        ">Thay đổi bán kính<br>ở thanh lọc bán kính</span>
+                    </div>
+                    <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
+                        ${window.currentRadius || '10'} km
+                    </div>
                 </div>
             </div>
+            <div style="
+                background: rgba(255, 184, 77, 0.2);
+                padding: 10px 16px;
+                border-radius: 10px;
+                font-size: 12px;
+                color: #8B6914;
+                font-weight: 600;
+                text-align: center;
+                line-height: 1.5;
+                min-width: 140px;
+            ">
+                ℹ️ Bán kính mặc định: 10km
+            </div>
         </div>
-        <div style="
-            background: rgba(255, 184, 77, 0.2);
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-size: 12px;
-            color: #8B6914;
-            font-weight: 600;
-            text-align: center;
-            line-height: 1.5;
-            min-width: 140px;
-        ">
-            ℹ️ Bán kính mặc định: 10km
-        </div>
-    </div>
-
-    <!-- 💰 Tổng Kinh Phí -->
+        `;
+    }
+    // 💰 Tổng Kinh Phí
+    html += `
     <div style="
         background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
         border: 2px solid #4caf50;
@@ -6150,144 +6194,12 @@ function updateAutoPlanName(newName) {
 }
 
 function flyToPlace(lat, lon, placeId, placeName) {
-    if (typeof map !== 'undefined') {
-        map.setView([lat, lon], 17, { animate: true });
-        
-        function waitForMapReady() {
-            return new Promise((resolve) => {
-                if (!map._animatingZoom) {
-                    resolve();
-                    return;
-                }
-                
-                map.once('moveend', () => {
-                    setTimeout(resolve, 1500);
-                });
-            });
-        }
-        
-        function tryClick(attempt) {
-            let targetMarker = null;
-            
-            // 🔥 ƯU TIÊN 1: TÌM THEO placeId (chính xác nhất)
-            if (placeId && typeof window.placeMarkersById !== 'undefined') {
-                targetMarker = window.placeMarkersById[placeId];
-                if (targetMarker) {
-                    console.log('✅ Tìm thấy marker theo ID:', placeId);
-                }
-            }
-            
-            // 🔥 ƯU TIÊN 2: TÌM THEO TÊN QUÁN (nếu không có ID)
-            if (!targetMarker && placeName) {
-                map.eachLayer((layer) => {
-                    if (layer instanceof L.Marker) {
-                        const data = layer.options.placeData || layer.placeData;
-                        if (data && data.ten_quan === placeName) {
-                            targetMarker = layer;
-                            console.log('✅ Tìm thấy marker theo tên:', placeName);
-                            return;
-                        }
-                    }
-                });
-            }
-            
-            // 🔥 ƯU TIÊN 3: TÌM THEO TỌA ĐỘ (fallback - ít chính xác nhất)
-            if (!targetMarker) {
-                let minDistance = Infinity;
-                
-                map.eachLayer((layer) => {
-                    if (layer instanceof L.Marker) {
-                        const markerLatLng = layer.getLatLng();
-                        
-                        const dLat = markerLatLng.lat - lat;
-                        const dLng = markerLatLng.lng - lon;
-                        const distance = Math.sqrt(dLat * dLat + dLng * dLng);
-                        
-                        // 🔥 GIảM NGƯỠNG: 0.0005 → 0.00001 (chỉ chấp nhận marker RẤT GẦN)
-                        if (distance < 0.00001 && distance < minDistance) {
-                            minDistance = distance;
-                            targetMarker = layer;
-                        }
-                    }
-                });
-                
-                if (targetMarker) {
-                    console.log('✅ Tìm thấy marker theo tọa độ, khoảng cách:', minDistance.toFixed(8));
-                }
-            }
-            
-            // 🔥 NẾU TÌM THẤY MARKER → CLICK
-            if (targetMarker) {
-                let placeData = targetMarker.options.placeData || targetMarker.placeData;
-                
-                if (placeData) {
-                    console.log('✅ Marker có dữ liệu:', placeData.ten_quan);
-                } else {
-                    console.warn('⚠️ Marker không có placeData → Tìm trong allPlacesData');
-                    
-                    // Tìm trong allPlacesData
-                    if (typeof allPlacesData !== 'undefined' && allPlacesData.length > 0) {
-                        let foundPlace = null;
-                        
-                        if (placeId) {
-                            foundPlace = allPlacesData.find(p => p.data_id === placeId);
-                        }
-                        
-                        if (!foundPlace && placeName) {
-                            foundPlace = allPlacesData.find(p => p.ten_quan === placeName);
-                        }
-                        
-                        if (!foundPlace) {
-                            foundPlace = allPlacesData.find(p => {
-                                const pLat = parseFloat(p.lat);
-                                const pLon = parseFloat(p.lon);
-                                const dist = Math.sqrt(
-                                    Math.pow(pLat - lat, 2) + 
-                                    Math.pow(pLon - lon, 2)
-                                );
-                                return dist < 0.00001;
-                            });
-                        }
-                        
-                        if (foundPlace) {
-                            console.log('✅ Tìm thấy place trong allPlacesData:', foundPlace.ten_quan);
-                            targetMarker.options.placeData = foundPlace;
-                            targetMarker.placeData = foundPlace;
-                            placeData = foundPlace;
-                        }
-                    }
-                }
-                
-                // ✅ CLICK VÀO MARKER **CHỈ 1 LẦN**
-                console.log('🔥 Trigger click vào marker');
-                targetMarker.fire('click');  // ✅ CHỈ CLICK 1 LẦN
-                
-                return true;
-            }
-            
-            // ✅ Giảm retry từ 25 → 8 lần
-            const MAX_RETRIES = 8;
-            
-            if (attempt < MAX_RETRIES) {
-                console.log(`⏳ Lần thử ${attempt + 1}/${MAX_RETRIES} - Chưa tìm thấy marker`);
-                setTimeout(() => tryClick(attempt + 1), 800); // ✅ 800ms thay vì 1000ms
-            } else {
-                console.error(`❌ Không tìm thấy marker sau ${MAX_RETRIES} lần thử`);
-                
-                // ✅ CHỈ reload 1 lần duy nhất
-                if (attempt === MAX_RETRIES && typeof loadMarkersInViewport === 'function') {
-                    console.log('🔄 Thử reload markers lần cuối...');
-                    loadMarkersInViewport();
-                    setTimeout(() => tryClick(MAX_RETRIES + 1), 1500);
-                }
-            }
-            
-            return false;
-        }
-        
-        waitForMapReady().then(() => {
-            tryClick(0);
-        });
+     // ✅ GỌI HÀM RIÊNG TỪ script.js
+    if (typeof window.flyToPlaceFromPlanner === 'function') {
+        window.flyToPlaceFromPlanner(lat, lon, placeId, placeName);
+    } else {
+        console.error('❌ Hàm flyToPlaceFromPlanner chưa được load từ script.js');
+        alert('Có lỗi khi mở quán. Vui lòng thử lại!');
     }
 }
 
