@@ -1,235 +1,590 @@
 {% load static %}
+{% load socialaccount %}
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-    <meta charset = "UTF-8">
-    <title>Sign Up</title>
-    <link rel="stylesheet" href="{% static 'banner.css' %}">
-    <link rel="stylesheet" href="{% static 'Button.css' %}">
-    <link rel="stylesheet" href="{% static 'weblogin.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
-    <link rel="stylesheet" href="{% static 'style.css' %}" />
-    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký - UIA Food</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .text-box{
-            border-radius: 15px;
-            padding: 15px 55px;
-            text-align: center;
-            width: 150px;
-            height: 25px;
-            left: 100px;
-            right: 100px;
-            display: flex;
-            margin: 50px auto;
-            padding-top: 1px;
-            padding-right: 80px;
-            padding-left: 100px;
-            flex-direction: column;
-            align-items: center;
-        }
-        .text-box h1{
-            color: #BC2A12;
-            font-family: "Haetenschweiler Regular", sans-serif;
-            font-size: 35px;
+        * {
             margin: 0;
-            text-align: center;
-            /* Điều chỉnh margin-top để có không gian cho lỗi (nếu có) */
-            margin-top: 100px; 
+            padding: 0;
+            box-sizing: border-box;
         }
-        .login-form{
+        
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background: linear-gradient(135deg, #FED57E 0%, #FFBE0A 100%);
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            padding: 20px;
         }
-        .login-form label{
-            color: #BC2A12;
-            font-weight: bold;
-            height: 15px;
-            margin-top: 15px;
-            margin-left: -150px;
+        
+        .wrap { 
+            max-width: 480px; 
             width: 100%;
+            background: #fff; 
+            border-radius: 24px; 
+            box-shadow: 0 20px 60px rgba(188, 42, 18, 0.25);
+            overflow: hidden;
+            animation: slideIn 0.5s ease-out;
         }
-        /* Áp dụng style của bạn cho các trường input của Django */
-        .login-form input[type="email"],
-        .login-form input[type="password"] {
-            width: 220px;
-            padding: 8px 10px;
-            border: 2px solid #BC2A12;
-            border-radius: 5px;
-            outline: #BC2A12;
-            font-size: 10px;
-            /* Thêm margin để các trường không dính sát nhau */
-            margin-bottom: 5px;
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .login-form .Sign-up-button {
-            background-color: #FED57E;
-            border: 3.5px solid #fed57e;
-            border-radius: 15px;
-            color: white;
-            width: 70px;
-            height: 30px;
-            font-size: 15px;
+        
+        .header { 
+            background: linear-gradient(135deg, #BC2A12 0%, #E63B21 100%);
+            color: #fff; 
+            padding: 40px 32px;
+            position: relative;
+            overflow: hidden;
             text-align: center;
-            cursor: pointer; /* Thêm con trỏ chuột */
         }
-        .login-form .Sign-up-button:hover{
-            background-color: #BC2A12;
-            color: white;
+        
+        .header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
         }
-        .SignIn-text{
+        
+        .header::after {
+            content: "";
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .icon-wrapper svg {
+            width: 45px;
+            height: 45px;
+            fill: #fff;
+        }
+        
+        .header h1 { 
+            margin: 0; 
+            font-size: 28px; 
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .header p {
+            margin: 8px 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        .content { 
+            padding: 36px 32px; 
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
             color: #BC2A12;
-            margin-top: 10px; /* Thêm khoảng cách */
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
         }
-        .SignIn-text a{
-            color: #FFBE0A
+        
+        .password-wrapper {
+            position: relative;
         }
-        .SignIn-text a:hover{
-            color:#BC2A12;
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #FFE5D9;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: 'Montserrat', sans-serif;
+            transition: all 0.3s ease;
+            background: #FAFAFA;
         }
-
-        /* Style để hiển thị lỗi của Django */
-        .django-error {
-            color: #BC2A12; /* Màu đỏ đậm */
+        
+        .password-wrapper input {
+            padding-right: 50px;
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            color: #BC2A12;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            z-index: 10;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .toggle-password:hover {
+            color: #E63B21;
+            transform: translateY(-50%) scale(1.15);
+        }
+        
+        .toggle-password svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        
+        .validation-message {
+            margin-top: 8px;
+            padding: 10px 12px;
+            border-radius: 8px;
             font-size: 13px;
-            font-weight: bold;
-            margin: 5px 0 10px 0;
-            padding: 10px;
-            background-color: #fdd; /* Nền hồng nhạt */
-            border: 1px solid #BC2A12;
-            border-radius: 5px;
-            list-style-type: none; /* Ẩn dấu chấm của list lỗi */
-            text-align: left;
-            width: 240px; /* Cho chiều rộng bằng input */
+            font-weight: 500;
+            display: none;
+            animation: slideDown 0.3s ease-out;
         }
+        
+        .validation-message.error {
+            background: linear-gradient(135deg, #FFE5E5 0%, #FFD6D6 100%);
+            border-left: 3px solid #BC2A12;
+            color: #BC2A12;
+            display: block;
+        }
+        
+        .validation-message.success {
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            border-left: 3px solid #4caf50;
+            color: #2e7d32;
+            display: block;
+        }
+        
+        .validation-message.warning {
+            background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+            border-left: 3px solid #f57c00;
+            color: #e65100;
+            display: block;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #BC2A12;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(188, 42, 18, 0.1);
+        }
+        
+        .django-error {
+            background: linear-gradient(135deg, #FFE5E5 0%, #FFD6D6 100%);
+            border-left: 4px solid #BC2A12;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #BC2A12;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
         .django-error ul {
             margin: 0;
             padding: 0;
+            list-style: none;
         }
+        
         .django-error li {
-            margin: 2px 0;
+            margin: 4px 0;
         }
-
+        
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #BC2A12 0%, #E63B21 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Montserrat', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(188, 42, 18, 0.3);
+            margin-top: 8px;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(188, 42, 18, 0.4);
+        }
+        
+        .footer-text {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #E2E8F0;
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .footer-text a {
+            color: #BC2A12;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .footer-text a:hover {
+            color: #FFBE0A;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #BC2A12;
+            color: #fff;
+            padding: 16px 24px;
+            border-radius: 12px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 9999;
+            font-size: 15px;
+            box-shadow: 0 8px 24px rgba(188, 42, 18, 0.4);
+            font-weight: 500;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #BC2A12 0%, #E63B21 100%);
+        }
+        
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .content {
+                padding: 28px 24px;
+            }
+        }
     </style>
 </head>
-
-<div id="toast" class="toast"></div>
-
-<style>
-    .toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #333;
-    color: #fff;
-    padding: 12px 18px;
-    border-radius: 10px;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s ease;
-    z-index: 9999;
-    font-size: 15px;
-    }
-    .toast.show {
-    opacity: 1;
-    transform: translateY(0);
-    }
-    .toast.success {
-    background: #4caf50;
-    }
-    .toast.error {
-    background: #e53935;
-    }
-</style>
-
-<script>
-    function showToast(message, type = "success") {
-        const toast = document.getElementById("toast");
-        toast.textContent = message;
-        toast.className = `toast show ${type}`;
-        setTimeout(() => toast.className = "toast", 3000);
-    }
-</script>
-
-<body>   
-    <header class="banner">   
-        <div class="background">
-            <img src="{% static 'Picture/background.png' %}" class="bg" alt="UIA Logo">
-            <img src="{% static 'Picture/UIAaa.png' %}" class="uia"  alt="UIA">
-        </div>
-    </header>
-
-    <div class="text-box">
-        <h1>SIGN UP</h1>
-        
-        <form class="login-form" method="POST" action="{% url 'account_signup' %}">
-            
-            {% csrf_token %}
-
-            {% if form.non_field_errors %}
-                <div class="django-error" id="non-field-errors">
-                    {{ form.non_field_errors }}
+<body>
+    <div id="toast" class="toast"></div>
+    
+    <div class="wrap">
+        <div class="header">
+            <div class="header-content">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
                 </div>
-            {% endif %}
-
-            <label for="{{ form.email.id_for_label }}">Email:</label>
-            {{ form.email }}
-            {% if form.email.errors %}
-                <div class="django-error" id="email-errors">
-                    {{ form.email.errors }}
-                </div>
-            {% endif %}
-
-            <label for="{{ form.password1.id_for_label }}"> Password:</label>
-            {{ form.password1 }}
-            {% if form.password1.errors %}
-                <div class="django-error" id="pass1-errors">
-                    {{ form.password1.errors }}
-                </div>
-            {% endif %}
-
-            <label for="{{ form.password2.id_for_label }}">Confirm Password:</label>
-            {{ form.password2 }}
-            {% if form.password2.errors %}
-                <div class="django-error" id="pass2-errors">
-                    {{ form.password2.errors }}
-                </div>
-            {% endif %}
-            
-            <button type="submit" class="Sign-up-button">Done</button> 
-            
-            <div class="SignIn-text">
-                Already have an account? <br>
-                <a href="{% url 'account_login' %}">Sign In</a>
+                <h1>Tạo tài khoản</h1>
+                <p>Tham gia cùng UIA Food ngay! 🍜</p>
             </div>
-        </form>
+        </div>
+        
+        <div class="content">
+            <form method="POST" action="{% url 'signup_form' %}">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="django-error">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="{{ form.email.id_for_label }}">Email</label>
+                    <input type="email" 
+                           id="{{ form.email.id_for_label }}" 
+                           name="email" 
+                           value="{{ request.session.verified_email }}" 
+                           readonly 
+                           style="background-color: #f0f0f0; cursor: not-allowed;"
+                           required>
+                    <div id="email-validation" class="validation-message success" style="display: block;">
+                        ✓ Email đã được xác thực OTP
+                    </div>
+                    {% if form.email.errors %}
+                        <div class="django-error" style="margin-top: 8px; margin-bottom: 0;">
+                            {{ form.email.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.password1.id_for_label }}">Mật khẩu</label>
+                    <div class="password-wrapper">
+                        {{ form.password1 }}
+                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password1.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-open">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-closed" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="password1-validation" class="validation-message"></div>
+                    {% if form.password1.errors %}
+                        <div class="django-error" style="margin-top: 8px; margin-bottom: 0;">
+                            {{ form.password1.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.password2.id_for_label }}">Xác nhận mật khẩu</label>
+                    <div class="password-wrapper">
+                        {{ form.password2 }}
+                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password2.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-open">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-closed" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="password2-validation" class="validation-message"></div>
+                    {% if form.password2.errors %}
+                        <div class="django-error" style="margin-top: 8px; margin-bottom: 0;">
+                            {{ form.password2.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn-submit">Đăng ký ngay </button>
+            </form>
+            
+            <div class="footer-text">
+                Đã có tài khoản? <a href="{% url 'account_login' %}">Đăng nhập ngay</a>
+            </div>
+        </div>
     </div>
 
     <script>
+        function togglePassword(fieldId, button) {
+            const passwordField = document.getElementById(fieldId);
+            const eyeOpen = button.querySelector('.eye-open');
+            const eyeClosed = button.querySelector('.eye-closed');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                eyeOpen.style.display = 'none';
+                eyeClosed.style.display = 'block';
+            } else {
+                passwordField.type = 'password';
+                eyeOpen.style.display = 'block';
+                eyeClosed.style.display = 'none';
+            }
+        }
+        
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+        
+        function showValidation(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `validation-message ${type}`;
+        }
+        
+        function hideValidation(elementId) {
+            const element = document.getElementById(elementId);
+            element.className = 'validation-message';
+        }
+        
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            let messages = [];
+            
+            if (password.length >= 8) strength++;
+            else messages.push('ít nhất 8 ký tự');
+            
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            else messages.push('chữ hoa và chữ thường');
+            
+            if (/[0-9]/.test(password)) strength++;
+            else messages.push('số');
+            
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+            else messages.push('ký tự đặc biệt');
+            
+            return { strength, messages };
+        }
+        
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => toast.className = "toast", 3500);
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             let errorMessages = [];
             
-            // Tìm tất cả các div lỗi của Django
             const errorDivs = document.querySelectorAll('.django-error');
             
             errorDivs.forEach(div => {
-                // Lấy nội dung text và loại bỏ khoảng trắng thừa
                 const text = div.textContent.trim();
                 if (text) {
                     errorMessages.push(text);
                 }
             });
 
-            // Nếu có lỗi, hiển thị lỗi đầu tiên bằng Toast
             if (errorMessages.length > 0) {
-                // Nối các lỗi lại nếu muốn, hoặc chỉ hiển thị lỗi đầu tiên
                 showToast(errorMessages[0], "error");
+            }
+            
+            // Biến để track xem user đã tương tác chưa
+            let emailTouched = false;
+            let password1Touched = false;
+            let password2Touched = false;
+            
+            // Email validation (readonly nên không cần validate)
+            const emailField = document.getElementById('{{ form.email.id_for_label }}');
+            
+            // Password1 validation
+            const password1Field = document.getElementById('{{ form.password1.id_for_label }}');
+            if (password1Field) {
+                password1Field.addEventListener('focus', function() {
+                    password1Touched = true;
+                });
+                
+                password1Field.addEventListener('input', function() {
+                    if (!password1Touched) return;
+                    
+                    const password = this.value;
+                    
+                    if (password === '') {
+                        hideValidation('password1-validation');
+                    } else {
+                        const { strength, messages } = checkPasswordStrength(password);
+                        
+                        if (strength < 2) {
+                            showValidation('password1-validation', `❌ Mật khẩu yếu. Cần: ${messages.join(', ')}`, 'error');
+                        } else if (strength < 3) {
+                            showValidation('password1-validation', `⚠️ Mật khẩu trung bình. Nên thêm: ${messages.join(', ')}`, 'warning');
+                        } else {
+                            showValidation('password1-validation', '✓ Mật khẩu mạnh', 'success');
+                        }
+                    }
+                    
+                    // Check password match if password2 has value
+                    const password2Field = document.getElementById('{{ form.password2.id_for_label }}');
+                    if (password2Field && password2Field.value !== '' && password2Touched) {
+                        if (password === password2Field.value) {
+                            showValidation('password2-validation', '✓ Mật khẩu khớp', 'success');
+                        } else {
+                            showValidation('password2-validation', '❌ Mật khẩu không khớp', 'error');
+                        }
+                    }
+                });
+                
+                password1Field.addEventListener('blur', function() {
+                    // Ẩn validation khi blur ra ngoài
+                    hideValidation('password1-validation');
+                });
+            }
+            
+            // Password2 validation
+            const password2Field = document.getElementById('{{ form.password2.id_for_label }}');
+            if (password2Field) {
+                password2Field.addEventListener('focus', function() {
+                    password2Touched = true;
+                });
+                
+                password2Field.addEventListener('input', function() {
+                    if (!password2Touched) return;
+                    
+                    const password2 = this.value;
+                    const password1 = password1Field ? password1Field.value : '';
+                    
+                    if (password2 === '') {
+                        hideValidation('password2-validation');
+                    } else if (password2 !== password1) {
+                        showValidation('password2-validation', '❌ Mật khẩu không khớp với mật khẩu đã nhập ở trên', 'error');
+                    } else {
+                        showValidation('password2-validation', '✓ Mật khẩu khớp', 'success');
+                    }
+                });
+                
+                password2Field.addEventListener('blur', function() {
+                    // Ẩn validation khi blur ra ngoài
+                    hideValidation('password2-validation');
+                });
             }
         });
     </script>

@@ -17,11 +17,19 @@ def home(request):
 urlpatterns = [
     path('', home, name='home'),
     path('admin/', admin.site.urls),
+    
+    # Custom signup flow với OTP: Email → OTP → Password Form
+    path('accounts/signup/', account_views.signup_email_page, name='account_signup'),  # Step 1: Email input page
+    path('accounts/signup-email/', account_views.signup_email_page, name='signup_email'),  # Email input page (alias)
+    path('accounts/verify-otp/', account_views.verify_otp_page, name='verify_otp'),  # Step 2: OTP verification page
+    path('accounts/signup-form/', account_views.signup_form_page, name='signup_form'),  # Step 3: Password form (after OTP verified)
+    
+    # Include allauth URLs (login, logout, password reset, social auth, etc.)
     path('accounts/', include('allauth.urls')),
+    
     path('api/accounts/', include('accounts.urls')),
     
-    # ✅ THÊM DẤU / VÀO TẤT CẢ
-    path('api/reviews/<str:place_id>/', account_views.reviews_api, name='reviews_api'),  # ← THÊM /
+    path('api/reviews/<str:place_id>/', account_views.reviews_api, name='reviews_api'),
     path('api/streak/', account_views.streak_handler, name='streak_handler_direct'),
     path('api/check-auth/', account_views.check_auth_status, name='check_auth_status'),
     path('api/save-chat/', account_views.save_chat_message, name='save_chat_message'),
@@ -43,6 +51,19 @@ urlpatterns = [
     path('api/food-story/<str:map_name>/', account_views.get_food_story, name='get_food_story'),
     path('api/food-story/unlock/<str:map_name>/', account_views.unlock_food_story, name='unlock_food_story'),
     path('api/food-stories/unlocked/', account_views.get_all_unlocked_stories, name='get_all_unlocked_stories'),
+
+    # 📧 OTP VERIFICATION APIs
+    path('api/send-otp/', account_views.send_otp_api, name='send_otp'),
+    path('api/verify-otp/', account_views.verify_otp_api, name='verify_otp'),
+    path('api/resend-otp/', account_views.resend_otp_api, name='resend_otp'),
+
+    # 🔑 PASSWORD RESET (OTP-based)
+    path('accounts/password-reset/request/', account_views.password_reset_request_page, name='password_reset_request'),
+    path('accounts/password-reset/verify-otp/', account_views.password_reset_verify_otp_page, name='password_reset_verify_otp'),
+    path('accounts/password-reset/new-password/', account_views.password_reset_form_page, name='password_reset_form'),
+    path('api/password-reset/send-otp/', account_views.send_password_reset_otp_api, name='send_password_reset_otp'),
+    path('api/password-reset/verify-otp/', account_views.verify_password_reset_otp_api, name='verify_password_reset_otp'),
+    path('api/password-reset/reset/', account_views.reset_password_api, name='reset_password'),
 ]
 
 if settings.DEBUG:

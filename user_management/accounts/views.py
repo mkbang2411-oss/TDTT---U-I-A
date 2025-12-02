@@ -4,8 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.contrib import messages
 from allauth.socialaccount.models import SocialAccount
-from .models import ChatConversation, ChatMessage
+from .models import ChatConversation, ChatMessage, EmailOTP
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import UserProfile, FavoritePlace, PuzzleProgress
 from django.conf import settings
@@ -15,10 +16,115 @@ from datetime import datetime
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
+from .utils import send_otp_email, send_welcome_email, send_password_reset_otp_email
+from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
-from django.views.decorators.csrf import csrf_exempt
 import requests 
+
+# ------------------------SOCIAL ACCOUNT HANDLER--------------------------
+
+def social_account_already_exists(request):
+    """
+    Trang thông báo khi email đã tồn tại trong hệ thống
+    Hiển thị khi người dùng cố đăng nhập bằng Google với email đã được đăng ký
+    """
+    return render(request, 'account/already_linked.html', {
+        'message': 'Email này đã được đăng ký trong hệ thống. Vui lòng đăng nhập bằng tài khoản hiện có.',
+        'login_url': '/accounts/login/'  # ✅ Thêm URL đăng nhập
+    })
+
+# ------------------------OTP VERIFICATION PAGE--------------------------
+
+def signup_email_page(request):
+    """
+    Trang nhập email để bắt đầu đăng ký
+    Đây là bước đầu tiên trong quy trình đăng ký
+    """
+    return render(request, 'account/signup_email.html')
+
+def verify_otp_page(request):
+    """
+    Hiển thị trang nhập OTP
+    Email được lưu trong session từ bước gửi OTP
+    """
+    from datetime import timedelta
+    from dateutil import parser
+    
+    email = request.session.get('otp_email')
+    otp_sent_at = request.session.get('otp_sent_at')
+    
+    if not email or not otp_sent_at:
+        # Nếu không có email trong session, quay lại trang signup
+        return redirect('signup_email')
+    
+    # Kiểm tra timeout 30 phút
+    try:
+        sent_time = parser.parse(otp_sent_at)
+        if timezone.now() - sent_time > timedelta(minutes=settings.OTP_SESSION_TIMEOUT_MINUTES):
+            request.session.flush()
+            messages.error(request, 'Phiên xác thực đã hết hạn. Vui lòng thử lại.')
+            return redirect('signup_email')
+    except Exception:
+        pass
+    
+    return render(request, 'account/verify_otp.html', {
+        'email': email
+    })
+
+def custom_signup_redirect(request):
+    """
+    Redirect trang /accounts/signup/ về trang nhập email
+    Người dùng phải nhập email và verify OTP trước khi đến form đăng ký
+    """
+    # Nếu đã verify email rồi thì cho vào trang signup form
+    if request.session.get('verified_email'):
+        return redirect('signup_form')
+    
+    # Nếu chưa verify, redirect về trang nhập email
+    return redirect('signup_email')
+
+def signup_form_page(request):
+    """
+    Trang form đăng ký thật (sau khi đã verify OTP)
+    Chỉ accessible khi đã có verified_email trong session
+    """
+    from datetime import timedelta
+    from dateutil import parser
+    
+    verified_email = request.session.get('verified_email')
+    verified_at = request.session.get('email_verified_at')
+    
+    if not verified_email or not verified_at:
+        return redirect('signup_email')
+    
+    # Kiểm tra timeout 30 phút cho session verify
+    try:
+        verified_time = parser.parse(verified_at)
+        if timezone.now() - verified_time > timedelta(minutes=settings.OTP_SESSION_TIMEOUT_MINUTES):
+            request.session.flush()
+            messages.error(request, 'Phiên xác thực đã hết hạn. Vui lòng xác thực lại email.')
+            return redirect('signup_email')
+    except Exception:
+        pass
+    
+    # Import ở đây để tránh circular import
+    from allauth.account.views import SignupView
+    from django.contrib.auth import logout
+
+    class SignupViewNoAutoLogin(SignupView):
+        def form_valid(self, form):
+            response = super().form_valid(form)
+            try:
+                # Đảm bảo KHÔNG đăng nhập ngay sau đăng ký
+                logout(self.request)
+            except Exception:
+                pass
+            # Chuyển hướng về trang đăng nhập lần đầu
+            from django.urls import reverse
+            return redirect(reverse('account_login'))
+
+    return SignupViewNoAutoLogin.as_view()(request)
 
 # ------------------------LẤY DỮ LIỆU REVIEW--------------------------
 
@@ -1258,3 +1364,610 @@ def geocode_proxy(request):
             
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+
+# ===============================
+# 📧 OTP APIs - SIGNUP FLOW
+# ===============================
+
+@csrf_exempt
+@require_POST
+def send_otp_api(request):
+    """
+    API gửi OTP đến email khi đăng ký
+    POST /api/send-otp/
+    Body: {"email": "example@email.com"}
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        
+        if not email:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Vui lòng nhập email'
+            }, status=400)
+        
+        # Kiểm tra email đã tồn tại chưa
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Email này đã được đăng ký. Vui lòng đăng nhập.'
+            }, status=400)
+        
+        # Tạo OTP mới (method generate_otp sẽ tự động xóa OTP cũ)
+        otp = EmailOTP.generate_otp(email)
+        
+        # Gửi email
+        if send_otp_email(email, otp.otp_code):
+            # Lưu email vào session để dùng cho bước verify
+            request.session['otp_email'] = email
+            request.session['otp_sent_at'] = timezone.now().isoformat()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Mã OTP đã được gửi đến email của bạn'
+            })
+        else:
+            otp.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không thể gửi email. Vui lòng thử lại sau.'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error in send_otp_api: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Có lỗi xảy ra. Vui lòng thử lại.'
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+def verify_otp_api(request):
+    """
+    API xác thực OTP
+    POST /api/verify-otp/
+    Body: {"email": "example@email.com", "otp": "123456"}
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        otp_code = data.get('otp', '').strip()
+        
+        if not email or not otp_code:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu thông tin email hoặc OTP'
+            }, status=400)
+        
+        # Tìm OTP
+        try:
+            otp_obj = EmailOTP.objects.get(email=email, otp_code=otp_code)
+        except EmailOTP.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Mã OTP không chính xác'
+            }, status=400)
+        
+        # Kiểm tra OTP đã hết hạn chưa
+        if not otp_obj.is_valid():
+            otp_obj.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.'
+            }, status=400)
+        
+        # Kiểm tra số lần thử
+        if otp_obj.attempts >= 5:
+            otp_obj.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn đã nhập sai quá nhiều lần. Vui lòng gửi lại mã mới.'
+            }, status=400)
+        
+        # Tăng số lần thử (dù đúng hay sai)
+        otp_obj.attempts += 1
+        otp_obj.save()
+        
+        # Xác thực thành công
+        otp_obj.delete()
+        
+        # Lưu vào session để biết email đã được verify
+        request.session['verified_email'] = email
+        request.session['email_verified_at'] = timezone.now().isoformat()
+        
+        # Gửi email chào mừng (tạm thời, vì user chưa có username)
+        # send_welcome_email(email, email.split('@')[0])
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Xác thực thành công! Vui lòng hoàn tất đăng ký.'
+        })
+        
+    except Exception as e:
+        print(f"Error in verify_otp_api: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Có lỗi xảy ra. Vui lòng thử lại.'
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+def resend_otp_api(request):
+    """
+    API gửi lại OTP
+    POST /api/resend-otp/
+    Body: {"email": "example@email.com"}
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        
+        if not email:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Vui lòng nhập email'
+            }, status=400)
+        
+        # Kiểm tra OTP cũ
+        try:
+            old_otp = EmailOTP.objects.get(email=email)
+            
+            # Kiểm tra rate limiting (không cho gửi lại quá nhanh)
+            time_since_created = timezone.now() - old_otp.created_at
+            if time_since_created.total_seconds() < 60:  # Phải đợi ít nhất 60s
+                wait_time = 60 - int(time_since_created.total_seconds())
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Vui lòng đợi {wait_time}s trước khi gửi lại',
+                    'wait_time': wait_time
+                }, status=429)
+            
+            # Xóa OTP cũ
+            old_otp.delete()
+        except EmailOTP.DoesNotExist:
+            pass
+        
+        # Tạo OTP mới (method generate_otp sẽ tự động xóa OTP cũ)
+        otp = EmailOTP.generate_otp(email)
+        
+        # Gửi email
+        if send_otp_email(email, otp.otp_code):
+            # Cập nhật session
+            request.session['otp_sent_at'] = timezone.now().isoformat()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Mã OTP mới đã được gửi'
+            })
+        else:
+            otp.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không thể gửi email. Vui lòng thử lại sau.'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error in resend_otp_api: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Có lỗi xảy ra. Vui lòng thử lại.'
+        }, status=500)
+
+
+# ===============================
+# 🔑 PASSWORD RESET OTP APIs
+# ===============================
+
+@csrf_exempt
+@require_POST
+def send_password_reset_otp_api(request):
+    """
+    API gửi OTP để reset mật khẩu
+    POST /api/password-reset/send-otp/
+    Body: {"email": "example@email.com"}
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        
+        if not email:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Vui lòng nhập email'
+            }, status=400)
+        
+        # Kiểm tra email có tồn tại không
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Email này chưa được đăng ký'
+            }, status=404)
+        
+        # Kiểm tra có phải tài khoản Google không
+        if SocialAccount.objects.filter(user=user, provider='google').exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Tài khoản Google không thể đặt lại mật khẩu'
+            }, status=400)
+        
+        # Xóa OTP cũ nếu có
+        PasswordResetOTP.objects.filter(email=email).delete()
+        
+        # Tạo OTP mới
+        otp = PasswordResetOTP.objects.create(email=email)
+        
+        # Gửi email
+        if send_password_reset_otp_email(email, otp.otp_code):
+            request.session['password_reset_email'] = email
+            request.session['password_reset_sent_at'] = timezone.now().isoformat()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Mã OTP đã được gửi đến email của bạn'
+            })
+        else:
+            otp.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không thể gửi email. Vui lòng thử lại sau.'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error in send_password_reset_otp_api: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Có lỗi xảy ra. Vui lòng thử lại.'
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+def verify_password_reset_otp_api(request):
+    """
+    API xác thực OTP reset mật khẩu
+    POST /api/password-reset/verify-otp/
+    Body: {"email": "example@email.com", "otp": "123456"}
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        otp_code = data.get('otp', '').strip()
+        
+        if not email or not otp_code:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu thông tin email hoặc OTP'
+            }, status=400)
+        
+        # Tìm OTP
+        try:
+            otp_obj = PasswordResetOTP.objects.get(email=email, otp_code=otp_code)
+        except PasswordResetOTP.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Mã OTP không chính xác'
+            }, status=400)
+        
+        # Kiểm tra hết hạn
+        if not otp_obj.is_valid():
+            otp_obj.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Mã OTP đã hết hạn'
+            }, status=400)
+        
+        # Kiểm tra số lần thử
+        if otp_obj.attempts >= 5:
+            otp_obj.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn đã nhập sai quá nhiều lần'
+            }, status=400)
+        
+        otp_obj.attempts += 1
+        otp_obj.save()
+        
+        # Xác thực thành công
+        otp_obj.delete()
+        
+        # Lưu session
+        request.session['password_reset_verified'] = email
+        request.session['password_reset_verified_at'] = timezone.now().isoformat()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Xác thực thành công'
+        })
+        
+    except Exception as e:
+        print(f"Error in verify_password_reset_otp_api: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Có lỗi xảy ra'
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+def reset_password_api(request):
+    """
+    API đặt lại mật khẩu mới
+    POST /api/password-reset/reset/
+    Body: {"email": "example@email.com", "new_password": "newpass123"}
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        new_password = data.get('new_password', '').strip()
+        
+        if not email or not new_password:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu thông tin'
+            }, status=400)
+        
+        # Kiểm tra session
+        verified_email = request.session.get('password_reset_verified')
+        if verified_email != email:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Phiên xác thực không hợp lệ'
+            }, status=403)
+        
+        # Kiểm tra độ dài mật khẩu
+        if len(new_password) < 6:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Mật khẩu phải có ít nhất 6 ký tự'
+            }, status=400)
+        
+        # Đặt lại mật khẩu
+        try:
+            user = User.objects.get(email=email)
+            user.set_password(new_password)
+            user.save()
+            
+            # Xóa session
+            request.session.pop('password_reset_verified', None)
+            request.session.pop('password_reset_verified_at', None)
+            request.session.pop('password_reset_email', None)
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Đặt lại mật khẩu thành công'
+            })
+            
+        except User.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không tìm thấy người dùng'
+            }, status=404)
+            
+    except Exception as e:
+        print(f"Error in reset_password_api: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Có lỗi xảy ra'
+        }, status=500)
+
+
+def password_reset_request_page(request):
+    """Trang nhập email để reset mật khẩu"""
+    return render(request, 'account/password_reset_request.html')
+
+
+def password_reset_verify_otp_page(request):
+    """Trang nhập OTP reset mật khẩu"""
+    email = request.session.get('password_reset_email')
+    if not email:
+        return redirect('password_reset_request')
+    
+    return render(request, 'account/password_reset_verify_otp.html', {
+        'email': email
+    })
+
+
+def password_reset_form_page(request):
+    """Trang nhập mật khẩu mới"""
+    email = request.session.get('password_reset_verified')
+    if not email:
+        return redirect('password_reset_request')
+    
+    return render(request, 'account/password_reset_form.html', {
+        'email': email
+    })
+
+@csrf_exempt
+@require_POST
+@login_required
+def unlock_food_story(request, map_name):
+    """
+    Unlock Food Story khi user hoàn thành puzzle
+    POST /api/food-story/unlock/<map_name>/
+    """
+    try:
+        story = FoodStory.objects.get(map_name=map_name)
+        
+        # Tạo record unlock (hoặc bỏ qua nếu đã unlock)
+        unlocked, created = UnlockedStory.objects.get_or_create(
+            user=request.user,
+            story=story
+        )
+        
+        if created:
+            return JsonResponse({
+                'status': 'success',
+                'message': f'🎉 Đã mở khóa câu chuyện: {story.title}',
+                'is_new': True,
+                'story_preview': {
+                    'title': story.title,
+                    'description': story.description,
+                    'fun_facts_count': len(story.fun_facts),
+                    'variants_count': len(story.variants)
+                }
+            })
+        else:
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Bạn đã mở khóa câu chuyện này rồi',
+                'is_new': False
+            })
+            
+    except FoodStory.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông tin món ăn'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_all_unlocked_stories(request):
+    """
+    Lấy danh sách tất cả story user đã unlock
+    GET /api/food-stories/unlocked/
+    """
+    try:
+        unlocked = UnlockedStory.objects.filter(user=request.user).select_related('story')
+        
+        stories_data = []
+        for unlock in unlocked:
+            stories_data.append({
+                'map_name': unlock.story.map_name,
+                'title': unlock.story.title,
+                'description': unlock.story.description,  # ✅ Đã có sẵn
+                'image_url': unlock.story.image_url,
+                'unlocked_at': unlock.unlocked_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'count': len(stories_data),
+            'stories': stories_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+# ==========================================================
+# 🗂️ FOOD PLAN APIs - LƯU THEO ACCOUNT
+# ==========================================================
+
+from .models import FoodPlan
+
+@csrf_exempt
+@require_POST
+@login_required
+def save_food_plan_api(request):
+    """
+    Lưu lịch trình ăn uống vào database
+    POST /api/food-plan/save/
+    Body: {
+        "name": "Lịch trình ngày 15/12",
+        "plan_data": {...}  // Toàn bộ dữ liệu plan
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', 'Lịch trình ăn uống')
+        plan_data = data.get('plan_data')
+        
+        if not plan_data:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu dữ liệu plan'
+            }, status=400)
+        
+        # Tạo plan mới
+        food_plan = FoodPlan.objects.create(
+            user=request.user,
+            name=name,
+            plan_data=plan_data
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã lưu lịch trình',
+            'plan_id': food_plan.id
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_food_plans_api(request):
+    """
+    Lấy danh sách lịch trình của user
+    GET /api/food-plan/list/
+    """
+    try:
+        plans = FoodPlan.objects.filter(user=request.user).order_by('-created_at')
+        
+        plans_data = []
+        for plan in plans:
+            plans_data.append({
+                'id': plan.id,
+                'name': plan.name,
+                'plan_data': plan.plan_data,
+                'created_at': plan.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'plans': plans_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def delete_food_plan_api(request, plan_id):
+    """
+    Xóa lịch trình
+    POST /api/food-plan/delete/<plan_id>/
+    """
+    try:
+        plan = FoodPlan.objects.get(id=plan_id, user=request.user)
+        plan.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã xóa lịch trình'
+        })
+        
+    except FoodPlan.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy lịch trình'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
