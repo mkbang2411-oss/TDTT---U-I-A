@@ -2386,3 +2386,301 @@ window.refreshCurrentSidebar = function() {
   
   window.placeMarkersById[placeId].fire('click');
 };
+
+// ==========================================================
+// 🍽️ HÀM RIÊNG CHO FOOD PLANNER - FLY TO PLACE WITH AUTO MARKER
+// ==========================================================
+window.flyToPlaceFromPlanner = function(lat, lon, placeId, placeName) {
+  if (typeof map === 'undefined') {
+    console.error('❌ Map chưa được khởi tạo');
+    return;
+  }
+
+  console.log('🎯 flyToPlaceFromPlanner được gọi:', { lat, lon, placeId, placeName });
+
+  // ✅ ZOOM ĐẾN VỊ TRÍ QUÁN
+  map.setView([lat, lon], 17, { animate: true });
+
+  // ✅ HÀM ĐỢI MAP ZOOM XONG
+  function waitForMapReady() {
+    return new Promise((resolve) => {
+      if (!map._animatingZoom) {
+        setTimeout(resolve, 500);
+        return;
+      }
+      
+      map.once('moveend', () => {
+        setTimeout(resolve, 800);
+      });
+    });
+  }
+
+  // ✅ HÀM KIỂM TRA CÓ PHẢI MARKER CỦA ROUTES KHÔNG
+  function isRouteMarker(layer) {
+    if (!layer.options || !layer.options.icon) return false;
+    
+    const iconUrl = layer.options.icon.options?.iconUrl || '';
+    
+    // 🔥 BỎ QUA MARKER HOME (điểm xuất phát) và MARKER ĐÍCH (quán ăn trên route)
+    if (iconUrl.includes('home.gif') || 
+        iconUrl.includes('684908.png') ||
+        iconUrl.includes('marker-icon.png')) {
+      return true;
+    }
+    
+    // 🔥 BỎ QUA MARKER SỐ (1, 2, 3...) trên route
+    if (layer.options.icon.options?.className?.includes('route-number-marker')) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  // ✅ HÀM TÌM MARKER HIỆN CÓ (BỎ QUA MARKER ROUTES)
+  function findExistingMarker() {
+    let targetMarker = null;
+
+    // 🔥 BƯỚC 1: TÌM MARKER THEO ID
+    if (placeId && window.placeMarkersById && window.placeMarkersById[placeId]) {
+      targetMarker = window.placeMarkersById[placeId];
+      
+      // ✅ KIỂM TRA MARKER CÓ ĐANG TRÊN MAP KHÔNG
+      if (map.hasLayer(targetMarker)) {
+        console.log('✅ Tìm thấy marker theo ID (đang hiển thị):', placeId);
+        return targetMarker;
+      } else {
+        console.warn('⚠️ Marker tồn tại nhưng không hiển thị trên map');
+        targetMarker = null;
+      }
+    }
+
+    // 🔥 BƯỚC 2: TÌM THEO TÊN QUÁN
+    if (placeName) {
+      let foundByName = false;
+      
+      map.eachLayer((layer) => {
+        if (foundByName) return;
+        
+        if (layer instanceof L.Marker) {
+          // 🔥 BỎ QUA MARKER CỦA ROUTES
+          if (isRouteMarker(layer)) {
+            return;
+          }
+          
+          const data = layer.options.placeData || layer.placeData;
+          if (data && data.ten_quan === placeName) {
+            targetMarker = layer;
+            foundByName = true;
+            console.log('✅ Tìm thấy marker theo tên:', placeName);
+          }
+        }
+      });
+    }
+
+    if (targetMarker) return targetMarker;
+
+    // 🔥 BƯỚC 3: TÌM THEO TỌA ĐỘ
+    let minDistance = Infinity;
+    
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Marker) {
+        // 🔥 BỎ QUA MARKER CỦA ROUTES
+        if (isRouteMarker(layer)) {
+          return;
+        }
+        
+        const markerLatLng = layer.getLatLng();
+        
+        const dLat = markerLatLng.lat - lat;
+        const dLng = markerLatLng.lng - lon;
+        const distance = Math.sqrt(dLat * dLat + dLng * dLng);
+        
+        if (distance < 0.00001 && distance < minDistance) {
+          minDistance = distance;
+          targetMarker = layer;
+        }
+      }
+    });
+    
+    if (targetMarker) {
+      console.log('✅ Tìm thấy marker theo tọa độ, khoảng cách:', minDistance.toFixed(8));
+    }
+
+    return targetMarker;
+  }
+
+  // ✅ HÀM TÌM DATA QUÁN
+  function findPlaceData() {
+    console.log('🔍 Tìm data quán trong allPlacesData...');
+    
+    if (typeof allPlacesData === 'undefined' || !allPlacesData || allPlacesData.length === 0) {
+      console.error('❌ allPlacesData không tồn tại hoặc rỗng');
+      return null;
+    }
+
+    let foundPlace = null;
+
+    // Tìm theo ID
+    if (placeId) {
+      foundPlace = allPlacesData.find(p => p.data_id === placeId);
+      if (foundPlace) {
+        console.log('✅ Tìm thấy data theo ID:', placeId);
+        return foundPlace;
+      }
+    }
+
+    // Tìm theo tên
+    if (placeName) {
+      foundPlace = allPlacesData.find(p => p.ten_quan === placeName);
+      if (foundPlace) {
+        console.log('✅ Tìm thấy data theo tên:', placeName);
+        return foundPlace;
+      }
+    }
+
+    // Tìm theo tọa độ
+    foundPlace = allPlacesData.find(p => {
+      const pLat = parseFloat(p.lat);
+      const pLon = parseFloat(p.lon);
+      if (isNaN(pLat) || isNaN(pLon)) return false;
+      
+      const dist = Math.sqrt(
+        Math.pow(pLat - lat, 2) + 
+        Math.pow(pLon - lon, 2)
+      );
+      return dist < 0.00001;
+    });
+
+    if (foundPlace) {
+      console.log('✅ Tìm thấy data theo tọa độ');
+    }
+
+    return foundPlace;
+  }
+
+  // ✅ HÀM TẠO MARKER MỚI
+  function createNewMarker(placeData) {
+    console.log('🏗️ Tạo marker mới cho:', placeData?.ten_quan || placeName);
+
+    // Nếu không có data, tạo data tối thiểu
+    if (!placeData) {
+      placeData = {
+        ten_quan: placeName || 'Quán ăn',
+        dia_chi: 'Đang cập nhật...',
+        lat: lat,
+        lon: lon,
+        data_id: placeId || `temp_${Date.now()}`,
+        rating: 0,
+        gio_mo_cua: 'Không rõ',
+        gia_trung_binh: 'Không có',
+        khau_vi: '',
+        hinh_anh: '',
+        so_dien_thoai: '',
+        thuc_don: '',
+        mo_ta: ''
+      };
+      console.log('⚠️ Tạo data tối thiểu cho marker');
+    }
+
+    // Kiểm tra hàm createMarker có tồn tại không
+    if (typeof createMarker !== 'function') {
+      console.error('❌ Hàm createMarker không tồn tại');
+      return null;
+    }
+
+    const newMarker = createMarker(placeData, lat, lon);
+
+    // 🔥 ĐẢM BẢO MARKER ĐƯỢC THÊM VÀO MAP
+    if (window.markerClusterGroup) {
+      window.markerClusterGroup.addLayer(newMarker);
+      console.log('✅ Đã thêm marker vào cluster');
+      
+      // 🔥 FORCE REFRESH CLUSTER
+      window.markerClusterGroup.refreshClusters();
+    } else {
+      newMarker.addTo(map);
+      console.log('✅ Đã thêm marker vào map');
+    }
+
+    // Lưu vào index
+    const id = placeData.data_id || placeId || `temp_${Date.now()}`;
+    if (!window.placeMarkersById) window.placeMarkersById = {};
+    window.placeMarkersById[id] = newMarker;
+    console.log('✅ Đã lưu marker vào placeMarkersById với ID:', id);
+
+    // Đánh dấu visible
+    if (window.visibleMarkers) {
+      window.visibleMarkers.add(id);
+    }
+
+    return newMarker;
+  }
+
+  // ✅ LOGIC CHÍNH
+  waitForMapReady().then(() => {
+    console.log('🎬 Bắt đầu tìm/tạo marker...');
+    
+    // 1️⃣ Tìm marker hiện có
+    let marker = findExistingMarker();
+
+    if (marker) {
+      console.log('✅ Sử dụng marker hiện có');
+      
+      // 🔥 ĐẢM BẢO MARKER VẪN CÒN TRÊN MAP
+      if (!map.hasLayer(marker)) {
+        console.warn('⚠️ Marker không còn trên map, thêm lại...');
+        if (window.markerClusterGroup) {
+          window.markerClusterGroup.addLayer(marker);
+        } else {
+          marker.addTo(map);
+        }
+      }
+      
+      marker.fire('click');
+      return;
+    }
+
+    // 2️⃣ Không tìm thấy marker → Tạo mới
+    console.log('⚠️ Không tìm thấy marker, tiến hành tạo mới...');
+
+    // 3️⃣ Tìm data quán
+    const placeData = findPlaceData();
+
+    // 4️⃣ Tạo marker mới (dù có data hay không)
+    const newMarker = createNewMarker(placeData);
+
+    if (!newMarker) {
+      console.error('❌ Không thể tạo marker');
+      
+      // Fallback: Tạo popup đơn giản
+      L.popup()
+        .setLatLng([lat, lon])
+        .setContent(`
+          <div style="text-align:center;padding:10px;">
+            <strong style="color:#FF6B35;">${placeName || 'Quán ăn'}</strong><br>
+            <em style="color:#999;font-size:12px;">Không tìm thấy thông tin chi tiết</em>
+          </div>
+        `)
+        .openOn(map);
+      
+      return;
+    }
+
+    // 5️⃣ Click vào marker mới sau 600ms
+    setTimeout(() => {
+      console.log('🔥 Click vào marker mới');
+      
+      // 🔥 KIỂM TRA LẠI MARKER VẪN CÒN TRÊN MAP
+      if (!map.hasLayer(newMarker)) {
+        console.error('❌ Marker mới đã bị xóa khỏi map!');
+        if (window.markerClusterGroup) {
+          window.markerClusterGroup.addLayer(newMarker);
+        } else {
+          newMarker.addTo(map);
+        }
+      }
+      
+      newMarker.fire('click');
+    }, 600);
+  });
+};
