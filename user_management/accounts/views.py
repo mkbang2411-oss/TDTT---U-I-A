@@ -21,7 +21,11 @@ from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
 import requests 
-
+from .models import (
+    FoodPlan, 
+    SharedFoodPlan,  # ← Thêm dòng này
+    PlanEditSuggestion  # ← Thêm dòng này
+)
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -1917,19 +1921,42 @@ def save_food_plan_api(request):
 @require_http_methods(["GET"])
 def get_food_plans_api(request):
     """
-    Lấy danh sách lịch trình của user
-    GET /api/food-plan/list/
+    Lấy danh sách lịch trình (bao gồm cả plan của mình và plan được share)
+    GET /api/accounts/food-plan/list/
     """
     try:
-        plans = FoodPlan.objects.filter(user=request.user).order_by('-created_at')
+        # 1️⃣ Plans của chính user
+        own_plans = FoodPlan.objects.filter(user=request.user).order_by('-created_at')
         
         plans_data = []
-        for plan in plans:
+        
+        # Thêm own plans
+        for plan in own_plans:
             plans_data.append({
                 'id': plan.id,
                 'name': plan.name,
                 'plan_data': plan.plan_data,
-                'created_at': plan.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                'created_at': plan.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_shared': False,  # Plan của mình
+                'owner_username': request.user.username
+            })
+        
+        # 2️⃣ Plans được share cho user
+        shared_plans = SharedFoodPlan.objects.filter(
+            shared_with=request.user,
+            is_active=True
+        ).select_related('food_plan', 'owner').order_by('-shared_at')
+        
+        for share in shared_plans:
+            plans_data.append({
+                'id': share.food_plan.id,
+                'name': share.food_plan.name,
+                'plan_data': share.food_plan.plan_data,  # ✅ THÊM plan_data
+                'created_at': share.shared_at.strftime('%Y-%m-%d %H:%M:%S'),  # ✅ Dùng shared_at thay vì created_at
+                'is_shared': True,  # Plan được share
+                'owner_username': share.owner.username,
+                'owner_id': share.owner.id,
+                'permission': share.permission
             })
         
         return JsonResponse({
@@ -1971,3 +1998,330 @@ def delete_food_plan_api(request, plan_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+    
+# ==========================================================
+# 📤 SHARE FOOD PLAN APIs
+# ==========================================================
+
+@csrf_exempt
+@require_POST
+@login_required
+def share_food_plan_api(request, plan_id):
+    """
+    Share plan cho bạn bè
+    POST /api/food-plan/share/<plan_id>/
+    Body: {
+        "friend_ids": [1, 2, 3],
+        "permission": "edit"  // "view" hoặc "edit"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        friend_ids = data.get('friend_ids', [])
+        permission = data.get('permission', 'edit')
+        
+        # Lấy plan (chỉ owner mới share được)
+        plan = FoodPlan.objects.get(id=plan_id, user=request.user)
+        
+        # Kiểm tra danh sách bạn bè
+        if not friend_ids:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Vui lòng chọn ít nhất 1 bạn bè'
+            }, status=400)
+        
+        shared_count = 0
+        already_shared = []
+        
+        for friend_id in friend_ids:
+            try:
+                friend = User.objects.get(id=friend_id)
+                
+                # Kiểm tra có phải bạn bè không
+                is_friend = Friendship.objects.filter(
+                    user1=request.user, user2=friend
+                ).exists() or Friendship.objects.filter(
+                    user1=friend, user2=request.user
+                ).exists()
+                
+                if not is_friend:
+                    continue
+                
+                # Tạo share (hoặc cập nhật nếu đã share trước đó)
+                share, created = SharedFoodPlan.objects.get_or_create(
+                    food_plan=plan,
+                    owner=request.user,
+                    shared_with=friend,
+                    defaults={'permission': permission}
+                )
+                
+                if created:
+                    shared_count += 1
+                else:
+                    # Nếu đã share rồi thì cập nhật permission
+                    share.permission = permission
+                    share.is_active = True
+                    share.save()
+                    already_shared.append(friend.username)
+                    
+            except User.DoesNotExist:
+                continue
+        
+        message = f"Đã chia sẻ cho {shared_count} người"
+        if already_shared:
+            message += f" ({', '.join(already_shared)} đã được chia sẻ trước đó)"
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message,
+            'shared_count': shared_count
+        })
+        
+    except FoodPlan.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy lịch trình'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@login_required
+@require_http_methods(["GET"])
+def get_current_user_friends(request):
+    """
+    Lấy danh sách bạn bè của user hiện tại
+    GET /api/accounts/my-friends/
+    """
+    try:
+        user = request.user
+        
+        # Lấy bạn bè
+        friends_as_user1 = Friendship.objects.filter(user1=user).values_list('user2', flat=True)
+        friends_as_user2 = Friendship.objects.filter(user2=user).values_list('user1', flat=True)
+        
+        friend_ids = list(friends_as_user1) + list(friends_as_user2)
+        friends = User.objects.filter(id__in=friend_ids)
+        
+        friends_data = [
+            {
+                'id': friend.id,
+                'username': friend.username,
+                'email': friend.email
+            }
+            for friend in friends
+        ]
+        
+        return JsonResponse({'friends': friends_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["GET"])
+def get_shared_plans_api(request):
+    """
+    Lấy danh sách plan được share cho user
+    GET /api/food-plan/shared/
+    """
+    try:
+        # Lấy các plan được share cho user này
+        shared_plans = SharedFoodPlan.objects.filter(
+            shared_with=request.user,
+            is_active=True
+        ).select_related('food_plan', 'owner')
+        
+        plans_data = []
+        for share in shared_plans:
+            # Kiểm tra xem có suggestion pending không
+            pending_suggestion = PlanEditSuggestion.objects.filter(
+                shared_plan=share,
+                status='pending'
+            ).first()
+            
+            plans_data.append({
+                'id': share.food_plan.id,
+                'name': share.food_plan.name,
+                'owner_username': share.owner.username,
+                'owner_id': share.owner.id,
+                'permission': share.permission,
+                'shared_at': share.shared_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'has_pending_suggestion': pending_suggestion is not None,
+                'is_shared': True  # Flag để frontend biết đây là shared plan
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'shared_plans': plans_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def submit_plan_suggestion_api(request, plan_id):
+    """
+    Bạn bè submit suggestion cho plan
+    POST /api/food-plan/suggest/<plan_id>/
+    Body: {
+        "suggested_data": {...},  // Plan sau khi edit
+        "message": "Tôi đã thêm quán X vào lịch trình"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        suggested_data = data.get('suggested_data')
+        message = data.get('message', '')
+        
+        # Kiểm tra user có quyền edit plan này không
+        shared_plan = SharedFoodPlan.objects.get(
+            food_plan_id=plan_id,
+            shared_with=request.user,
+            is_active=True,
+            permission='edit'
+        )
+        
+        # Lấy dữ liệu gốc
+        original_data = shared_plan.food_plan.plan_data
+        
+        # Tạo suggestion
+        suggestion = PlanEditSuggestion.objects.create(
+            shared_plan=shared_plan,
+            suggested_by=request.user,
+            original_data=original_data,
+            suggested_data=suggested_data,
+            message=message
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã gửi đề xuất chỉnh sửa',
+            'suggestion_id': suggestion.id
+        })
+        
+    except SharedFoodPlan.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Bạn không có quyền chỉnh sửa lịch trình này'
+        }, status=403)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_plan_suggestions_api(request, plan_id):
+    """
+    Owner xem các suggestion cho plan của mình
+    GET /api/food-plan/suggestions/<plan_id>/
+    """
+    try:
+        # Kiểm tra user có phải owner không
+        plan = FoodPlan.objects.get(id=plan_id, user=request.user)
+        
+        # Lấy các suggestion pending
+        suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan__food_plan=plan,
+            status='pending'
+        ).select_related('suggested_by', 'shared_plan')
+        
+        suggestions_data = []
+        for suggestion in suggestions:
+            suggestions_data.append({
+                'id': suggestion.id,
+                'suggested_by': suggestion.suggested_by.username,
+                'suggested_by_id': suggestion.suggested_by.id,
+                'message': suggestion.message,
+                'suggested_data': suggestion.suggested_data,
+                'original_data': suggestion.original_data,
+                'created_at': suggestion.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'suggestions': suggestions_data
+        })
+        
+    except FoodPlan.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy lịch trình'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def review_suggestion_api(request, suggestion_id):
+    """
+    Owner accept/reject suggestion
+    POST /api/food-plan/suggestion/review/<suggestion_id>/
+    Body: {
+        "action": "accept" / "reject"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        action = data.get('action')
+        
+        if action not in ['accept', 'reject']:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Action không hợp lệ'
+            }, status=400)
+        
+        # Lấy suggestion
+        suggestion = PlanEditSuggestion.objects.get(id=suggestion_id)
+        
+        # Kiểm tra user có phải owner không
+        if suggestion.shared_plan.owner != request.user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền review suggestion này'
+            }, status=403)
+        
+        if action == 'accept':
+            # Cập nhật plan với dữ liệu mới
+            plan = suggestion.shared_plan.food_plan
+            plan.plan_data = suggestion.suggested_data
+            plan.save()
+            
+            suggestion.status = 'accepted'
+            message = 'Đã chấp nhận thay đổi'
+        else:
+            suggestion.status = 'rejected'
+            message = 'Đã từ chối thay đổi'
+        
+        suggestion.reviewed_at = timezone.now()
+        suggestion.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message
+        })
+        
+    except PlanEditSuggestion.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy suggestion'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)    

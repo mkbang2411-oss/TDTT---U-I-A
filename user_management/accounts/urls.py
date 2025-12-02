@@ -19,4 +19,13 @@ urlpatterns = [
     path('food-plan/save/', views.save_food_plan_api, name='save_food_plan'),
     path('food-plan/list/', views.get_food_plans_api, name='get_food_plans'),
     path('food-plan/delete/<int:plan_id>/', views.delete_food_plan_api, name='delete_food_plan'),
+    # Share Food Plan
+    path('food-plan/share/<int:plan_id>/', views.share_food_plan_api, name='share_food_plan'),
+    path('food-plan/shared/', views.get_shared_plans_api, name='get_shared_plans'),
+    
+    # Suggestions
+    path('food-plan/suggest/<int:plan_id>/', views.submit_plan_suggestion_api, name='submit_plan_suggestion'),
+    path('food-plan/suggestions/<int:plan_id>/', views.get_plan_suggestions_api, name='get_plan_suggestions'),
+    path('food-plan/suggestion/review/<int:suggestion_id>/', views.review_suggestion_api, name='review_suggestion'),
+    path('my-friends/', views.get_current_user_friends, name='get_current_user_friends'),
 ]
