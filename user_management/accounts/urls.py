@@ -14,4 +14,9 @@ urlpatterns = [
     path('friend/unfriend/', views.unfriend, name='unfriend'),
     path('friend/<int:friend_id>/favorites/', views.get_friend_favorites, name='get_friend_favorites'),
     path('geocode/', views.geocode_proxy, name='geocode'),
+
+    # 🗂️ Food Plan APIs
+    path('food-plan/save/', views.save_food_plan_api, name='save_food_plan'),
+    path('food-plan/list/', views.get_food_plans_api, name='get_food_plans'),
+    path('food-plan/delete/<int:plan_id>/', views.delete_food_plan_api, name='delete_food_plan'),
 ]

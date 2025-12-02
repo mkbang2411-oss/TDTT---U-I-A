@@ -292,3 +292,15 @@ class PasswordResetOTP(models.Model):
         )
         
         return otp
+    
+class FoodPlan(models.Model):
+    """
+    Model để lưu lịch trình ăn uống của user
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, default="Lịch trình ăn uống")
+    plan_data = models.JSONField()  # Lưu toàn bộ danh sách quán ăn dưới dạng JSON
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.user.username}"

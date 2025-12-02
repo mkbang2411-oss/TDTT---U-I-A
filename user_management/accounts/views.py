@@ -1862,3 +1862,112 @@ def get_all_unlocked_stories(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+
+# ==========================================================
+# 🗂️ FOOD PLAN APIs - LƯU THEO ACCOUNT
+# ==========================================================
+
+from .models import FoodPlan
+
+@csrf_exempt
+@require_POST
+@login_required
+def save_food_plan_api(request):
+    """
+    Lưu lịch trình ăn uống vào database
+    POST /api/food-plan/save/
+    Body: {
+        "name": "Lịch trình ngày 15/12",
+        "plan_data": {...}  // Toàn bộ dữ liệu plan
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', 'Lịch trình ăn uống')
+        plan_data = data.get('plan_data')
+        
+        if not plan_data:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu dữ liệu plan'
+            }, status=400)
+        
+        # Tạo plan mới
+        food_plan = FoodPlan.objects.create(
+            user=request.user,
+            name=name,
+            plan_data=plan_data
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã lưu lịch trình',
+            'plan_id': food_plan.id
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_food_plans_api(request):
+    """
+    Lấy danh sách lịch trình của user
+    GET /api/food-plan/list/
+    """
+    try:
+        plans = FoodPlan.objects.filter(user=request.user).order_by('-created_at')
+        
+        plans_data = []
+        for plan in plans:
+            plans_data.append({
+                'id': plan.id,
+                'name': plan.name,
+                'plan_data': plan.plan_data,
+                'created_at': plan.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'plans': plans_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def delete_food_plan_api(request, plan_id):
+    """
+    Xóa lịch trình
+    POST /api/food-plan/delete/<plan_id>/
+    """
+    try:
+        plan = FoodPlan.objects.get(id=plan_id, user=request.user)
+        plan.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã xóa lịch trình'
+        })
+        
+    except FoodPlan.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy lịch trình'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
