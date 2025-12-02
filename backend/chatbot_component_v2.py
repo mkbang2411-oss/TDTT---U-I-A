@@ -4001,6 +4001,23 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - Number them clearly (1. Dish Name, 2. Dish Name, etc.)
             - Give brief description for each dish (1-2 sentences)
 
+            ⚠️ CRITICAL: DETECT USER LANGUAGE FIRST
+            Before naming any dish, ALWAYS:
+            1. Check what language the user is using
+            2. If user writes in Vietnamese → Use ONLY Vietnamese names
+            3. If user writes in English → Use English translation first, then (Vietnamese)
+            4. If user writes in Chinese/Japanese/Korean → Use their language first, then (Vietnamese)
+            
+            EXAMPLE DETECTION:
+            User says: "Tôi muốn ăn cà phê" → VIETNAMESE → Answer: "Cà phê đá"
+            User says: "I want coffee" → ENGLISH → Answer: "Vietnamese Coffee (Cà phê)"
+            User says: "我想喝咖啡" → CHINESE → Answer: "越南咖啡 (Cà phê)"
+            
+            ❌ NEVER mix languages for Vietnamese users
+            ❌ NEVER write "Cà phê (đá)" - this is nonsense
+            ✅ ALWAYS write "Cà phê đá" when user speaks Vietnamese
+
+            
             - CRITICAL NAMING RULES - READ CAREFULLY:
 
             ✅ RULE 1: Dish names - LANGUAGE PRIORITY
@@ -4032,11 +4049,22 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - "Cà phê" → "베트남 커피 (Cà phê)"
 
             **If user speaks VIETNAMESE:**
-            → Just use Vietnamese name directly, NO parentheses
-            Examples:
-            - "Phở bò" → Just "Phở bò"
-            - "Bánh mì" → Just "Bánh mì"
-            - "Cà phê" → Just "Cà phê"
+            → CRITICAL: Use ONLY Vietnamese names, NO parentheses, NO translations
+            → The Vietnamese name IS the dish name, don't add anything extra
+            → Format: "Cà phê đá" NOT "Cà phê (đá)" or "Coffee (Cà phê)"
+
+            ❌ WRONG examples (NEVER do this):
+            - "Cà phê (đá)" ← WRONG! This looks stupid
+            - "Coffee (Cà phê)" ← WRONG! User speaks Vietnamese
+            - "Phở bò (Beef noodle)" ← WRONG! Unnecessary
+
+            ✅ CORRECT examples:
+            - "Cà phê đá" ← Just Vietnamese, clean and simple
+            - "Phở bò" ← No translation needed
+            - "Bánh mì thịt" ← Keep it pure Vietnamese
+            - "Bún chả" ← Natural Vietnamese name
+
+            REMEMBER: Vietnamese users don't need translations or parentheses!
 
             ⚠️ IMPORTANT DETECTION:
             - Detect user's language from their message
