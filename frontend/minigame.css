@@ -1110,3 +1110,66 @@
 .food-story-modal.show .story-modal-content {
   animation: fadeInModal 0.4s ease;
 }
+
+/* ========================================
+   ⏳ LOADING STATE KHI ĐỔI MAP
+   ======================================== */
+
+.map-loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  z-index: 10000002; /* Cao hơn overlay */
+  background: rgba(0, 0, 0, 0.85);
+  padding: 30px 50px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.map-loading.show {
+  display: flex;
+}
+
+.map-loading .spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.2);
+  border-top: 5px solid #4ade80;
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+.map-loading p {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+@keyframes spinner-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive loading */
+@media (max-width: 900px) {
+  .map-loading {
+    padding: 25px 40px;
+  }
+  
+  .map-loading .spinner {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+  }
+  
+  .map-loading p {
+    font-size: 14px;
+  }
+}

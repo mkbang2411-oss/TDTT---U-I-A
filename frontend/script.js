@@ -1120,7 +1120,7 @@ if (placeId) {
           return L.marker(wp.latLng, {
             icon: i === 0
               ? L.icon({
-                  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
+                  iconUrl: "Picture/home.gif",
                   iconSize: [120, 100],
                   iconAnchor: [60, 100],
                 })
@@ -1193,10 +1193,6 @@ async function showFavoritePlaces() {
 }
 
 
-// =========================
-// 📡 LẤY DỮ LIỆU CSV
-// =========================
-// =========================
 // 📡 LẤY DỮ LIỆU CSV + LỌC THEO KHẨU VỊ
 // =========================
 // =========================
@@ -1205,9 +1201,6 @@ async function showFavoritePlaces() {
 // =========================
 // 📡 LẤY DỮ LIỆU CSV + TÌM GẦN ĐÚNG (FUZZY SEARCH, BỎ DẤU)
 // =========================
-// =======================================================
-// ✅ HÀM TÁCH GIÁ
-// =======================================================
 function parsePriceRange(priceStr) {
   if (!priceStr) return null;
 
@@ -1462,34 +1455,40 @@ async function fetchPlaces(
       });
     }
 
-    // ========== 4️⃣ Lọc bán kính ==========
-    if (radius !== "") {
-      const r = parseFloat(radius);
-
-      if (
-        !window.currentUserCoords ||
-        !window.currentUserCoords.lat ||
-        !window.currentUserCoords.lon
-      ) {
-        alert(
-          "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
-        );
-      } else {
-        const userLat = parseFloat(window.currentUserCoords.lat);
-        const userLon = parseFloat(window.currentUserCoords.lon);
-
-        filtered = filtered.filter((p) => {
-          if (!p.lat || !p.lon) return false;
-
-          const plat = parseFloat(p.lat.toString().replace(",", "."));
-          const plon = parseFloat(p.lon.toString().replace(",", "."));
-          if (isNaN(plat) || isNaN(plon)) return false;
-
-          const d = distance(userLat, userLon, plat, plon);
-          return d <= r;
-        });
-      }
+// ========== 4️⃣ Lọc bán kính ==========
+if (radius && radius !== "" && radius !== "all") {
+  const r = parseFloat(radius);
+  
+  if (isNaN(r) || r <= 0) {
+    // Bán kính không hợp lệ → bỏ qua filter này
+  } else {
+    // ⭐ CHỈ KIỂM TRA TỌA ĐỘ KHI ĐÃ CHỌN BÁN KÍNH HỢP LỆ
+    if (
+      !window.currentUserCoords ||
+      !window.currentUserCoords.lat ||
+      !window.currentUserCoords.lon
+    ) {
+      alert(
+        "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
+      );
+      return false; // ⭐⭐⭐ DỪNG HÀM fetchPlaces(), không filter nữa
     }
+
+    const userLat = parseFloat(window.currentUserCoords.lat);
+    const userLon = parseFloat(window.currentUserCoords.lon);
+
+    filtered = filtered.filter((p) => {
+      if (!p.lat || !p.lon) return false;
+
+      const plat = parseFloat(p.lat.toString().replace(",", "."));
+      const plon = parseFloat(p.lon.toString().replace(",", "."));
+      if (isNaN(plat) || isNaN(plon)) return false;
+
+      const d = distance(userLat, userLon, plat, plon);
+      return d <= r;
+    });
+  }
+}
 
     const ok = displayPlaces(filtered, shouldZoom);
     return ok;
@@ -1512,7 +1511,16 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   ).map((c) => c.value);
 
   const budget = document.getElementById("budget").value;
-  const radius = document.getElementById("radius").value;
+  let radius = document.getElementById("radius").value; // ⬅ LẤY GIÁ TRỊ
+
+  // ✅ ✅ ✅ FIX CHÍNH Ở ĐÂY ✅ ✅ ✅
+  // Nếu user KHÔNG TỰ CHỌN bán kính (radio không được check) → XÓA giá trị
+  const radiusChecked = document.querySelector('input[name="radius"]:checked');
+  if (!radiusChecked) {
+    radius = ""; // ⬅ XÓA giá trị để KHÔNG LỌC bán kính
+    document.getElementById("radius").value = ""; // ⬅ Reset luôn hidden input
+  }
+  // ✅ ✅ ✅ HẾT FIX ✅ ✅ ✅
 
   // 🔁 Mỗi lần tìm kiếm mới thì tắt chế độ "Quán yêu thích"
   isFavoriteMode = false;
@@ -1543,7 +1551,7 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
     window.startMarker = L.marker([coords.lat, coords.lon], {
       icon: L.icon({
-          iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
+          iconUrl: "Picture/home.gif",
           iconSize: [120, 100],
           iconAnchor: [60, 100],
       }),
@@ -1747,22 +1755,58 @@ document.addEventListener('click', (e) => {
 
 
 // ========== LƯU BÁN KÍNH VÀO GLOBAL STATE ==========
+// =========================
+// 🧹 RESET BÁN KÍNH KHI PAGE LOAD (QUAN TRỌNG!)
+// =========================
 document.addEventListener("DOMContentLoaded", function () {
-  const radiusInput = document.getElementById("radius");
-
+  console.log("🧹 Đang reset bán kính về mặc định...");
+  
+  // ✅ Xóa giá trị hidden input
+  const radiusInput = document.getElementById('radius');
   if (radiusInput) {
-    // Lưu giá trị ban đầu
-    window.currentRadius = radiusInput.value;
-    console.log("✅ Khởi tạo bán kính:", window.currentRadius, "km");
-
-    // Cập nhật khi thay đổi
-    radiusInput.addEventListener("change", function () {
-      window.currentRadius = this.value;
-      console.log("🎯 Đã cập nhật bán kính:", window.currentRadius, "km");
-    });
-  } else {
-    console.error("⚠️ Không tìm thấy input #radius");
+    radiusInput.value = '';
+    console.log("✅ Đã xóa giá trị #radius");
   }
+  
+  // ✅ Bỏ check tất cả radio buttons
+  const radiusRadios = document.querySelectorAll('input[name="radius"]');
+  radiusRadios.forEach(r => {
+    r.checked = false;
+  });
+  console.log("✅ Đã uncheck tất cả radio buttons");
+  
+  // ✅ Reset text hiển thị trên nút dropdown
+  const radiusBtn = document.getElementById('radiusBtn');
+  if (radiusBtn) {
+    const radiusText = radiusBtn.querySelector('.selected-flavors');
+    if (radiusText) {
+      radiusText.textContent = 'Bán kính tìm kiếm';
+      radiusText.classList.add('empty');
+    }
+    console.log("✅ Đã reset text nút bán kính");
+  }
+  
+  // ✅ Làm tương tự cho budget (nếu cần)
+  const budgetInput = document.getElementById('budget');
+  if (budgetInput) {
+    budgetInput.value = '';
+  }
+  
+  const budgetRadios = document.querySelectorAll('input[name="budget"]');
+  budgetRadios.forEach(b => {
+    b.checked = false;
+  });
+  
+  const budgetBtn = document.getElementById('budgetBtn');
+  if (budgetBtn) {
+    const budgetText = budgetBtn.querySelector('.selected-flavors');
+    if (budgetText) {
+      budgetText.textContent = 'Ngân sách mặc định ▼';
+      budgetText.classList.add('empty');
+    }
+  }
+  
+  console.log("✅ Hoàn tất reset filter mặc định!");
 });
 // =========================
 // 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
@@ -1960,7 +2004,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
       // ✅ Thêm marker mới cho điểm xuất phát
       window.startMarker = L.marker([userLat, userLon], {
         icon: L.icon({
-          iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
+          iconUrl: "Picture/home.gif",
           iconSize: [120, 100],
           iconAnchor: [60, 100],
         }),

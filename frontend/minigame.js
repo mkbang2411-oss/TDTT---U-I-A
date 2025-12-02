@@ -264,20 +264,70 @@ class JigsawPuzzle {
     });
   });
 }
+  // 🆕 Helper function để preload ảnh
+  preloadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        console.log('✅ Ảnh đã load xong:', src);
+        resolve(img);
+      };
+      img.onerror = () => {
+        console.error('❌ Lỗi load ảnh:', src);
+        reject();
+      };
+      img.src = src;
+    });
+  }
+
+  // 🆕 Hiển thị loading spinner
+  showLoadingState() {
+    const overlay = document.querySelector('.mini-game-overlay');
+    let loader = overlay.querySelector('.map-loading');
+    
+    if (!loader) {
+      loader = document.createElement('div');
+      loader.className = 'map-loading';
+      loader.innerHTML = `
+        <div class="spinner"></div>
+        <p>Đang tải ảnh...</p>
+      `;
+      overlay.appendChild(loader);
+    }
+    
+    loader.classList.add('show');
+  }
+
+  // 🆕 Ẩn loading spinner
+  hideLoadingState() {
+    const loader = document.querySelector('.map-loading');
+    if (loader) {
+      loader.classList.remove('show');
+    }
+  }
   
-  changeMap(mapName) {
-    this.currentMap = mapName;
-    const imagePath = `Picture/${mapName}.png?t=${Date.now()}`;
+  async changeMap(mapName) {
+  // 🆕 1. Hiển thị loading NGAY LẬP TỨC
+  this.showLoadingState();
+  
+  this.currentMap = mapName;
+  
+  // ❌ BỎ CACHE-BUSTING ?t=
+  const imagePath = `Picture/${mapName}.png`;
+  
+  console.log('🗺️ Đổi map sang:', imagePath);
+  
+  try {
+    // 🆕 2. Chờ ảnh load xong TRƯỚC KHI update DOM
+    await this.preloadImage(imagePath);
     
-    console.log('🗺️ Đổi map sang:', imagePath);
-    
-    // 1. Đổi ảnh trong defs
+    // 3. Đổi ảnh trong defs
     const fullImg = this.defs.querySelector('#full-img');
     if (fullImg) {
       fullImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
     }
     
-    // 2. Đổi tất cả ảnh trong các mảnh ghép
+    // 4. Đổi tất cả ảnh trong các mảnh ghép
     this.pieces.forEach(piece => {
       const img = piece.element.querySelector('image');
       if (img) {
@@ -285,42 +335,46 @@ class JigsawPuzzle {
       }
     });
     
-
-   // 3. Đổi ảnh nền mờ
-const oldBgImg = this.svg.querySelector('#bg-hint-img');
-if (oldBgImg) {
-  oldBgImg.remove();
-  console.log('🗑️ Đã xóa background cũ');
-}
-
-const newBgImg = document.createElementNS(this.svgNS, 'image');
-newBgImg.id = 'bg-hint-img';
-newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
-newBgImg.setAttribute('x', '0');
-newBgImg.setAttribute('y', '0');
-newBgImg.setAttribute('width', '1071');
-newBgImg.setAttribute('height', '750');
-newBgImg.setAttribute('preserveAspectRatio', 'none');
-newBgImg.setAttribute('opacity', '0.18');
-newBgImg.style.pointerEvents = 'none';
-
-this.svg.insertBefore(newBgImg, this.layer);
-console.log('✅ Đã thêm background mới:', imagePath);
-    
-    // 🆕 Kiểm tra map mới đã hoàn thành chưa
-    if (this.isMapCompleted(mapName)) {
-      this.showCompletedState();
-    } else {
-      // Xóa nút reset nếu có
-      const resetBtn = document.getElementById('btnResetProgress');
-      if (resetBtn) resetBtn.remove();
-      
-      // 🆕 HIỆN LẠI NÚT XÁO
-      this.showShuffleButton();
-      
-      this.reset();
+    // 5. Đổi ảnh nền mờ
+    const oldBgImg = this.svg.querySelector('#bg-hint-img');
+    if (oldBgImg) {
+      oldBgImg.remove();
+      console.log('🗑️ Đã xóa background cũ');
     }
+
+    const newBgImg = document.createElementNS(this.svgNS, 'image');
+    newBgImg.id = 'bg-hint-img';
+    newBgImg.setAttributeNS(this.xlinkNS, 'href', imagePath);
+    newBgImg.setAttribute('x', '0');
+    newBgImg.setAttribute('y', '0');
+    newBgImg.setAttribute('width', '1071');
+    newBgImg.setAttribute('height', '750');
+    newBgImg.setAttribute('preserveAspectRatio', 'none');
+    newBgImg.setAttribute('opacity', '0.18');
+    newBgImg.style.pointerEvents = 'none';
+
+    this.svg.insertBefore(newBgImg, this.layer);
+    console.log('✅ Đã thêm background mới:', imagePath);
+    
+  } catch (error) {
+    console.error('❌ Lỗi khi đổi map:', error);
+    alert('Không thể tải ảnh. Vui lòng thử lại!');
+  } finally {
+    // 🆕 6. ẨN LOADING SAU KHI XONG
+    this.hideLoadingState();
   }
+  
+  // 7. Kiểm tra map mới đã hoàn thành chưa
+  if (this.isMapCompleted(mapName)) {
+    this.showCompletedState();
+  } else {
+    const resetBtn = document.getElementById('btnResetProgress');
+    if (resetBtn) resetBtn.remove();
+    
+    this.showShuffleButton();
+    this.reset();
+  }
+}
   
   createPieces() {
     const viewBox = this.svg.viewBox.baseVal;
@@ -981,15 +1035,34 @@ function initMiniGame() {
   });
 }
 
+// ========================================
+// 🚀 PRELOAD TẤT CẢ ẢNH MAP
+// ========================================
+function preloadMapImages() {
+  const maps = ['banh_mi', 'com_tam', 'bun_bo_hue'];
+  
+  console.log('🖼️ Bắt đầu preload ảnh...');
+  
+  maps.forEach(mapName => {
+    const img = new Image();
+    img.src = `Picture/${mapName}.png`;
+    img.onload = () => console.log(`✅ Đã load: ${mapName}.png`);
+    img.onerror = () => console.error(`❌ Lỗi load: ${mapName}.png`);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🎮 Mini Game script loaded');
   initMiniGame();
+  
+  // 🔥 PRELOAD ẢNH NGAY KHI PAGE LOAD
+  preloadMapImages();
 
-  // 🔥 Preload puzzle ở background để lần đầu bấm không bị lag
+  // 🔥 Preload puzzle ở background
   if ('requestIdleCallback' in window) {
-    requestIdleCallback(ensurePuzzleReady);   // browser rảnh thì dựng puzzle
+    requestIdleCallback(ensurePuzzleReady);
   } else {
-    setTimeout(ensurePuzzleReady, 500);       // đợi trang render xong rồi mới dựng
+    setTimeout(ensurePuzzleReady, 500);
   }
 });
 

@@ -207,6 +207,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:5000',
     'https://raising-crm-neighbors-dave.trycloudflare.com',
     'https://resolve-shanghai-hanging-critical.trycloudflare.com',
+    'https://annex-occurrence-hobbies-rio.trycloudflare.com'
 ]
 
 # ✅ CORS settings
@@ -218,6 +219,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5000',
     'https://raising-crm-neighbors-dave.trycloudflare.com',
     'https://resolve-shanghai-hanging-critical.trycloudflare.com',
+    'https://annex-occurrence-hobbies-rio.trycloudflare.com',
 ]
 
 CORS_ALLOW_HEADERS = [
