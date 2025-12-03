@@ -1490,6 +1490,12 @@ def get_food_planner_html():
     display: block !important;
 }
 
+/* 🔥 BẮT BUỘC: bỏ overflow trên tab-content trong panel
+   để sticky dùng scroll của .panel-content */
+.food-planner-panel .tab-content,
+.food-planner-panel .tab-content.active {
+    overflow: visible !important;
+}
 /* ========== NEW FILTERS DESIGN ========== */
 .filters-wrapper-new {
     padding: 0;
