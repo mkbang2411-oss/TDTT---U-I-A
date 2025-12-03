@@ -6965,15 +6965,25 @@ async function checkPendingSuggestions(planId) {
         const response = await fetch(`/api/accounts/food-plan/suggestions/${planId}/`);
         const data = await response.json();
         
-        if (data.status === 'success' && data.suggestions && data.suggestions.length > 0) {
-            const suggestionsBtn = document.getElementById('suggestionsBtn');
-            const suggestionCount = document.getElementById('suggestionCount');
-            
-            if (suggestionsBtn && suggestionCount) {
-                suggestionsBtn.style.display = 'flex';
-                suggestionCount.textContent = data.suggestions.length;
-            }
+        const suggestionsBtn = document.getElementById('suggestionsBtn');
+        const suggestionCount = document.getElementById('suggestionCount');
+        
+        if (!suggestionsBtn || !suggestionCount) return;
+        
+        // 🔥 LỌC CHỈ LẤY PENDING
+        const pendingSuggestions = data.suggestions ? 
+            data.suggestions.filter(s => s.status === 'pending') : [];
+        
+        if (pendingSuggestions.length > 0) {
+            // Có đề xuất pending → hiện nút
+            suggestionsBtn.style.display = 'flex';
+            suggestionCount.textContent = pendingSuggestions.length;
+        } else {
+            // Không còn pending → ẩn nút
+            suggestionsBtn.style.display = 'none';
+            suggestionCount.textContent = '0';
         }
+        
     } catch (error) {
         console.error('Error checking suggestions:', error);
     }
@@ -6995,57 +7005,85 @@ async function openSuggestionsPanel() {
             return;
         }
         
-        const suggestions = data.suggestions;
+        // 🔥 LỌC CHỈ LẤY PENDING
+        const suggestions = data.suggestions.filter(s => s.status === 'pending');
         
-        // Tạo HTML cho danh sách đề xuất
-        const suggestionsHTML = suggestions.map((sug, index) => `
-            <div style="
-                background: white;
-                border: 2px solid #E0E0E0;
-                border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 16px;
-                transition: all 0.3s ease;
-            " onmouseover="this.style.borderColor='#9C27B0'" onmouseout="this.style.borderColor='#E0E0E0'">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                    <div>
-                        <div style="font-weight: 700; color: #333; font-size: 15px; margin-bottom: 4px;">
-                            👤 ${sug.suggested_by_username}
-                        </div>
-                        <div style="font-size: 12px; color: #999;">
-                            📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
-                        </div>
+        if (suggestions.length === 0) {
+            alert('ℹ️ Không còn đề xuất pending nào');
+            return;
+        }
+        
+
+   // Tạo HTML cho danh sách đề xuất
+const suggestionsHTML = suggestions.map((sug, index) => {
+    const statusBg = sug.status === 'pending' ? '#FFF3E0' : sug.status === 'accepted' ? '#E8F5E9' : '#FFEBEE';
+    const statusColor = sug.status === 'pending' ? '#F57C00' : sug.status === 'accepted' ? '#2E7D32' : '#C62828';
+    const statusText = sug.status === 'pending' ? '⏳ Chờ duyệt' : sug.status === 'accepted' ? '✅ Đã chấp nhận' : '❌ Đã từ chối';
+    const borderColor = sug.status === 'pending' ? '#FF9800' : sug.status === 'accepted' ? '#4CAF50' : '#F44336';
+    
+    return `
+        <div style="
+            background: white;
+            border: 2px solid ${borderColor};
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div>
+                    <div style="font-weight: 700; color: #333; font-size: 15px; margin-bottom: 8px;">
+                        👤 ${sug.suggested_by_username}
                     </div>
-                    <div style="
-                        background: ${sug.status === 'pending' ? '#FFF3E0' : sug.status === 'approved' ? '#E8F5E9' : '#FFEBEE'};
-                        color: ${sug.status === 'pending' ? '#E65100' : sug.status === 'approved' ? '#2E7D32' : '#C62828'};
-                        padding: 4px 12px;
-                        border-radius: 12px;
-                        font-size: 11px;
-                        font-weight: 600;
-                    ">
-                        ${sug.status === 'pending' ? '⏳ Chờ duyệt' : sug.status === 'approved' ? '✅ Đã chấp nhận' : '❌ Đã từ chối'}
+                    <div style="font-size: 13px; color: #666;">
+                        📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
                     </div>
                 </div>
+                <span style="
+                    padding: 4px 12px;
+                    border-radius: 12px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    background: ${statusBg};
+                    color: ${statusColor};
+                ">
+                    ${statusText}
+                </span>
+            </div>
+            
+            ${sug.message ? `
+                <div style="
+                    background: #F5F5F5;
+                    border-left: 3px solid #FF6B35;
+                    padding: 10px 12px;
+                    border-radius: 6px;
+                    margin-bottom: 12px;
+                    font-size: 13px;
+                    color: #555;
+                ">
+                    💬 ${sug.message}
+                </div>
+            ` : ''}
+            
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button onclick="viewSuggestionComparison(${sug.id})" style="
+                    flex: 1;
+                    background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%);
+                    color: white;
+                    border: none;
+                    padding: 10px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">
+                    👁️ Xem chi tiết
+                </button>
                 
-                ${sug.message ? `
-                    <div style="
-                        background: #F5F5F5;
-                        padding: 10px;
-                        border-radius: 8px;
-                        margin-bottom: 12px;
-                        font-size: 13px;
-                        color: #666;
-                        border-left: 3px solid #9C27B0;
-                    ">
-                        💬 "${sug.message}"
-                    </div>
-                ` : ''}
-                
-                <div style="display: flex; gap: 8px; margin-top: 12px;">
-                    <button onclick="viewSuggestionComparison(${sug.id})" style="
+                ${sug.status === 'pending' ? `
+                    <button onclick="approveSuggestion(${sug.id})" style="
                         flex: 1;
-                        background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%);
+                        background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
                         color: white;
                         border: none;
                         padding: 10px;
@@ -7054,41 +7092,27 @@ async function openSuggestionsPanel() {
                         font-weight: 600;
                         cursor: pointer;
                     ">
-                        👁️ Xem chi tiết
+                        ✅ Chấp nhận
                     </button>
                     
-                    ${sug.status === 'pending' ? `
-                        <button onclick="approveSuggestion(${sug.id})" style="
-                            flex: 1;
-                            background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-                            color: white;
-                            border: none;
-                            padding: 10px;
-                            border-radius: 8px;
-                            font-size: 13px;
-                            font-weight: 600;
-                            cursor: pointer;
-                        ">
-                            ✅ Chấp nhận
-                        </button>
-                        
-                        <button onclick="rejectSuggestion(${sug.id})" style="
-                            flex: 1;
-                            background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
-                            color: white;
-                            border: none;
-                            padding: 10px;
-                            border-radius: 8px;
-                            font-size: 13px;
-                            font-weight: 600;
-                            cursor: pointer;
-                        ">
-                            ❌ Từ chối
-                        </button>
-                    ` : ''}
-                </div>
+                    <button onclick="rejectSuggestion(${sug.id})" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">
+                        ❌ Từ chối
+                    </button>
+                ` : ''}
             </div>
-        `).join('');
+        </div>
+    `;
+}).join('');
         
         // Tạo modal
         const modalHTML = `
@@ -7329,8 +7353,9 @@ async function approveSuggestion(suggestionId) {
             closeComparisonModal();
             closeSuggestionsModal();
             
-            // Reload plan
+            // 🔥 CẬP NHẬT SỐ LƯỢNG ĐỀ XUẤT PENDING
             if (currentPlanId) {
+                await checkPendingSuggestions(currentPlanId);
                 await loadSavedPlans(currentPlanId);
             }
         } else {
@@ -7341,7 +7366,6 @@ async function approveSuggestion(suggestionId) {
         alert('Không thể chấp nhận đề xuất');
     }
 }
-
 // ========== REJECT SUGGESTION ==========
 async function rejectSuggestion(suggestionId) {
     if (!confirm('❌ Xác nhận từ chối đề xuất này?')) return;
@@ -7361,8 +7385,10 @@ async function rejectSuggestion(suggestionId) {
             closeComparisonModal();
             closeSuggestionsModal();
             
-            // Reload suggestions
-            openSuggestionsPanel();
+            // ✅ CẬP NHẬT SỐ LƯỢNG ĐỀ XUẤT CÒN PENDING
+            if (currentPlanId) {
+                await checkPendingSuggestions(currentPlanId);
+            }
         } else {
             alert('❌ ' + result.message);
         }
@@ -7371,7 +7397,6 @@ async function rejectSuggestion(suggestionId) {
         alert('Không thể từ chối đề xuất');
     }
 }
-
 
 // ========== EXIT SHARED PLAN VIEW ==========
 function exitSharedPlanView() {
