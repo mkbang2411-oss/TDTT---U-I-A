@@ -19,4 +19,9 @@ urlpatterns = [
     path('food-plan/save/', views.save_food_plan_api, name='save_food_plan'),
     path('food-plan/list/', views.get_food_plans_api, name='get_food_plans'),
     path('food-plan/delete/<int:plan_id>/', views.delete_food_plan_api, name='delete_food_plan'),
+
+    # 🍽️ User Preferences APIs
+    path('preferences/', views.get_user_preferences, name='get_preferences'),
+    path('preferences/save/', views.save_user_preference, name='save_preference'),
+    path('preferences/delete/', views.delete_user_preference, name='delete_preference'),
 ]
