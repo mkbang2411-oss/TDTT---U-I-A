@@ -1409,7 +1409,8 @@ def get_food_planner_html():
     transition: right 0.3s ease;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    /* ❌ bỏ overflow-y: auto ở đây */
+    overflow: visible; /* ✅ để panel không trở thành scroll container */
 }
 
 .food-planner-panel.active {
@@ -1464,7 +1465,8 @@ def get_food_planner_html():
 /* ========== CONTENT AREA ========== */
 .panel-content {
     flex: 1;
-    overflow-y: auto;
+    position: relative;        /* ✅ thêm dòng này cho chắc */
+    overflow-y: auto;          /* ✅ đây mới là thằng scroll chính */
     padding: 20px;
     padding-top: 10px;
 }
@@ -1484,6 +1486,13 @@ def get_food_planner_html():
 .food-planner-panel .tab-content.active {
     height: auto !important;
     display: block !important;
+}
+
+/* 🔥 BẮT BUỘC: bỏ overflow trên tab-content trong panel
+   để sticky dùng scroll của .panel-content */
+.food-planner-panel .tab-content,
+.food-planner-panel .tab-content.active {
+    overflow: visible !important;
 }
 
 /* ========== NEW FILTERS DESIGN ========== */
@@ -2668,12 +2677,12 @@ def get_food_planner_html():
     position: sticky;
     top: 0;
     background: white;
-    z-index: 10;
-    padding: 16px 20px; /* 🔥 TĂNG PADDING */
-    border-bottom: 2px solid #FFE5D9; /* 🔥 VIỀN ĐẬM HƠN */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* 🔥 THÊM SHADOW */
-    margin: 0; /* 🔥 BỎ MARGIN */
-    margin-bottom: 0 !important; /* 🔥 BỎ MARGIN BOTTOM */
+    z-index: 100; /* 🔥 TĂNG Z-INDEX */
+    padding: 16px 20px;
+    border-bottom: 2px solid #FFE5D9;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin: 0;
+    margin-bottom: 0 !important;
 }
 
 /* 🔥 ĐẢM BẢO PANEL CONTENT KHÔNG CÓ PADDING TOP */
@@ -5196,6 +5205,11 @@ if (shouldShowFoodStreetSuggestion) {
         setTimeout(() => drawRouteOnMap(plan), 500);
     } else {
         clearRoutes();
+    }
+
+    // 🔥 ẨN TẤT CẢ MARKER KHÁC, CHỈ GIỮ MARKER CỦA QUÁN TRONG LỊCH TRÌNH
+    if (hasPlaces && window.showMarkersForPlaceIds) {
+        window.showMarkersForPlaceIds(plan);
     }
 
     // 🔥 KIỂM TRA text có dài hơn khung không
