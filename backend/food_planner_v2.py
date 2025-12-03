@@ -1350,7 +1350,7 @@ def get_food_planner_html():
 /* ========== FLOATING BUTTON ========== */
 .food-planner-btn {
     position: fixed;
-    bottom: 200px; /* đặt cao hơn nút 🍜 khoảng 80px */
+    bottom: 230px; /* đặt cao hơn nút 🍜 khoảng 80px */
     right: 30px;
     width: 56px;
     height: 56px;
@@ -1400,10 +1400,11 @@ def get_food_planner_html():
 /* ========== SIDE PANEL ========== */
 .food-planner-panel {
     position: fixed;
-    top: 0;
+    top: 160px;
     right: -550px;
-    width: 550px;
-    height: 100vh;
+    width: 30%;
+    height: calc(100% - 160px);
+    max-height: calc(100vh - 60px);
     background: white;
     z-index: 9999999999999 !important;
     transition: right 0.3s ease;
@@ -1416,6 +1417,7 @@ def get_food_planner_html():
 .food-planner-panel.active {
     right: 0;
 }
+
 
 /* ========== HEADER ========== */
 .panel-header {
@@ -1486,13 +1488,6 @@ def get_food_planner_html():
 .food-planner-panel .tab-content.active {
     height: auto !important;
     display: block !important;
-}
-
-/* 🔥 BẮT BUỘC: bỏ overflow trên tab-content trong panel
-   để sticky dùng scroll của .panel-content */
-.food-planner-panel .tab-content,
-.food-planner-panel .tab-content.active {
-    overflow: visible !important;
 }
 
 /* ========== NEW FILTERS DESIGN ========== */
@@ -2872,7 +2867,7 @@ def get_food_planner_html():
 /* ========== NÚT ĐÓNG THU THEO PANEL ========== */
 .close-panel-btn {
     position: fixed;
-    top: 50%;
+    top: 65%;
     right: -48px; /* ✅ MẶC ĐỊNH ẨN NGOÀI MÀN HÌNH */
     transform: translateY(-50%);
     width: 48px;
@@ -2907,7 +2902,7 @@ def get_food_planner_html():
 
 /* ✅ KHI PANEL MỞ → NÚT XUẤT HIỆN */
 .food-planner-panel.active .close-panel-btn {
-    right: 550px !important; /* ✅ LỒI RA BÊN TRÁI PANEL */
+    right: 30% !important; /* ✅ LỒI RA BÊN TRÁI PANEL */
     box-shadow: -6px 0 20px rgba(255, 107, 53, 0.4);
 }
 
@@ -2954,6 +2949,26 @@ def get_food_planner_html():
     }
 }
 
+/* ========== CUSTOM SCROLLBAR CHO PANEL ========== */
+.panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+    background: transparent; /* Nền thanh cuộn trong suốt */
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+    /* Màu cam nhạt mờ, phù hợp với theme Food Planner */
+    background: rgba(255, 107, 53, 0.3);
+    border-radius: 3px;
+    transition: background 0.3s ease;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+    /* Đậm hơn khi hover */
+    background: rgba(255, 107, 53, 0.6);
+}
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
     .close-panel-btn {

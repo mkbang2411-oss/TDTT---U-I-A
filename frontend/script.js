@@ -51,8 +51,8 @@ let markerClusterGroup = L.markerClusterGroup({
   zoomToBoundsOnClick: true,
   maxClusterRadius: 80,
   disableClusteringAtZoom: 16,
-  animate: true,
-  animateAddingMarkers: true,
+  animate: false,
+  animateAddingMarkers: false,
   spiderfyDistanceMultiplier: 1.5
 });
 
@@ -666,37 +666,6 @@ function displayPlaces(places, shouldZoom = true) {
     map.removeLayer(markerClusterGroup);
   }
 
-  // Tạo cluster mới (giữ nguyên config cũ của bạn)
-  markerClusterGroup = L.markerClusterGroup({
-    iconCreateFunction: function(cluster) {
-      const count = cluster.getChildCount();
-      let size = 'small';
-      let colorClass = 'cluster-small';
-
-      if (count > 100) {
-        size = 'large';
-        colorClass = 'cluster-large';
-      } else if (count > 50) {
-        size = 'medium';
-        colorClass = 'cluster-medium';
-      }
-
-      return L.divIcon({
-        html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
-        className: `marker-cluster marker-cluster-${size}`,
-        iconSize: L.point(50, 50)
-      });
-    },
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    maxClusterRadius: 80,
-    disableClusteringAtZoom: 16,
-    animate: true,
-    animateAddingMarkers: true,
-    spiderfyDistanceMultiplier: 1.5
-  });
-
   markers = []; // reset mảng markers
   // reset index marker theo place_id
   window.placeMarkersById = {};
@@ -748,6 +717,8 @@ function loadMarkersInViewport() {
   let maxMarkersToLoad = zoom > 14 ? 200 : zoom > 12 ? 100 : 50;
   let loadedCount = 0;
 
+  const markersToAdd = []; // ⭐ Gom marker vào đây
+
   allPlacesData.forEach((p) => {
     const placeId = p.data_id || p.ten_quan;
     if (visibleMarkers.has(placeId)) return;
@@ -761,11 +732,13 @@ function loadMarkersInViewport() {
 
     const marker = createMarker(p, lat, lon);
     markers.push(marker);
-    markerClusterGroup.addLayer(marker); // ← THÊM VÀO CLUSTER
+    markersToAdd.push(marker);        // ⭐ gom lại
     visibleMarkers.add(placeId);
     loadedCount++;
   });
 
+  markerClusterGroup.addLayers(markersToAdd);
+  
   isLoadingMarkers = false;
   console.log(`✅ Đã load ${loadedCount} markers`);
 }

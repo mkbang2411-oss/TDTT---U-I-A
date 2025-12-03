@@ -1065,4 +1065,3 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(ensurePuzzleReady, 500);
   }
 });
-

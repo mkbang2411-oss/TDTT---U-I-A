@@ -58,6 +58,8 @@
     body.logged-in .user-only { display: flex !important; } /* ĐỔI: block → flex */
 </style>
 
+
+
 <body>
     <!-- 🔔 Toast Notification -->
     <div id="toast" class="toast"></div>
@@ -246,12 +248,11 @@
     <!-- ✅ MAP + NÚT QUÁN YÊU THÍCH -->
     <div id="map-container" style="position: relative;">
         <div id="map"></div>
-
-         <!-- 🧩 Nút Mini Game -->
+    </div>
+    <!-- 🧩 Nút Mini Game -->
     <button id="miniGameBtn" class="map-floating-btn mini-game-btn">
         🧩
     </button>
-    </div>
     
     <!-- ✅ CHATBOT VÀ FOOD PLAN BUTTONS - INJECT HERE -->
     <div id="insert-chatbot-and-map">
@@ -263,7 +264,6 @@
         <span id="closeModal">&times;</span>
         <img id="modalImg" src="" alt="Zoomed image">
     </div>
-
    
 
     <!-- 📦 JAVASCRIPT LIBRARIES -->
@@ -326,129 +326,131 @@
             });
         });
     </script>
-      <!-- 🧩 MINI GAME OVERLAY -->
-<div id="miniGameOverlay" class="mini-game-overlay hidden">
-    <div class="mini-game-wrapper">
-        <!-- Header -->
-        <div class="mini-game-header">
-            <button id="miniGameCloseBtn" class="mini-game-home-btn" title="Thoát mini game">
-                ⌂
-            </button>
-            <h2 class="mini-game-title">
-                Ghép Hình Vui Nhộn (Jigsaw Puzzle)
-            </h2>
-        </div>
 
-        <!-- Khu vực board ghép hình -->
-        <div class="mini-game-content">
-           <!-- 🗺️ MAP SELECTOR -->
-<div class="map-selector">
-    <!-- 🆕 TAB SWITCHER -->
-    <div class="tab-switcher">
-        <button class="tab-btn active" data-tab="maps">
-            🎮 Chọn Map
-        </button>
-        <button class="tab-btn" data-tab="achievements">
-            🏆 Thành Tựu
-        </button>
-    </div>
+    <!-- 🧩 MINI GAME OVERLAY -->
+    <div id="miniGameOverlay" class="mini-game-overlay hidden">
+        <div class="mini-game-wrapper">
+            <!-- Header -->
+            <div class="mini-game-header">
+                <button id="miniGameCloseBtn" class="mini-game-home-btn" title="Thoát mini game">
+                    ⌂
+                </button>
+                <h2 class="mini-game-title">
+                    Ghép Hình Vui Nhộn (Jigsaw Puzzle)
+                </h2>
+            </div>
 
-                <!-- 🆕 TAB CONTENT: MAPS -->
-                <div class="tab-content active" id="tab-maps">
-                    <button class="map-option active" data-map="banh_mi">
-                        <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png" alt="Bánh Mì">
-                        <span>Bánh Mì</span>
-                    </button>
-                    <button class="map-option" data-map="com_tam">
-                        <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/com_tam.png" alt="Cơm Tấm">
-                        <span>Cơm Tấm</span>
-                    </button>
-                    <button class="map-option" data-map="bun_bo_hue">
-                        <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/bun_bo_hue.png" alt="Bún Bò Huế">
-                        <span>Bún Bò Huế</span>
-                    </button>
-                </div>
+            <!-- Khu vực board ghép hình -->
+            <div class="mini-game-content">
+            <!-- 🗺️ MAP SELECTOR -->
+        <div class="map-selector">
+            <!-- 🆕 TAB SWITCHER -->
+            <div class="tab-switcher">
+                <button class="tab-btn active" data-tab="maps">
+                    🎮 Chọn Map
+                </button>
+                <button class="tab-btn" data-tab="achievements">
+                    🏆 Thành Tựu
+                </button>
+            </div>
 
-                <!-- 🆕 TAB CONTENT: ACHIEVEMENTS -->
-                <div class="tab-content" id="tab-achievements">
-                    <div class="achievements-container">
-                        <!-- JavaScript sẽ render nội dung vào đây -->
-                        <p class="loading-achievements">Đang tải thành tựu...</p>
+                    <!-- 🆕 TAB CONTENT: MAPS -->
+                    <div class="tab-content active" id="tab-maps">
+                        <button class="map-option active" data-map="banh_mi">
+                            <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png" alt="Bánh Mì">
+                            <span>Bánh Mì</span>
+                        </button>
+                        <button class="map-option" data-map="com_tam">
+                            <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/com_tam.png" alt="Cơm Tấm">
+                            <span>Cơm Tấm</span>
+                        </button>
+                        <button class="map-option" data-map="bun_bo_hue">
+                            <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/bun_bo_hue.png" alt="Bún Bò Huế">
+                            <span>Bún Bò Huế</span>
+                        </button>
+                    </div>
+
+                    <!-- 🆕 TAB CONTENT: ACHIEVEMENTS -->
+                    <div class="tab-content" id="tab-achievements">
+                        <div class="achievements-container">
+                            <!-- JavaScript sẽ render nội dung vào đây -->
+                            <p class="loading-achievements">Đang tải thành tựu...</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- ✅ THÊM PHẦN NÀY - GAME CONTAINER -->
-            <div class="game-container">
-                <!-- ✅ GAME HEADER (Timer, Moves, Shuffle) -->
-                <div class="game-header">
-                    <div class="timer">⏱️ Thời gian: <span>0:00</span></div>
-                    <div class="moves">🔄 Số bước: <span>0</span></div>
-                    <button class="btn-shuffle">🔀 Xáo lại</button>
-                    <!-- Nút Reset sẽ được thêm động tại đây -->
-                </div>
+                <!-- ✅ THÊM PHẦN NÀY - GAME CONTAINER -->
+                <div class="game-container">
+                    <!-- ✅ GAME HEADER (Timer, Moves, Shuffle) -->
+                    <div class="game-header">
+                        <div class="timer">⏱️ Thời gian: <span>0:00</span></div>
+                        <div class="moves">🔄 Số bước: <span>0</span></div>
+                        <button class="btn-shuffle">🔀 Xáo lại</button>
+                        <!-- Nút Reset sẽ được thêm động tại đây -->
+                    </div>
 
-                <!-- PUZZLE BOARD -->
-                <div id="jigsawBoard" class="jigsaw-board">
-                    <div id="board">
-                        <svg id="puzzle" viewBox="0 0 1071 750" style="display:none"
-                             xmlns="http://www.w3.org/2000/svg"
-                             xmlns:xlink="http://www.w3.org/1999/xlink">
+                    <!-- PUZZLE BOARD -->
+                    <div id="jigsawBoard" class="jigsaw-board">
+                        <div id="board">
+                            <svg id="puzzle" viewBox="0 0 1071 750" style="display:none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                xmlns:xlink="http://www.w3.org/1999/xlink">
 
-                            <defs>
-                                <!-- Ảnh nền -->
-                                <image id="full-img"
-                                       href="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png"
-                                       x="0" y="0"
-                                       width="1071" height="750" />
+                                <defs>
+                                    <!-- Ảnh nền -->
+                                    <image id="full-img"
+                                        href="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png"
+                                        x="0" y="0"
+                                        width="1071" height="750" />
 
-    <!-- 12 path mảnh ghép từ SVG mới (1071x750) -->
-<path id="piece-0" d="M357 63.6807C373.569 63.6807 387 77.2552 387 94C387 110.745 373.569 124.319 357 124.319V189H207.994C207.727 172.444 194.402 159.106 178 159.106C161.598 159.106 148.273 172.444 148.006 189H0V-1H357V63.6807Z" />
+        <!-- 12 path mảnh ghép từ SVG mới (1071x750) -->
+    <path id="piece-0" d="M357 63.6807C373.569 63.6807 387 77.2552 387 94C387 110.745 373.569 124.319 357 124.319V189H207.994C207.727 172.444 194.402 159.106 178 159.106C161.598 159.106 148.273 172.444 148.006 189H0V-1H357V63.6807Z" />
 
-<path id="piece-1" d="M714 63C697.431 63 684 76.4315 684 93C684 109.569 697.431 123 714 123V188.22H565.994C565.997 188.388 566 188.556 566 188.725C566 205.445 552.569 219 536 219C519.431 219 506 205.445 506 188.725C506 188.556 506.003 188.388 506.006 188.22H357V124.138C373.569 124.138 387 110.583 387 93.8623C387 77.1418 373.569 63.5869 357 63.5869V-1H714V63Z" />
+    <path id="piece-1" d="M714 63C697.431 63 684 76.4315 684 93C684 109.569 697.431 123 714 123V188.22H565.994C565.997 188.388 566 188.556 566 188.725C566 205.445 552.569 219 536 219C519.431 219 506 205.445 506 188.725C506 188.556 506.003 188.388 506.006 188.22H357V124.138C373.569 124.138 387 110.583 387 93.8623C387 77.1418 373.569 63.5869 357 63.5869V-1H714V63Z" />
 
-<path id="piece-2" d="M893 158C909.569 158 923 171.431 923 188C923 188.335 922.992 188.668 922.981 189H1071V376.5H922.994C922.997 376.334 923 376.167 923 376C923 359.431 909.569 346 893 346C876.431 346 863 359.431 863 376C863 376.167 863.003 376.334 863.006 376.5H714V312.981C713.668 312.992 713.335 313 713 313C696.431 313 683 299.569 683 283C683 266.431 696.431 253 713 253C713.335 253 713.668 253.007 714 253.018V189H863.019C863.008 188.668 863 188.335 863 188C863 171.431 876.431 158 893 158Z" />
+    <path id="piece-2" d="M893 158C909.569 158 923 171.431 923 188C923 188.335 922.992 188.668 922.981 189H1071V376.5H922.994C922.997 376.334 923 376.167 923 376C923 359.431 909.569 346 893 346C876.431 346 863 359.431 863 376C863 376.167 863.003 376.334 863.006 376.5H714V312.981C713.668 312.992 713.335 313 713 313C696.431 313 683 299.569 683 283C683 266.431 696.431 253 713 253C713.335 253 713.668 253.007 714 253.018V189H863.019C863.008 188.668 863 188.335 863 188C863 171.431 876.431 158 893 158Z" />
 
-<path id="piece-3" d="M178 158C194.569 158 208 171.431 208 188H357V249C340.431 249 327 262.431 327 279C327 295.569 340.431 309 357 309V375.5H208C208 392.069 194.569 405.5 178 405.5C161.431 405.5 148 392.069 148 375.5H0V188H148C148 171.431 161.431 158 178 158Z" />
+    <path id="piece-3" d="M178 158C194.569 158 208 171.431 208 188H357V249C340.431 249 327 262.431 327 279C327 295.569 340.431 309 357 309V375.5H208C208 392.069 194.569 405.5 178 405.5C161.431 405.5 148 392.069 148 375.5H0V188H148C148 171.431 161.431 158 178 158Z" />
 
-<path id="piece-4" d="M1071 190H922.994C922.727 173.444 909.402 160.106 893 160.106C876.598 160.106 863.273 173.444 863.006 190H714V123.64C697.432 123.64 684 110.03 684 93.2402C684 76.4508 697.431 62.8398 714 62.8398V0H1071V190Z" />
+    <path id="piece-4" d="M1071 190H922.994C922.727 173.444 909.402 160.106 893 160.106C876.598 160.106 863.273 173.444 863.006 190H714V123.64C697.432 123.64 684 110.03 684 93.2402C684 76.4508 697.431 62.8398 714 62.8398V0H1071V190Z" />
 
-<path id="piece-5" d="M178 532C194.569 532 208 545.431 208 562H357V629C373.569 629 387 642.431 387 659C387 675.569 373.569 689 357 689V749.5H0V562H148C148 545.431 161.431 532 178 532Z" />
+    <path id="piece-5" d="M178 532C194.569 532 208 545.431 208 562H357V629C373.569 629 387 642.431 387 659C387 675.569 373.569 689 357 689V749.5H0V562H148C148 545.431 161.431 532 178 532Z" />
 
-<path id="piece-6" d="M148 375C148 391.569 161.431 405 178 405C194.569 405 208 391.569 208 375H357V439C340.431 439 327 452.431 327 469C327 485.569 340.431 499 357 499V562.5H207.994C207.727 546.162 194.402 533 178 533C161.598 533 148.273 546.162 148.006 562.5H0V375H148Z" />
+    <path id="piece-6" d="M148 375C148 391.569 161.431 405 178 405C194.569 405 208 391.569 208 375H357V439C340.431 439 327 452.431 327 469C327 485.569 340.431 499 357 499V562.5H207.994C207.727 546.162 194.402 533 178 533C161.598 533 148.273 546.162 148.006 562.5H0V375H148Z" />
 
-<path id="piece-7" d="M893 345C909.569 345 923 358.431 923 375H1071V562.5H922.994C922.727 546.162 909.402 533 893 533C876.598 533 863.273 546.162 863.006 562.5H714V501C730.569 501 744 487.569 744 471C744 454.431 730.569 441 714 441V375H863C863 358.431 876.431 345 893 345Z" />
+    <path id="piece-7" d="M893 345C909.569 345 923 358.431 923 375H1071V562.5H922.994C922.727 546.162 909.402 533 893 533C876.598 533 863.273 546.162 863.006 562.5H714V501C730.569 501 744 487.569 744 471C744 454.431 730.569 441 714 441V375H863C863 358.431 876.431 345 893 345Z" />
 
-<path id="piece-8" d="M536 345C552.569 345 566 358.431 566 375H714V441C730.569 441 744 454.431 744 471C744 487.569 730.569 501 714 501V562.5H565.994C565.727 546.162 552.402 533 536 533C519.598 533 506.273 546.162 506.006 562.5H357V500C340.431 500 327 486.569 327 470C327 453.431 340.431 440 357 440V375H506C506 358.431 519.431 345 536 345Z" />
+    <path id="piece-8" d="M536 345C552.569 345 566 358.431 566 375H714V441C730.569 441 744 454.431 744 471C744 487.569 730.569 501 714 501V562.5H565.994C565.727 546.162 552.402 533 536 533C519.598 533 506.273 546.162 506.006 562.5H357V500C340.431 500 327 486.569 327 470C327 453.431 340.431 440 357 440V375H506C506 358.431 519.431 345 536 345Z" />
 
-<path id="piece-9" d="M893 532C909.569 532 923 545.431 923 562H1071V749.5H714V686.981C713.668 686.992 713.335 687 713 687C696.431 687 683 673.569 683 657C683 640.431 696.431 627 713 627C713.335 627 713.668 627.007 714 627.018V562H863C863 545.431 876.431 532 893 532Z" />
+    <path id="piece-9" d="M893 532C909.569 532 923 545.431 923 562H1071V749.5H714V686.981C713.668 686.992 713.335 687 713 687C696.431 687 683 673.569 683 657C683 640.431 696.431 627 713 627C713.335 627 713.668 627.007 714 627.018V562H863C863 545.431 876.431 532 893 532Z" />
 
-<path id="piece-10" d="M536 532C552.569 532 566 545.431 566 562C566 562.335 565.992 562.668 565.981 563H714V627.018C713.668 627.007 713.335 627 713 627C696.431 627 683 640.431 683 657C683 673.569 696.431 687 713 687C713.335 687 713.668 686.992 714 686.981V750.5H357V689C373.569 689 387 675.569 387 659C387 642.431 373.569 629 357 629V563H506.019C506.008 562.668 506 562.335 506 562C506 545.431 519.431 532 536 532Z" />
+    <path id="piece-10" d="M536 532C552.569 532 566 545.431 566 562C566 562.335 565.992 562.668 565.981 563H714V627.018C713.668 627.007 713.335 627 713 627C696.431 627 683 640.431 683 657C683 673.569 696.431 687 713 687C713.335 687 713.668 686.992 714 686.981V750.5H357V689C373.569 689 387 675.569 387 659C387 642.431 373.569 629 357 629V563H506.019C506.008 562.668 506 562.335 506 562C506 545.431 519.431 532 536 532Z" />
 
-<path id="piece-11" d="M506.019 188C506.546 204.106 519.766 217 536 217C552.234 217 565.454 204.106 565.981 188H714V253.018C713.668 253.007 713.335 253 713 253C696.431 253 683 266.431 683 283C683 299.569 696.431 313 713 313C713.335 313 713.668 312.992 714 312.981V375.5H565.994C565.727 359.162 552.402 346 536 346C519.598 346 506.273 359.162 506.006 375.5H357V309C340.431 309 327 295.569 327 279C327 262.431 340.431 249 357 249V188H506.019Z" />
+    <path id="piece-11" d="M506.019 188C506.546 204.106 519.766 217 536 217C552.234 217 565.454 204.106 565.981 188H714V253.018C713.668 253.007 713.335 253 713 253C696.431 253 683 266.431 683 283C683 299.569 696.431 313 713 313C713.335 313 713.668 312.992 714 312.981V375.5H565.994C565.727 359.162 552.402 346 536 346C519.598 346 506.273 359.162 506.006 375.5H357V309C340.431 309 327 295.569 327 279C327 262.431 340.431 249 357 249V188H506.019Z" />
 
-</defs>
+    </defs>
 
-            <!-- Ảnh nền mờ làm hình gợi ý, dùng CHUNG hệ tọa độ với mảnh ghép -->
-<image
-    id="bg-hint-img"
-    href="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png"
-    x="0" y="0"
-    width="1071" height="750"
-    preserveAspectRatio="none"
-    opacity="0.18"
-    style="pointer-events:none" />
+                <!-- Ảnh nền mờ làm hình gợi ý, dùng CHUNG hệ tọa độ với mảnh ghép -->
+    <image
+        id="bg-hint-img"
+        href="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png"
+        x="0" y="0"
+        width="1071" height="750"
+        preserveAspectRatio="none"
+        opacity="0.18"
+        style="pointer-events:none" />
 
-    <!-- nơi chứa 12 mảnh -->
-    <g id="pieces"></g>
-</svg>
+        <!-- nơi chứa 12 mảnh -->
+        <g id="pieces"></g>
+    </svg>
+        </div>
     </div>
-</div>
-
+                </div>
             </div>
         </div>
     </div>
-     <script src="minigame.js"></script>
+
+    <script src="minigame.js"></script>
 
     <script>
     // Test nút thông báo
@@ -479,153 +481,6 @@
         showNotification(3);
     }, 2000);
     </script>
-
-    <script>
-        // ✅ QUẢN LÝ Z-INDEX ĐỘNG - OPTIMIZED VERSION
-        document.addEventListener('DOMContentLoaded', () => {
-            const chatWindow = document.querySelector('.chat-window');
-            const chatbotBtn = document.querySelector('.chatbot-button');
-            const foodPlannerPanel = document.querySelector('.food-planner-panel');
-            const musicPanel = document.querySelector('.music-panel');
-            const musicBtn = document.querySelector('.music-player-btn');
-            const miniGameOverlay = document.getElementById('miniGameOverlay');
-            const sidebar = document.getElementById('sidebar'); 
-            
-            // ⚡ CACHE Z-INDEX VALUES (không phải tính lại mỗi lần)
-            const Z_INDEX = {
-                MINI_GAME_ACTIVE: {
-                    chat: '999999',
-                    food: '999999',
-                    music: '10000002',
-                    musicBtn: '10000002',
-                    sidebar: '10000003'
-                },
-                CHAT_ACTIVE: {
-                    chat: '10000001',
-                    food: '9999999',
-                    music: '9999998',
-                    musicBtn: '999997',
-                    sidebar: '10000002'
-                },
-                FOOD_ACTIVE: {
-                    chat: '9999999',
-                    food: '10000001',
-                    music: '9999998',
-                    musicBtn: '999997',
-                    sidebar: '10000002'
-                },
-                MUSIC_ACTIVE: {
-                    chat: '9999999',
-                    food: '9999999',
-                    music: '10000001',
-                    musicBtn: '999997',
-                    sidebar: '10000002'
-                },
-                DEFAULT: {
-                    chat: '1000000',
-                    food: '9999999',
-                    music: '99999998',
-                    musicBtn: '999997',
-                    sidebar: '100000000'
-                }
-            };
-            
-            // 🚀 HÀM UPDATE Z-INDEX - SIMPLIFIED
-            function updateZIndex() {
-                const isMiniGameOpen = miniGameOverlay && !miniGameOverlay.classList.contains('hidden');
-                const isChatOpen = chatWindow && chatWindow.classList.contains('open');
-                const isFoodOpen = foodPlannerPanel && foodPlannerPanel.classList.contains('active');
-                const isMusicOpen = musicPanel && musicPanel.classList.contains('open');
-                
-                let zIndexSet;
-                
-                // Xác định state và lấy z-index tương ứng
-                if (isMiniGameOpen) {
-                    zIndexSet = Z_INDEX.MINI_GAME_ACTIVE;
-                } else if (isChatOpen) {
-                    zIndexSet = Z_INDEX.CHAT_ACTIVE;
-                } else if (isFoodOpen) {
-                    zIndexSet = Z_INDEX.FOOD_ACTIVE;
-                } else if (isMusicOpen) {
-                    zIndexSet = Z_INDEX.MUSIC_ACTIVE;
-                } else {
-                    zIndexSet = Z_INDEX.DEFAULT;
-                }
-                
-                // Apply z-index một lần (batch update)
-                if (chatWindow) chatWindow.style.zIndex = zIndexSet.chat;
-                if (foodPlannerPanel) foodPlannerPanel.style.zIndex = zIndexSet.food;
-                if (musicPanel) musicPanel.style.zIndex = zIndexSet.music;
-                if (musicBtn) musicBtn.style.zIndex = zIndexSet.musicBtn;
-                if (sidebar) sidebar.style.zIndex = zIndexSet.sidebar;
-            }
-            
-            // ⚡ DEBOUNCED UPDATE (tránh gọi nhiều lần liên tục)
-            let updateTimeout;
-            function scheduleUpdate() {
-                if (updateTimeout) return; // Nếu đang có schedule rồi thì bỏ qua
-                
-                updateTimeout = requestAnimationFrame(() => {
-                    updateZIndex();
-                    updateTimeout = null;
-                });
-            }
-            
-            // 🎯 LẮNG NGHE THAY ĐỔI
-            if (chatbotBtn) {
-                chatbotBtn.addEventListener('click', scheduleUpdate);
-            }
-            
-            if (foodPlannerPanel) {
-                new MutationObserver(scheduleUpdate).observe(foodPlannerPanel, { 
-                    attributes: true, 
-                    attributeFilter: ['class'] 
-                });
-            }
-            
-            if (musicPanel) {
-                new MutationObserver(scheduleUpdate).observe(musicPanel, { 
-                    attributes: true, 
-                    attributeFilter: ['class'] 
-                });
-            }
-            
-            if (miniGameOverlay) {
-                new MutationObserver(scheduleUpdate).observe(miniGameOverlay, { 
-                    attributes: true, 
-                    attributeFilter: ['class'] 
-                });
-            }
-            
-            // Khởi tạo lần đầu
-            updateZIndex();
-        });
-    </script>
-
-    <style>
-    /* ========== FIX HORIZONTAL SCROLL ========== */
-    html, body {
-        overflow-x: hidden !important;
-        max-width: 100vw !important;
-    }
-
-    * {
-        box-sizing: border-box !important;
-    }
-
-    .chat-window {
-        max-width: calc(100vw - 60px) !important;
-    }
-
-    .chat-history-sidebar {
-        max-width: 260px !important;
-    }
-
-    .speech-bubble {
-        max-width: 240px !important;
-        word-wrap: break-word !important;
-    }
-    </style>
 
 </body>
 </html>
