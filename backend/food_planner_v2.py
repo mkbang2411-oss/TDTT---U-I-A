@@ -2577,6 +2577,11 @@ def get_food_planner_html():
     transform: translateY(-4px) scale(1.05);
     box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
+/* 🔥 STYLE ĐẶC BIỆT CHO NÚT THOÁT */
+.action-btn[onclick*="exitSharedPlanView"]:hover {
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important;
+    box-shadow: 0 8px 24px rgba(231, 76, 60, 0.4) !important;
+}
 
 .action-btn:active {
     transform: translateY(-2px) scale(1.02);
@@ -3476,23 +3481,25 @@ async function loadSavedPlans(planId) {
         
         // Nếu có planId, load plan đó
         if (planId) {
-            const plan = allPlans.find(p => p.id === planId);
-            
-            if (plan) {
-                currentPlan = {};
-                
-                // 🔥 XỬ LÝ SHARED PLAN
-                if (plan.is_shared) {
-                    isSharedPlan = true;
-                    sharedPlanOwnerId = plan.owner_id;
-                    sharedPlanOwnerName = plan.owner_username;
-                    hasEditPermission = (plan.permission === 'edit');
-                } else {
-                    isSharedPlan = false;
-                    sharedPlanOwnerId = null;
-                    sharedPlanOwnerName = '';
-                    hasEditPermission = false;
-                }
+    const plan = allPlans.find(p => p.id === planId);
+    
+    if (plan) {
+        currentPlan = {};
+        
+        // 🔥 XỬ LÝ SHARED PLAN
+        if (plan.is_shared) {
+            isSharedPlan = true;
+            isViewingSharedPlan = true; // 🔥 THÊM DÒNG NÀY
+            sharedPlanOwnerId = plan.owner_id;
+            sharedPlanOwnerName = plan.owner_username;
+            hasEditPermission = (plan.permission === 'edit');
+        } else {
+            isSharedPlan = false;
+            isViewingSharedPlan = false; // 🔥 THÊM DÒNG NÀY
+            sharedPlanOwnerId = null;
+            sharedPlanOwnerName = '';
+            hasEditPermission = false;
+        }
                 
                 // 🔥 CHUYỂN ĐỔI TỪ plan_data
                 const planData = plan.plan_data;
@@ -3571,6 +3578,7 @@ async function deleteSavedPlan(planId) {
 
 // ========== TẠO LỊCH TRÌNH TRỐNG MỚI ==========
 function createNewEmptyPlan() {
+    isViewingSharedPlan = false;
     const now = new Date();
     const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
     const planName = prompt('Đặt tên cho lịch trình:', `Lịch trình ngày ${dateStr}`);
@@ -3712,7 +3720,8 @@ function openFoodPlanner() {
 function closeFoodPlanner() {
     document.getElementById('foodPlannerPanel').classList.remove('active');
     isPlannerOpen = false;
-    
+     // 🔥 RESET trạng thái xem shared plan khi đóng panel
+    isViewingSharedPlan = false;
     // ✅ Cleanup toàn bộ
     clearRoutes();
     stopAutoScroll();
@@ -4246,6 +4255,7 @@ async function findSuggestedMichelin() {
 
 // ========== AUTO MODE: GENERATE PLAN ==========
 async function generateAutoPlan() {
+isViewingSharedPlan = false;
     const resultDiv = document.getElementById('planResult');
 
     window.loadedFromSavedPlan = false;
@@ -4461,6 +4471,7 @@ let isSharedPlan = false;
 let sharedPlanOwnerId = null;
 let hasEditPermission = false;
 let sharedPlanOwnerName = ''; // ✅ THÊM DÒNG NÀY
+let isViewingSharedPlan = false; // 🔥 BIẾN MỚI - theo dõi có đang xem shared plan không
 
 async function sharePlan() {
     if (!currentPlan || !currentPlanId) {
@@ -4601,6 +4612,15 @@ function displayPlanVertical(plan, editMode = false) {
     // 🔥 TÍNH TỔNG KINH PHÍ
     const budget = calculateTotalBudget(plan);
     
+    // 🔥 ẨN/HIỆN FILTERS DựA vào trạng thái xem shared plan
+const filtersWrapper = document.querySelector('.filters-wrapper-new');
+if (filtersWrapper) {
+    if (isViewingSharedPlan) {
+        filtersWrapper.style.display = 'none'; // Ẩn khi xem shared plan
+    } else {
+        filtersWrapper.style.display = 'block'; // Hiện khi không xem shared plan
+    }
+}
 
    let html = `
 <div class="schedule-header">
@@ -4616,9 +4636,20 @@ function displayPlanVertical(plan, editMode = false) {
         ` : ''}
     </div>
     <div class="action-buttons" id="actionButtons">
-        ${isSharedPlan ? `
-            ${hasEditPermission ? `
-                <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
+    ${isViewingSharedPlan ? `
+        <button class="action-btn" onclick="exitSharedPlanView()" 
+            style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);" 
+            title="Thoát chế độ xem">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+            <span class="btn-label">Thoát xem</span>
+        </button>
+    ` : ''}
+    
+    ${isSharedPlan ? `
+        ${hasEditPermission ? `
+            <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                     </svg>
@@ -6819,6 +6850,41 @@ async function submitSuggestion() {
         console.error('Error submitting suggestion:', error);
         alert('Không thể gửi đề xuất');
     }
+}
+// ========== EXIT SHARED PLAN VIEW ==========
+function exitSharedPlanView() {
+    if (!confirm('Bạn có chắc muốn thoát chế độ xem shared plan?')) return;
+    
+    // Reset tất cả trạng thái
+    isViewingSharedPlan = false;
+    isSharedPlan = false;
+    sharedPlanOwnerId = null;
+    sharedPlanOwnerName = '';
+    hasEditPermission = false;
+    currentPlan = null;
+    currentPlanId = null;
+    isEditMode = false;
+    waitingForPlaceSelection = null;
+    
+    // Xóa routes trên map
+    clearRoutes();
+    
+    // Clear nội dung
+    const resultDiv = document.getElementById('planResult');
+    if (resultDiv) {
+        resultDiv.innerHTML = '';
+    }
+    
+    // Hiện lại filters
+    const filtersWrapper = document.querySelector('.filters-wrapper-new');
+    if (filtersWrapper) {
+        filtersWrapper.style.display = 'block';
+    }
+    
+    // Reload danh sách plans
+    loadSavedPlans();
+    
+    console.log('✅ Đã thoát chế độ xem shared plan');
 }
 </script>
 '''
