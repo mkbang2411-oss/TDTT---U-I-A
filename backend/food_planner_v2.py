@@ -3237,8 +3237,21 @@ function displaySavedPlansList(plans) {
         return;
     }
     
+    // 🔥 LỌC TRÙNG LẶP - CHỈ GIỮ 1 PLAN DUY NHẤT
+    const uniquePlans = [];
+    const seenIds = new Set();
+    
+    plans.forEach(plan => {
+        if (!seenIds.has(plan.id)) {
+            seenIds.add(plan.id);
+            uniquePlans.push(plan);
+        }
+    });
+    
+    console.log('🔍 Original plans:', plans.length, 'Unique plans:', uniquePlans.length);
+    
     // ✅ Nếu có plans → thêm từng plan vào html
-    plans.forEach((plan, index) => {
+    uniquePlans.forEach((plan, index) => {
         // 🔥 CODE FIX TIMEZONE
         const rawCreated = plan.created_at || plan.savedAt || null;
 
@@ -3303,8 +3316,10 @@ function displaySavedPlansList(plans) {
                     ${plan.is_shared ? `<div style="font-size: 11px; color: #2196F3; margin-top: 4px;">👤 ${plan.owner_username}</div>` : ''}
                 </div>
                 ${!plan.is_shared ? `
-                    <button class="delete-plan-btn" onclick="event.stopPropagation(); deleteSavedPlan(${plan.id})">×</button>
-                ` : ''}
+                    <button class="delete-plan-btn" onclick="event.stopPropagation(); deleteSavedPlan(${plan.id})" title="Xóa lịch trình">×</button>
+                ` : `
+                    <button class="delete-plan-btn" onclick="event.stopPropagation(); leaveSharedPlan(${plan.id})" title="Ngừng xem plan này" style="background: #FF9800;">×</button>
+                `}
             </div>
         `;
     });
@@ -3483,6 +3498,7 @@ async function loadSavedPlans(planId) {
         // ✅ LUÔN HIỂN THỊ SECTION
         section.style.display = 'block';
         
+        
         // ✅ GỘP 2 DANH SÁCH
         const allPlans = [...savedPlans, ...sharedPlans];
         
@@ -3544,6 +3560,9 @@ async function loadSavedPlans(planId) {
                 if (section) {
                     section.style.display = 'block';
                 }
+                if (!plan.is_shared) {
+                    checkPendingSuggestions(planId);
+                }
             }
         }
     } catch (error) {
@@ -3584,7 +3603,74 @@ async function deleteSavedPlan(planId) {
         alert('❌ Không thể xóa lịch trình!');
     }
 }
+// ========== DELETE PLAN - Xóa từ Database Django ==========
+async function deleteSavedPlan(planId) {
+    if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/delete/${planId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
 
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('✅ Đã xóa kế hoạch!');
+            
+            if (currentPlanId === planId) {
+                currentPlanId = null;
+                currentPlan = null;
+                document.getElementById('planResult').innerHTML = '';
+                isEditMode = false;
+            }
+            
+            await loadSavedPlans();
+        } else {
+            alert('❌ Lỗi: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting plan:', error);
+        alert('❌ Không thể xóa lịch trình!');
+    }
+}
+
+// ========== LEAVE SHARED PLAN ==========
+async function leaveSharedPlan(planId) {
+    if (!confirm('Bạn có chắc muốn ngừng xem lịch trình này? Lịch trình sẽ biến mất khỏi danh sách của bạn')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/leave-shared/${planId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('✅ Đã ngừng xem lịch trình!');
+            
+            if (currentPlanId === planId) {
+                currentPlanId = null;
+                currentPlan = null;
+                document.getElementById('planResult').innerHTML = '';
+                isEditMode = false;
+                clearRoutes();
+            }
+            
+            await loadSavedPlans();
+        } else {
+            alert('❌ Lỗi: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error leaving shared plan:', error);
+        alert('❌ Không thể rời khỏi lịch trình!');
+    }
+}
 // ========== TẠO LỊCH TRÌNH TRỐNG MỚI ==========
 function createNewEmptyPlan() {
     isViewingSharedPlan = false;
@@ -4659,38 +4745,46 @@ if (filtersWrapper) {
     ${isSharedPlan ? `
         ${hasEditPermission ? `
             <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                    </svg>
-                    <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
-                </button>
-                <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                    </svg>
-                    <span class="btn-label">Gửi đề xuất</span>
-                </button>
-            ` : ''}
-        ` : `
-            <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                 </svg>
                 <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
             </button>
-            <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
+            <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                 </svg>
-                <span class="btn-label">Lưu</span>
+                <span class="btn-label">Gửi đề xuất</span>
             </button>
-            <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
-                </svg>
-                <span class="btn-label">Chia sẻ</span>
-            </button>
-        `}
+        ` : ''}
+    ` : `
+        <!-- 🔥 NÚT MỚI: XEM ĐỀ XUẤT -->
+        <button class="action-btn" onclick="openSuggestionsPanel()" id="suggestionsBtn" title="Xem đề xuất chỉnh sửa" style="display: none; background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+            </svg>
+            <span class="btn-label">Đề xuất (<span id="suggestionCount">0</span>)</span>
+        </button>
+        
+        <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+            <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
+        </button>
+        <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+            </svg>
+            <span class="btn-label">Lưu</span>
+        </button>
+        <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
+            </svg>
+            <span class="btn-label">Chia sẻ</span>
+        </button>
+    `}
     </div>
 </div>
   <div class="timeline-container"><div class="timeline-line"></div>
@@ -6865,6 +6959,420 @@ async function submitSuggestion() {
         alert('Không thể gửi đề xuất');
     }
 }
+// ========== CHECK PENDING SUGGESTIONS ==========
+async function checkPendingSuggestions(planId) {
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestions/${planId}/`);
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.suggestions && data.suggestions.length > 0) {
+            const suggestionsBtn = document.getElementById('suggestionsBtn');
+            const suggestionCount = document.getElementById('suggestionCount');
+            
+            if (suggestionsBtn && suggestionCount) {
+                suggestionsBtn.style.display = 'flex';
+                suggestionCount.textContent = data.suggestions.length;
+            }
+        }
+    } catch (error) {
+        console.error('Error checking suggestions:', error);
+    }
+}
+
+// ========== OPEN SUGGESTIONS PANEL ==========
+async function openSuggestionsPanel() {
+    if (!currentPlanId) {
+        alert('⚠️ Không có lịch trình đang mở');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestions/${currentPlanId}/`);
+        const data = await response.json();
+        
+        if (data.status !== 'success' || !data.suggestions || data.suggestions.length === 0) {
+            alert('ℹ️ Không có đề xuất nào');
+            return;
+        }
+        
+        const suggestions = data.suggestions;
+        
+        // Tạo HTML cho danh sách đề xuất
+        const suggestionsHTML = suggestions.map((sug, index) => `
+            <div style="
+                background: white;
+                border: 2px solid #E0E0E0;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+                transition: all 0.3s ease;
+            " onmouseover="this.style.borderColor='#9C27B0'" onmouseout="this.style.borderColor='#E0E0E0'">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <div>
+                        <div style="font-weight: 700; color: #333; font-size: 15px; margin-bottom: 4px;">
+                            👤 ${sug.suggested_by_username}
+                        </div>
+                        <div style="font-size: 12px; color: #999;">
+                            📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
+                        </div>
+                    </div>
+                    <div style="
+                        background: ${sug.status === 'pending' ? '#FFF3E0' : sug.status === 'approved' ? '#E8F5E9' : '#FFEBEE'};
+                        color: ${sug.status === 'pending' ? '#E65100' : sug.status === 'approved' ? '#2E7D32' : '#C62828'};
+                        padding: 4px 12px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 600;
+                    ">
+                        ${sug.status === 'pending' ? '⏳ Chờ duyệt' : sug.status === 'approved' ? '✅ Đã chấp nhận' : '❌ Đã từ chối'}
+                    </div>
+                </div>
+                
+                ${sug.message ? `
+                    <div style="
+                        background: #F5F5F5;
+                        padding: 10px;
+                        border-radius: 8px;
+                        margin-bottom: 12px;
+                        font-size: 13px;
+                        color: #666;
+                        border-left: 3px solid #9C27B0;
+                    ">
+                        💬 "${sug.message}"
+                    </div>
+                ` : ''}
+                
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button onclick="viewSuggestionComparison(${sug.id})" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%);
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">
+                        👁️ Xem chi tiết
+                    </button>
+                    
+                    ${sug.status === 'pending' ? `
+                        <button onclick="approveSuggestion(${sug.id})" style="
+                            flex: 1;
+                            background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+                            color: white;
+                            border: none;
+                            padding: 10px;
+                            border-radius: 8px;
+                            font-size: 13px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">
+                            ✅ Chấp nhận
+                        </button>
+                        
+                        <button onclick="rejectSuggestion(${sug.id})" style="
+                            flex: 1;
+                            background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
+                            color: white;
+                            border: none;
+                            padding: 10px;
+                            border-radius: 8px;
+                            font-size: 13px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">
+                            ❌ Từ chối
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        // Tạo modal
+        const modalHTML = `
+            <div id="suggestionsModal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.6);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="
+                    background: linear-gradient(135deg, #F5F5F5 0%, #EEEEEE 100%);
+                    padding: 24px;
+                    border-radius: 16px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 28px;">📝</span>
+                            <span>Đề xuất chỉnh sửa (${suggestions.length})</span>
+                        </h3>
+                        <button onclick="closeSuggestionsModal()" style="
+                            background: #F44336;
+                            color: white;
+                            border: none;
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 20px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">×</button>
+                    </div>
+                    
+                    ${suggestionsHTML}
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+    } catch (error) {
+        console.error('Error loading suggestions:', error);
+        alert('Không thể tải đề xuất');
+    }
+}
+
+function closeSuggestionsModal() {
+    const modal = document.getElementById('suggestionsModal');
+    if (modal) modal.remove();
+}
+
+// ========== VIEW SUGGESTION COMPARISON ==========
+async function viewSuggestionComparison(suggestionId) {
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            alert('❌ ' + data.message);
+            return;
+        }
+        
+        const suggestion = data.suggestion;
+        const currentData = suggestion.current_data;
+        const suggestedData = suggestion.suggested_data;
+        
+        // Tạo bảng so sánh
+        const comparisonHTML = `
+            <div id="comparisonModal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                z-index: 100000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            ">
+                <div style="
+                    background: white;
+                    padding: 30px;
+                    border-radius: 16px;
+                    max-width: 900px;
+                    width: 95%;
+                    max-height: 85vh;
+                    overflow-y: auto;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">🔍 So sánh thay đổi</h3>
+                        <button onclick="closeComparisonModal()" style="
+                            background: #F44336;
+                            color: white;
+                            border: none;
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 20px;
+                        ">×</button>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Cột trái: Hiện tại -->
+                        <div>
+                            <h4 style="
+                                background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                                color: white;
+                                padding: 12px;
+                                border-radius: 8px;
+                                margin: 0 0 16px 0;
+                            ">📅 Lịch trình hiện tại</h4>
+                            ${renderPlanPreview(currentData)}
+                        </div>
+                        
+                        <!-- Cột phải: Đề xuất -->
+                        <div>
+                            <h4 style="
+                                background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+                                color: white;
+                                padding: 12px;
+                                border-radius: 8px;
+                                margin: 0 0 16px 0;
+                            ">✨ Đề xuất thay đổi</h4>
+                            ${renderPlanPreview(suggestedData)}
+                        </div>
+                    </div>
+                    
+                    ${suggestion.status === 'pending' ? `
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button onclick="approveSuggestion(${suggestionId})" style="
+                                flex: 1;
+                                background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+                                color: white;
+                                border: none;
+                                padding: 14px;
+                                border-radius: 10px;
+                                font-size: 15px;
+                                font-weight: 700;
+                                cursor: pointer;
+                            ">✅ Chấp nhận đề xuất này</button>
+                            
+                            <button onclick="rejectSuggestion(${suggestionId})" style="
+                                flex: 1;
+                                background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
+                                color: white;
+                                border: none;
+                                padding: 14px;
+                                border-radius: 10px;
+                                font-size: 15px;
+                                font-weight: 700;
+                                cursor: pointer;
+                            ">❌ Từ chối đề xuất này</button>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', comparisonHTML);
+        
+    } catch (error) {
+        console.error('Error loading comparison:', error);
+        alert('Không thể tải chi tiết');
+    }
+}
+
+function renderPlanPreview(planData) {
+    if (!planData || planData.length === 0) {
+        return '<p style="color: #999; text-align: center;">Không có dữ liệu</p>';
+    }
+    
+    return planData.map((item, index) => {
+        const meal = item.data;
+        const place = meal.place;
+        
+        return `
+            <div style="
+                background: #F9F9F9;
+                border: 2px solid #E0E0E0;
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 12px;
+            ">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">${meal.icon || '🍽️'}</span>
+                    <div>
+                        <div style="font-weight: 700; color: #333; font-size: 14px;">
+                            ⏰ ${meal.time} - ${meal.title}
+                        </div>
+                        ${place ? `
+                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                🏪 ${place.ten_quan}
+                            </div>
+                        ` : '<div style="font-size: 12px; color: #999;">Chưa có quán</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function closeComparisonModal() {
+    const modal = document.getElementById('comparisonModal');
+    if (modal) modal.remove();
+}
+
+// ========== APPROVE SUGGESTION ==========
+async function approveSuggestion(suggestionId) {
+    if (!confirm('✅ Xác nhận chấp nhận đề xuất này?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-approve/${suggestionId}/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert('✅ Đã chấp nhận đề xuất!');
+            
+            // Đóng tất cả modal
+            closeComparisonModal();
+            closeSuggestionsModal();
+            
+            // Reload plan
+            if (currentPlanId) {
+                await loadSavedPlans(currentPlanId);
+            }
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error approving suggestion:', error);
+        alert('Không thể chấp nhận đề xuất');
+    }
+}
+
+// ========== REJECT SUGGESTION ==========
+async function rejectSuggestion(suggestionId) {
+    if (!confirm('❌ Xác nhận từ chối đề xuất này?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-reject/${suggestionId}/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert('✅ Đã từ chối đề xuất!');
+            
+            // Đóng tất cả modal
+            closeComparisonModal();
+            closeSuggestionsModal();
+            
+            // Reload suggestions
+            openSuggestionsPanel();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error rejecting suggestion:', error);
+        alert('Không thể từ chối đề xuất');
+    }
+}
+
+
 // ========== EXIT SHARED PLAN VIEW ==========
 function exitSharedPlanView() {
     if (!confirm('Bạn có chắc muốn thoát chế độ xem shared plan?')) return;

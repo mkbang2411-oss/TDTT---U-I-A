@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import re 
 import os
 
 from dotenv import load_dotenv 
@@ -186,7 +186,6 @@ MEDIA_URL = '/media/'
 
 # Đường dẫn thư mục thực tế trên máy tính để lưu file
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 # ===================================================
 # ✅ PRODUCTION SETTINGS - CLOUDFLARE TUNNEL
 # ===================================================
@@ -201,12 +200,12 @@ USE_X_FORWARDED_PORT = True
 # Session & Cookie settings
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = False  # ✅ Đổi thành False để test local + tunnel
+SESSION_COOKIE_SECURE = False  # ✅ False để test local + tunnel
 
 # CSRF settings
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SECURE = False  # ✅ Đổi thành False để test
+CSRF_COOKIE_SECURE = False  # ✅ False để test
 
 # ✅ CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
@@ -214,9 +213,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1',
     'http://localhost:5000',
     'http://127.0.0.1:5000',
-    'https://raising-crm-neighbors-dave.trycloudflare.com',
-    'https://resolve-shanghai-hanging-critical.trycloudflare.com',
-    'https://annex-occurrence-hobbies-rio.trycloudflare.com'
+    'https://*.trycloudflare.com',  # ✅ Wildcard cho TẤT CẢ subdomain Cloudflare
 ]
 
 # ✅ CORS settings
@@ -226,9 +223,11 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1',
     'http://localhost:5000',
     'http://127.0.0.1:5000',
-    'https://raising-crm-neighbors-dave.trycloudflare.com',
-    'https://resolve-shanghai-hanging-critical.trycloudflare.com',
-    'https://annex-occurrence-hobbies-rio.trycloudflare.com',
+]
+
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.trycloudflare\.com$",  # ✅ Match tất cả *.trycloudflare.com
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -237,7 +236,6 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'authorization',
 ]
-
 # ==========================================
 # 📧 CẤU HÌNH EMAIL SMTP (GMAIL)
 # ==========================================

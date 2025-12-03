@@ -28,4 +28,10 @@ urlpatterns = [
     path('food-plan/suggestions/<int:plan_id>/', views.get_plan_suggestions_api, name='get_plan_suggestions'),
     path('food-plan/suggestion/review/<int:suggestion_id>/', views.review_suggestion_api, name='review_suggestion'),
     path('my-friends/', views.get_current_user_friends, name='get_current_user_friends'),
+     path('food-plan/suggestions/<int:plan_id>/', views.get_plan_suggestions_api, name='get_plan_suggestions'),
+    path('food-plan/suggestion-detail/<int:suggestion_id>/', views.get_suggestion_detail_api, name='get_suggestion_detail'),
+    path('food-plan/suggestion-approve/<int:suggestion_id>/', views.approve_suggestion_api, name='approve_suggestion'),
+    path('food-plan/suggestion-reject/<int:suggestion_id>/', views.reject_suggestion_api, name='reject_suggestion'),
+    path('food-plan/leave-shared/<int:plan_id>/', views.leave_shared_plan_api, name='leave_shared_plan'),
+
 ]
