@@ -351,7 +351,7 @@ def save_chat_message(request):
                 try:
                     conversation = ChatConversation.objects.get(id=conversation_id, user=request.user)
                     # Cập nhật thời gian để đoạn chat này nhảy lên đầu danh sách Sidebar
-                    conversation.updated_at = timezone.now() 
+                    conversation.updated_at = timezone.now()
                     conversation.save()
                 except ChatConversation.DoesNotExist:
                     return JsonResponse({'status': 'error', 'message': 'Không tìm thấy đoạn chat'}, status=404)
@@ -359,10 +359,20 @@ def save_chat_message(request):
             # CASE B: Chưa có ID (Chat mới) -> Tạo mới ngay tại thời điểm này
             else:
                 if sender == 'user':
-                    title_text = content[:40] + "..." if len(content) > 40 else content
+                    # ✅ Ưu tiên dùng custom_title nếu có, nếu không thì dùng content
+                    custom_title = data.get('custom_title', None)
+
+                    if custom_title:
+                        title_text = custom_title[:100]  # Giới hạn 100 ký tự
+                        print(f"[BACKEND] Dùng custom title: {title_text}")
+                    else:
+                        auto_title_source = data.get('content', 'New Chat')
+                        title_text = auto_title_source[:50]  # Giới hạn 50 ký tự
+                        print(f"[BACKEND] Dùng content làm title: {title_text}")
+
                     conversation = ChatConversation.objects.create(
                         user=request.user,
-                        title=title_text 
+                        title=title_text
                     )
                 else:
                     # Nếu sender là 'ai' mà không có ID -> Lỗi logic frontend
@@ -2514,4 +2524,142 @@ def review_suggestion_api(request, suggestion_id):
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        }, status=500)    
+        }, status=500)            
+
+# ==========================================================
+# 🍽️ USER PREFERENCES APIs
+# ==========================================================
+
+from .models import UserPreference
+
+@login_required
+@require_http_methods(["GET"])
+def get_user_preferences(request):
+    """
+    Lấy toàn bộ sở thích của user
+    GET /api/preferences/
+    """
+    try:
+        preferences = UserPreference.objects.filter(user=request.user)
+        
+        # Phân loại theo type
+        data = {
+            'likes': [p.item for p in preferences.filter(preference_type='like')],
+            'dislikes': [p.item for p in preferences.filter(preference_type='dislike')],
+            'allergies': [p.item for p in preferences.filter(preference_type='allergy')]
+        }
+        
+        return JsonResponse({
+            'status': 'success',
+            'preferences': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def save_user_preference(request):
+    """
+    Lưu 1 preference mới
+    POST /api/preferences/
+    Body: {
+        "type": "like",  // like/dislike/allergy
+        "item": "Phở bò"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        pref_type = data.get('type')
+        item = data.get('item', '').strip()
+        
+        if not pref_type or not item:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu thông tin type hoặc item'
+            }, status=400)
+        
+        if pref_type not in ['like', 'dislike', 'allergy']:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Type không hợp lệ'
+            }, status=400)
+        
+        # Tạo hoặc bỏ qua nếu đã tồn tại
+        preference, created = UserPreference.objects.get_or_create(
+            user=request.user,
+            preference_type=pref_type,
+            item=item
+        )
+        
+        if created:
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Đã lưu: {item}',
+                'is_new': True
+            })
+        else:
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Đã tồn tại',
+                'is_new': False
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def delete_user_preference(request):
+    """
+    Xóa 1 preference
+    POST /api/preferences/delete/
+    Body: {
+        "type": "like",
+        "item": "Phở bò"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        pref_type = data.get('type')
+        item = data.get('item', '').strip()
+        
+        if not pref_type or not item:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu thông tin'
+            }, status=400)
+        
+        # Tìm và xóa
+        deleted_count, _ = UserPreference.objects.filter(
+            user=request.user,
+            preference_type=pref_type,
+            item=item
+        ).delete()
+        
+        if deleted_count > 0:
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Đã xóa: {item}'
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không tìm thấy'
+            }, status=404)
+            
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

@@ -356,4 +356,27 @@ class PlanEditSuggestion(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Suggestion by {self.suggested_by.username} - {self.status}"    
+        return f"Suggestion by {self.suggested_by.username} - {self.status}"            
+    
+class UserPreference(models.Model):
+    """
+    Lưu sở thích ăn uống của user (likes/dislikes/allergies)
+    """
+    PREFERENCE_TYPES = [
+        ('like', 'Thích'),
+        ('dislike', 'Không thích'),
+        ('allergy', 'Dị ứng'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='food_preferences')
+    preference_type = models.CharField(max_length=20, choices=PREFERENCE_TYPES)
+    item = models.CharField(max_length=200)  # Tên món/nguyên liệu
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'preference_type', 'item')  # Tránh trùng lặp
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        type_icon = {'like': '❤️', 'dislike': '❌', 'allergy': '⚠️'}
+        return f"{type_icon.get(self.preference_type, '')} {self.user.username} - {self.item}"

@@ -484,6 +484,12 @@ function getRealtimeStatus(hoursStr) {
 function openChatboxAutomatically() {
   console.log("🚨 Mở chatbox tự động sau 3 lần search thất bại");
 
+  // 🔍 LẤY TEXT TỪ Ô SEARCH QUÁN
+  const searchInput = document.getElementById("query");
+  const searchText = searchInput ? searchInput.value.trim() : "";
+  
+  console.log("📝 Text user đã search:", searchText);
+
   // Tìm các elements của chatbox
   const chatWindow = document.getElementById("chatWindow");
   const chatbotBtn = document.getElementById("chatbotBtn");
@@ -491,13 +497,11 @@ function openChatboxAutomatically() {
 
   if (!chatWindow || !chatbotBtn) {
     console.error("❌ Không tìm thấy chatbox elements!");
-    alert(
-      "🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!"
-    );
+    alert("🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!");
     return;
   }
 
-  // ✅ Mở chatbox (giống logic openChatWindow trong chatbot)
+  // ✅ Mở chatbox
   chatWindow.style.display = "flex";
   chatWindow.classList.add("open");
   chatbotBtn.style.display = "none";
@@ -505,11 +509,27 @@ function openChatboxAutomatically() {
   speechBubble.style.display = "none";
   speechBubble.classList.add("hidden");
 
-  // ✅ Tự động gửi tin nhắn gợi ý
+  // ✅ XỬ LÝ TỰ ĐỘNG GỬI TEXT CHO GEMINI
   setTimeout(() => {
     const messagesArea = document.getElementById("messagesArea");
-    if (messagesArea) {
-      // Thêm tin nhắn bot
+    
+    if (!messagesArea) return;
+
+    // 🔥 NẾU CÓ TEXT SEARCH → GỬI TRỰC TIẾP CHO GEMINI
+    if (searchText && searchText.length > 0) {
+      console.log("🤖 Gửi text cho Gemini xử lý:", searchText);
+      
+      // ✅ Tạo message đặc biệt với prefix [SEARCH_CORRECTION]
+      const correctionMessage = `[SEARCH_CORRECTION] ${searchText}`;
+      
+      // ✅ Hiển thị typing indicator
+      showTyping();
+      
+      // ✅ GỌI GEMINI API TRỰC TIẾP (KHÔNG HIỂN thị tin nhắn user)
+      callGeminiAPI(correctionMessage);
+      
+    } else {
+      // 🔥 KHÔNG CÓ TEXT → HIỂN THỊ TIN NHẮN MẶC ĐỊNH
       const autoMessage = `
         <div class="message bot">
           <div class="message-avatar">🍜</div>
@@ -527,17 +547,15 @@ function openChatboxAutomatically() {
       `;
       messagesArea.innerHTML += autoMessage;
       messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
 
-      // Focus vào input để user nhập liền
-      const messageInput = document.getElementById("messageInput");
-      if (messageInput) {
-        messageInput.focus();
-      }
+    // Focus vào input
+    const messageInput = document.getElementById("messageInput");
+    if (messageInput) {
+      messageInput.focus();
     }
   }, 500);
 }
-
-
 
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
@@ -819,7 +837,7 @@ if (placeId) {
       reviewFormHTML = `
         <div class="review-form">
           <h3>📝 Thêm đánh giá của bạn</h3>
-          <p>Vui lòng <a href="http://127.0.0.1:8000/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
+          <p>Vui lòng <a href="/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
         </div>
       `;
     }

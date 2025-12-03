@@ -104,7 +104,7 @@ def extract_menu_from_csv(csv_path: str = "Data_with_flavor.csv"):
             'há cảo', 'mandu', 'wonton', 'dumpling',
             'peking duck', 'mapo tofu', 'kung pao',
             'sweet sour', 'fried rice', 'chow mein',
-            'spring roll', 'congee', 'há cảo', 'sủi cảo',
+            'spring roll', 'congee', 'há cảo', 'sủi cảo', 'mì sủi cảo',
             
             # Món Thái
             'pad thai', 'tom yum', 'tom kha', 'green curry',
@@ -807,19 +807,35 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             .message-content ol {{
                 padding-left: 20px;
                 margin: 6px 0;
+                list-style-position: outside;  /* ✅ THÊM */
             }}
 
             .message-content ol li {{
-                margin-bottom: 15px;
-                line-height: 1.55;
+                margin-bottom: 24px;  /* ✅ TĂNG LÊN */
+                line-height: 1.6;
                 text-align: justify;
                 text-justify: inter-word;
+                padding-bottom: 12px;  /* ✅ THÊM PADDING DƯỚI */
             }}
 
-            .message-content ol li:not(:last-child)::after {{
-                content: "";
+            /* ✅ XÓA DÒNG ::after ĐI - KHÔNG CẦN NỮA */
+
+            /* ✅ MÓN CUỐI KHÔNG CẦN MARGIN */
+            .message-content ol li:last-child {{
+                margin-bottom: 0;
+                padding-bottom: 0;
+            }}
+
+            /* ✅ PARAGRAPH TRONG LI */
+            .message-content ol li p {{
+                margin: 6px 0;
+            }}
+
+            /* ✅ LINE BREAK TRONG LI */
+            .message-content li br {{
                 display: block;
-                height: 8px;           /* thêm khoảng trống 8px dưới mỗi món */
+                content: "";
+                margin-bottom: 8px;
             }}
 
             .message-content p {{
@@ -1547,6 +1563,59 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     font-size: 15px;
                 }}
             }}
+
+            /* ===== STYLING CHO WARNING/NOTE TEXT ===== */
+            .message-content .warning-note {{
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+                margin: 4px 0 8px 0;  /* ✅ Giảm margin trên xuống 4px */
+                padding: 8px 12px;
+                background: #FFF3CD;
+                border-left: 3px solid #FFC107;
+                border-radius: 6px;
+            }}
+
+            /* ✅ THÊM RULE MỚI: Nếu warning nằm ngay sau description */
+            .message-content li .warning-note:first-of-type {{
+                margin-top: 2px;  /* Sát hơn nữa với description */
+            }}
+
+            /* ✅ THÊM: Giảm khoảng cách dưới description nếu có warning */
+            .message-content ol li p + .warning-note {{
+                margin-top: 2px;
+            }}
+
+            .message-content .warning-note.allergy {{
+                background: #FFEBEE;
+                border-left-color: #F44336;
+            }}
+
+            .message-content .warning-note.safe {{
+                background: #E8F5E9;
+                border-left-color: #4CAF50;
+            }}
+
+            .message-content .warning-icon {{
+                font-size: 18px;
+                flex-shrink: 0;
+                margin-top: 2px;
+            }}
+
+            .message-content .warning-text {{
+                flex: 1;
+                font-size: 13px;
+                line-height: 1.5;
+                color: #333;
+            }}
+
+            /* Fix emoji ngón tay chỉ */
+            .message-content .note-emoji {{
+                display: inline-block;
+                margin-right: 6px;
+                font-size: 16px;
+                vertical-align: middle;
+            }}
             
         </style>
     </head>
@@ -1699,7 +1768,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     'azz', 'azzhole', 'a$$', 'd1ck', 'p0rn', 'porn', 'suck', 'sux', 'fux',
                     'fuxk', 'phuk', 'phuck', 'mf', 'mofo', 'wtfff', 'omfg', 'fml', 'fk',
                     'fkin', 'cum', 'cumming', 'orgasm', 'jerkoff', 'wank', 'nsfw',
-                    'horny', 'nude', 'sex', 'sexy', 'dumbass', 'dipshit', 'crap', 'hell'
+                    'horny', 'nude', 'sex', 'sexy', 'dumbass', 'dipshit', 'crap', 'hell', 'nigger',
                 ],
                 // 🇨🇳 Tiếng Trung (tục phổ biến, bao gồm Hán tự, pinyin, số viết tắt)
                 zh: [
@@ -1847,6 +1916,26 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                 return 'en';
             }}
+
+            // ===== LOAD USER PREFERENCES TỪ SERVER =====
+            async function loadUserPreferences() {{
+                try {{
+                    const response = await fetch(`${{API_BASE_URL}}/accounts/preferences/`, {{
+                        method: 'GET',
+                        credentials: 'include'
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.status === 'success') {{
+                            userPreferences = data.preferences;
+                            console.log('✅ Loaded preferences:', userPreferences);
+                        }}
+                    }}
+                }} catch (error) {{
+                    console.error('❌ Error loading preferences:', error);
+                }}
+            }}            
 
             function normalizeText(text) {{
                 if (!text) return '';
@@ -2022,9 +2111,38 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     'clock','flock','block','rock','shock','stock','lock','dock',
                     'assume','assure','associate','passive','classic','massive',
 
+                    'credit', 'edit', 'audit', 'reddit', 'condition',
+                    'traditional', 'additional', 'conditional', 'expedit',
+
+                    'fukuoka', 'fukushima', 'fukuda', 'tofu',
+
+                    'shift', 'shirt', 'fashion', 'cushion', 'position',
+                    'transition', 'exhibition', 'tradition', 'fishing',
+
+                    'class', 'glass', 'pass', 'grass', 'mass', 'bass',
+                    'classic', 'passage', 'massage', 'ассэ', 'sassafras',
+                    'assist', 'assess', 'assign', 'assure', 'associate',
+                    'assume', 'cassette', 'passport', 'password',
+                    
+                    'document', 'cucumber', 'circumference', 'accumulate',
+                    'circumstance', 'cumulative', 'vacuum', 'succumb',
+
+                    'hello', 'hell', 'shell', 'yell', 'bell', 'spell', 'smell',
+                    'button', 'butter', 'shut', 'shuttle', 'cut', 'hut', 'nut',
+                    'clock', 'flock', 'block', 'rock', 'shock', 'stock',
+                    'passive', 'massive', 'asset', 'cassette', 'long',
+
                     // Tiếng Việt - các từ có chứa "đ" nhưng không phải tục
                     'địa điểm','đi đâu','đến đó','đây đó','đi chơi','đi ăn',
                     'đi làm','đang đói','đang đi','đang ở','đúng đó',
+
+                    'ngay', 'ngày', 'ngày mai', 'ngày nay', 'ngay lập tức', 
+                    'ngay cả', 'ngay từ', 'ngay sau', 'ngay trước', 'ngay bên',
+                    'gay gắt', 'gay go', 'gay cấn', 'ngay thẳng', 'ngay thật', 'sắc',
+                    
+                    // --- Từ chứa "lồn/lon" nhưng không phải tục ---
+                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng',
+                    'salon', 'lớn', 'nguồn', 'ngày', 'gay go', 'long lanh', 'long trọng', 'long', 
 
                     // Tiếng Trung - chào hỏi
                     '你好','您好','哈喽','嗨','早上好','下午好','晚上好',
@@ -2212,13 +2330,17 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 let out = text;
                 let bad = result.match;
 
-                // 🔧 Tìm vị trí xuất hiện đầu tiên của từ tục
-                let start = out.toLowerCase().indexOf(bad.toLowerCase());
+                // 🔧 Tìm vị trí xuất hiện của từ tục (CHÍNH XÁC, KHÔNG BỎ DẤU)
+                // Tìm kiếm case-insensitive nhưng GIỮ NGUYÊN ký tự gốc
+                const lowerOut = out.toLowerCase();
+                const lowerBad = bad.toLowerCase();
+                let start = lowerOut.indexOf(lowerBad);
+                
                 if (start === -1) return out;
 
                 // Xác định điểm kết thúc: mở rộng tới khi gặp dấu cách hoặc dấu câu
                 let end = start + bad.length;
-                while (end < out.length && /[a-zA-Zà-ỹ0-9_]/.test(out[end])) {{
+                while (end < out.length && /[a-zA-ZÀ-ỹ0-9_]/.test(out[end])) {{
                     end++;
                 }}
 
@@ -2238,59 +2360,229 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 allergies: []
             }};
 
-            function extractPreferences(userMessage, botReply) {{
+            // 💾 HÀM LƯU PREFERENCE VÀO SERVER
+            async function savePreferenceToServer(type, item) {{
+                try {{
+                    console.log(`💾 [SAVE PREFERENCE] Đang lưu ${{type}}: ${{item}}`);
+                    
+                    const response = await fetch(`${{API_BASE_URL}}/accounts/preferences/save/`, {{
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            type: type,      // 'like', 'dislike', 'allergy'
+                            item: item       // Tên món/nguyên liệu
+                        }})
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        console.log(`✅ [SAVE PREFERENCE] Đã lưu ${{type}}: ${{item}}`, data);
+                    }} else {{
+                        console.error(`❌ [SAVE PREFERENCE] Lỗi lưu ${{type}}:`, response.status);
+                    }}
+                }} catch (error) {{
+                    console.error(`❌ [SAVE PREFERENCE] Exception:`, error);
+                }}
+            }}            
+
+            async function extractPreferences(userMessage, botReply) {{
                 const lowerMsg = userMessage.toLowerCase();
 
+                // 🍽️ EXTRACT LIKES
                 if (lowerMsg.includes('thích') || lowerMsg.includes('yêu') ||
                     lowerMsg.includes('ngon') || lowerMsg.includes('like') ||
                     lowerMsg.includes('love')) {{
                     const dishes = extractDishNames(userMessage + ' ' + botReply);
-                    dishes.forEach(dish => {{
+                    for (const dish of dishes) {{
                         if (!userPreferences.likes.includes(dish)) {{
                             userPreferences.likes.push(dish);
+                            await savePreferenceToServer('like', dish);  // ✅ GỌI API LƯU
                         }}
-                    }});
+                    }}
                 }}
 
+                // 🚫 EXTRACT DISLIKES
                 if (lowerMsg.includes('không thích') || lowerMsg.includes('ghét') ||
                     lowerMsg.includes('không ăn') || lowerMsg.includes('hate') ||
                     lowerMsg.includes("don't like")) {{
                     const dishes = extractDishNames(userMessage);
-                    dishes.forEach(dish => {{
+                    for (const dish of dishes) {{
                         if (!userPreferences.dislikes.includes(dish)) {{
                             userPreferences.dislikes.push(dish);
+                            await savePreferenceToServer('dislike', dish);  // ✅ GỌI API LƯU
                         }}
-                    }});
+                    }}
                 }}
 
+                // ⚠️ EXTRACT ALLERGIES
                 if (lowerMsg.includes('dị ứng') || lowerMsg.includes('allergic') ||
                     lowerMsg.includes('không ăn được')) {{
                     const ingredients = extractIngredients(userMessage);
-                    ingredients.forEach(ing => {{
+                    for (const ing of ingredients) {{
                         if (!userPreferences.allergies.includes(ing)) {{
                             userPreferences.allergies.push(ing);
+                            await savePreferenceToServer('allergy', ing);  // ✅ GỌI API LƯU
                         }}
-                    }});
+                    }}
                 }}
 
                 console.log('📊 User Preferences:', userPreferences);
             }}
 
-            function extractDishNames(text) {{
-                const dishKeywords = ['phở', 'bún', 'cơm', 'mì', 'bánh', 'chè', 'gỏi', 'nem', 'chả', 'canh', 'lẩu', 'pizza', 'burger', 'pasta', 'salad', 'soup'];
-                const dishes = [];
-
-                dishKeywords.forEach(keyword => {{
-                    if (text.toLowerCase().includes(keyword)) {{
-                        const index = text.toLowerCase().indexOf(keyword);
-                        const dishName = text.substring(index, index + 20).split(/[,.\n]/)[0].trim();
-                        if (dishName.length > 2 && dishName.length < 30) {{
-                            dishes.push(dishName);
+            // ===== HÀM HELPER: TRÍCH XUẤT TÊN MÓN CHÍNH XÁC =====
+            function extractDishNamesFromText(text) {{
+                const dishes = new Set();
+                
+                // 1. Trích xuất từ <span class="dish-name">...</span>
+                const spanMatches = text.matchAll(/<span class="dish-name">([^<]+)<\/span>/g);
+                for (const match of spanMatches) {{
+                    const dishName = match[1].trim();
+                    if (dishName.length > 2 && dishName.length < 50) {{
+                        // Loại bỏ phần trong ngoặc (translation)
+                        const cleanName = dishName.replace(/\s*\([^)]*\)/, '').trim();
+                        dishes.add(cleanName);
+                    }}
+                }}
+                
+                // 2. Trích xuất từ format numbered list: "1. Tên món:"
+                const listMatches = text.matchAll(/\d+\.\s+([^:]+):/g);
+                for (const match of listMatches) {{
+                    const dishName = match[1].trim();
+                    if (dishName.length > 2 && dishName.length < 50) {{
+                        const cleanName = dishName.replace(/\s*\([^)]*\)/, '').trim();
+                        dishes.add(cleanName);
+                    }}
+                }}
+                
+                // 3. Fallback: Tìm trong MENU_DATA.dishes
+                if (dishes.size === 0 && typeof MENU_DATA !== 'undefined') {{
+                    const lowerText = text.toLowerCase();
+                    MENU_DATA.dishes.forEach(dish => {{
+                        const lowerDish = dish.toLowerCase();
+                        // Chỉ match nếu là whole word
+                        const regex = new RegExp('\\b' + lowerDish.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&') + '\\b', 'i');
+                        if (regex.test(lowerText)) {{
+                            dishes.add(dish);
                         }}
+                    }});
+                }}
+                
+                console.log('🍽️ [EXTRACT DISHES] Found:', Array.from(dishes));
+                return Array.from(dishes);
+            }}
+
+            function extractIngredientsFromText(text) {{
+                const allIngredients = [
+                    // Hải sản
+                    'tôm', 'cua', 'cá', 'mực', 'ốc', 'nghêu', 'sò', 'hải sản', 'seafood',
+                    // Sữa & trứng
+                    'sữa', 'milk', 'trứng', 'egg',
+                    // Đậu & hạt
+                    'đậu', 'đậu phụ', 'đậu nành', 'lạc', 'hạt', 'hạt điều', 'hạnh nhân', 'peanut', 'nut',
+                    // Gluten
+                    'gluten', 'lúa mì', 'bột mì',
+                    // Khác
+                    'nấm', 'mushroom', 'hành', 'onion', 'tỏi', 'garlic'
+                ];
+                
+                const found = new Set();
+                const lowerText = text.toLowerCase();
+                
+                allIngredients.forEach(ing => {{
+                    const regex = new RegExp('\\b' + ing.toLowerCase().replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&') + '\\b', 'i');
+                    if (regex.test(lowerText)) {{
+                        found.add(ing);
                     }}
                 }});
+                
+                console.log('🥕 [EXTRACT INGREDIENTS] Found:', Array.from(found));
+                return Array.from(found);
+            }}
 
-                return dishes;
+            // ===== HÀM CHÍNH: TRÍCH XUẤT PREFERENCES =====
+            async function extractPreferences(userMessage, botReply) {{
+                const lowerMsg = userMessage.toLowerCase();
+                
+                console.log('🔍 [EXTRACT PREFERENCES] Analyzing...');
+                console.log('   User message:', userMessage.substring(0, 100));
+                console.log('   Bot reply:', botReply.substring(0, 100));
+
+                // 🍽️ EXTRACT LIKES
+                if (lowerMsg.includes('thích') || lowerMsg.includes('yêu') ||
+                    lowerMsg.includes('ngon') || lowerMsg.includes('like') ||
+                    lowerMsg.includes('love') || lowerMsg.includes('ưa')) {{
+                    
+                    console.log('❤️ [LIKES] Detected like keywords');
+                    
+                    // Trích xuất từ CẢ user message VÀ bot reply
+                    const dishesFromUser = extractDishNamesFromText(userMessage);
+                    const dishesFromBot = extractDishNamesFromText(botReply);
+                    const allDishes = [...new Set([...dishesFromUser, ...dishesFromBot])];
+                    
+                    console.log('   Dishes found:', allDishes);
+                    
+                    for (const dish of allDishes) {{
+                        if (!userPreferences.likes.includes(dish)) {{
+                            console.log(`   💾 Saving LIKE: ${{dish}}`);
+                            userPreferences.likes.push(dish);
+                            await savePreferenceToServer('like', dish);
+                        }} else {{
+                            console.log(`   ⏭️ Already liked: ${{dish}}`);
+                        }}
+                    }}
+                }}
+
+                // 🚫 EXTRACT DISLIKES
+                if (lowerMsg.includes('không thích') || lowerMsg.includes('ghét') ||
+                    lowerMsg.includes('không ăn') || lowerMsg.includes('hate') ||
+                    lowerMsg.includes("don't like") || lowerMsg.includes('không thích ăn') ||
+                    lowerMsg.includes('không muốn ăn')) {{
+                    
+                    console.log('❌ [DISLIKES] Detected dislike keywords');
+                    
+                    const dishesFromUser = extractDishNamesFromText(userMessage);
+                    const ingredientsFromUser = extractIngredientsFromText(userMessage);
+                    const allItems = [...new Set([...dishesFromUser, ...ingredientsFromUser])];
+                    
+                    console.log('   Items found:', allItems);
+                    
+                    for (const item of allItems) {{
+                        if (!userPreferences.dislikes.includes(item)) {{
+                            console.log(`   💾 Saving DISLIKE: ${{item}}`);
+                            userPreferences.dislikes.push(item);
+                            await savePreferenceToServer('dislike', item);
+                        }} else {{
+                            console.log(`   ⏭️ Already disliked: ${{item}}`);
+                        }}
+                    }}
+                }}
+
+                // ⚠️ EXTRACT ALLERGIES
+                if (lowerMsg.includes('dị ứng') || lowerMsg.includes('allergic') ||
+                    lowerMsg.includes('không ăn được') || lowerMsg.includes('allergy') ||
+                    lowerMsg.includes('bị dị ứng')) {{
+                    
+                    console.log('⚠️ [ALLERGIES] Detected allergy keywords');
+                    
+                    const ingredients = extractIngredientsFromText(userMessage);
+                    
+                    console.log('   Allergens found:', ingredients);
+                    
+                    for (const ing of ingredients) {{
+                        if (!userPreferences.allergies.includes(ing)) {{
+                            console.log(`   💾 Saving ALLERGY: ${{ing}}`);
+                            userPreferences.allergies.push(ing);
+                            await savePreferenceToServer('allergy', ing);
+                        }} else {{
+                            console.log(`   ⏭️ Already allergic: ${{ing}}`);
+                        }}
+                    }}
+                }}
+
+                console.log('📊 [FINAL PREFERENCES]', userPreferences);
             }}
 
             function extractIngredients(text) {{
@@ -2330,18 +2622,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 "Trong một vở kịch buồn...em diễn trọn cả hai vai💔",
                 "Anh hen em pickleball, ta von nhau pickleball...😻",
                 "Thơm phứcccc, yéhaaaaa😽",
-                "别害羞，来跟我聊聊吧 🌟",
-                "放心啦，随时都可以找我聊天 💌",
-                "遠慮しないで、話しかけてね 🌸",
-                "大丈夫だよ、気軽にメッセージしてね ✉️",
-                "부끄러워하지 말고 편하게 말 걸어줘 🌼",
-                "괜찮아, 언제든지 메시지 보내도 돼 📩",
                 "Don't be shy, just message me 🌈",
                 "I'm right here, talk to me anytime 💭",
-                "N’hésite pas, envoie-moi un message 🌻",
-                "Je suis là, parle-moi quand tu veux 📬",
-                "Non essere timido, scrivimi pure ⭐",
-                "Sono qui, puoi parlarmi quando vuoi 💫",
                 "장 푸억흥 선생님, 정말 멋지세요 🌟",
                 "장 푸억흥 선생님 덕분에 자신감이 생겼어요 💖",
                 "Ôi thôi chếccccc, nhắn tin với tui i🥰",
@@ -2350,12 +2632,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 "Ủa tưởng ai cũng biết UIAboss chứ tarrrr😼",
                 "Ngoan xin iu của UIAboss đâu òi taaa😽",
                 "Trời oi lâu rồi mới được pữa chấc lượng như z áaaaaa😻",
-                "Đứt chuỗi r pà ơi💔😿",
                 "Vỡ tannnn😿"
             ];
 
             const streakBubbleMessages = {{
                 frozen: [
+                    "Đứt chuỗi roài pà ơi💔😿",
                     "Ối! Streak của bạn đã đóng băng rồi 🧊 Nhắn tin ngay để khởi động lại nhé!",
                     "Chuỗi streak bị đóng băng rồi nè ❄️ Chat với mình để mở khóa lại đi!",
                     "Streak đã bị đứt rồi 😢 Nhưng không sao! Nhắn tin để bắt đầu lại nào!",
@@ -2606,24 +2888,33 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 }}
             }}
 
-            async function sendMessageToAPI(sender, content) {{
+            async function sendMessageToAPI(sender, content, customTitle = null) {{  // 👈 THÊM THAM SỐ
                 try {{
                     console.log('💾 [SAVE CHAT] Đang lưu tin nhắn...');
                     console.log('   - Sender:', sender);
                     console.log('   - Content:', content.substring(0, 50) + '...');
                     console.log('   - Current conversation ID:', currentConversationID);
+                    console.log('   - Custom Title:', customTitle);  // 👈 LOG THÊM
                     
+                    // 👉 TẠO BODY GỬI LÊN SERVER
+                    const requestBody = {{
+                        sender: sender,
+                        content: content,
+                        conversation_id: currentConversationID
+                    }};
+
+                    // 🆕 NẾU CÓ CUSTOM TITLE → THÊM VÀO REQUEST
+                    if (customTitle) {{
+                        requestBody.custom_title = customTitle;
+                    }}
+
                     const response = await fetch(`${{API_BASE_URL}}/save-chat/`, {{
                         method: 'POST',
                         credentials: 'include',
                         headers: {{
                             'Content-Type': 'application/json',
                         }},
-                        body: JSON.stringify({{
-                            sender: sender,
-                            content: content,
-                            conversation_id: currentConversationID
-                        }})
+                        body: JSON.stringify(requestBody)  // 👈 DÙNG requestBody
                     }});
 
                     if (response.ok) {{
@@ -2642,7 +2933,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                 currentConversationID = data.conversation_id;
                                 console.log('🆕 [SAVE CHAT] ĐÃ TẠO ĐOẠN CHAT MỚI!');
                                 console.log('   - ID mới:', currentConversationID);
-                                console.log('   - Title:', data.title);
+                                console.log('   - Title từ server:', data.title);   // có thể là custom_title bạn gửi lên
                                 
                                 console.log('🎯 [SAVE CHAT] Chuẩn bị gọi incrementStreak()...');
                                 
@@ -2684,6 +2975,9 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 // Gửi tin nhắn chào mừng ngẫu nhiên (Client-side only, không lưu DB vội)
                 const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
                 addMessage('bot', randomWelcome, false); // false = không lưu vào mảng local cũ
+
+                await loadUserPreferences();
+                console.log('✅ [SWITCH CHAT] Đã load lại preferences:', userPreferences);                
 
                 // Cập nhật sidebar (bỏ highlight)
                 renderHistoryList(null);
@@ -3039,6 +3333,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 
                 // Lần đầu mở lên: Tải danh sách sidebar + Tải đoạn chat mới nhất (hoặc chat mới)
                 await fetchConversationList();
+
+                await loadUserPreferences();
 
                 const messagesArea = document.getElementById('messagesArea');
                 console.log('📊 [OPEN] Số tin nhắn hiện tại:', messagesArea.children.length);
@@ -3517,14 +3813,23 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     speechBubble.classList.remove('hidden');
 
                     // Close history sidebar if open
-                    chatHistorySidebar.classList.remove('open');
+                    if (chatHistorySidebar) {{
+                        chatHistorySidebar.classList.remove('open');
+                        console.log('📁 [CLOSE CHATBOT] Đã đóng sidebar lịch sử');
+                    }}
                 }});
                 console.log('✅ Close button event listener attached');
             }}
 
-            async function sendMessage() {{ // Thêm async
+            async function sendMessage() {{
                 const text = messageInput.value.trim();
                 if (!text) return;
+
+                // ✅ THÊM: Kiểm tra nếu đang generating → Không cho gửi tin mới
+                if (isGenerating) {{
+                    console.log('⚠️ Đang xử lý tin nhắn trước, vui lòng đợi...');
+                    return; // 👈 DỪNG TẠI ĐÂY
+                }}
 
                 console.log('\n📝📝📝📝📝📝📝📝📝📝📝📝📝📝📝');
                 console.log('📝 [SEND MESSAGE] User gửi tin nhắn');
@@ -3536,21 +3841,28 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                 // --- TRƯỜNG HỢP 1: CÓ TỪ TỤC ---
                 if (result.found) {{
-                    console.log('🚫 [SEND MESSAGE] Phát hiện từ tục - Không lưu');
-                    const censored = censorProfanity(text);   
-                    addMessage('user', censored);             
+                    console.log('🚫 [SEND MESSAGE] Phát hiện từ tục');
+                    console.log('   - Text gốc:', text);
                     
-                    // [SỬA] Dùng hàm API mới
-                    await sendMessageToAPI('user', censored); 
+                    // ✅ CHE KÝ TỰ CHO HIỂN THỊ
+                    const censoredForDisplay = censorProfanity(text);
+                    console.log('   - Text che:', censoredForDisplay);
+                    
+                    // ✅ HIỂN THỊ: Text đã che (có ***)
+                    addMessage('user', censoredForDisplay);
+                    
+                    // ✅ LƯU DB: Text gốc (KHÔNG che)
+                    await sendMessageToAPI('user', text);  // ← GIỮ NGUYÊN TEXT GỐC
 
                     const warningList = warningMessages[result.lang] || warningMessages['en'];
                     const randomMsg = warningList[Math.floor(Math.random() * warningList.length)];
 
-                    console.warn("🚫 Blocked profanity token:", result.match, "→ censored:", censored);
+                    console.warn("🚫 Profanity detected:", result.match);
+                    console.log("   → Displayed:", censoredForDisplay);
+                    console.log("   → Saved to DB:", text);
 
-                    setTimeout(async () => {{ // Thêm async
+                    setTimeout(async () => {{
                         addMessage('bot', randomMsg);
-                        // [SỬA] Dùng hàm API mới
                         await sendMessageToAPI('ai', randomMsg); 
                         renderSuggestions();
                     }}, 400);
@@ -3562,32 +3874,27 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 // --- TRƯỜNG HỢP 2: TIN NHẮN SẠCH ---
                 console.log('✅ [SEND MESSAGE] Tin nhắn hợp lệ - Tiến hành lưu');
 
-                const userText = text;  // ← THÊM DÒNG NÀY (lưu text trước)
-                messageInput.value = '';  // ← DI CHUYỂN LÊN ĐÂY (xóa input ngay)
+                const userText = text;
+                messageInput.value = '';
                 sendBtn.disabled = true;
 
-                addMessage('user', userText);  // ← ĐỔI text → userText
+                addMessage('user', userText);
 
                 showTyping();
-                isGenerating = true; // 👈 THÊM
-                cancelGeneration = false; // 👈 THÊM
-                updateSendButtonState('loading'); // 👈 THÊM
+                cancelGeneration = false;
+                updateSendButtonState('loading');
 
                 console.log('💾 [SEND MESSAGE] Gọi sendMessageToAPI()...');
 
-                // [SỬA] Dùng hàm API mới (Quan trọng: await để cập nhật ID nếu là chat mới)
-                await sendMessageToAPI('user', userText);  // ← ĐỔI text → userText
+                await sendMessageToAPI('user', userText);
                 
                 console.log('🤖 [SEND MESSAGE] Gọi AI API...');
 
-                // Gọi AI (Trong hàm này cũng sẽ sửa đoạn lưu tin nhắn AI)
                 callGeminiAPI(text); 
                 resetInactivityTimer();
 
                 console.log('📝📝📝📝📝📝📝📝📝📝📝📝📝📝📝\n');
             }}
-
-            // sendBtn.addEventListener('click', sendMessage);
 
             // 🆕 XỬ LÝ CLICK NÚT GỬI (Gộp send + cancel)
             if (sendBtn) {{
@@ -3686,19 +3993,17 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 const normalized = text.replace(/\\r\\n/g, '\\n').replace(/\\n{2,}/g, '\\n').trim();
                 const lines = normalized.split('\\n');
 
-                // ✅ FORMAT TÊN MÓN - WRAP BẰNG <span class="dish-name">
+                // ✅ FORMAT TÊN MÓN - CHỈ HIGHLIGHT LẦN ĐẦU (SAU SỐ THỨ TỰ)
                 const formattedLines = lines.map(line => {{
-                    // Tìm số thứ tự (1., 2., 3., …) và tên món
-                    const match = line.match(/^(\d+\.)\s+([^:]+):/);  // ✅ ĐỔI: \s+ tách riêng
+                    // Tìm pattern: "1. Tên món: mô tả..."
+                    const match = line.match(/^(\d+\.)\s+([^:]+):/);
                     if (match) {{
-                        const num = match[1];  // "1."
-                        const dishName = match[2].trim();  // "Phở bò" (đã trim khoảng trắng thừa)
+                        const num = match[1];           // "1."
+                        const dishName = match[2].trim(); // "Phở bò"
+                        const colonIndex = line.indexOf(':', match[0].length);
+                        const rest = line.substring(colonIndex + 1); // " Nước dùng thơm ngon..."
                         
-                        // Tìm vị trí của dấu ":" đầu tiên SAU tên món
-                        const colonIndex = line.indexOf(':', match[0].length - (line.length - match[0].length));
-                        const rest = line.substring(colonIndex + 1);  // phần sau dấu ":"
-                        
-                        // ✅ CHUẨN HÓA: "1. <tên món>:" (chỉ 1 khoảng trắng)
+                        // ✅ CHỈ WRAP TÊN MÓN, KHÔNG WRAP CÁC LẦN XUẤT HIỆN SAU
                         return `${{num}} <span class="dish-name">${{dishName}}</span>:${{rest}}`;
                     }}
                     return line;
@@ -3818,9 +4123,45 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 return text;
             }}
 
+            // 💬 Tin nhắn mặc định khi vào SEARCH_CORRECTION (tìm 3 lần không ra)
+            function showDefaultSearchHelpMessage() {{
+                console.log('💬 Hiển thị tin nhắn mặc định cho search help');
+                
+                const welcomeMessages = [
+                    "Ồ! Có vẻ bạn đang gặp khó khăn trong việc tìm kiếm quán ăn nhỉ 😅\nĐể mình hỗ trợ bạn liền đây! Đợi tí nhé~ 🍜✨",
+                    "Ui! Mình thấy bạn đang loay hoay tìm quán phải không 🤔\nYên tâm nha, để UIAboss giúp bạn ngay liền! 💪🔍",
+                    "Aww~ Tìm quán hơi khó nhỉ? 😊\nĐể mình support bạn ngay đây, chờ mình xíu nha! 🌟💕",
+                    "Hey hey! Có vẻ bạn cần trợ giúp về tìm quán đúng không? 😄\nMình sẽ tư vấn cho bạn liền, đợi mình tý nhé! 🎯✨",
+                    "Ối! Thấy bạn đang struggle với việc tìm quán rồi 😅\nĐừng lo, mình ở đây để giúp bạn mà! Chờ mình tí nha~ 🍲💫"
+                ];
+                
+                const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+                
+                // false = chỉ hiện trên UI, không ghi vào history gửi cho Gemini
+                addMessage('bot', randomMessage, false);
+
+                if (typeof showTyping === 'function') {{
+                    showTyping();
+                }}
+                
+                console.log('✅ Đã hiển thị tin nhắn chào mặc định');
+            }}
+
             async function callGeminiAPI(userMessage) {{
                 console.log('🔥 Bắt đầu gọi Gemini API...');
                 console.log('📝 User message:', userMessage);
+
+                isGenerating = true;
+
+                // 🔍 KIỂM TRA NẾU LÀ SEARCH CORRECTION MODE
+                const isSearchCorrection = userMessage.startsWith('[SEARCH_CORRECTION]');
+                
+                if (isSearchCorrection) {{
+                    console.log('🔧 [SEARCH CORRECTION MODE] Đang xử lý...');
+                    showDefaultSearchHelpMessage();
+                }} else {{
+                    // MODE BÌNH THƯỜNG: Hiển thị tin nhắn user
+                }}
 
                 const historyContext = conversationHistory.slice(-6).map(h =>
                     `${{h.role === 'user' ? 'Người dùng' : 'UIAboss'}}: ${{h.text}}`
@@ -3831,13 +4172,96 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     : '';
 
                 const preferencesContext = `
-            User Preferences (IMPORTANT - Use this to personalize recommendations):
-            - Likes: ${{userPreferences.likes.length > 0 ? userPreferences.likes.join(', ') : 'Not learned yet'}}
-            - Dislikes: ${{userPreferences.dislikes.length > 0 ? userPreferences.dislikes.join(', ') : 'Not learned yet'}}
-            - Allergies: ${{userPreferences.allergies.length > 0 ? userPreferences.allergies.join(', ') : 'Not learned yet'}}
+                === 🎯 USER PREFERENCES - CRITICAL RULES ===
 
-            NEVER suggest dishes that user dislikes or is allergic to!
-            NEVER suggest dishes that are already in the suggested list above!`;
+                📊 User's Food Profile:
+                - ❤️ LIKES: ${{userPreferences.likes.length > 0 ? userPreferences.likes.join(', ') : 'Not learned yet'}}
+                - ❌ DISLIKES: ${{userPreferences.dislikes.length > 0 ? userPreferences.dislikes.join(', ') : 'Not learned yet'}}
+                - ⚠️ ALLERGIES: ${{userPreferences.allergies.length > 0 ? userPreferences.allergies.join(', ') : 'Not learned yet'}}
+
+                🚫 ABSOLUTE RULES (NEVER BREAK):
+
+                1. **NEVER suggest dishes user DISLIKES**
+                - If user dislikes "cay" (spicy) → DO NOT suggest: mì cay, bún bò Huế cay, phở cay
+                - If user dislikes "ngọt" (sweet) → DO NOT suggest: chè, bánh ngọt, nước ngọt
+                - If user dislikes specific dishes → NEVER mention them
+
+                2. **CRITICAL: ALLERGY WARNINGS (Priority #1)**
+                - If user is allergic to ingredients → NEVER suggest dishes with that ingredient
+                - If you MUST suggest a dish with potential allergen → ADD CLEAR WARNING
+                
+                Examples:
+                - User allergic to "hành" (onion):
+                    "Phở bò: Món này thường có hành. ⚠️ BẠN NHỚ NHỚ người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!"
+                
+                - User allergic to "tôm" (shrimp):
+                    "⚠️ Món này có tôm, bạn bị dị ứng nên TRÁNH TUYỆT ĐỐI!"
+                
+                - User allergic to "sữa" (milk):
+                    "Cà phê sữa: ⚠️ Món này có sữa, bạn nhớ cân nhắc nhé!"
+
+                3. **SPICY FOOD SPECIAL HANDLING**
+                - If user dislikes/cannot eat "cay" (spicy):
+                    * DO NOT suggest: mì cay, lẩu cay, bún bò Huế
+                    * If suggesting dishes that CAN be spicy → add instruction:
+                    "Phở bò: Món này thường có ớt riêng. Bạn nhớ nói với người bán ĐỪNG CHO ỚT nhé!"
+                    "Bún bò Huế: ⚠️ Món này mặc định hơi cay. Nhớ dặn người bán bỏ bớt ớt hoặc cho riêng!"
+
+                4. **PRIORITIZE USER'S LIKES**
+                - If user likes specific dishes → suggest similar dishes or variations
+                - Example: User likes "Phở bò" → suggest "Phở gà", "Phở tái", "Phở bò viên"
+                - Mention: "Vì bạn thích [món], mình nghĩ bạn sẽ thích [món tương tự]"
+
+                5. **DIETARY RESTRICTIONS INTELLIGENCE**
+                Common allergies and what to avoid:
+                - "Hải sản" (seafood): NO tôm, cua, cá, mực, nghêu, sò
+                - "Đậu" (beans/soy): NO đậu phụ, tương, nước tương, đậu hũ
+                - "Lạc/hạt" (peanuts/nuts): NO đồ có lạc, hạt điều, hạnh nhân
+                - "Trứng" (eggs): NO trứng, món chiên trứng
+                - "Gluten": NO bánh mì, mì Ý, bánh pizza
+
+                6. **RESPONSE FORMAT WITH WARNINGS**
+                
+                Format warnings professionally like this:
+                
+                CORRECT Format:
+                "1. Phở bò: Nước dùng thơm ngon, thịt bò mềm.
+                
+                ⚠️ Món này thường có hành. Bạn nhớ dặn người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!
+                
+                FORMATTING RULES:
+                - Start warning on NEW LINE (don't inline with dish description)
+                - Use emoji ONCE at start of warning line: ⚠️
+                - Keep warning SHORT and CLEAR (1-2 sentences max)
+                - Add blank line between dishes for readability
+                - DON'T use 👉 emoji (looks messy)
+                
+                ❌ BAD Format (DON'T DO THIS):
+                "1. Bánh bông lan: Bánh mềm.
+                    👉 Đây là món ngọt..." (ngón tay chỉ trông lộn xộn)
+                
+                ✅ GOOD Format (DO THIS):
+                "1. Phở bò: Nước dùng thơm ngon, thịt bò mềm.
+                
+                ⚠️ Món này thường có hành. Bạn nhớ dặn người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!
+
+                7. **CROSS-CONTAMINATION WARNINGS**
+                - If user has severe allergy → warn about cross-contamination:
+                    "⚠️ Quan trọng: Nếu bạn bị dị ứng nghiêm trọng, nhớ hỏi quán về việc chế biến riêng!"
+
+                8. **NEVER ASSUME USER FORGOT THEIR ALLERGIES**
+                - Even if user asks for spicy food but has allergy → remind them:
+                    "Bạn có nói bạn không ăn được cay trước đó. Mình gợi ý món không cay nhé!"
+
+                === 📋 SUMMARY ===
+                - Dislikes → NEVER suggest
+                - Allergies → CRITICAL warnings or DON'T suggest
+                - Likes → PRIORITIZE and suggest similar
+                - Spicy intolerance → Always add "đừng cho ớt" instruction
+                - Common allergens → Proactive warnings
+
+                Treat allergies as MEDICAL CONDITION, not just preference!
+                `;
 
                 const lowerMsg = userMessage.toLowerCase().trim();
 
@@ -3930,7 +4354,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - Current season: ${{season}}
             - User location: Ho Chi Minh City, Vietnam (tropical climate)
 
-            Since user doesn't know what to eat, suggest 6-8 NEW dishes (not previously suggested) that are:
+            Since user doesn't know what to eat, suggest 8-10 NEW dishes (not previously suggested) that are:
             1. Appropriate for ${{timeOfDay}}
             2. Suitable for ${{season}} weather
             3. Popular in Vietnamese cuisine
@@ -3943,7 +4367,50 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             const prompt = `You are UIAboss, a friendly and attentive customer service staff at a Vietnamese restaurant.
 
+            DISH RECOMMENDATIONS (when appropriate):
+            - Suggest 8-10 different dishes when user wants recommendations
+            - Provide variety: different types (soup, rice, noodles, snacks, drinks)
+            - Number them clearly (1. Dish Name, 2. Dish Name, etc.)
+            - Give brief description for each dish (1-2 sentences)
+
             === AVAILABLE MENU DATABASE ===
+
+            === SEARCH TEXT CORRECTION MODE ===
+            CRITICAL: If user message starts with "[SEARCH_CORRECTION]", this is a SPECIAL MODE.
+            
+            Format: "[SEARCH_CORRECTION] user_typed_text"
+            
+            Your task:
+            1. Extract the search text after "[SEARCH_CORRECTION]"
+            2. Compare with AVAILABLE MENU DATABASE (${{MENU_DATA.dishes.length}} dishes above)
+            3. Determine if it's a typo/incomplete word OR random gibberish
+            
+            🔸 IF TYPO/INCOMPLETE (e.g., "bún thieetk nuosnfg", "pho bo", "com tam suon"):
+               - Find 1-2 closest matching dishes from the menu
+               - Respond in Vietnamese (user's language)
+               - Format: "À bạn đang tìm món <span class="dish-name">Bún thịt nướng</span> phải không? Bạn có thể tham khảo thêm món <span class="dish-name">Bún thịt nướng chả giò</span>. Cần hỗ trợ thêm hãy nói mình nha! 😊"
+               - CRITICAL: Wrap dish names in <span class="dish-name">...</span>
+               - Maximum 2 dishes only
+               - Be natural, friendly, helpful
+            
+            🔸 IF GIBBERISH (e.g., "asdahdhd", "xyzabc123"):
+               - Don't try to match any dish
+               - Do NOT ask user to retype the exact dish name
+               - Ask user what they feel like eating or to describe the dish they have in mind
+                 (e.g. món nước hay món khô, nóng hay lạnh, có cay không, ăn no hay ăn vặt, muốn nhiều thịt hay nhiều rau, v.v.)
+               - Format: "Ối, từ khóa này hơi khó hiểu một xíu nè 😅 Nhưng không sao đâu, bạn thử kể cho mình nghe bạn đang thèm món gì hoặc miêu tả sơ sơ (món nước/khô, nóng/lạnh, có cay không, ăn no hay ăn vặt...) để mình gợi ý quán cho chuẩn hơn nha! 💕"
+            
+            Detection rules:
+            - Typo: has 50%+ valid Vietnamese/English food-related characters
+            - Gibberish: random letters, no food keywords, nonsensical
+            
+            IMPORTANT:
+            - Do NOT use numbered lists (1., 2., 3.)
+            - Write as natural conversational text
+            - Keep response short (2-3 sentences max)
+            - Focus on helpfulness
+
+
             CRITICAL: You can ONLY suggest dishes from this list of ${{MENU_DATA.dishes.length}} available dishes:
             ${{MENU_DATA.dishes.map((d, i) => `${{i + 1}}. ${{d}}`).join('\n')}}
 
@@ -3995,12 +4462,23 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - Always suggest NEW and DIFFERENT dishes
             - Keep track of what's been mentioned
 
-            DISH RECOMMENDATIONS (when appropriate):
-            - Suggest 8-10 different dishes when user wants recommendations
-            - Provide variety: different types (soup, rice, noodles, snacks, drinks)
-            - Number them clearly (1. Dish Name, 2. Dish Name, etc.)
-            - Give brief description for each dish (1-2 sentences)
+            ⚠️ CRITICAL: DETECT USER LANGUAGE FIRST
+            Before naming any dish, ALWAYS:
+            1. Check what language the user is using
+            2. If user writes in Vietnamese → Use ONLY Vietnamese names
+            3. If user writes in English → Use English translation first, then (Vietnamese)
+            4. If user writes in Chinese/Japanese/Korean → Use their language first, then (Vietnamese)
+            
+            EXAMPLE DETECTION:
+            User says: "Tôi muốn ăn cà phê" → VIETNAMESE → Answer: "Cà phê đá"
+            User says: "I want coffee" → ENGLISH → Answer: "Vietnamese Coffee (Cà phê)"
+            User says: "我想喝咖啡" → CHINESE → Answer: "越南咖啡 (Cà phê)"
+            
+            ❌ NEVER mix languages for Vietnamese users
+            ❌ NEVER write "Cà phê (đá)" - this is nonsense
+            ✅ ALWAYS write "Cà phê đá" when user speaks Vietnamese
 
+            
             - CRITICAL NAMING RULES - READ CAREFULLY:
 
             ✅ RULE 1: Dish names - LANGUAGE PRIORITY
@@ -4032,11 +4510,22 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - "Cà phê" → "베트남 커피 (Cà phê)"
 
             **If user speaks VIETNAMESE:**
-            → Just use Vietnamese name directly, NO parentheses
-            Examples:
-            - "Phở bò" → Just "Phở bò"
-            - "Bánh mì" → Just "Bánh mì"
-            - "Cà phê" → Just "Cà phê"
+            → CRITICAL: Use ONLY Vietnamese names, NO parentheses, NO translations
+            → The Vietnamese name IS the dish name, don't add anything extra
+            → Format: "Cà phê đá" NOT "Cà phê (đá)" or "Coffee (Cà phê)"
+
+            ❌ WRONG examples (NEVER do this):
+            - "Cà phê (đá)" ← WRONG! This looks stupid
+            - "Coffee (Cà phê)" ← WRONG! User speaks Vietnamese
+            - "Phở bò (Beef noodle)" ← WRONG! Unnecessary
+
+            ✅ CORRECT examples:
+            - "Cà phê đá" ← Just Vietnamese, clean and simple
+            - "Phở bò" ← No translation needed
+            - "Bánh mì thịt" ← Keep it pure Vietnamese
+            - "Bún chả" ← Natural Vietnamese name
+
+            REMEMBER: Vietnamese users don't need translations or parentheses!
 
             ⚠️ IMPORTANT DETECTION:
             - Detect user's language from their message
@@ -4127,9 +4616,42 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         let botReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
                         if (botReply) {{
-                            // GIỮ NGUYÊN phần xử lý botReply như cũ
                             botReply = cleanMarkdown(botReply);
-                            console.log('💬 Bot reply (cleaned):', botReply);
+                            
+                            // ✅ THÊM: FORCE XUỐNG DÒNG GIỮA CÁC MÓN
+                            botReply = botReply.replace(/(\d+\.\s+[^\n]+?)(?=\s*\d+\.)/g, '$1\n');
+                            
+                            // ✅ THÊM: Đảm bảo có xuống dòng trước warning
+                            botReply = botReply.replace(/([.!?])\s*(⚠️)/g, '$1\n$2');
+                            
+                            console.log('💬 Bot reply (formatted):', botReply);
+
+                            // 📧 XỬ LÝ SEARCH CORRECTION MODE
+                            if (isSearchCorrection) {{
+                                console.log('✅ [SEARCH CORRECTION MODE] Đang xử lý...');
+                                
+                                // 🔍 Tìm tên món đầu tiên trong response
+                                const dishNameMatch = botReply.match(/<span class="dish-name">([^<]+)<\/span>/);
+                                let firstDishName = null;
+                                
+                                if (dishNameMatch && dishNameMatch[1]) {{
+                                    firstDishName = dishNameMatch[1].trim();
+                                    console.log('🍽️ [SEARCH CORRECTION] Tìm thấy món:', firstDishName);
+                                }}
+                                
+                                // 🆕 NẾU CHƯA CÓ CONVERSATION ID → TẠO MỚI
+                                if (!currentConversationID && firstDishName) {{
+                                    const defaultTitle = `Hỗ trợ tìm món ${{firstDishName}}`;
+                                    console.log('📝 [SEARCH CORRECTION] Tạo conversation mới với tên:', defaultTitle);
+                                    
+                                    // Lưu tin nhắn user (bỏ prefix) VỚI CUSTOM TITLE
+                                    const cleanUserMsg = userMessage.replace('[SEARCH_CORRECTION] ', '').trim();
+                                    await sendMessageToAPI('user', cleanUserMsg, defaultTitle);  // 👈 THÊM TITLE
+                                    
+                                    console.log('✅ [SEARCH CORRECTION] Đã lưu tin nhắn user với title:', defaultTitle);
+                                }}
+                            }}
+
                             extractPreferences(userMessage, botReply);
 
                             if (!isGreeting) {{
@@ -4153,6 +4675,13 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             abortController = null;
 
                             await sendMessageToAPI('ai', botReply);
+
+                            // 🔄 CẬP NHẬT SIDEBAR NẾU LÀ SEARCH CORRECTION MODE
+                            if (isSearchCorrection && currentConversationID) {{
+                                console.log('🔄 [SEARCH CORRECTION] Cập nhật sidebar...');
+                                await fetchConversationList();
+                            }}
+
                             resetInactivityTimer();
                             
                             sendBtn.disabled = false;
@@ -4235,6 +4764,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 if (e.target.classList.contains('dish-name')) {{
                     const dishText = e.target.textContent.trim();
                     console.log('🍽️ Clicked dish:', dishText);
+
+                    const chatHistorySidebar = document.getElementById('chatHistorySidebar');
+                    if (chatHistorySidebar && chatHistorySidebar.classList.contains('open')) {{
+                        chatHistorySidebar.classList.remove('open');
+                        console.log('📁 [CLICK DISH] Đã đóng sidebar lịch sử');
+                    }}
                     
                     // ✅ Trích xuất TÊN TIẾNG VIỆT từ format "Tên nước ngoài (Tên Việt)"
                     let vietnameseName = dishText;
@@ -4316,7 +4851,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             // ========================================
             // 🚀 KHỞI TẠO ỨNG DỤNG KHI TRANG LOAD
             // ========================================
-            async function initializeApp() {{
+            async function initializeApp() {{ 
                 console.log("🚀 Đang khởi động ứng dụng...");
                 
                 // 1. 🔥 Load streak data trước (nếu user đã login)
@@ -4327,9 +4862,15 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     console.log('⚠️ Could not load streak (user not logged in?):', error);
                 }}
                 
-                // 2. Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)
+                // 2. ✅ THÊM DÒNG NÀY: Load conversation list TRƯỚC
+                console.log("📋 Loading conversation list...");
+                await fetchConversationList();
+                
+                // 3. Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)
                 console.log("✨ Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)");
                 switchToNewChat();
+                
+                console.log("✅ App initialization complete");
             }}
 
             // Gọi hàm khởi tạo ngay lập tức
