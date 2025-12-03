@@ -2684,3 +2684,164 @@ window.flyToPlaceFromPlanner = function(lat, lon, placeId, placeName) {
     }, 600);
   });
 };
+
+// ==========================================================
+// 🍽️ CHỈ HIỂN THỊ MARKER CỦA QUÁN TRONG LỊCH TRÌNH (FOOD PLANNER)
+// ==========================================================
+showMarkersForPlaceIds = function (plan) {
+  try {
+    if (!window.map || !plan) return;
+
+    // 🔍 Gom tất cả quán có trong plan
+    const placesInPlan = [];
+    for (const key in plan) {
+      if (!Object.prototype.hasOwnProperty.call(plan, key)) continue;
+      if (key === "_order") continue;
+
+      const item = plan[key];
+      if (!item || !item.place) continue;
+
+      const place = item.place;
+      const id = place.data_id || place.ten_quan;
+      if (!id) continue;
+
+      // tránh trùng
+      if (placesInPlan.some(p => p.id === id)) continue;
+
+      placesInPlan.push({ id, place });
+    }
+
+    if (placesInPlan.length === 0) {
+      console.log("⚠️ Plan không có quán nào để vẽ marker.");
+      return;
+    }
+
+    // 🎯 Tập ID quán cần GIỮ LẠI trên map
+    const idsTrongPlan = new Set(placesInPlan.map(p => p.id));
+
+    // 🔌 Tắt lazy-load: không tự load thêm quán khác nữa
+    if (typeof loadMarkersInViewport === "function") {
+      map.off("moveend", loadMarkersInViewport);
+    }
+
+    // 🧩 Gom tất cả cluster đang có (cluster mặc định + cluster global)
+    const clusters = [];
+
+    // cluster mặc định dùng cho search/lazy-load
+    try {
+      if (typeof markerClusterGroup !== "undefined" && markerClusterGroup && map.hasLayer(markerClusterGroup)) {
+        clusters.push(markerClusterGroup);
+      }
+    } catch (e) {
+      // bỏ qua nếu biến không tồn tại
+    }
+
+    // cluster global (friend view / planner / mini game)
+    if (window.markerClusterGroup && map.hasLayer(window.markerClusterGroup)) {
+      if (!clusters.includes(window.markerClusterGroup)) {
+        clusters.push(window.markerClusterGroup);
+      }
+    }
+
+    // Nếu chưa có cluster nào → tạo một cái để dùng cho lịch trình
+    if (clusters.length === 0) {
+      const tempCluster = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        maxClusterRadius: 80,
+        disableClusteringAtZoom: 16
+      });
+      map.addLayer(tempCluster);
+      clusters.push(tempCluster);
+
+      // cập nhật lại 2 biến global nếu có
+      window.markerClusterGroup = tempCluster;
+      try { markerClusterGroup = tempCluster; } catch (e) {}
+    }
+
+    // Đảm bảo map place_id -> marker tồn tại
+    if (!window.placeMarkersById) {
+      window.placeMarkersById = {};
+    }
+
+    // 🧹 XÓA TẤT CẢ marker KHÔNG NẰM TRONG LỊCH TRÌNH (cả trong cluster lẫn trên map)
+    for (const [id, marker] of Object.entries(window.placeMarkersById)) {
+      if (!marker || typeof marker.getLatLng !== "function") continue;
+
+      if (!idsTrongPlan.has(id)) {
+        // gỡ khỏi mọi cluster hiện có
+        clusters.forEach(c => {
+          if (c && c.hasLayer && c.hasLayer(marker)) {
+            c.removeLayer(marker);
+          }
+        });
+
+        // gỡ khỏi map
+        if (typeof marker.remove === "function") {
+          marker.remove();
+        } else if (map.hasLayer(marker)) {
+          map.removeLayer(marker);
+        }
+      }
+    }
+
+    // 🧽 Clear toàn bộ layer trong các cluster hiện tại
+    clusters.forEach(c => {
+      if (c && c.clearLayers) c.clearLayers();
+    });
+
+    // 🔄 Reset visibleMarkers (cả bản local và bản window)
+    if (typeof visibleMarkers !== "undefined" && visibleMarkers instanceof Set) {
+      visibleMarkers.clear();
+    }
+    if (!window.visibleMarkers || !(window.visibleMarkers instanceof Set)) {
+      window.visibleMarkers = new Set();
+    } else {
+      window.visibleMarkers.clear();
+    }
+
+    const bounds = L.latLngBounds([]);
+
+    // 🔁 Tạo / dùng lại marker chỉ cho những quán trong plan
+    placesInPlan.forEach(({ id, place }) => {
+      const lat = parseFloat(place.lat?.toString().replace(",", "."));
+      const lon = parseFloat(place.lon?.toString().replace(",", "."));
+      if (isNaN(lat) || isNaN(lon)) return;
+
+      let marker = window.placeMarkersById[id];
+
+      // nếu chưa có thì tạo marker mới từ createMarker
+      if (!marker && typeof createMarker === "function") {
+        marker = createMarker(place, lat, lon);
+        if (marker) {
+          window.placeMarkersById[id] = marker;
+        }
+      }
+
+      if (!marker) return;
+
+      // Thêm marker vào các cluster đang dùng
+      clusters.forEach(c => {
+        if (c && c.addLayer) c.addLayer(marker);
+      });
+
+      // Đánh dấu visible
+      if (typeof visibleMarkers !== "undefined" && visibleMarkers instanceof Set) {
+        visibleMarkers.add(id);
+      }
+      window.visibleMarkers.add(id);
+
+      const pos = marker.getLatLng && marker.getLatLng();
+      if (pos) bounds.extend(pos);
+    });
+
+    // Fit map tới các quán trong lịch trình
+    if (bounds.isValid()) {
+      map.fitBounds(bounds.pad(0.25));
+    }
+  } catch (err) {
+    console.error("❌ Lỗi khi showMarkersForPlaceIds:", err);
+  }
+};
+
