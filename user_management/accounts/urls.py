@@ -19,9 +19,23 @@ urlpatterns = [
     path('food-plan/save/', views.save_food_plan_api, name='save_food_plan'),
     path('food-plan/list/', views.get_food_plans_api, name='get_food_plans'),
     path('food-plan/delete/<int:plan_id>/', views.delete_food_plan_api, name='delete_food_plan'),
+    # Share Food Plan
+    path('food-plan/share/<int:plan_id>/', views.share_food_plan_api, name='share_food_plan'),
+    path('food-plan/shared/', views.get_shared_plans_api, name='get_shared_plans'),
 
     # 🍽️ User Preferences APIs
     path('preferences/', views.get_user_preferences, name='get_preferences'),
     path('preferences/save/', views.save_user_preference, name='save_preference'),
     path('preferences/delete/', views.delete_user_preference, name='delete_preference'),
+    # Suggestions
+    path('food-plan/suggest/<int:plan_id>/', views.submit_plan_suggestion_api, name='submit_plan_suggestion'),
+    path('food-plan/suggestions/<int:plan_id>/', views.get_plan_suggestions_api, name='get_plan_suggestions'),
+    path('food-plan/suggestion/review/<int:suggestion_id>/', views.review_suggestion_api, name='review_suggestion'),
+    path('my-friends/', views.get_current_user_friends, name='get_current_user_friends'),
+    path('food-plan/suggestions/<int:plan_id>/', views.get_plan_suggestions_api, name='get_plan_suggestions'),
+    path('food-plan/suggestion-detail/<int:suggestion_id>/', views.get_suggestion_detail_api, name='get_suggestion_detail'),
+    path('food-plan/suggestion-approve/<int:suggestion_id>/', views.approve_suggestion_api, name='approve_suggestion'),
+    path('food-plan/suggestion-reject/<int:suggestion_id>/', views.reject_suggestion_api, name='reject_suggestion'),
+    path('food-plan/leave-shared/<int:plan_id>/', views.leave_shared_plan_api, name='leave_shared_plan'),
+
 ]
