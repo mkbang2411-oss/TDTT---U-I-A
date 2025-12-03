@@ -21,6 +21,11 @@ from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
 import requests 
+from .models import (
+    FoodPlan, 
+    SharedFoodPlan,  # ← Thêm dòng này
+    PlanEditSuggestion  # ← Thêm dòng này
+)
 
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
