@@ -5,7 +5,7 @@ import os
 import time
 
 # ⚙️ Cấu hình
-SERP_API_KEY = "b022acbfa5613416fba4fea768d88eccf0acd614a5eeadf322e9d61f13d0823d"
+SERP_API_KEY = "caf590cf1799aa732de0975966415b48a4d0911ec5c336407111c0e73fc4ed9d"
 
 CSV_FILE = "Data_with_flavor.csv"
 
@@ -14,8 +14,8 @@ PROJECT_ROOT = os.path.dirname(BASE_DIR)
 REVIEWS_FILE = os.path.join(PROJECT_ROOT, "user_management", "user_reviews.json")
 
 # 🎯 Tự chỉnh start / end ngay tại đây
-START_ROW = 1001
-END_ROW = 1020
+START_ROW = 2367
+END_ROW = 2457
 
 # 🔒 Sử dụng đúng 16 review (chuẩn Option B)
 MAX_REVIEWS = 16
