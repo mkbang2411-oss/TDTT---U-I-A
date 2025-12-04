@@ -61,64 +61,7 @@ let visibleMarkers = new Set();
 let isLoadingMarkers = false;
 let currentRouteLine = null;
 let routeControl = null;
-// =========================
-// 🛡️ DANH SÁCH TỪ KHÓA BỊ CẤM
-// =========================
-const BLACKLIST_WORDS = [
-  // --- Chửi tục tiếng Việt ---
-  'địt','đụ','đjt','djt','đmm','dm','đm','dmm','đcm','dcm','clgt',
-  'vcl','vl','vãi','vãi lồn','vãi loz','vãi lon','vailon','vailoz',
-  'cl','clm','clo','cln','clmm','cldm','cmm','cmn','ccmm','đéo','đếch',
-  'đek','dek','đekm','dmj','dmz','vlz','vkl','vch','vđ','vđm','vđmm',
 
-  // --- Xúc phạm, nhục mạ ---
-  'ngu','ngu học','óc chó','não phẳng','não cá vàng','khùng','ngáo','điên',
-  'khốn nạn','mất dạy','vô học','láo','bố láo','láo toét','chó má','súc vật',
-  'thằng ngu','con ngu','đồ điên','đồ chó','rảnh háng','bố đời','đồ rẻ rách',
-
-  // --- Tục tả sinh lý ---
-  'lồn','buồi','cu','chim to','chim nhỏ','bướm','nứng','cặc','đỉ','đĩ',
-  'điếm','cave','gái gọi','đi khách','dâm','râm','râm dục','biến thái',
-  'thủ dâm','dương vật','âm đạo','âm vật','hiếp','hiếp dâm','giao cấu',
-
-  // --- Chửi liên quan gia đình ---
-  'mẹ mày','bố mày','cha mày','má mày','ông nội mày','bà nội mày',
-  'tổ cha','tổ sư','con mẹ mày','con chó','đồ chó','con đĩ mẹ mày',
-
-  // --- Viết tắt / chat ---
-  'vcc','vklm','cmnr','cmnl','vcđ','vđc','vcml','dkm','vml','vclm',
-  'vcmm','dmnr','dcmj','ccmnr','vchz','cc','cái lồn',
-
-  // --- Không dấu / né lọc ---
-  'dit','ditme','dit me','ditmemay','du','djtme','dmme','dmmay','vclon',
-  'vai lon','vai loz','vai lonz','dmml','dcmm','dcmay','vlon','vailon',
-  'vailoz','vailonzz','ditconme','dmconcho','cac','loz','lol','đụ má',
-
-  // --- Chửi tiếng Anh Việt hoá ---
-  'fuck','fuk','fukk','fucc','fucck','fuking','fucking','fck','fcku','fcking',
-  'phắc','phẹc','phâk','phúc kiu','phẹc kiu','phắc kiu','phuck','sịt','sít',
-  'sịt mẹ','shit','shjt','sh1t','shet','sịt lờ','bít','bitch','b1tch','btch',
-  'biatch','bich','bịt','bitchass','đem','đem mờn','đem men','đem mai',
-  'damn','daemn','damm','sặc','sắc','suck','sux','suk','suck my','suckyou',
-  'sucku','wtf','wth','wtfff','wtfuk','wdf','omfg','omg','holyshit','holy fuck',
-  'bullshit','bullshjt','bullsh1t','bulsit','bs','bsht','crap','crp',
-  'hell','go to hell','dumbass','dipshit','moron','loser',
-  'jerk','mf','mofo','motherfucker','sonofabitch','son of a bitch','retard',
-  'idiot','porn','p0rn','sex','sexy','horny','nude','naked','gay',
-
-  // --- Từ danh sách tiếng Anh bạn đưa ---
-  'asshole','bastard','cunt','dick','pussy','cock','stfu','ass','piss',
-  'slut','whore','fcku','fckn','fckoff','azz','azzhole','a$$','d1ck',
-  'fux','fuxk','phuk','phuck','fml','fk','fkin','cum','cumming','orgasm',
-  'jerkoff','wank','nsfw','nigger',
-
-  // --- Từ nhạy cảm khác (từ danh sách gốc của bạn) ---
-  'cứt','clgc','xxx',
-
-  // --- Từ khóa không phù hợp khác ---
-  'ma túy','chất cấm','cần sa','heroin','cocaine',
-  'casino','cờ bạc','đánh bạc','cá độ'
-];
 
 // =========================
 // 🔍 HÀM KIỂM TRA TỪ CẤM
@@ -1364,12 +1307,7 @@ async function fetchPlaces(
   shouldZoom = true
 ) {
   try {
-    // 🛡️ KIỂM TRA TỪ CẤM TRƯỚC KHI TÌM KIẾM
-    if (containsBadWords(query)) {
-      alert("⚠️ Từ khóa không phù hợp! Vui lòng nhập từ khóa lịch sự hơn.");
-      return false;
-    }
-
+    
     const res = await fetch("/api/places");
     let data = await res.json();
     allPlacesData = [];
@@ -1592,16 +1530,7 @@ let notFoundCount = 0;
 document.getElementById("btnSearch").addEventListener("click", async () => {
   const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
-// 🛡️ KIỂM TRA TỪ CẤM TRƯỚC KHI XỬ LÝ
-  if (containsBadWords(query)) {
-   showWarningToast("Từ khóa tìm kiếm không hợp lệ! Vui lòng nhập nội dung phù hợp.");
-    
-    // Reset ô input
-    document.getElementById("query").value = "";
-    document.getElementById("query").focus();
-    
-    return; // Dừng ngay, không search
-  }
+
   const selectedFlavors = Array.from(
     document.querySelectorAll("#flavorDropdown input:checked")
   ).map((c) => c.value);
