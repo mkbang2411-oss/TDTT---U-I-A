@@ -216,6 +216,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:5000',
     'https://raising-crm-neighbors-dave.trycloudflare.com',
     'https://resolve-shanghai-hanging-critical.trycloudflare.com',
+    'https://*.ngrok-free.app', # Dấu * để chấp nhận mọi sub-domain của ngrok
+    'https://*.ngrok.io',
 ]
 
 # ✅ CORS settings
