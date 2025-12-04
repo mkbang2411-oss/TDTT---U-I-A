@@ -302,29 +302,24 @@
 /* Nút mở mini game trên map */
 .mini-game-btn {
   position: fixed;
-  bottom: 90px;
+  bottom: 30px;
   left: 30px;
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
-  border: none;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  font-size: 0; /* ← ẨN TEXT GỐC */
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+  box-shadow:
+      0 8px 32px rgba(255, 107, 53, 0.45),
+      0 0 0 0 rgba(255, 107, 53, 0.4);
   cursor: pointer;
-  box-shadow: 
-    0 8px 32px rgba(255, 107, 53, 0.45),
-    0 0 0 0 rgba(255, 107, 53, 0.4);
-  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  z-index: 1000;
-  position: relative;
-  overflow: hidden;
-  
-  /* 🔥 VIỀN SÁNG */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999997;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
-  
-  /* 🔥 ANIMATION NHẤP NHÁY */
-  animation: puzzle-pulse 2s ease-in-out infinite;
+  animation: music-pulse 2s ease-in-out infinite;
 }
 
 /* 🔥 ANIMATION NHẤP NHÁY VÒNG SÁNG */
@@ -410,7 +405,7 @@
 }
 
 /* 🆕 TAB SWITCHER */
-.tab-switcher {
+.mini-game-overlay .tab-switcher {
   display: flex;
   gap: 5px;
   width: 100%;
@@ -419,7 +414,7 @@
   padding: 3px;
 }
 
-.tab-btn {
+.mini-game-overlay .tab-btn {
   flex: 1;
   padding: 8px 10px;
   background: transparent;
@@ -432,19 +427,19 @@
   transition: all 0.3s ease;
 }
 
-.tab-btn:hover {
+.mini-game-overlay .tab-btn:hover {
   background: rgba(255, 255, 255, 0.15);
   color: white;
 }
 
-.tab-btn.active {
+.mini-game-overlay .tab-btn.active {
   background: white;
   color: #667eea;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* 🆕 TAB CONTENT */
-.tab-content {
+.mini-game-overlay .tab-content {
   display: none;
   width: 100%;
   flex-direction: column;
@@ -454,31 +449,31 @@
   padding-right: 5px;
 }
 
-.tab-content.active {
+.mini-game-overlay .tab-content.active {
   display: flex;
 }
 
 /* Scrollbar styling */
-.tab-content::-webkit-scrollbar {
+.mini-game-overlay .tab-content::-webkit-scrollbar {
   width: 5px;
 }
 
-.tab-content::-webkit-scrollbar-track {
+.mini-game-overlay .tab-content::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
 }
 
-.tab-content::-webkit-scrollbar-thumb {
+.mini-game-overlay .tab-content::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3);
   border-radius: 10px;
 }
 
-.tab-content::-webkit-scrollbar-thumb:hover {
+.mini-game-overlay .tab-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
 
 /* MAP OPTIONS (giữ nguyên style cũ) */
-.map-option {
+.mini-game-overlay .map-option {
   background: rgba(255, 255, 255, 0.9);
   border: 3px solid transparent;
   border-radius: 12px;
@@ -492,7 +487,7 @@
   width: 100%;
 }
 
-.map-option img {
+.mini-game-overlay .map-option img {
   width: 80px;
   height: 80px;
   object-fit: cover;
@@ -500,29 +495,29 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.map-option span {
+.mini-game-overlay .map-option span {
   font-size: 14px;
   font-weight: 600;
   color: #333;
 }
 
-.map-option:hover {
+.mini-game-overlay .map-option:hover {
   transform: translateX(-3px);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
   border-color: #667eea;
 }
 
-.map-option.active {
+.mini-game-overlay .map-option.active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-color: #667eea;
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
 }
 
-.map-option.active span {
+.mini-game-overlay .map-option.active span {
   color: white;
 }
 
-.map-option.active img {
+.mini-game-overlay .map-option.active img {
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
 }
 
@@ -964,21 +959,21 @@
     gap: 10px;
   }
   
-  .tab-btn {
+  .mini-game-overlay .tab-btn {
     font-size: 11px;
     padding: 6px 8px;
   }
   
-  .map-option {
+  .mini-game-overlay .map-option {
     padding: 8px 12px;
   }
   
-  .map-option img {
+  .mini-game-overlay .map-option img {
     width: 60px;
     height: 60px;
   }
   
-  .map-option span {
+  .mini-game-overlay .map-option span {
     font-size: 12px;
   }
   
@@ -1109,4 +1104,67 @@
 
 .food-story-modal.show .story-modal-content {
   animation: fadeInModal 0.4s ease;
+}
+
+/* ========================================
+   ⏳ LOADING STATE KHI ĐỔI MAP
+   ======================================== */
+
+.map-loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  z-index: 10000002; /* Cao hơn overlay */
+  background: rgba(0, 0, 0, 0.85);
+  padding: 30px 50px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.map-loading.show {
+  display: flex;
+}
+
+.map-loading .spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.2);
+  border-top: 5px solid #4ade80;
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+.map-loading p {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+@keyframes spinner-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive loading */
+@media (max-width: 900px) {
+  .map-loading {
+    padding: 25px 40px;
+  }
+  
+  .map-loading .spinner {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+  }
+  
+  .map-loading p {
+    font-size: 14px;
+  }
 }

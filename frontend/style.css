@@ -23,7 +23,7 @@ body {
 
 /* Hoặc thử công thức này (màu hồng/xanh nhẹ hơn) */
 .map-pastel {
-  filter: hue-rotate(10deg) saturate(186%) brightness(90%) contrast(118%);
+  filter: hue-rotate(9deg) saturate(182%) brightness(93%) contrast(116%);
 }
 
 /* ==========================================
@@ -178,12 +178,12 @@ body {
   overflow-y: auto;
   transform: translateX(-109%);
   transition: transform 0.3s ease;
-  z-index: 4000;
+  z-index: 999998;
 }
 
 #sidebar.show {
   transform: translateX(0);
-  z-index: 4000;
+  z-index: 999998;
 }
 
 /* ⭐ BỔ SUNG: TÙY CHỈNH THANH CUỘN GIỐNG CHATBOT ⭐ */
@@ -200,12 +200,6 @@ body {
     background: rgba(255, 44, 44, 0.3);
     border-radius: 3px;
 }
-
-#sidebar.show {
-  transform: translateX(0);
-  z-index: 4000;
-}
-
 
 #sidebar-content {
   padding: 3px 20px 20px;
@@ -1220,17 +1214,17 @@ body {
   color: white;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  position: fixed;
 }
 
 /* Hiệu ứng pulse animation */
 .cluster-inner::before {
   content: '';
-  position: absolute;
+  position: fixed;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+  animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) forwards;
 }
 
 @keyframes pulse-ring {
@@ -1240,7 +1234,7 @@ body {
   }
   50% {
     transform: scale(1.3);
-    opacity: 0;
+    opacity: 0.4;
   }
   100% {
     transform: scale(1);
@@ -1250,44 +1244,44 @@ body {
 
 /* Small clusters (1-50 quán) - Xanh dương nhạt */
 .cluster-small {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg,#FF5CA8, #fd8bc0 100%);
   border: 3px solid rgba(255, 255, 255, 0.9);
 }
 
 .cluster-small::before {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #FF5CA8, #fd8bc0 100%);
 }
 
 /* Medium clusters (51-100 quán) - Cam vàng */
 .cluster-medium {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
   border: 3px solid rgba(255, 255, 255, 0.9);
 }
 
 .cluster-medium::before {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
 }
 
 /* Large clusters (100+ quán) - Đỏ nổi bật */
 .cluster-large {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  background: linear-gradient(135deg, #FF004C, #FF4F70 100%);
   border: 3px solid rgba(255, 255, 255, 0.9);
   font-size: 16px;
 }
 
 .cluster-large::before {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  background: linear-gradient(135deg, #FF004C, #FF4F70 100%);
 }
 
 /* Hover effect */
 .marker-cluster:hover .cluster-inner {
-  transform: scale(1.15);
+  transform: scale(1.05);
   box-shadow: 0 6px 25px rgba(0,0,0,0.4);
 }
 
 /* Số bên trong cluster */
 .cluster-inner span {
-  position: relative;
+  position: fixed;
   z-index: 2;
   text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
@@ -1569,6 +1563,8 @@ body {
 .notification-btn {
     order: 3; /* Nút thông báo - ở giữa */
 }
+
+
 
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,

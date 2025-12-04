@@ -51,8 +51,8 @@ let markerClusterGroup = L.markerClusterGroup({
   zoomToBoundsOnClick: true,
   maxClusterRadius: 80,
   disableClusteringAtZoom: 16,
-  animate: true,
-  animateAddingMarkers: true,
+  animate: false,
+  animateAddingMarkers: false,
   spiderfyDistanceMultiplier: 1.5
 });
 
@@ -61,6 +61,39 @@ let visibleMarkers = new Set();
 let isLoadingMarkers = false;
 let currentRouteLine = null;
 let routeControl = null;
+
+
+// =========================
+// 🔍 HÀM KIỂM TRA TỪ CẤM
+// =========================
+function containsBadWords(text) {
+  if (!text) return false;
+  
+  // Chuẩn hóa text: bỏ dấu, chữ thường, bỏ khoảng trắng thừa
+  const normalizedText = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ")
+    .trim();
+  
+  // Kiểm tra từng từ trong blacklist
+  for (const badWord of BLACKLIST_WORDS) {
+    const normalizedBadWord = badWord
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d");
+    
+    // Kiểm tra xem có chứa từ cấm không (kể cả viết liền)
+    if (normalizedText.includes(normalizedBadWord)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 // 👉 Biến trạng thái cho nút "Quán yêu thích"
 let isFavoriteMode = false;
@@ -484,6 +517,12 @@ function getRealtimeStatus(hoursStr) {
 function openChatboxAutomatically() {
   console.log("🚨 Mở chatbox tự động sau 3 lần search thất bại");
 
+  // 🔍 LẤY TEXT TỪ Ô SEARCH QUÁN
+  const searchInput = document.getElementById("query");
+  const searchText = searchInput ? searchInput.value.trim() : "";
+  
+  console.log("📝 Text user đã search:", searchText);
+
   // Tìm các elements của chatbox
   const chatWindow = document.getElementById("chatWindow");
   const chatbotBtn = document.getElementById("chatbotBtn");
@@ -491,13 +530,11 @@ function openChatboxAutomatically() {
 
   if (!chatWindow || !chatbotBtn) {
     console.error("❌ Không tìm thấy chatbox elements!");
-    alert(
-      "🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!"
-    );
+    alert("🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!");
     return;
   }
 
-  // ✅ Mở chatbox (giống logic openChatWindow trong chatbot)
+  // ✅ Mở chatbox
   chatWindow.style.display = "flex";
   chatWindow.classList.add("open");
   chatbotBtn.style.display = "none";
@@ -505,11 +542,27 @@ function openChatboxAutomatically() {
   speechBubble.style.display = "none";
   speechBubble.classList.add("hidden");
 
-  // ✅ Tự động gửi tin nhắn gợi ý
+  // ✅ XỬ LÝ TỰ ĐỘNG GỬI TEXT CHO GEMINI
   setTimeout(() => {
     const messagesArea = document.getElementById("messagesArea");
-    if (messagesArea) {
-      // Thêm tin nhắn bot
+    
+    if (!messagesArea) return;
+
+    // 🔥 NẾU CÓ TEXT SEARCH → GỬI TRỰC TIẾP CHO GEMINI
+    if (searchText && searchText.length > 0) {
+      console.log("🤖 Gửi text cho Gemini xử lý:", searchText);
+      
+      // ✅ Tạo message đặc biệt với prefix [SEARCH_CORRECTION]
+      const correctionMessage = `[SEARCH_CORRECTION] ${searchText}`;
+      
+      // ✅ Hiển thị typing indicator
+      showTyping();
+      
+      // ✅ GỌI GEMINI API TRỰC TIẾP (KHÔNG HIỂN thị tin nhắn user)
+      callGeminiAPI(correctionMessage);
+      
+    } else {
+      // 🔥 KHÔNG CÓ TEXT → HIỂN THỊ TIN NHẮN MẶC ĐỊNH
       const autoMessage = `
         <div class="message bot">
           <div class="message-avatar">🍜</div>
@@ -527,17 +580,15 @@ function openChatboxAutomatically() {
       `;
       messagesArea.innerHTML += autoMessage;
       messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
 
-      // Focus vào input để user nhập liền
-      const messageInput = document.getElementById("messageInput");
-      if (messageInput) {
-        messageInput.focus();
-      }
+    // Focus vào input
+    const messageInput = document.getElementById("messageInput");
+    if (messageInput) {
+      messageInput.focus();
     }
   }, 500);
 }
-
-
 
 // =========================
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
@@ -557,37 +608,6 @@ function displayPlaces(places, shouldZoom = true) {
   if (markerClusterGroup) {
     map.removeLayer(markerClusterGroup);
   }
-
-  // Tạo cluster mới (giữ nguyên config cũ của bạn)
-  markerClusterGroup = L.markerClusterGroup({
-    iconCreateFunction: function(cluster) {
-      const count = cluster.getChildCount();
-      let size = 'small';
-      let colorClass = 'cluster-small';
-
-      if (count > 100) {
-        size = 'large';
-        colorClass = 'cluster-large';
-      } else if (count > 50) {
-        size = 'medium';
-        colorClass = 'cluster-medium';
-      }
-
-      return L.divIcon({
-        html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
-        className: `marker-cluster marker-cluster-${size}`,
-        iconSize: L.point(50, 50)
-      });
-    },
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    maxClusterRadius: 80,
-    disableClusteringAtZoom: 16,
-    animate: true,
-    animateAddingMarkers: true,
-    spiderfyDistanceMultiplier: 1.5
-  });
 
   markers = []; // reset mảng markers
   // reset index marker theo place_id
@@ -640,6 +660,8 @@ function loadMarkersInViewport() {
   let maxMarkersToLoad = zoom > 14 ? 200 : zoom > 12 ? 100 : 50;
   let loadedCount = 0;
 
+  const markersToAdd = []; // ⭐ Gom marker vào đây
+
   allPlacesData.forEach((p) => {
     const placeId = p.data_id || p.ten_quan;
     if (visibleMarkers.has(placeId)) return;
@@ -653,11 +675,13 @@ function loadMarkersInViewport() {
 
     const marker = createMarker(p, lat, lon);
     markers.push(marker);
-    markerClusterGroup.addLayer(marker); // ← THÊM VÀO CLUSTER
+    markersToAdd.push(marker);        // ⭐ gom lại
     visibleMarkers.add(placeId);
     loadedCount++;
   });
 
+  markerClusterGroup.addLayers(markersToAdd);
+  
   isLoadingMarkers = false;
   console.log(`✅ Đã load ${loadedCount} markers`);
 }
@@ -819,7 +843,7 @@ if (placeId) {
       reviewFormHTML = `
         <div class="review-form">
           <h3>📝 Thêm đánh giá của bạn</h3>
-          <p>Vui lòng <a href="http://127.0.0.1:8000/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
+          <p>Vui lòng <a href="/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
         </div>
       `;
     }
@@ -1120,7 +1144,7 @@ if (placeId) {
           return L.marker(wp.latLng, {
             icon: i === 0
               ? L.icon({
-                  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
+                  iconUrl: "Picture/home.gif",
                   iconSize: [120, 100],
                   iconAnchor: [60, 100],
                 })
@@ -1283,6 +1307,7 @@ async function fetchPlaces(
   shouldZoom = true
 ) {
   try {
+    
     const res = await fetch("/api/places");
     let data = await res.json();
     allPlacesData = [];
@@ -1551,7 +1576,7 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
 
     window.startMarker = L.marker([coords.lat, coords.lon], {
       icon: L.icon({
-          iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
+          iconUrl: "Picture/home.gif",
           iconSize: [120, 100],
           iconAnchor: [60, 100],
       }),
@@ -2004,7 +2029,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
       // ✅ Thêm marker mới cho điểm xuất phát
       window.startMarker = L.marker([userLat, userLon], {
         icon: L.icon({
-          iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/home.gif",
+          iconUrl: "Picture/home.gif",
           iconSize: [120, 100],
           iconAnchor: [60, 100],
         }),
@@ -2386,3 +2411,509 @@ window.refreshCurrentSidebar = function() {
   
   window.placeMarkersById[placeId].fire('click');
 };
+
+// ==========================================================
+// 🍽️ HÀM RIÊNG CHO FOOD PLANNER - FLY TO PLACE WITH AUTO MARKER
+// ==========================================================
+window.flyToPlaceFromPlanner = function(lat, lon, placeId, placeName) {
+  if (typeof map === 'undefined') {
+    console.error('❌ Map chưa được khởi tạo');
+    return;
+  }
+
+  console.log('🎯 flyToPlaceFromPlanner được gọi:', { lat, lon, placeId, placeName });
+
+  // ✅ ZOOM ĐẾN VỊ TRÍ QUÁN
+  map.setView([lat, lon], 17, { animate: true });
+
+  // ✅ HÀM ĐỢI MAP ZOOM XONG
+  function waitForMapReady() {
+    return new Promise((resolve) => {
+      if (!map._animatingZoom) {
+        setTimeout(resolve, 500);
+        return;
+      }
+      
+      map.once('moveend', () => {
+        setTimeout(resolve, 800);
+      });
+    });
+  }
+
+  // ✅ HÀM KIỂM TRA CÓ PHẢI MARKER CỦA ROUTES KHÔNG
+  function isRouteMarker(layer) {
+    if (!layer.options || !layer.options.icon) return false;
+    
+    const iconUrl = layer.options.icon.options?.iconUrl || '';
+    
+    // 🔥 BỎ QUA MARKER HOME (điểm xuất phát) và MARKER ĐÍCH (quán ăn trên route)
+    if (iconUrl.includes('home.gif') || 
+        iconUrl.includes('684908.png') ||
+        iconUrl.includes('marker-icon.png')) {
+      return true;
+    }
+    
+    // 🔥 BỎ QUA MARKER SỐ (1, 2, 3...) trên route
+    if (layer.options.icon.options?.className?.includes('route-number-marker')) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  // ✅ HÀM TÌM MARKER HIỆN CÓ (BỎ QUA MARKER ROUTES)
+  function findExistingMarker() {
+    let targetMarker = null;
+
+    // 🔥 BƯỚC 1: TÌM MARKER THEO ID
+    if (placeId && window.placeMarkersById && window.placeMarkersById[placeId]) {
+      targetMarker = window.placeMarkersById[placeId];
+      
+      // ✅ KIỂM TRA MARKER CÓ ĐANG TRÊN MAP KHÔNG
+      if (map.hasLayer(targetMarker)) {
+        console.log('✅ Tìm thấy marker theo ID (đang hiển thị):', placeId);
+        return targetMarker;
+      } else {
+        console.warn('⚠️ Marker tồn tại nhưng không hiển thị trên map');
+        targetMarker = null;
+      }
+    }
+
+    // 🔥 BƯỚC 2: TÌM THEO TÊN QUÁN
+    if (placeName) {
+      let foundByName = false;
+      
+      map.eachLayer((layer) => {
+        if (foundByName) return;
+        
+        if (layer instanceof L.Marker) {
+          // 🔥 BỎ QUA MARKER CỦA ROUTES
+          if (isRouteMarker(layer)) {
+            return;
+          }
+          
+          const data = layer.options.placeData || layer.placeData;
+          if (data && data.ten_quan === placeName) {
+            targetMarker = layer;
+            foundByName = true;
+            console.log('✅ Tìm thấy marker theo tên:', placeName);
+          }
+        }
+      });
+    }
+
+    if (targetMarker) return targetMarker;
+
+    // 🔥 BƯỚC 3: TÌM THEO TỌA ĐỘ
+    let minDistance = Infinity;
+    
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Marker) {
+        // 🔥 BỎ QUA MARKER CỦA ROUTES
+        if (isRouteMarker(layer)) {
+          return;
+        }
+        
+        const markerLatLng = layer.getLatLng();
+        
+        const dLat = markerLatLng.lat - lat;
+        const dLng = markerLatLng.lng - lon;
+        const distance = Math.sqrt(dLat * dLat + dLng * dLng);
+        
+        if (distance < 0.00001 && distance < minDistance) {
+          minDistance = distance;
+          targetMarker = layer;
+        }
+      }
+    });
+    
+    if (targetMarker) {
+      console.log('✅ Tìm thấy marker theo tọa độ, khoảng cách:', minDistance.toFixed(8));
+    }
+
+    return targetMarker;
+  }
+
+  // ✅ HÀM TÌM DATA QUÁN
+  function findPlaceData() {
+    console.log('🔍 Tìm data quán trong allPlacesData...');
+    
+    if (typeof allPlacesData === 'undefined' || !allPlacesData || allPlacesData.length === 0) {
+      console.error('❌ allPlacesData không tồn tại hoặc rỗng');
+      return null;
+    }
+
+    let foundPlace = null;
+
+    // Tìm theo ID
+    if (placeId) {
+      foundPlace = allPlacesData.find(p => p.data_id === placeId);
+      if (foundPlace) {
+        console.log('✅ Tìm thấy data theo ID:', placeId);
+        return foundPlace;
+      }
+    }
+
+    // Tìm theo tên
+    if (placeName) {
+      foundPlace = allPlacesData.find(p => p.ten_quan === placeName);
+      if (foundPlace) {
+        console.log('✅ Tìm thấy data theo tên:', placeName);
+        return foundPlace;
+      }
+    }
+
+    // Tìm theo tọa độ
+    foundPlace = allPlacesData.find(p => {
+      const pLat = parseFloat(p.lat);
+      const pLon = parseFloat(p.lon);
+      if (isNaN(pLat) || isNaN(pLon)) return false;
+      
+      const dist = Math.sqrt(
+        Math.pow(pLat - lat, 2) + 
+        Math.pow(pLon - lon, 2)
+      );
+      return dist < 0.00001;
+    });
+
+    if (foundPlace) {
+      console.log('✅ Tìm thấy data theo tọa độ');
+    }
+
+    return foundPlace;
+  }
+
+  // ✅ HÀM TẠO MARKER MỚI
+  function createNewMarker(placeData) {
+    console.log('🏗️ Tạo marker mới cho:', placeData?.ten_quan || placeName);
+
+    // Nếu không có data, tạo data tối thiểu
+    if (!placeData) {
+      placeData = {
+        ten_quan: placeName || 'Quán ăn',
+        dia_chi: 'Đang cập nhật...',
+        lat: lat,
+        lon: lon,
+        data_id: placeId || `temp_${Date.now()}`,
+        rating: 0,
+        gio_mo_cua: 'Không rõ',
+        gia_trung_binh: 'Không có',
+        khau_vi: '',
+        hinh_anh: '',
+        so_dien_thoai: '',
+        thuc_don: '',
+        mo_ta: ''
+      };
+      console.log('⚠️ Tạo data tối thiểu cho marker');
+    }
+
+    // Kiểm tra hàm createMarker có tồn tại không
+    if (typeof createMarker !== 'function') {
+      console.error('❌ Hàm createMarker không tồn tại');
+      return null;
+    }
+
+    const newMarker = createMarker(placeData, lat, lon);
+
+    // 🔥 ĐẢM BẢO MARKER ĐƯỢC THÊM VÀO MAP
+    if (window.markerClusterGroup) {
+      window.markerClusterGroup.addLayer(newMarker);
+      console.log('✅ Đã thêm marker vào cluster');
+      
+      // 🔥 FORCE REFRESH CLUSTER
+      window.markerClusterGroup.refreshClusters();
+    } else {
+      newMarker.addTo(map);
+      console.log('✅ Đã thêm marker vào map');
+    }
+
+    // Lưu vào index
+    const id = placeData.data_id || placeId || `temp_${Date.now()}`;
+    if (!window.placeMarkersById) window.placeMarkersById = {};
+    window.placeMarkersById[id] = newMarker;
+    console.log('✅ Đã lưu marker vào placeMarkersById với ID:', id);
+
+    // Đánh dấu visible
+    if (window.visibleMarkers) {
+      window.visibleMarkers.add(id);
+    }
+
+    return newMarker;
+  }
+
+  // ✅ LOGIC CHÍNH
+  waitForMapReady().then(() => {
+    console.log('🎬 Bắt đầu tìm/tạo marker...');
+    
+    // 1️⃣ Tìm marker hiện có
+    let marker = findExistingMarker();
+
+    if (marker) {
+      console.log('✅ Sử dụng marker hiện có');
+      
+      // 🔥 ĐẢM BẢO MARKER VẪN CÒN TRÊN MAP
+      if (!map.hasLayer(marker)) {
+        console.warn('⚠️ Marker không còn trên map, thêm lại...');
+        if (window.markerClusterGroup) {
+          window.markerClusterGroup.addLayer(marker);
+        } else {
+          marker.addTo(map);
+        }
+      }
+      
+      marker.fire('click');
+      return;
+    }
+
+    // 2️⃣ Không tìm thấy marker → Tạo mới
+    console.log('⚠️ Không tìm thấy marker, tiến hành tạo mới...');
+
+    // 3️⃣ Tìm data quán
+    const placeData = findPlaceData();
+
+    // 4️⃣ Tạo marker mới (dù có data hay không)
+    const newMarker = createNewMarker(placeData);
+
+    if (!newMarker) {
+      console.error('❌ Không thể tạo marker');
+      
+      // Fallback: Tạo popup đơn giản
+      L.popup()
+        .setLatLng([lat, lon])
+        .setContent(`
+          <div style="text-align:center;padding:10px;">
+            <strong style="color:#FF6B35;">${placeName || 'Quán ăn'}</strong><br>
+            <em style="color:#999;font-size:12px;">Không tìm thấy thông tin chi tiết</em>
+          </div>
+        `)
+        .openOn(map);
+      
+      return;
+    }
+
+    // 5️⃣ Click vào marker mới sau 600ms
+    setTimeout(() => {
+      console.log('🔥 Click vào marker mới');
+      
+      // 🔥 KIỂM TRA LẠI MARKER VẪN CÒN TRÊN MAP
+      if (!map.hasLayer(newMarker)) {
+        console.error('❌ Marker mới đã bị xóa khỏi map!');
+        if (window.markerClusterGroup) {
+          window.markerClusterGroup.addLayer(newMarker);
+        } else {
+          newMarker.addTo(map);
+        }
+      }
+      
+      newMarker.fire('click');
+    }, 600);
+  });
+};
+
+// ==========================================================
+// 🍽️ CHỈ HIỂN THỊ MARKER CỦA QUÁN TRONG LỊCH TRÌNH (FOOD PLANNER)
+// ==========================================================
+showMarkersForPlaceIds = function (plan) {
+  try {
+    if (!window.map || !plan) return;
+
+    // 🔍 Gom tất cả quán có trong plan
+    const placesInPlan = [];
+    for (const key in plan) {
+      if (!Object.prototype.hasOwnProperty.call(plan, key)) continue;
+      if (key === "_order") continue;
+
+      const item = plan[key];
+      if (!item || !item.place) continue;
+
+      const place = item.place;
+      const id = place.data_id || place.ten_quan;
+      if (!id) continue;
+
+      // tránh trùng
+      if (placesInPlan.some(p => p.id === id)) continue;
+
+      placesInPlan.push({ id, place });
+    }
+
+    if (placesInPlan.length === 0) {
+      console.log("⚠️ Plan không có quán nào để vẽ marker.");
+      return;
+    }
+
+    // 🎯 Tập ID quán cần GIỮ LẠI trên map
+    const idsTrongPlan = new Set(placesInPlan.map(p => p.id));
+
+    // 🔌 Tắt lazy-load: không tự load thêm quán khác nữa
+    if (typeof loadMarkersInViewport === "function") {
+      map.off("moveend", loadMarkersInViewport);
+    }
+
+    // 🧩 Gom tất cả cluster đang có (cluster mặc định + cluster global)
+    const clusters = [];
+
+    // cluster mặc định dùng cho search/lazy-load
+    try {
+      if (typeof markerClusterGroup !== "undefined" && markerClusterGroup && map.hasLayer(markerClusterGroup)) {
+        clusters.push(markerClusterGroup);
+      }
+    } catch (e) {
+      // bỏ qua nếu biến không tồn tại
+    }
+
+    // cluster global (friend view / planner / mini game)
+    if (window.markerClusterGroup && map.hasLayer(window.markerClusterGroup)) {
+      if (!clusters.includes(window.markerClusterGroup)) {
+        clusters.push(window.markerClusterGroup);
+      }
+    }
+
+    // Nếu chưa có cluster nào → tạo một cái để dùng cho lịch trình
+    if (clusters.length === 0) {
+      const tempCluster = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        maxClusterRadius: 80,
+        disableClusteringAtZoom: 16
+      });
+      map.addLayer(tempCluster);
+      clusters.push(tempCluster);
+
+      // cập nhật lại 2 biến global nếu có
+      window.markerClusterGroup = tempCluster;
+      try { markerClusterGroup = tempCluster; } catch (e) {}
+    }
+
+    // Đảm bảo map place_id -> marker tồn tại
+    if (!window.placeMarkersById) {
+      window.placeMarkersById = {};
+    }
+
+    // 🧹 XÓA TẤT CẢ marker KHÔNG NẰM TRONG LỊCH TRÌNH (cả trong cluster lẫn trên map)
+    for (const [id, marker] of Object.entries(window.placeMarkersById)) {
+      if (!marker || typeof marker.getLatLng !== "function") continue;
+
+      if (!idsTrongPlan.has(id)) {
+        // gỡ khỏi mọi cluster hiện có
+        clusters.forEach(c => {
+          if (c && c.hasLayer && c.hasLayer(marker)) {
+            c.removeLayer(marker);
+          }
+        });
+
+        // gỡ khỏi map
+        if (typeof marker.remove === "function") {
+          marker.remove();
+        } else if (map.hasLayer(marker)) {
+          map.removeLayer(marker);
+        }
+      }
+    }
+
+    // 🧽 Clear toàn bộ layer trong các cluster hiện tại
+    clusters.forEach(c => {
+      if (c && c.clearLayers) c.clearLayers();
+    });
+
+    // 🔄 Reset visibleMarkers (cả bản local và bản window)
+    if (typeof visibleMarkers !== "undefined" && visibleMarkers instanceof Set) {
+      visibleMarkers.clear();
+    }
+    if (!window.visibleMarkers || !(window.visibleMarkers instanceof Set)) {
+      window.visibleMarkers = new Set();
+    } else {
+      window.visibleMarkers.clear();
+    }
+
+    const bounds = L.latLngBounds([]);
+
+    // 🔁 Tạo / dùng lại marker chỉ cho những quán trong plan
+    placesInPlan.forEach(({ id, place }) => {
+      const lat = parseFloat(place.lat?.toString().replace(",", "."));
+      const lon = parseFloat(place.lon?.toString().replace(",", "."));
+      if (isNaN(lat) || isNaN(lon)) return;
+
+      let marker = window.placeMarkersById[id];
+
+      // nếu chưa có thì tạo marker mới từ createMarker
+      if (!marker && typeof createMarker === "function") {
+        marker = createMarker(place, lat, lon);
+        if (marker) {
+          window.placeMarkersById[id] = marker;
+        }
+      }
+
+      if (!marker) return;
+
+      // Thêm marker vào các cluster đang dùng
+      clusters.forEach(c => {
+        if (c && c.addLayer) c.addLayer(marker);
+      });
+
+      // Đánh dấu visible
+      if (typeof visibleMarkers !== "undefined" && visibleMarkers instanceof Set) {
+        visibleMarkers.add(id);
+      }
+      window.visibleMarkers.add(id);
+
+      const pos = marker.getLatLng && marker.getLatLng();
+      if (pos) bounds.extend(pos);
+    });
+
+    // Fit map tới các quán trong lịch trình
+    if (bounds.isValid()) {
+      map.fitBounds(bounds.pad(0.25));
+    }
+  } catch (err) {
+    console.error("❌ Lỗi khi showMarkersForPlaceIds:", err);
+  }
+};
+
+// Thay thế alert() bằng showWarningToast()
+function showWarningToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'warning-toast';
+  toast.innerHTML = `
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span>${message}</span>
+  `;
+  toast.style.cssText = `
+    position: fixed;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+    z-index: 10000;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideDown 0.3s ease;
+  `;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideUp 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Thêm CSS animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideDown {
+    from { transform: translate(-50%, -100%); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { transform: translate(-50%, 0); opacity: 1; }
+    to { transform: translate(-50%, -100%); opacity: 0; }
+  }
+`;
+document.head.appendChild(style);

@@ -292,3 +292,91 @@ class PasswordResetOTP(models.Model):
         )
         
         return otp
+    
+class FoodPlan(models.Model):
+    """
+    Model để lưu lịch trình ăn uống của user
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, default="Lịch trình ăn uống")
+    plan_data = models.JSONField()  # Lưu toàn bộ danh sách quán ăn dưới dạng JSON
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.user.username}"
+    
+class SharedFoodPlan(models.Model):
+    """
+    Model theo dõi việc share plan giữa các user
+    """
+    PERMISSION_CHOICES = [
+        ('view', 'Chỉ xem'),
+        ('edit', 'Xem và chỉnh sửa'),
+    ]
+    
+    food_plan = models.ForeignKey('FoodPlan', on_delete=models.CASCADE, related_name='shares')
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shared_plans_as_owner')
+    shared_with = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_shared_plans')
+    permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES, default='edit')
+    shared_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)  # Có thể revoke share
+    
+    class Meta:
+        unique_together = ('food_plan', 'shared_with')
+        ordering = ['-shared_at']
+    
+    def __str__(self):
+        return f"{self.owner.username} shared '{self.food_plan.name}' with {self.shared_with.username}"
+
+
+class PlanEditSuggestion(models.Model):
+    """
+    Model lưu các thay đổi mà bạn bè đề xuất
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Đang chờ'),
+        ('accepted', 'Đã chấp nhận'),
+        ('rejected', 'Đã từ chối'),
+    ]
+    
+    shared_plan = models.ForeignKey('SharedFoodPlan', on_delete=models.CASCADE, related_name='suggestions')
+    suggested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    
+    # Lưu dữ liệu plan cũ và mới
+    original_data = models.JSONField()  # Plan gốc trước khi edit
+    suggested_data = models.JSONField()  # Plan sau khi edit
+    
+    # Metadata
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    message = models.TextField(blank=True)  # Lời nhắn kèm theo suggestion
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Suggestion by {self.suggested_by.username} - {self.status}"            
+    
+class UserPreference(models.Model):
+    """
+    Lưu sở thích ăn uống của user (likes/dislikes/allergies)
+    """
+    PREFERENCE_TYPES = [
+        ('like', 'Thích'),
+        ('dislike', 'Không thích'),
+        ('allergy', 'Dị ứng'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='food_preferences')
+    preference_type = models.CharField(max_length=20, choices=PREFERENCE_TYPES)
+    item = models.CharField(max_length=200)  # Tên món/nguyên liệu
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'preference_type', 'item')  # Tránh trùng lặp
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        type_icon = {'like': '❤️', 'dislike': '❌', 'allergy': '⚠️'}
+        return f"{type_icon.get(self.preference_type, '')} {self.user.username} - {self.item}"

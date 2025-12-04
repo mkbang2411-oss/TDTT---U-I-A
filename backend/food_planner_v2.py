@@ -1350,7 +1350,7 @@ def get_food_planner_html():
 /* ========== FLOATING BUTTON ========== */
 .food-planner-btn {
     position: fixed;
-    bottom: 200px; /* đặt cao hơn nút 🍜 khoảng 80px */
+    bottom: 230px; /* đặt cao hơn nút 🍜 khoảng 80px */
     right: 30px;
     width: 56px;
     height: 56px;
@@ -1400,21 +1400,24 @@ def get_food_planner_html():
 /* ========== SIDE PANEL ========== */
 .food-planner-panel {
     position: fixed;
-    top: 0;
+    top: 160px;
     right: -550px;
-    width: 550px;
-    height: 100vh;
+    width: 30%;
+    height: calc(100% - 160px);
+    max-height: calc(100vh - 60px);
     background: white;
     z-index: 9999999999999 !important;
     transition: right 0.3s ease;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    /* ❌ bỏ overflow-y: auto ở đây */
+    overflow: visible; /* ✅ để panel không trở thành scroll container */
 }
 
 .food-planner-panel.active {
     right: 0;
 }
+
 
 /* ========== HEADER ========== */
 .panel-header {
@@ -1464,7 +1467,8 @@ def get_food_planner_html():
 /* ========== CONTENT AREA ========== */
 .panel-content {
     flex: 1;
-    overflow-y: auto;
+    position: relative;        /* ✅ thêm dòng này cho chắc */
+    overflow-y: auto;          /* ✅ đây mới là thằng scroll chính */
     padding: 20px;
     padding-top: 10px;
 }
@@ -1486,6 +1490,12 @@ def get_food_planner_html():
     display: block !important;
 }
 
+/* 🔥 BẮT BUỘC: bỏ overflow trên tab-content trong panel
+   để sticky dùng scroll của .panel-content */
+.food-planner-panel .tab-content,
+.food-planner-panel .tab-content.active {
+    overflow: visible !important;
+}
 /* ========== NEW FILTERS DESIGN ========== */
 .filters-wrapper-new {
     padding: 0;
@@ -2577,6 +2587,11 @@ def get_food_planner_html():
     transform: translateY(-4px) scale(1.05);
     box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
+/* 🔥 STYLE ĐẶC BIỆT CHO NÚT THOÁT */
+.action-btn[onclick*="exitSharedPlanView"]:hover {
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important;
+    box-shadow: 0 8px 24px rgba(231, 76, 60, 0.4) !important;
+}
 
 .action-btn:active {
     transform: translateY(-2px) scale(1.02);
@@ -2668,12 +2683,12 @@ def get_food_planner_html():
     position: sticky;
     top: 0;
     background: white;
-    z-index: 10;
-    padding: 16px 20px; /* 🔥 TĂNG PADDING */
-    border-bottom: 2px solid #FFE5D9; /* 🔥 VIỀN ĐẬM HƠN */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* 🔥 THÊM SHADOW */
-    margin: 0; /* 🔥 BỎ MARGIN */
-    margin-bottom: 0 !important; /* 🔥 BỎ MARGIN BOTTOM */
+    z-index: 100; /* 🔥 TĂNG Z-INDEX */
+    padding: 16px 20px;
+    border-bottom: 2px solid #FFE5D9;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin: 0;
+    margin-bottom: 0 !important;
 }
 
 /* 🔥 ĐẢM BẢO PANEL CONTENT KHÔNG CÓ PADDING TOP */
@@ -2858,7 +2873,7 @@ def get_food_planner_html():
 /* ========== NÚT ĐÓNG THU THEO PANEL ========== */
 .close-panel-btn {
     position: fixed;
-    top: 50%;
+    top: 65%;
     right: -48px; /* ✅ MẶC ĐỊNH ẨN NGOÀI MÀN HÌNH */
     transform: translateY(-50%);
     width: 48px;
@@ -2893,7 +2908,7 @@ def get_food_planner_html():
 
 /* ✅ KHI PANEL MỞ → NÚT XUẤT HIỆN */
 .food-planner-panel.active .close-panel-btn {
-    right: 550px !important; /* ✅ LỒI RA BÊN TRÁI PANEL */
+    right: 30% !important; /* ✅ LỒI RA BÊN TRÁI PANEL */
     box-shadow: -6px 0 20px rgba(255, 107, 53, 0.4);
 }
 
@@ -2940,6 +2955,26 @@ def get_food_planner_html():
     }
 }
 
+/* ========== CUSTOM SCROLLBAR CHO PANEL ========== */
+.panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+    background: transparent; /* Nền thanh cuộn trong suốt */
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+    /* Màu cam nhạt mờ, phù hợp với theme Food Planner */
+    background: rgba(255, 107, 53, 0.3);
+    border-radius: 3px;
+    transition: background 0.3s ease;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+    /* Đậm hơn khi hover */
+    background: rgba(255, 107, 53, 0.6);
+}
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
     .close-panel-btn {
@@ -3061,6 +3096,7 @@ let lastDragY = 0;
 let dragDirection = 0;
 let lastTargetElement = null;
 window.currentPlanName = null;
+window.loadedFromSavedPlan = false;
 
 // Themes data
 const themes = {
@@ -3222,23 +3258,93 @@ function displaySavedPlansList(plans) {
         return;
     }
     
+    // 🔥 LỌC TRÙNG LẶP - CHỈ GIỮ 1 PLAN DUY NHẤT
+    const uniquePlans = [];
+    const seenIds = new Set();
+    
+    plans.forEach(plan => {
+        if (!seenIds.has(plan.id)) {
+            seenIds.add(plan.id);
+            uniquePlans.push(plan);
+        }
+    });
+    
+    console.log('🔍 Original plans:', plans.length, 'Unique plans:', uniquePlans.length);
+    
     // ✅ Nếu có plans → thêm từng plan vào html
-    plans.forEach((plan, index) => {
-        const date = new Date(plan.savedAt);
-        const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    uniquePlans.forEach((plan, index) => {
+        // 🔥 CODE FIX TIMEZONE
+        const rawCreated = plan.created_at || plan.savedAt || null;
+
+        let dateStr = 'Không rõ ngày';
+        let timeStr = '';
+
+        if (rawCreated) {
+            try {
+                let isoString = rawCreated;
+                
+                if (isoString.includes(' ') && !isoString.includes('T')) {
+                    isoString = isoString.replace(' ', 'T');
+                }
+                
+                const parts = isoString.match(/(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})?/);
+                
+                if (!parts) {
+                    throw new Error('Invalid date format');
+                }
+                
+                const year = parseInt(parts[1]);
+                const month = parseInt(parts[2]) - 1;
+                const day = parseInt(parts[3]);
+                let hour = parseInt(parts[4]);
+                const minute = parseInt(parts[5]);
+                const second = parseInt(parts[6] || '0');
+                
+                hour += 7;
+                if (hour >= 24) {
+                    hour -= 24;
+                }
+                
+                const date = new Date(year, month, day, hour, minute, second);
+
+                if (!isNaN(date.getTime())) {
+                    const dd = String(date.getDate()).padStart(2, '0');
+                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                    const yyyy = date.getFullYear();
+                    dateStr = `${dd}/${mm}/${yyyy}`;
+                    
+                    const hh = String(date.getHours()).padStart(2, '0');
+                    const min = String(date.getMinutes()).padStart(2, '0');
+                    timeStr = `${hh}:${min}`;
+                }
+            } catch (error) {
+                console.error('❌ Lỗi parse datetime:', error, 'Input:', rawCreated);
+                dateStr = 'Không rõ ngày';
+                timeStr = '';
+            }
+        }
         
+        // 🔥 THÊM BADGE CHO SHARED PLAN
+        const sharedBadge = plan.is_shared ? 
+            `<span style="font-size: 10px; background: #2196F3; color: white; padding: 2px 6px; border-radius: 8px; margin-left: 6px;">Chia sẻ</span>` 
+            : '';
+
         html += `
-            <div class="saved-plan-item" onclick="loadSavedPlans('${plan.id}')">
+            <div class="saved-plan-item" onclick="loadSavedPlans(${plan.id})">
                 <div class="saved-plan-info">
-                    <div class="saved-plan-name">${plan.name}</div>
+                    <div class="saved-plan-name">${plan.name}${sharedBadge}</div>
                     <div class="saved-plan-date">📅 ${dateStr} • ⏰ ${timeStr}</div>
+                    ${plan.is_shared ? `<div style="font-size: 11px; color: #2196F3; margin-top: 4px;">👤 ${plan.owner_username}</div>` : ''}
                 </div>
-                <button class="delete-plan-btn" onclick="event.stopPropagation(); deleteSavedPlan('${plan.id}')">×</button>
+                ${!plan.is_shared ? `
+                    <button class="delete-plan-btn" onclick="event.stopPropagation(); deleteSavedPlan(${plan.id})" title="Xóa lịch trình">×</button>
+                ` : `
+                    <button class="delete-plan-btn" onclick="event.stopPropagation(); leaveSharedPlan(${plan.id})" title="Ngừng xem plan này" style="background: #FF9800;">×</button>
+                `}
             </div>
         `;
     });
-    
+
     listDiv.innerHTML = html;
 }
 
@@ -3382,10 +3488,10 @@ async function savePlan() {
     }
 }
 
-// ========== LOAD SAVED PLAN - Từ Database Django ==========
+// ========== LOAD SAVED PLANS ==========
 async function loadSavedPlans(planId) {
     try {
-        // 🔥 GỌI API DJANGO
+        // 🔥 GỌI API DJANGO - BÂY GIỜ TRẢ VỀ CẢ SHARED PLANS
         const response = await fetch('/api/accounts/food-plan/list/');
         const data = await response.json();
         
@@ -3395,19 +3501,51 @@ async function loadSavedPlans(planId) {
         }
         
         const savedPlans = data.plans || [];
+        
+        // ✅ THÊM: GỌI API LẤY SHARED PLANS
+        let sharedPlans = [];
+        try {
+            const sharedResponse = await fetch('/api/accounts/food-plan/shared/');
+            const sharedData = await sharedResponse.json();
+            if (sharedData.status === 'success') {
+                sharedPlans = sharedData.shared_plans || [];
+            }
+        } catch (error) {
+            console.error('Error loading shared plans:', error);
+        }
+        
         const section = document.getElementById('savedPlansSection');
         
         // ✅ LUÔN HIỂN THỊ SECTION
         section.style.display = 'block';
         
-        displaySavedPlansList(savedPlans);
+        
+        // ✅ GỘP 2 DANH SÁCH
+        const allPlans = [...savedPlans, ...sharedPlans];
+        
+        displaySavedPlansList(allPlans);
         
         // Nếu có planId, load plan đó
         if (planId) {
-            const plan = savedPlans.find(p => p.id === planId);
-            
-            if (plan) {
-                currentPlan = {};
+    const plan = allPlans.find(p => p.id === planId);
+    
+    if (plan) {
+        currentPlan = {};
+        
+        // 🔥 XỬ LÝ SHARED PLAN
+        if (plan.is_shared) {
+            isSharedPlan = true;
+            isViewingSharedPlan = true; // 🔥 THÊM DÒNG NÀY
+            sharedPlanOwnerId = plan.owner_id;
+            sharedPlanOwnerName = plan.owner_username;
+            hasEditPermission = (plan.permission === 'edit');
+        } else {
+            isSharedPlan = false;
+            isViewingSharedPlan = false; // 🔥 THÊM DÒNG NÀY
+            sharedPlanOwnerId = null;
+            sharedPlanOwnerName = '';
+            hasEditPermission = false;
+        }
                 
                 // 🔥 CHUYỂN ĐỔI TỪ plan_data
                 const planData = plan.plan_data;
@@ -3424,7 +3562,7 @@ async function loadSavedPlans(planId) {
 
                 currentPlanId = planId;
                 window.currentPlanName = plan.name;
-                window.currentRadius = '10';
+                window.loadedFromSavedPlan = true;
                 isEditMode = false;
                 suggestedFoodStreet = null;
                 suggestedMichelin = null;
@@ -3442,6 +3580,9 @@ async function loadSavedPlans(planId) {
                 
                 if (section) {
                     section.style.display = 'block';
+                }
+                if (!plan.is_shared) {
+                    checkPendingSuggestions(planId);
                 }
             }
         }
@@ -3483,9 +3624,77 @@ async function deleteSavedPlan(planId) {
         alert('❌ Không thể xóa lịch trình!');
     }
 }
+// ========== DELETE PLAN - Xóa từ Database Django ==========
+async function deleteSavedPlan(planId) {
+    if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/delete/${planId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
 
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('✅ Đã xóa kế hoạch!');
+            
+            if (currentPlanId === planId) {
+                currentPlanId = null;
+                currentPlan = null;
+                document.getElementById('planResult').innerHTML = '';
+                isEditMode = false;
+            }
+            
+            await loadSavedPlans();
+        } else {
+            alert('❌ Lỗi: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting plan:', error);
+        alert('❌ Không thể xóa lịch trình!');
+    }
+}
+
+// ========== LEAVE SHARED PLAN ==========
+async function leaveSharedPlan(planId) {
+    if (!confirm('Bạn có chắc muốn ngừng xem lịch trình này? Lịch trình sẽ biến mất khỏi danh sách của bạn')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/leave-shared/${planId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('✅ Đã ngừng xem lịch trình!');
+            
+            if (currentPlanId === planId) {
+                currentPlanId = null;
+                currentPlan = null;
+                document.getElementById('planResult').innerHTML = '';
+                isEditMode = false;
+                clearRoutes();
+            }
+            
+            await loadSavedPlans();
+        } else {
+            alert('❌ Lỗi: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error leaving shared plan:', error);
+        alert('❌ Không thể rời khỏi lịch trình!');
+    }
+}
 // ========== TẠO LỊCH TRÌNH TRỐNG MỚI ==========
 function createNewEmptyPlan() {
+    isViewingSharedPlan = false;
     const now = new Date();
     const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
     const planName = prompt('Đặt tên cho lịch trình:', `Lịch trình ngày ${dateStr}`);
@@ -3507,6 +3716,7 @@ function createNewEmptyPlan() {
     
     currentPlanId = newPlanId;
     window.currentPlanName = planName;
+    window.loadedFromSavedPlan = true;
     isEditMode = true; // ✅ TỰ ĐỘNG BẬT EDIT MODE
     waitingForPlaceSelection = null;
     
@@ -3570,22 +3780,46 @@ function toggleEditMode() {
         displayPlanVertical(currentPlan, isEditMode);
     }
 }
-
 // ========== OPEN/CLOSE PLANNER ==========
-document.getElementById('foodPlannerBtn').addEventListener('click', function() {
-    if (isPlannerOpen) {
-        closeFoodPlanner();
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 DOMContentLoaded fired');
+    
+    const foodPlannerBtn = document.getElementById('foodPlannerBtn');
+    
+    if (foodPlannerBtn) {
+        console.log('✅ Tìm thấy foodPlannerBtn');
+        
+        foodPlannerBtn.addEventListener('click', function(e) {
+            console.log('🔍 Food Planner Button clicked');
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (isPlannerOpen) {
+                closeFoodPlanner();
+            } else {
+                openFoodPlanner();
+            }
+        });
     } else {
-        openFoodPlanner();
+        console.error('❌ Không tìm thấy foodPlannerBtn');
     }
 });
 
 function openFoodPlanner() {
-    document.getElementById('foodPlannerPanel').classList.add('active');
+    console.log('🚀 Opening Food Planner...');
+    
+    const panel = document.getElementById('foodPlannerPanel');
+    console.log('Panel element:', panel);
+    
+    if (!panel) {
+        console.error('❌ Không tìm thấy foodPlannerPanel');
+        return;
+    }
+    
+    panel.classList.add('active');
     isPlannerOpen = true;
     loadSavedPlans();
     
-    // ✅ TỰ ĐỘNG VẼ LẠI ĐƯỜNG ĐI NẾU CÓ LỊCH TRÌNH
     setTimeout(() => {
         if (currentPlan && !isEditMode) {
             const hasPlaces = Object.keys(currentPlan)
@@ -3602,7 +3836,8 @@ function openFoodPlanner() {
 function closeFoodPlanner() {
     document.getElementById('foodPlannerPanel').classList.remove('active');
     isPlannerOpen = false;
-    
+     // 🔥 RESET trạng thái xem shared plan khi đóng panel
+    isViewingSharedPlan = false;
     // ✅ Cleanup toàn bộ
     clearRoutes();
     stopAutoScroll();
@@ -4136,7 +4371,10 @@ async function findSuggestedMichelin() {
 
 // ========== AUTO MODE: GENERATE PLAN ==========
 async function generateAutoPlan() {
+isViewingSharedPlan = false;
     const resultDiv = document.getElementById('planResult');
+
+    window.loadedFromSavedPlan = false;
 
     // ✅ THÊM 2 DÒNG NÀY
     suggestedFoodStreet = null;
@@ -4344,6 +4582,116 @@ function formatMoney(value) {
         return value + ' ₫';
     }
 }
+// ========== SHARE PLAN LOGIC ==========
+let isSharedPlan = false;
+let sharedPlanOwnerId = null;
+let hasEditPermission = false;
+let sharedPlanOwnerName = ''; // ✅ THÊM DÒNG NÀY
+let isViewingSharedPlan = false; // 🔥 BIẾN MỚI - theo dõi có đang xem shared plan không
+
+async function sharePlan() {
+    if (!currentPlan || !currentPlanId) {
+        alert('⚠️ Chưa có lịch trình để chia sẻ');
+        return;
+    }
+    
+    try {
+        // Lấy danh sách bạn bè
+        const response = await fetch('/api/accounts/my-friends/');
+        const data = await response.json();
+        
+        if (!data.friends || data.friends.length === 0) {
+            alert('Bạn chưa có bạn bè nào để chia sẻ');
+            return;
+        }
+        
+        // Tạo modal chọn bạn bè
+        const friendsList = data.friends.map(friend => `
+            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer;">
+                <input type="checkbox" value="${friend.id}" class="friend-checkbox">
+                <span>${friend.username}</span>
+            </label>
+        `).join('');
+        
+        const modalHTML = `
+            <div id="shareModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%;">
+                    <h3 style="margin-top: 0;">📤 Chia sẻ lịch trình</h3>
+                    <p style="color: #666; font-size: 14px;">Chọn bạn bè bạn muốn chia sẻ:</p>
+                    
+                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin: 15px 0;">
+                        ${friendsList}
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="confirmShare()" style="flex: 1; padding: 12px; background: #FF6B35; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Chia sẻ</button>
+                        <button onclick="closeShareModal()" style="flex: 1; padding: 12px; background: #ccc; color: #333; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Hủy</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+    } catch (error) {
+        console.error('Error loading friends:', error);
+        alert('Không thể tải danh sách bạn bè');
+    }
+}
+
+function closeShareModal() {
+    const modal = document.getElementById('shareModal');
+    if (modal) modal.remove();
+}
+
+async function confirmShare() {
+    const checkedBoxes = document.querySelectorAll('.friend-checkbox:checked');
+    const friend_ids = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+    
+    if (friend_ids.length === 0) {
+        alert('Vui lòng chọn ít nhất 1 bạn bè');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/share/${currentPlanId}/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                friend_ids: friend_ids,
+                permission: 'edit'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert('✅ ' + result.message);
+            closeShareModal();
+        } else {
+            alert('❌ ' + result.message);
+        }
+        
+    } catch (error) {
+        console.error('Error sharing plan:', error);
+        alert('Không thể chia sẻ lịch trình');
+    }
+}
+
+// ========== LOAD SHARED PLANS ==========
+async function loadSharedPlans() {
+    try {
+        const response = await fetch('/api/accounts/food-plan/shared/');
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.shared_plans.length > 0) {
+            // Thêm vào saved plans list
+            displaySavedPlansList(data.shared_plans, true); // true = là shared plans
+        }
+    } catch (error) {
+        console.error('Error loading shared plans:', error);
+    }
+}
 
 // ========== AUTO MODE: DISPLAY VERTICAL TIMELINE ==========
 function displayPlanVertical(plan, editMode = false) {
@@ -4379,37 +4727,92 @@ function displayPlanVertical(plan, editMode = false) {
 
     // 🔥 TÍNH TỔNG KINH PHÍ
     const budget = calculateTotalBudget(plan);
+    
+    // 🔥 ẨN/HIỆN FILTERS DựA vào trạng thái xem shared plan
+const filtersWrapper = document.querySelector('.filters-wrapper-new');
+if (filtersWrapper) {
+    if (isViewingSharedPlan) {
+        filtersWrapper.style.display = 'none'; // Ẩn khi xem shared plan
+    } else {
+        filtersWrapper.style.display = 'block'; // Hiện khi không xem shared plan
+    }
+}
 
-    let html = `
-    <div class="schedule-header">
+   let html = `
+<div class="schedule-header">
+    <div>
         <h3 class="schedule-title">
             <span style="margin-right: 8px;">📅</span>
-            <span ${editMode ? 'contenteditable="true" class="editable" onblur="updateAutoPlanName(this.textContent)"' : ''}><span>${window.currentPlanName || 'Lịch trình của bạn'}</span></span>
+            <span ${!isSharedPlan && editMode ? 'contenteditable="true" class="editable" onblur="updateAutoPlanName(this.textContent)"' : ''}><span>${window.currentPlanName || 'Lịch trình của bạn'}</span></span>
         </h3>
-        <div class="action-buttons" id="actionButtons">
+        ${isSharedPlan ? `
+            <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">
+                Được chia sẻ bởi <strong>${sharedPlanOwnerName}</strong>
+            </p>
+        ` : ''}
+    </div>
+    <div class="action-buttons" id="actionButtons">
+    ${isViewingSharedPlan ? `
+        <button class="action-btn" onclick="exitSharedPlanView()" 
+            style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);" 
+            title="Thoát chế độ xem">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+            <span class="btn-label">Thoát xem</span>
+        </button>
+    ` : ''}
+    
+    ${isSharedPlan ? `
+        ${hasEditPermission ? `
             <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                 </svg>
                 <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
             </button>
-            <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
+            <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                 </svg>
-                <span class="btn-label">Lưu</span>
+                <span class="btn-label">Gửi đề xuất</span>
             </button>
-            <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
-                </svg>
-                <span class="btn-label">Chia sẻ</span>
-            </button>
-        </div>
+        ` : ''}
+    ` : `
+        <!-- 🔥 NÚT MỚI: XEM ĐỀ XUẤT -->
+        <button class="action-btn" onclick="openSuggestionsPanel()" id="suggestionsBtn" title="Xem đề xuất chỉnh sửa" style="display: none; background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+            </svg>
+            <span class="btn-label">Đề xuất (<span id="suggestionCount">0</span>)</span>
+        </button>
+        
+        <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+            <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
+        </button>
+        <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+            </svg>
+            <span class="btn-label">Lưu</span>
+        </button>
+        <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
+            </svg>
+            <span class="btn-label">Chia sẻ</span>
+        </button>
+    `}
     </div>
+</div>
+  <div class="timeline-container"><div class="timeline-line"></div>
+`;
+    
 
-    <div class="timeline-container"><div class="timeline-line"></div>
-    `;
+  
     
     const mealOrder = ['breakfast', 'morning_drink', 'lunch', 'afternoon_drink', 'dinner', 'dessert', 'meal', 'meal1', 'drink', 'meal2'];
     let hasPlaces = false;
@@ -4690,57 +5093,60 @@ function displayPlanVertical(plan, editMode = false) {
         `;
     }
 
-    // 📍 Bán Kính Tìm Kiếm
-    html += `
-    <div style="
-        background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
-        border: 2px solid #FFB84D;
-        border-radius: 16px;
-        padding: 16px 20px;
-        margin: 24px 20px 16px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
-    ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 28px;">📍</span>
-            <div>
-                <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">
-                    Bán kính tìm kiếm
-                    <span style="
-                        display: inline-block;
-                        background: rgba(255, 107, 53, 0.15);
-                        color: #FF6B35;
-                        padding: 2px 8px;
-                        border-radius: 12px;
-                        font-size: 11px;
-                        font-weight: 700;
-                        margin-left: 8px;
-                        border: 1px solid rgba(255, 107, 53, 0.3);
-                    ">Thay đổi bán kính<br>ở thanh lọc bán kính</span>
-                </div>
-                <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
-                    ${window.currentRadius || '10'} km
+    // 📍 Bán Kính Tìm Kiếm - CHỈ HIỆN KHI TẠO MỚI
+    if (!window.loadedFromSavedPlan) {
+        html += `
+        <div style="
+            background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
+            border: 2px solid #FFB84D;
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin: 24px 20px 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
+        ">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">📍</span>
+                <div>
+                    <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">
+                        Bán kính tìm kiếm
+                        <span style="
+                            display: inline-block;
+                            background: rgba(255, 107, 53, 0.15);
+                            color: #FF6B35;
+                            padding: 2px 8px;
+                            border-radius: 12px;
+                            font-size: 11px;
+                            font-weight: 700;
+                            margin-left: 8px;
+                            border: 1px solid rgba(255, 107, 53, 0.3);
+                        ">Thay đổi bán kính<br>ở thanh lọc bán kính</span>
+                    </div>
+                    <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
+                        ${window.currentRadius || '10'} km
+                    </div>
                 </div>
             </div>
+            <div style="
+                background: rgba(255, 184, 77, 0.2);
+                padding: 10px 16px;
+                border-radius: 10px;
+                font-size: 12px;
+                color: #8B6914;
+                font-weight: 600;
+                text-align: center;
+                line-height: 1.5;
+                min-width: 140px;
+            ">
+                ℹ️ Bán kính mặc định: 10km
+            </div>
         </div>
-        <div style="
-            background: rgba(255, 184, 77, 0.2);
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-size: 12px;
-            color: #8B6914;
-            font-weight: 600;
-            text-align: center;
-            line-height: 1.5;
-            min-width: 140px;
-        ">
-            ℹ️ Bán kính mặc định: 10km
-        </div>
-    </div>
-
-    <!-- 💰 Tổng Kinh Phí -->
+        `;
+    }
+    // 💰 Tổng Kinh Phí
+    html += `
     <div style="
         background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
         border: 2px solid #4caf50;
@@ -5135,6 +5541,11 @@ if (shouldShowFoodStreetSuggestion) {
         setTimeout(() => drawRouteOnMap(plan), 500);
     } else {
         clearRoutes();
+    }
+
+    // 🔥 ẨN TẤT CẢ MARKER KHÁC, CHỈ GIỮ MARKER CỦA QUÁN TRONG LỊCH TRÌNH
+    if (hasPlaces && window.showMarkersForPlaceIds) {
+        window.showMarkersForPlaceIds(plan);
     }
 
     // 🔥 KIỂM TRA text có dài hơn khung không
@@ -6150,144 +6561,12 @@ function updateAutoPlanName(newName) {
 }
 
 function flyToPlace(lat, lon, placeId, placeName) {
-    if (typeof map !== 'undefined') {
-        map.setView([lat, lon], 17, { animate: true });
-        
-        function waitForMapReady() {
-            return new Promise((resolve) => {
-                if (!map._animatingZoom) {
-                    resolve();
-                    return;
-                }
-                
-                map.once('moveend', () => {
-                    setTimeout(resolve, 1500);
-                });
-            });
-        }
-        
-        function tryClick(attempt) {
-            let targetMarker = null;
-            
-            // 🔥 ƯU TIÊN 1: TÌM THEO placeId (chính xác nhất)
-            if (placeId && typeof window.placeMarkersById !== 'undefined') {
-                targetMarker = window.placeMarkersById[placeId];
-                if (targetMarker) {
-                    console.log('✅ Tìm thấy marker theo ID:', placeId);
-                }
-            }
-            
-            // 🔥 ƯU TIÊN 2: TÌM THEO TÊN QUÁN (nếu không có ID)
-            if (!targetMarker && placeName) {
-                map.eachLayer((layer) => {
-                    if (layer instanceof L.Marker) {
-                        const data = layer.options.placeData || layer.placeData;
-                        if (data && data.ten_quan === placeName) {
-                            targetMarker = layer;
-                            console.log('✅ Tìm thấy marker theo tên:', placeName);
-                            return;
-                        }
-                    }
-                });
-            }
-            
-            // 🔥 ƯU TIÊN 3: TÌM THEO TỌA ĐỘ (fallback - ít chính xác nhất)
-            if (!targetMarker) {
-                let minDistance = Infinity;
-                
-                map.eachLayer((layer) => {
-                    if (layer instanceof L.Marker) {
-                        const markerLatLng = layer.getLatLng();
-                        
-                        const dLat = markerLatLng.lat - lat;
-                        const dLng = markerLatLng.lng - lon;
-                        const distance = Math.sqrt(dLat * dLat + dLng * dLng);
-                        
-                        // 🔥 GIảM NGƯỠNG: 0.0005 → 0.00001 (chỉ chấp nhận marker RẤT GẦN)
-                        if (distance < 0.00001 && distance < minDistance) {
-                            minDistance = distance;
-                            targetMarker = layer;
-                        }
-                    }
-                });
-                
-                if (targetMarker) {
-                    console.log('✅ Tìm thấy marker theo tọa độ, khoảng cách:', minDistance.toFixed(8));
-                }
-            }
-            
-            // 🔥 NẾU TÌM THẤY MARKER → CLICK
-            if (targetMarker) {
-                let placeData = targetMarker.options.placeData || targetMarker.placeData;
-                
-                if (placeData) {
-                    console.log('✅ Marker có dữ liệu:', placeData.ten_quan);
-                } else {
-                    console.warn('⚠️ Marker không có placeData → Tìm trong allPlacesData');
-                    
-                    // Tìm trong allPlacesData
-                    if (typeof allPlacesData !== 'undefined' && allPlacesData.length > 0) {
-                        let foundPlace = null;
-                        
-                        if (placeId) {
-                            foundPlace = allPlacesData.find(p => p.data_id === placeId);
-                        }
-                        
-                        if (!foundPlace && placeName) {
-                            foundPlace = allPlacesData.find(p => p.ten_quan === placeName);
-                        }
-                        
-                        if (!foundPlace) {
-                            foundPlace = allPlacesData.find(p => {
-                                const pLat = parseFloat(p.lat);
-                                const pLon = parseFloat(p.lon);
-                                const dist = Math.sqrt(
-                                    Math.pow(pLat - lat, 2) + 
-                                    Math.pow(pLon - lon, 2)
-                                );
-                                return dist < 0.00001;
-                            });
-                        }
-                        
-                        if (foundPlace) {
-                            console.log('✅ Tìm thấy place trong allPlacesData:', foundPlace.ten_quan);
-                            targetMarker.options.placeData = foundPlace;
-                            targetMarker.placeData = foundPlace;
-                            placeData = foundPlace;
-                        }
-                    }
-                }
-                
-                // ✅ CLICK VÀO MARKER **CHỈ 1 LẦN**
-                console.log('🔥 Trigger click vào marker');
-                targetMarker.fire('click');  // ✅ CHỈ CLICK 1 LẦN
-                
-                return true;
-            }
-            
-            // ✅ Giảm retry từ 25 → 8 lần
-            const MAX_RETRIES = 8;
-            
-            if (attempt < MAX_RETRIES) {
-                console.log(`⏳ Lần thử ${attempt + 1}/${MAX_RETRIES} - Chưa tìm thấy marker`);
-                setTimeout(() => tryClick(attempt + 1), 800); // ✅ 800ms thay vì 1000ms
-            } else {
-                console.error(`❌ Không tìm thấy marker sau ${MAX_RETRIES} lần thử`);
-                
-                // ✅ CHỈ reload 1 lần duy nhất
-                if (attempt === MAX_RETRIES && typeof loadMarkersInViewport === 'function') {
-                    console.log('🔄 Thử reload markers lần cuối...');
-                    loadMarkersInViewport();
-                    setTimeout(() => tryClick(MAX_RETRIES + 1), 1500);
-                }
-            }
-            
-            return false;
-        }
-        
-        waitForMapReady().then(() => {
-            tryClick(0);
-        });
+     // ✅ GỌI HÀM RIÊNG TỪ script.js
+    if (typeof window.flyToPlaceFromPlanner === 'function') {
+        window.flyToPlaceFromPlanner(lat, lon, placeId, placeName);
+    } else {
+        console.error('❌ Hàm flyToPlaceFromPlanner chưa được load từ script.js');
+        alert('Có lỗi khi mở quán. Vui lòng thử lại!');
     }
 }
 
@@ -6627,6 +6906,982 @@ function deleteAllMeals() {
     displayPlanVertical(currentPlan, isEditMode);
     
     alert('✅ Đã xóa tất cả quán!');
+}
+// ========== SUBMIT SUGGESTION ==========
+async function submitSuggestion() {
+    if (!currentPlan || !currentPlanId) {
+        alert('⚠️ Không có thay đổi để gửi');
+        return;
+    }
+    
+    const message = prompt('Nhập lời nhắn kèm theo đề xuất (tùy chọn):');
+    if (message === null) return; // User clicked Cancel
+    
+    try {
+        // 🔥 LƯU DỮ LIỆU TỪ INPUT TRƯỚC KHI GỬI
+        const mealItems = document.querySelectorAll('.meal-item');
+        mealItems.forEach(item => {
+            const mealKey = item.dataset.mealKey;
+            if (mealKey && currentPlan[mealKey]) {
+                // Lưu title
+                const titleInput = item.querySelector('input[onchange*="updateMealTitle"]');
+                if (titleInput && titleInput.value) {
+                    currentPlan[mealKey].title = titleInput.value;
+                }
+                
+                // Lưu time
+                const hourInput = item.querySelector('.time-input-hour');
+                const minuteInput = item.querySelector('.time-input-minute');
+                if (hourInput && minuteInput) {
+                    const hour = hourInput.value.padStart(2, '0');
+                    const minute = minuteInput.value.padStart(2, '0');
+                    currentPlan[mealKey].time = `${hour}:${minute}`;
+                }
+            }
+        });
+        
+        // 🔥 CHUẨN BỊ DỮ LIỆU GỬI ĐI
+        const planArray = [];
+        const orderKeys = currentPlan._order || Object.keys(currentPlan).filter(k => k !== '_order');
+        
+        orderKeys.forEach(key => {
+            if (currentPlan[key]) {
+                planArray.push({
+                    key: key,
+                    data: JSON.parse(JSON.stringify(currentPlan[key]))
+                });
+            }
+        });
+        
+        const response = await fetch(`/api/accounts/food-plan/suggest/${currentPlanId}/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                suggested_data: planArray,
+                message: message || ''
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert('✅ Đã gửi đề xuất chỉnh sửa! Chờ chủ sở hữu phê duyệt.');
+            
+            // Tắt edit mode
+            if (isEditMode) {
+                toggleEditMode();
+            }
+        } else {
+            alert('❌ ' + result.message);
+        }
+        
+    } catch (error) {
+        console.error('Error submitting suggestion:', error);
+        alert('Không thể gửi đề xuất');
+    }
+}
+// ========== CHECK PENDING SUGGESTIONS ==========
+async function checkPendingSuggestions(planId) {
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestions/${planId}/`);
+        const data = await response.json();
+        
+        const suggestionsBtn = document.getElementById('suggestionsBtn');
+        const suggestionCount = document.getElementById('suggestionCount');
+        
+        if (!suggestionsBtn || !suggestionCount) return;
+        
+        // 🔥 LỌC CHỈ LẤY PENDING
+        const pendingSuggestions = data.suggestions ? 
+            data.suggestions.filter(s => s.status === 'pending') : [];
+        
+        if (pendingSuggestions.length > 0) {
+            // Có đề xuất pending → hiện nút
+            suggestionsBtn.style.display = 'flex';
+            suggestionCount.textContent = pendingSuggestions.length;
+        } else {
+            // Không còn pending → ẩn nút
+            suggestionsBtn.style.display = 'none';
+            suggestionCount.textContent = '0';
+        }
+        
+    } catch (error) {
+        console.error('Error checking suggestions:', error);
+    }
+}
+
+// ========== OPEN SUGGESTIONS PANEL ==========
+async function openSuggestionsPanel() {
+    if (!currentPlanId) {
+        alert('⚠️ Không có lịch trình đang mở');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestions/${currentPlanId}/`);
+        const data = await response.json();
+        
+        if (data.status !== 'success' || !data.suggestions || data.suggestions.length === 0) {
+            alert('ℹ️ Không có đề xuất nào');
+            return;
+        }
+        
+        // 🔥 LỌC CHỈ LẤY PENDING
+        const suggestions = data.suggestions.filter(s => s.status === 'pending');
+        
+        if (suggestions.length === 0) {
+            alert('ℹ️ Không còn đề xuất pending nào');
+            return;
+        }
+        
+
+   // Tạo HTML cho danh sách đề xuất
+const suggestionsHTML = suggestions.map((sug, index) => {
+    const statusBg = sug.status === 'pending' ? '#FFF3E0' : sug.status === 'accepted' ? '#E8F5E9' : '#FFEBEE';
+    const statusColor = sug.status === 'pending' ? '#F57C00' : sug.status === 'accepted' ? '#2E7D32' : '#C62828';
+    const statusText = sug.status === 'pending' ? '⏳ Chờ duyệt' : sug.status === 'accepted' ? '✅ Đã chấp nhận' : '❌ Đã từ chối';
+    const borderColor = sug.status === 'pending' ? '#FF9800' : sug.status === 'accepted' ? '#4CAF50' : '#F44336';
+    
+    return `
+        <div style="
+            background: white;
+            border: 2px solid ${borderColor};
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div>
+                    <div style="font-weight: 700; color: #333; font-size: 15px; margin-bottom: 8px;">
+                        👤 ${sug.suggested_by_username}
+                    </div>
+                    <div style="font-size: 13px; color: #666;">
+                        📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
+                    </div>
+                </div>
+                <span style="
+                    padding: 4px 12px;
+                    border-radius: 12px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    background: ${statusBg};
+                    color: ${statusColor};
+                ">
+                    ${statusText}
+                </span>
+            </div>
+            
+            ${sug.message ? `
+                <div style="
+                    background: #F5F5F5;
+                    border-left: 3px solid #FF6B35;
+                    padding: 10px 12px;
+                    border-radius: 6px;
+                    margin-bottom: 12px;
+                    font-size: 13px;
+                    color: #555;
+                ">
+                    💬 ${sug.message}
+                </div>
+            ` : ''}
+            
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button onclick="viewSuggestionComparison(${sug.id})" style="
+                    flex: 1;
+                    background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%);
+                    color: white;
+                    border: none;
+                    padding: 10px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">
+                    👁️ Xem chi tiết
+                </button>
+                
+                ${sug.status === 'pending' ? `
+                    <button onclick="approveSuggestion(${sug.id})" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">
+                        ✅ Chấp nhận
+                    </button>
+                    
+                    <button onclick="rejectSuggestion(${sug.id})" style="
+                        flex: 1;
+                        background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">
+                        ❌ Từ chối
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}).join('');
+        
+        // Tạo modal
+        const modalHTML = `
+            <div id="suggestionsModal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.6);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="
+                    background: linear-gradient(135deg, #F5F5F5 0%, #EEEEEE 100%);
+                    padding: 24px;
+                    border-radius: 16px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 28px;">📝</span>
+                            <span>Đề xuất chỉnh sửa (${suggestions.length})</span>
+                        </h3>
+                        <button onclick="closeSuggestionsModal()" style="
+                            background: #F44336;
+                            color: white;
+                            border: none;
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 20px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">×</button>
+                    </div>
+                    
+                    ${suggestionsHTML}
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+    } catch (error) {
+        console.error('Error loading suggestions:', error);
+        alert('Không thể tải đề xuất');
+    }
+}
+
+function closeSuggestionsModal() {
+    const modal = document.getElementById('suggestionsModal');
+    if (modal) modal.remove();
+}
+
+// ========== VIEW SUGGESTION COMPARISON ==========
+async function viewSuggestionComparison(suggestionId) {
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            alert('❌ ' + data.message);
+            return;
+        }
+        
+        const suggestion = data.suggestion;
+        const currentData = suggestion.current_data;
+        const suggestedData = suggestion.suggested_data;
+        
+        // 🔥 PHÂN TÍCH THAY ĐỔI
+        const changes = analyzeChanges(currentData, suggestedData);
+        
+        // Tạo modal với layout mới
+        const comparisonHTML = `
+            <div id="comparisonModal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                z-index: 100000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            ">
+                <div style="
+                    background: white;
+                    padding: 30px;
+                    border-radius: 16px;
+                    max-width: 900px;
+                    width: 95%;
+                    max-height: 85vh;
+                    overflow-y: auto;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">🔍 So sánh thay đổi</h3>
+                        <button onclick="closeComparisonModal()" style="
+                            background: #F44336;
+                            color: white;
+                            border: none;
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 20px;
+                        ">×</button>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Cột trái: Lịch trình hiện tại -->
+                        <div>
+                            <h4 style="
+                                background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+                                color: white;
+                                padding: 12px;
+                                border-radius: 8px;
+                                margin: 0 0 16px 0;
+                            ">📅 Lịch trình hiện tại</h4>
+                            ${renderPlanPreview(currentData)}
+                        </div>
+                        
+                        <!-- Cột phải: Đề xuất thay đổi -->
+                        <div>
+                            <h4 style="
+                                background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+                                color: white;
+                                padding: 12px;
+                                border-radius: 8px;
+                                margin: 0 0 16px 0;
+                            ">✨ Đề xuất thay đổi</h4>
+                            ${renderChangesWithActions(changes, suggestionId)}
+                        </div>
+                    </div>
+                    
+                    ${suggestion.status === 'pending' && changes.length > 0 ? `
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button onclick="approveAllChanges(${suggestionId})" style="
+                                flex: 1;
+                                background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+                                color: white;
+                                border: none;
+                                padding: 14px;
+                                border-radius: 10px;
+                                font-size: 15px;
+                                font-weight: 700;
+                                cursor: pointer;
+                            ">✅ Chấp nhận tất cả thay đổi</button>
+                            
+                            <button onclick="rejectSuggestion(${suggestionId})" style="
+                                flex: 1;
+                                background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
+                                color: white;
+                                border: none;
+                                padding: 14px;
+                                border-radius: 10px;
+                                font-size: 15px;
+                                font-weight: 700;
+                                cursor: pointer;
+                            ">❌ Từ chối toàn bộ đề xuất</button>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', comparisonHTML);
+        
+    } catch (error) {
+        console.error('Error loading comparison:', error);
+        alert('Không thể tải chi tiết');
+    }
+}
+
+// ========== ANALYZE CHANGES ==========
+function analyzeChanges(currentData, suggestedData) {
+    const changes = [];
+    
+    // Tạo map để dễ so sánh
+    const currentMap = {};
+    const suggestedMap = {};
+    
+    currentData.forEach(item => {
+        currentMap[item.key] = item.data;
+    });
+    
+    suggestedData.forEach(item => {
+        suggestedMap[item.key] = item.data;
+    });
+    
+    // 1. Tìm quán BỊ XÓA (có trong current nhưng không có trong suggested)
+    currentData.forEach(item => {
+        if (!suggestedMap[item.key]) {
+            changes.push({
+                type: 'removed',
+                key: item.key,
+                data: item.data
+            });
+        }
+    });
+    
+    // 2. Tìm quán MỚI THÊM (có trong suggested nhưng không có trong current)
+    suggestedData.forEach(item => {
+        if (!currentMap[item.key]) {
+            changes.push({
+                type: 'added',
+                key: item.key,
+                data: item.data
+            });
+        }
+    });
+    
+    // 3. Tìm quán BỊ THAY ĐỔI (cùng key nhưng khác place hoặc time/title)
+    suggestedData.forEach(item => {
+        if (currentMap[item.key]) {
+            const current = currentMap[item.key];
+            const suggested = item.data;
+            
+            // So sánh place
+            const placeChanged = 
+                current.place?.data_id !== suggested.place?.data_id;
+            
+            // So sánh time hoặc title
+            const detailsChanged = 
+                current.time !== suggested.time || 
+                current.title !== suggested.title ||
+                current.icon !== suggested.icon;
+            
+            if (placeChanged || detailsChanged) {
+                changes.push({
+                    type: 'modified',
+                    key: item.key,
+                    oldData: current,
+                    newData: suggested
+                });
+            }
+        }
+    });
+    
+    return changes;
+}
+// ========== RENDER CHANGES WITH ACTION BUTTONS ==========
+function renderChangesWithActions(changes, suggestionId) {
+    if (changes.length === 0) {
+        return '<p style="color: #999; text-align: center; padding: 20px;">Không có thay đổi nào</p>';
+    }
+    
+    return changes.map((change, index) => {
+        if (change.type === 'added') {
+            // Quán mới thêm
+            const meal = change.data;
+            const place = meal.place;
+            
+            return `
+                <div id="change-${index}" style="
+                    background: #E8F5E9;
+                    border: 2px solid #4CAF50;
+                    border-radius: 10px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                    position: relative;
+                ">
+                    <div style="
+                        position: absolute;
+                        top: 8px;
+                        left: 8px;
+                        background: #4CAF50;
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 700;
+                    ">➕ THÊM MỚI</div>
+                    
+                    <div style="margin-top: 30px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="font-size: 20px;">${meal.icon || '🍽️'}</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; color: #333; font-size: 14px;">
+                                    ⏰ ${meal.time} - ${meal.title}
+                                </div>
+                                ${place ? `
+                                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                        🏪 ${place.ten_quan}
+                                    </div>
+                                    <div style="font-size: 11px; color: #999; margin-top: 2px;">
+                                        📍 ${place.dia_chi}
+                                    </div>
+                                ` : '<div style="font-size: 12px; color: #999;">Chưa có quán</div>'}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid #C8E6C9; padding-top: 12px;">
+                            <button onclick="approveChange(${suggestionId}, ${index}, 'added', '${change.key}')" style="
+                                flex: 1;
+                                background: #4CAF50;
+                                color: white;
+                                border: none;
+                                padding: 8px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">✅ Chấp nhận</button>
+                            
+                            <button onclick="rejectChange(${suggestionId}, ${index}, 'added', '${change.key}')" style="
+                                flex: 1;
+                                background: #F44336;
+                                color: white;
+                                border: none;
+                                padding: 8px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">❌ Từ chối</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+        } else if (change.type === 'removed') {
+            // Quán bị xóa
+            const meal = change.data;
+            const place = meal.place;
+            
+            return `
+                <div id="change-${index}" style="
+                    background: #FFEBEE;
+                    border: 2px solid #F44336;
+                    border-radius: 10px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                    position: relative;
+                    opacity: 0.8;
+                ">
+                    <div style="
+                        position: absolute;
+                        top: 8px;
+                        left: 8px;
+                        background: #F44336;
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 700;
+                    ">🗑️ XÓA BỎ</div>
+                    
+                    <div style="margin-top: 30px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="font-size: 20px;">${meal.icon || '🍽️'}</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; color: #333; font-size: 14px; text-decoration: line-through;">
+                                    ⏰ ${meal.time} - ${meal.title}
+                                </div>
+                                ${place ? `
+                                    <div style="font-size: 12px; color: #666; margin-top: 4px; text-decoration: line-through;">
+                                        🏪 ${place.ten_quan}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid #FFCDD2; padding-top: 12px;">
+                            <button onclick="approveChange(${suggestionId}, ${index}, 'removed', '${change.key}')" style="
+                                flex: 1;
+                                background: #4CAF50;
+                                color: white;
+                                border: none;
+                                padding: 8px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">✅ Đồng ý xóa</button>
+                            
+                            <button onclick="rejectChange(${suggestionId}, ${index}, 'removed', '${change.key}')" style="
+                                flex: 1;
+                                background: #F44336;
+                                color: white;
+                                border: none;
+                                padding: 8px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">❌ Giữ lại</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+        } else if (change.type === 'modified') {
+            // Quán bị thay đổi
+            const oldMeal = change.oldData;
+            const newMeal = change.newData;
+            
+            return `
+                <div id="change-${index}" style="
+                    background: #FFF3E0;
+                    border: 2px solid #FF9800;
+                    border-radius: 10px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                    position: relative;
+                ">
+                    <div style="
+                        position: absolute;
+                        top: 8px;
+                        left: 8px;
+                        background: #FF9800;
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 700;
+                    ">✏️ THAY ĐỔI</div>
+                    
+                    <div style="margin-top: 30px;">
+                        <div style="font-size: 11px; color: #E65100; font-weight: 600; margin-bottom: 8px;">Trước:</div>
+                        <div style="background: rgba(255,255,255,0.5); padding: 8px; border-radius: 6px; margin-bottom: 8px; opacity: 0.7;">
+                            <div style="font-size: 12px; color: #666;">
+                                <span style="font-size: 16px;">${oldMeal.icon || '🍽️'}</span>
+                                ⏰ ${oldMeal.time} - ${oldMeal.title}
+                            </div>
+                            ${oldMeal.place ? `
+                                <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                                    🏪 ${oldMeal.place.ten_quan}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div style="text-align: center; margin: 8px 0;">
+                            <span style="font-size: 20px;">⬇️</span>
+                        </div>
+                        
+                        <div style="font-size: 11px; color: #E65100; font-weight: 600; margin-bottom: 8px;">Sau:</div>
+                        <div style="background: rgba(255,255,255,0.8); padding: 8px; border-radius: 6px; border: 1px solid #FFB74D;">
+                            <div style="font-size: 12px; color: #333; font-weight: 600;">
+                                <span style="font-size: 16px;">${newMeal.icon || '🍽️'}</span>
+                                ⏰ ${newMeal.time} - ${newMeal.title}
+                            </div>
+                            ${newMeal.place ? `
+                                <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                                    🏪 ${newMeal.place.ten_quan}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid #FFE0B2; padding-top: 12px;">
+                            <button onclick="approveChange(${suggestionId}, ${index}, 'modified', '${change.key}')" style="
+                                flex: 1;
+                                background: #4CAF50;
+                                color: white;
+                                border: none;
+                                padding: 8px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">✅ Chấp nhận</button>
+                            
+                            <button onclick="rejectChange(${suggestionId}, ${index}, 'modified', '${change.key}')" style="
+                                flex: 1;
+                                background: #F44336;
+                                color: white;
+                                border: none;
+                                padding: 8px;
+                                border-radius: 6px;
+                                font-size: 12px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">❌ Từ chối</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }).join('');
+}
+
+function renderPlanPreview(planData) {
+    if (!planData || planData.length === 0) {
+        return '<p style="color: #999; text-align: center;">Không có dữ liệu</p>';
+    }
+    
+    return planData.map((item, index) => {
+        const meal = item.data;
+        const place = meal.place;
+        
+        return `
+            <div style="
+                background: #F9F9F9;
+                border: 2px solid #E0E0E0;
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 12px;
+            ">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">${meal.icon || '🍽️'}</span>
+                    <div>
+                        <div style="font-weight: 700; color: #333; font-size: 14px;">
+                            ⏰ ${meal.time} - ${meal.title}
+                        </div>
+                        ${place ? `
+                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                🏪 ${place.ten_quan}
+                            </div>
+                        ` : '<div style="font-size: 12px; color: #999;">Chưa có quán</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function closeComparisonModal() {
+    const modal = document.getElementById('comparisonModal');
+    if (modal) modal.remove();
+}
+
+// ========== APPROVE SUGGESTION ==========
+async function approveSuggestion(suggestionId) {
+    if (!confirm('✅ Xác nhận chấp nhận đề xuất này?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-approve/${suggestionId}/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert('✅ Đã chấp nhận đề xuất!');
+            
+            // Đóng tất cả modal
+            closeComparisonModal();
+            closeSuggestionsModal();
+            
+            // 🔥 CẬP NHẬT SỐ LƯỢNG ĐỀ XUẤT PENDING
+            if (currentPlanId) {
+                await checkPendingSuggestions(currentPlanId);
+                await loadSavedPlans(currentPlanId);
+            }
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error approving suggestion:', error);
+        alert('Không thể chấp nhận đề xuất');
+    }
+}
+// ========== REJECT SUGGESTION ==========
+async function rejectSuggestion(suggestionId) {
+    if (!confirm('❌ Xác nhận từ chối đề xuất này?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-reject/${suggestionId}/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert('✅ Đã từ chối đề xuất!');
+            
+            // Đóng tất cả modal
+            closeComparisonModal();
+            closeSuggestionsModal();
+            
+            // ✅ CẬP NHẬT SỐ LƯỢNG ĐỀ XUẤT CÒN PENDING
+            if (currentPlanId) {
+                await checkPendingSuggestions(currentPlanId);
+            }
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error rejecting suggestion:', error);
+        alert('Không thể từ chối đề xuất');
+    }
+}
+
+// ========== EXIT SHARED PLAN VIEW ==========
+function exitSharedPlanView() {
+    if (!confirm('Bạn có chắc muốn thoát chế độ xem shared plan?')) return;
+    
+    // Reset tất cả trạng thái
+    isViewingSharedPlan = false;
+    isSharedPlan = false;
+    sharedPlanOwnerId = null;
+    sharedPlanOwnerName = '';
+    hasEditPermission = false;
+    currentPlan = null;
+    currentPlanId = null;
+    isEditMode = false;
+    waitingForPlaceSelection = null;
+    
+    // Xóa routes trên map
+    clearRoutes();
+    
+    // Clear nội dung
+    const resultDiv = document.getElementById('planResult');
+    if (resultDiv) {
+        resultDiv.innerHTML = '';
+    }
+    
+    // Hiện lại filters
+    const filtersWrapper = document.querySelector('.filters-wrapper-new');
+    if (filtersWrapper) {
+        filtersWrapper.style.display = 'block';
+    }
+    
+    // Reload danh sách plans
+    loadSavedPlans();
+    
+    console.log('✅ Đã thoát chế độ xem shared plan');
+}
+// ========== APPROVE SINGLE CHANGE ==========
+async function approveChange(suggestionId, changeIndex, changeType, changeKey) {
+    if (!confirm('✅ Xác nhận chấp nhận thay đổi này?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-approve-single/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                suggestion_id: suggestionId,
+                change_type: changeType,
+                change_key: changeKey
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // Ẩn change này
+            const changeEl = document.getElementById(`change-${changeIndex}`);
+            if (changeEl) {
+                changeEl.style.opacity = '0.3';
+                changeEl.style.pointerEvents = 'none';
+                
+                const badge = document.createElement('div');
+                badge.style.cssText = `
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: #4CAF50;
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 20px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+                `;
+                badge.textContent = '✅ Đã chấp nhận';
+                changeEl.style.position = 'relative';
+                changeEl.appendChild(badge);
+            }
+            
+            alert('✅ Đã chấp nhận thay đổi này!');
+            
+            // Reload plan
+            if (currentPlanId) {
+                await loadSavedPlans(currentPlanId);
+            }
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error approving change:', error);
+        alert('Không thể chấp nhận thay đổi');
+    }
+}
+
+// ========== REJECT SINGLE CHANGE ==========
+async function rejectChange(suggestionId, changeIndex, changeType, changeKey) {
+    if (!confirm('❌ Xác nhận từ chối thay đổi này?')) return;
+    
+    const changeEl = document.getElementById(`change-${changeIndex}`);
+    if (changeEl) {
+        changeEl.style.opacity = '0.3';
+        changeEl.style.pointerEvents = 'none';
+        
+        const badge = document.createElement('div');
+        badge.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #F44336;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        `;
+        badge.textContent = '❌ Đã từ chối';
+        changeEl.style.position = 'relative';
+        changeEl.appendChild(badge);
+    }
+    
+    alert('✅ Đã từ chối thay đổi này');
+}
+
+// ========== APPROVE ALL CHANGES ==========
+async function approveAllChanges(suggestionId) {
+    if (!confirm('✅ Xác nhận chấp nhận TẤT CẢ thay đổi?')) return;
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-approve/${suggestionId}/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert('✅ Đã chấp nhận tất cả thay đổi!');
+            
+            closeComparisonModal();
+            closeSuggestionsModal();
+            
+            if (currentPlanId) {
+                await checkPendingSuggestions(currentPlanId);
+                await loadSavedPlans(currentPlanId);
+            }
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error approving all changes:', error);
+        alert('Không thể chấp nhận đề xuất');
+    }
 }
 </script>
 '''
