@@ -1401,7 +1401,7 @@ def get_food_planner_html():
 .food-planner-panel {
     position: fixed;
     top: 160px;
-    right: -550px;
+    right: -30%;
     width: 30%;
     height: calc(100% - 160px);
     max-height: calc(100vh - 60px);
@@ -3489,8 +3489,61 @@ async function savePlan() {
 }
 
 // ========== LOAD SAVED PLANS ==========
-async function loadSavedPlans(planId) {
+async function loadSavedPlans(planId, forceReload = false) {
     try {
+
+        // 🧹 ĐÓNG LỊCH TRÌNH NẾU BẤM LẠI CÙNG 1 PLAN ĐANG MỞ
+        if (
+            !forceReload &&                      // không phải load lại bắt buộc
+            typeof planId !== 'undefined' &&
+            planId !== null &&
+            currentPlanId !== null &&
+            String(currentPlanId) === String(planId)
+        ) {
+            console.log('🧹 Đóng lịch trình hiện tại vì click lại cùng planId:', planId);
+
+            // Reset trạng thái liên quan tới plan
+            isViewingSharedPlan = false;
+            isSharedPlan = false;
+            sharedPlanOwnerId = null;
+            sharedPlanOwnerName = '';
+            hasEditPermission = false;
+
+            currentPlan = null;
+            currentPlanId = null;
+            isEditMode = false;
+            waitingForPlaceSelection = null;
+            window.currentPlanName = null;
+            window.loadedFromSavedPlan = false;
+
+            // Xóa route + clear khu vực lịch trình
+            clearRoutes();
+            const resultDiv = document.getElementById('planResult');
+            if (resultDiv) {
+                resultDiv.innerHTML = '';
+            }
+
+            // Hiện lại bộ lọc (filters)
+            const filtersWrapper = document.querySelector('.filters-wrapper-new');
+            if (filtersWrapper) {
+                filtersWrapper.style.display = 'block';
+            }
+
+            // ⭐ HIỆN LẠI TẤT CẢ MARKER CÁC QUÁN (từ kết quả search trước đó)
+            if (
+                typeof displayPlaces === 'function' &&
+                typeof allPlacesData !== 'undefined' &&
+                Array.isArray(allPlacesData) &&
+                allPlacesData.length > 0
+            ) {
+                // false = không zoom lại map, chỉ vẽ marker
+                displayPlaces(allPlacesData, false);
+            }
+
+            // 👉 Không gọi API nữa, coi như "đóng lịch trình"
+            return;
+        }
+
         // 🔥 GỌI API DJANGO - BÂY GIỜ TRẢ VỀ CẢ SHARED PLANS
         const response = await fetch('/api/accounts/food-plan/list/');
         const data = await response.json();
@@ -4375,6 +4428,10 @@ isViewingSharedPlan = false;
     const resultDiv = document.getElementById('planResult');
 
     window.loadedFromSavedPlan = false;
+
+    // 🔁 Reset ID & tên lịch khi tạo lịch mới
+    currentPlanId = null;           // không còn gắn với plan đã lưu
+    window.currentPlanName = null;  // để header dùng lại "Lịch trình của bạn"
 
     // ✅ THÊM 2 DÒNG NÀY
     suggestedFoodStreet = null;
@@ -6018,15 +6075,38 @@ function deleteMealSlot(mealKey) {
 
 // ========== SELECT PLACE FOR MEAL ==========
 function selectPlaceForMeal(mealKey) {
-    if (waitingForPlaceSelection === mealKey) {
+    // Xem trước đó có đang chờ chọn quán cho meal này không
+    const wasWaiting = (waitingForPlaceSelection === mealKey);
+
+    if (wasWaiting) {
+        // Nhấn lại lần nữa -> hủy chế độ đổi quán
         waitingForPlaceSelection = null;
         selectedPlaceForReplacement = null;
     } else {
+        // Bắt đầu chế độ đổi quán cho meal này
         waitingForPlaceSelection = mealKey;
     }
+
+    // Render lại timeline (vẫn giữ logic hide marker theo lịch trình)
     displayPlanVertical(currentPlan, isEditMode);
 
-    // ✅ THÊM LOG ĐỂ DEBUG
+    // 🔥 Nếu VỪA BẮT ĐẦU chế độ "Đổi quán" -> hiện TẤT CẢ marker quán
+    if (!wasWaiting && waitingForPlaceSelection === mealKey) {
+        // Ưu tiên dùng data tìm kiếm hiện tại
+        if (typeof displayPlaces === 'function' &&
+            Array.isArray(window.allPlacesData) &&
+            window.allPlacesData.length > 0) {
+
+            // Không đổi zoom, chỉ vẽ lại toàn bộ marker từ allPlacesData
+            displayPlaces(window.allPlacesData, false);
+        } else if (typeof loadMarkersInViewport === 'function' && window.map) {
+            // Fallback: nếu chưa có allPlacesData thì bật lại lazy-load
+            window.map.on('moveend', loadMarkersInViewport);
+            loadMarkersInViewport();
+        }
+    }
+
+    // Giữ nguyên phần refreshCurrentSidebar như cũ
     console.log('🔍 Kiểm tra refreshCurrentSidebar:', typeof window.refreshCurrentSidebar);
     
     if (typeof window.refreshCurrentSidebar === 'function') {
@@ -6548,9 +6628,6 @@ function updateMealIcon(mealKey, newIcon) {
 const iconOptions = ['🍳', '🥐', '🍜', '🍚', '🍛', '🍝', '🍕', '🍔', '🌮', '🥗', '🍱', '🍤', '🍣', '🦞', '☕', '🧋', '🍵', '🥤', '🍰', '🍨', '🧁', '🍩', '🍪', '🍽️'];
 
 function updateAutoPlanName(newName) {
-    // Nếu chưa có plan đang mở thì khỏi làm gì
-    if (!currentPlanId) return;
-
     const cleanName = (newName || '').trim() || 'Kế hoạch';
 
     // Tên không đổi thì thôi
@@ -7873,7 +7950,7 @@ async function approveAllChanges(suggestionId) {
             
             if (currentPlanId) {
                 await checkPendingSuggestions(currentPlanId);
-                await loadSavedPlans(currentPlanId);
+                await loadSavedPlans(currentPlanId, true);
             }
         } else {
             alert('❌ ' + result.message);
