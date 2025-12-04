@@ -2525,7 +2525,112 @@ def review_suggestion_api(request, suggestion_id):
             'status': 'error',
             'message': str(e)
         }, status=500)            
-
+@csrf_exempt
+@require_POST
+@login_required
+def suggestion_approve_single(request):
+    """
+    Chấp nhận từng thay đổi riêng lẻ
+    POST /api/accounts/food-plan/suggestion-approve-single/
+    Body: {
+        "suggestion_id": 123,
+        "change_type": "added",  // added/removed/modified
+        "change_key": "custom_1234567890"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        suggestion_id = data.get('suggestion_id')
+        change_type = data.get('change_type')
+        change_key = data.get('change_key')
+        
+        # ✅ SỬA: Dùng đúng model PlanEditSuggestion
+        suggestion = PlanEditSuggestion.objects.select_related(
+            'shared_plan__food_plan'
+        ).get(id=suggestion_id)
+        
+        # ✅ Kiểm tra quyền: phải là owner
+        if suggestion.shared_plan.food_plan.user != request.user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền duyệt suggestion này'
+            }, status=403)
+        
+        # ✅ Kiểm tra status
+        if suggestion.status != 'pending':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Suggestion đã được xử lý ({suggestion.status})'
+            }, status=400)
+        
+        # ✅ Lấy dữ liệu
+        plan = suggestion.shared_plan.food_plan
+        current_data = list(plan.plan_data)  # Copy để tránh modify trực tiếp
+        suggested_data = suggestion.suggested_data
+        
+        print(f"\n🔍 [SINGLE APPROVE] Type: {change_type}, Key: {change_key}")
+        print(f"   Current data length: {len(current_data)}")
+        print(f"   Suggested data length: {len(suggested_data)}")
+        
+        # ✅ ÁP DỤNG THAY ĐỔI
+        if change_type == 'added':
+            # Thêm quán mới
+            new_item = next((item for item in suggested_data if item['key'] == change_key), None)
+            if new_item:
+                # Kiểm tra xem đã tồn tại chưa
+                if not any(item['key'] == change_key for item in current_data):
+                    current_data.append(new_item)
+                    print(f"   ✅ ADDED: {change_key}")
+                else:
+                    print(f"   ⚠️ SKIP: {change_key} already exists")
+            else:
+                print(f"   ❌ NOT FOUND in suggested_data")
+                
+        elif change_type == 'removed':
+            # Xóa quán
+            original_length = len(current_data)
+            current_data = [item for item in current_data if item['key'] != change_key]
+            if len(current_data) < original_length:
+                print(f"   ✅ REMOVED: {change_key}")
+            else:
+                print(f"   ⚠️ NOT FOUND to remove: {change_key}")
+                
+        elif change_type == 'modified':
+            # Sửa quán
+            new_item = next((item for item in suggested_data if item['key'] == change_key), None)
+            if new_item:
+                for i, item in enumerate(current_data):
+                    if item['key'] == change_key:
+                        current_data[i] = new_item
+                        print(f"   ✅ MODIFIED: {change_key}")
+                        break
+            else:
+                print(f"   ❌ NOT FOUND in suggested_data")
+        
+        # ✅ LƯU LẠI
+        plan.plan_data = current_data
+        plan.save()
+        
+        print(f"   💾 SAVED - New length: {len(current_data)}")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã áp dụng thay đổi',
+            'new_count': len(current_data)
+        })
+        
+    except PlanEditSuggestion.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy suggestion'
+        }, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 # ==========================================================
 # 🍽️ USER PREFERENCES APIs
 # ==========================================================

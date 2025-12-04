@@ -37,5 +37,5 @@ urlpatterns = [
     path('food-plan/suggestion-approve/<int:suggestion_id>/', views.approve_suggestion_api, name='approve_suggestion'),
     path('food-plan/suggestion-reject/<int:suggestion_id>/', views.reject_suggestion_api, name='reject_suggestion'),
     path('food-plan/leave-shared/<int:plan_id>/', views.leave_shared_plan_api, name='leave_shared_plan'),
-
+     path('food-plan/suggestion-approve-single/', views.suggestion_approve_single, name='suggestion_approve_single'),
 ]
