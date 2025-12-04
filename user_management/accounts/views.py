@@ -21,6 +21,7 @@ from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
 import requests 
+from .models import UserPreference
 from .models import (
     FoodPlan, 
     SharedFoodPlan,  # ← Thêm dòng này
@@ -2629,8 +2630,6 @@ def suggestion_approve_single(request):
 # 🍽️ USER PREFERENCES APIs
 # ==========================================================
 
-from .models import UserPreference
-
 @login_required
 @require_http_methods(["GET"])
 def get_user_preferences(request):
@@ -2662,31 +2661,22 @@ def get_user_preferences(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@login_required  # ✅ ĐẢM BẢO USER ĐÃ LOGIN
 def save_user_preference(request):
-    """
-    Lưu 1 preference mới
-    POST /api/preferences/
-    Body: {
-        "type": "like",  // like/dislike/allergy
-        "item": "Phở bò"
-    }
-    """
     try:
         data = json.loads(request.body)
         pref_type = data.get('type')
         item = data.get('item', '').strip()
         
+        # ✅ THÊM LOG ĐỂ DEBUG
+        print(f"[SAVE PREF] User: {request.user.username}")
+        print(f"[SAVE PREF] Type: {pref_type}")
+        print(f"[SAVE PREF] Item: {item}")
+        
         if not pref_type or not item:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Thiếu thông tin type hoặc item'
-            }, status=400)
-        
-        if pref_type not in ['like', 'dislike', 'allergy']:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Type không hợp lệ'
             }, status=400)
         
         # Tạo hoặc bỏ qua nếu đã tồn tại
@@ -2695,6 +2685,9 @@ def save_user_preference(request):
             preference_type=pref_type,
             item=item
         )
+        
+        # ✅ THÊM LOG
+        print(f"[SAVE PREF] Created: {created}")
         
         if created:
             return JsonResponse({
@@ -2710,6 +2703,9 @@ def save_user_preference(request):
             })
             
     except Exception as e:
+        print(f"[SAVE PREF ERROR] {e}")  # ✅ THÊM LOG LỖI
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)

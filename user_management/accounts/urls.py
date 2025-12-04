@@ -22,6 +22,7 @@ urlpatterns = [
     # Share Food Plan
     path('food-plan/share/<int:plan_id>/', views.share_food_plan_api, name='share_food_plan'),
     path('food-plan/shared/', views.get_shared_plans_api, name='get_shared_plans'),
+    
     # 🍽️ User Preferences APIs
     path('preferences/', views.get_user_preferences, name='get_preferences'),
     path('preferences/save/', views.save_user_preference, name='save_preference'),
