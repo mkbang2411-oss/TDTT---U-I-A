@@ -2783,7 +2783,8 @@ def get_user_preferences(request):
         data = {
             'likes': [p.item for p in preferences.filter(preference_type='like')],
             'dislikes': [p.item for p in preferences.filter(preference_type='dislike')],
-            'allergies': [p.item for p in preferences.filter(preference_type='allergy')]
+            'allergies': [p.item for p in preferences.filter(preference_type='allergy')],
+            'medicalconditions': [p.item for p in preferences.filter(preference_type='medicalcondition')]
         }
         
         return JsonResponse({
