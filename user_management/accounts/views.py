@@ -2511,7 +2511,58 @@ def review_suggestion_api(request, suggestion_id):
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        }, status=500)            
+        }, status=500)     
+
+@login_required
+@require_http_methods(["GET"])
+def get_my_suggestions_api(request, plan_id):
+    """
+    Lấy danh sách suggestion của user cho 1 plan cụ thể
+    GET /api/accounts/food-plan/my-suggestions/<plan_id>/
+    """
+    try:
+        # Kiểm tra user có được share plan này không
+        shared_plan = SharedFoodPlan.objects.filter(
+            food_plan_id=plan_id,
+            shared_with=request.user,
+            is_active=True
+        ).first()
+        
+        if not shared_plan:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xem lịch trình này'
+            }, status=403)
+        
+        # Lấy tất cả suggestions của user này cho plan này
+        suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user
+        ).order_by('-created_at')
+        
+        suggestions_data = []
+        for suggestion in suggestions:
+            suggestions_data.append({
+                'id': suggestion.id,
+                'message': suggestion.message,
+                'status': suggestion.status,
+                'created_at': suggestion.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'reviewed_at': suggestion.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if suggestion.reviewed_at else None
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'suggestions': suggestions_data
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
 @csrf_exempt
 @require_POST
 @login_required
@@ -2750,4 +2801,3 @@ def delete_user_preference(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
-

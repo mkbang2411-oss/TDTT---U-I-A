@@ -1419,7 +1419,6 @@ def get_food_planner_html():
 }
 
 
-/* ========== HEADER ========== */
 .panel-header {
     background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
     color: white;
@@ -1428,12 +1427,14 @@ def get_food_planner_html():
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    gap: 16px; /* 🔥 THÊM khoảng cách giữa title và nút */
 }
 
 .panel-header h2 {
     font-size: 18px;
     font-weight: 600;
     margin: 0;
+    flex: 1; /* 🔥 THÊM: cho phép title chiếm không gian còn lại */
 }
 
 .header-actions {
@@ -2999,10 +3000,35 @@ def get_food_planner_html():
 <!-- Food Planner Panel -->
 <div class="food-planner-panel" id="foodPlannerPanel">
     <div class="panel-header">
-        <h2 style="font-size: 22px;">
-            <span style="font-size: 26px;">📋</span> Lịch trình bữa ăn
-        </h2>
-    </div>
+    <h2 style="font-size: 22px;">
+        <span style="font-size: 26px;">📋</span> Lịch trình bữa ăn
+    </h2>
+    
+    <!-- 🔥 NÚT X - CHỈ HIỆN KHI XEM SHARED PLAN -->
+    <button id="exitSharedPlanBtn" 
+        onclick="exitSharedPlanView()" 
+        style="
+            display: none; /* 🔥 MẶC ĐỊNH ẨN HOÀN TOÀN */
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+            transition: all 0.3s ease;
+        "
+        onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(231, 76, 60, 0.5)';"
+        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(231, 76, 60, 0.3)';"
+        title="Thoát chế độ xem shared plan">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: white;">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+    </button>
+</div>
         
         <div class="panel-content">
             <!-- AUTO MODE -->
@@ -3889,8 +3915,8 @@ function openFoodPlanner() {
 function closeFoodPlanner() {
     document.getElementById('foodPlannerPanel').classList.remove('active');
     isPlannerOpen = false;
-     // 🔥 RESET trạng thái xem shared plan khi đóng panel
     isViewingSharedPlan = false;
+    
     // ✅ Cleanup toàn bộ
     clearRoutes();
     stopAutoScroll();
@@ -3901,6 +3927,12 @@ function closeFoodPlanner() {
     window.draggedElement = null;
     lastTargetElement = null;
     lastDragY = 0;
+    
+    // 🔥 ẨN NÚT X KHI ĐÓNG PANEL
+    const exitBtn = document.getElementById('exitSharedPlanBtn');
+    if (exitBtn) {
+        exitBtn.style.display = 'none';
+    }
 }
 
 // ========== GET SELECTED FLAVORS ==========
@@ -4809,16 +4841,7 @@ if (filtersWrapper) {
         ` : ''}
     </div>
     <div class="action-buttons" id="actionButtons">
-    ${isViewingSharedPlan ? `
-        <button class="action-btn" onclick="exitSharedPlanView()" 
-            style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);" 
-            title="Thoát chế độ xem">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-            <span class="btn-label">Thoát xem</span>
-        </button>
-    ` : ''}
+  
     
     ${isSharedPlan ? `
         ${hasEditPermission ? `
@@ -4828,6 +4851,15 @@ if (filtersWrapper) {
                 </svg>
                 <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
             </button>
+            <!-- 🔥 NÚT MỚI: XEM ĐỀ XUẤT CỦA TÔI -->
+        <button class="action-btn" onclick="viewMySuggestions(${currentPlanId})" 
+            style="background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);" 
+            title="Xem đề xuất của tôi">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
+            <span class="btn-label">Đề xuất của tôi</span>
+        </button>
             <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -5586,6 +5618,18 @@ if (shouldShowFoodStreetSuggestion) {
     const actionBtns = document.getElementById('actionButtons');
     if (actionBtns) {
         actionBtns.classList.add('visible');
+    }
+
+    // 🔥 THÊM ĐOẠN CODE MỚI Ở ĐÂY
+    const exitBtn = document.getElementById('exitSharedPlanBtn');
+    if (exitBtn) {
+        if (isViewingSharedPlan) {
+            console.log('✅ Hiện nút X vì đang xem shared plan');
+            exitBtn.style.display = 'flex';
+        } else {
+            console.log('❌ Ẩn nút X vì không xem shared plan');
+            exitBtn.style.display = 'none';
+        }
     }
 
     if (editMode) {
@@ -7836,6 +7880,12 @@ function exitSharedPlanView() {
         filtersWrapper.style.display = 'block';
     }
     
+    // 🔥 ẨN NÚT X KHI THOÁT CHẾ ĐỘ XEM
+    const exitBtn = document.getElementById('exitSharedPlanBtn');
+    if (exitBtn) {
+        exitBtn.style.display = 'none';
+    }
+    
     // Reload danh sách plans
     loadSavedPlans();
     
@@ -7959,6 +8009,202 @@ async function approveAllChanges(suggestionId) {
         console.error('Error approving all changes:', error);
         alert('Không thể chấp nhận đề xuất');
     }
+}
+// ========== VIEW MY SUGGESTIONS ==========
+async function viewMySuggestions(planId) {
+    // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI → KHÔNG MỞ THÊM
+    if (document.getElementById('mySuggestionsModal')) {
+        console.log('⚠️ Modal đã mở rồi, không mở thêm');
+        return;
+    }
+    
+    if (!planId) {
+        alert('⚠️ Không có lịch trình đang mở');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/accounts/food-plan/my-suggestions/${planId}/`);
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            alert('❌ ' + data.message);
+            return;
+        }
+        
+        const suggestions = data.suggestions || [];
+        
+        if (suggestions.length === 0) {
+            alert('ℹ️ Bạn chưa gửi đề xuất nào cho lịch trình này');
+            return;
+        }
+        
+        // Tạo HTML hiển thị
+        const suggestionsHTML = suggestions.map((sug, index) => {
+            const statusBg = sug.status === 'pending' ? '#FFF3E0' : 
+                           sug.status === 'accepted' ? '#E8F5E9' : '#FFEBEE';
+            const statusColor = sug.status === 'pending' ? '#F57C00' : 
+                              sug.status === 'accepted' ? '#2E7D32' : '#C62828';
+            const statusIcon = sug.status === 'pending' ? '⏳' : 
+                             sug.status === 'accepted' ? '✅' : '❌';
+            const statusText = sug.status === 'pending' ? 'Chờ duyệt' : 
+                             sug.status === 'accepted' ? 'Đã chấp nhận' : 'Đã từ chối';
+            
+            return `
+                <div style="
+                    background: white;
+                    border: 2px solid ${sug.status === 'pending' ? '#FF9800' : sug.status === 'accepted' ? '#4CAF50' : '#F44336'};
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-weight: 700; color: #333; font-size: 15px; margin-bottom: 8px;">
+                                📝 Đề xuất #${suggestions.length - index}
+                            </div>
+                            <div style="font-size: 13px; color: #666;">
+                                📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
+                            </div>
+                            ${sug.reviewed_at ? `
+                                <div style="font-size: 13px; color: #666; margin-top: 4px;">
+                                    🕐 Xét duyệt: ${new Date(sug.reviewed_at).toLocaleString('vi-VN')}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <span style="
+                            padding: 6px 14px;
+                            border-radius: 12px;
+                            font-size: 13px;
+                            font-weight: 700;
+                            background: ${statusBg};
+                            color: ${statusColor};
+                        ">
+                            ${statusIcon} ${statusText}
+                        </span>
+                    </div>
+                    
+                    ${sug.message ? `
+                        <div style="
+                            background: #F5F5F5;
+                            border-left: 3px solid #FF6B35;
+                            padding: 10px 12px;
+                            border-radius: 6px;
+                            margin-bottom: 12px;
+                            font-size: 13px;
+                            color: #555;
+                        ">
+                            💬 ${sug.message}
+                        </div>
+                    ` : ''}
+                    
+                    ${sug.status === 'accepted' ? `
+                        <div style="
+                            background: #E8F5E9;
+                            border: 1px solid #4CAF50;
+                            padding: 10px;
+                            border-radius: 8px;
+                            font-size: 13px;
+                            color: #2E7D32;
+                            font-weight: 600;
+                        ">
+                            ✨ Đề xuất của bạn đã được chấp nhận và áp dụng vào lịch trình!
+                        </div>
+                    ` : ''}
+                    
+                    ${sug.status === 'rejected' ? `
+                        <div style="
+                            background: #FFEBEE;
+                            border: 1px solid #F44336;
+                            padding: 10px;
+                            border-radius: 8px;
+                            font-size: 13px;
+                            color: #C62828;
+                            font-weight: 600;
+                        ">
+                            😔 Đề xuất của bạn đã bị từ chối
+                        </div>
+                    ` : ''}
+                    
+                    ${sug.status === 'pending' ? `
+                        <div style="
+                            background: #FFF3E0;
+                            border: 1px solid #FF9800;
+                            padding: 10px;
+                            border-radius: 8px;
+                            font-size: 13px;
+                            color: #F57C00;
+                            font-weight: 600;
+                        ">
+                            ⏳ Đang chờ chủ sở hữu xem xét...
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        // Tạo modal
+        const modalHTML = `
+            <div id="mySuggestionsModal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.6);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="
+                    background: linear-gradient(135deg, #F5F5F5 0%, #EEEEEE 100%);
+                    padding: 24px;
+                    border-radius: 16px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 28px;">📋</span>
+                            <span>Đề xuất của tôi (${suggestions.length})</span>
+                        </h3>
+                        <button onclick="closeMySuggestionsModal()" style="
+                            background: #F44336;
+                            color: white;
+                            border: none;
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 20px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">×</button>
+                    </div>
+                    
+                    ${suggestionsHTML}
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+    } catch (error) {
+        console.error('Error loading my suggestions:', error);
+        alert('Không thể tải đề xuất của bạn');
+    }
+}
+
+function closeMySuggestionsModal() {
+    const modal = document.getElementById('mySuggestionsModal');
+    if (modal) modal.remove();
 }
 </script>
 '''
