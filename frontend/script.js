@@ -26,35 +26,38 @@ window.placeMarkersById = {};
 
 let markers = [];
 
-let markerClusterGroup = L.markerClusterGroup({
-  iconCreateFunction: function(cluster) {
-    const count = cluster.getChildCount();
-    let size = 'small';
-    let colorClass = 'cluster-small';
-    
-    if (count > 100) {
-      size = 'large';
-      colorClass = 'cluster-large';
-    } else if (count > 50) {
-      size = 'medium';
-      colorClass = 'cluster-medium';
-    }
-    
-    return L.divIcon({
-      html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
-      className: `marker-cluster marker-cluster-${size}`,
-      iconSize: L.point(50, 50)
-    });
-  },
-  spiderfyOnMaxZoom: true,
-  showCoverageOnHover: false,
-  zoomToBoundsOnClick: true,
-  maxClusterRadius: 80,
-  disableClusteringAtZoom: 16,
-  animate: false,
-  animateAddingMarkers: false,
-  spiderfyDistanceMultiplier: 1.5
+window.markerClusterGroup = L.markerClusterGroup({
+    iconCreateFunction: function(cluster) {
+        const count = cluster.getChildCount();
+        let size = 'small';
+        let colorClass = 'cluster-small';
+        
+        if (count > 100) {
+            size = 'large';
+            colorClass = 'cluster-large';
+        } else if (count > 50) {
+            size = 'medium';
+            colorClass = 'cluster-medium';
+        }
+        
+        return L.divIcon({
+            html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
+            className: `marker-cluster marker-cluster-${size}`,
+            iconSize: L.point(50, 50)
+        });
+    },
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    maxClusterRadius: 80,
+    disableClusteringAtZoom: 16,
+    animate: false,
+    animateAddingMarkers: false,
+    spiderfyDistanceMultiplier: 1.5
 });
+
+const markerClusterGroup = window.markerClusterGroup; // alias
+
 
 let allPlacesData = [];
 let visibleMarkers = new Set();
@@ -436,22 +439,67 @@ function displayPlaces(places, shouldZoom = true) {
     return false;
   }
 
-  // Xóa cluster cũ
-  if (markerClusterGroup) {
-    map.removeLayer(markerClusterGroup);
+  // 🔥🔥🔥 XÓA TẤT CẢ CLUSTER CŨ (CẢ LOCAL VÀ GLOBAL) 🔥🔥🔥
+  
+  // 1️⃣ Xóa cluster LOCAL
+  if (typeof markerClusterGroup !== 'undefined' && markerClusterGroup) {
+    if (map.hasLayer(markerClusterGroup)) {
+      map.removeLayer(markerClusterGroup);
+      console.log('🧹 [displayPlaces] Removed LOCAL cluster');
+    }
+  }
+  
+  // 2️⃣ Xóa cluster GLOBAL
+  if (window.markerClusterGroup) {
+    if (map.hasLayer(window.markerClusterGroup)) {
+      map.removeLayer(window.markerClusterGroup);
+      console.log('🧹 [displayPlaces] Removed GLOBAL cluster');
+    }
   }
 
   markers = []; // reset mảng markers
-  // reset index marker theo place_id
   window.placeMarkersById = {};
+  
   // 👉 Gắn cluster vào map trước
   map.addLayer(markerClusterGroup);
 
-  // 👉 Đăng ký lazy load theo move/zoom
-  map.off("moveend", loadMarkersInViewport);
+// ✅ TẮT lazy load cũ
+
+map.off("moveend", loadMarkersInViewport);
+console.log('⚠️ [displayPlaces] Removed old lazy load listener');
+
+// 🔥 NẾU LÀ FAVORITE MODE: LOAD TẤT CẢ MARKERS NGAY
+if (isFavoriteMode) {
+  console.log('🔥 [FAVORITE MODE] Loading ALL markers immediately...');
+  
+  // Tạo tất cả markers từ danh sách places
+  places.forEach((p) => {
+    const lat = parseFloat(p.lat?.toString().replace(",", "."));
+    const lon = parseFloat(p.lon?.toString().replace(",", "."));
+    
+    if (isNaN(lat) || isNaN(lon)) return;
+    
+    const placeId = p.data_id || p.ten_quan;
+    
+    // Tạo marker
+    const marker = createMarker(p, lat, lon);
+    markers.push(marker);
+    markerClusterGroup.addLayer(marker);
+    visibleMarkers.add(placeId);
+  });
+  
+  console.log(`✅ [FAVORITE MODE] Loaded ${markers.length} markers`);
+  
+  // ⚠️ QUAN TRỌNG: KHÔNG BẬT LẠI lazy load trong favorite mode!
+  
+} else {
+  // CHẾ ĐỘ BÌNH THƯỜNG: Bật lại lazy load
   map.on("moveend", loadMarkersInViewport);
+  console.log('✅ [displayPlaces] Re-enabled lazy load (normal mode)');
+}
 
   if (shouldZoom && places.length > 0) {
+ 
     // 🔍 Tính bounds theo TOÀN BỘ các quán đã lọc
     const bounds = L.latLngBounds([]);
 
@@ -483,6 +531,12 @@ function displayPlaces(places, shouldZoom = true) {
 // 🚀 HÀM LAZY LOADING
 // =========================
 function loadMarkersInViewport() {
+  // ✅ THÊM CHECK NÀY
+  if (isFavoriteMode) {
+    console.log('🚫 Lazy load bị chặn vì đang ở favorite mode');
+    return;
+  }
+  
   if (isLoadingMarkers) return;
   isLoadingMarkers = true;
 
@@ -492,7 +546,7 @@ function loadMarkersInViewport() {
   let maxMarkersToLoad = zoom > 14 ? 200 : zoom > 12 ? 100 : 50;
   let loadedCount = 0;
 
-  const markersToAdd = []; // ⭐ Gom marker vào đây
+  const markersToAdd = [];
 
   allPlacesData.forEach((p) => {
     const placeId = p.data_id || p.ten_quan;
@@ -507,7 +561,7 @@ function loadMarkersInViewport() {
 
     const marker = createMarker(p, lat, lon);
     markers.push(marker);
-    markersToAdd.push(marker);        // ⭐ gom lại
+    markersToAdd.push(marker);
     visibleMarkers.add(placeId);
     loadedCount++;
   });
@@ -1043,10 +1097,14 @@ if (submitBtn) {
 // =========================
 async function showFavoritePlaces() {
   try {
+    console.log('🍕 [SHOW FAVORITES] Step 1: Calling API...');
+    
     const res = await fetch("/api/get-favorites/", {
       method: "GET",
       credentials: "include",
     });
+
+    console.log('🍕 [SHOW FAVORITES] Step 2: Response status:', res.status);
 
     if (res.status === 401 || res.status === 403) {
       alert("Vui lòng đăng nhập để xem danh sách quán yêu thích!");
@@ -1056,15 +1114,59 @@ async function showFavoritePlaces() {
     const data = await res.json();
     const favorites = data.favorites || [];
 
+    console.log('🍕 [SHOW FAVORITES] Step 3: Received data');
+    console.log('   📊 Count:', favorites.length);
+    console.log('   📦 Data:', favorites);
+
     if (!favorites.length) {
       alert("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
       return false;
     }
 
+    console.log('🍕 [SHOW FAVORITES] Step 4: Calling displayPlaces()...');
+    
+    // ✅✅✅ SET isFavoriteMode = true TRƯỚC ✅✅✅
+    isFavoriteMode = true;
+    
+    // 🔥🔥🔥 QUAN TRỌNG: XÓA TẤT CẢ CLUSTER CŨ 🔥🔥🔥
+    
+    // 1️⃣ Xóa cluster local (nếu có)
+    if (typeof markerClusterGroup !== 'undefined' && markerClusterGroup) {
+      if (map.hasLayer(markerClusterGroup)) {
+        map.removeLayer(markerClusterGroup);
+        console.log('🧹 Removed LOCAL cluster');
+      }
+    }
+    
+    // 2️⃣ Xóa cluster global (nếu có)
+    if (window.markerClusterGroup) {
+      if (map.hasLayer(window.markerClusterGroup)) {
+        map.removeLayer(window.markerClusterGroup);
+        console.log('🧹 Removed GLOBAL cluster');
+      }
+    }
+    
+    // 3️⃣ TẮT lazy load
+    map.off("moveend", loadMarkersInViewport);
+    console.log('   ⚠️ Disabled lazy load');
+    
+    // 4️⃣ Reset biến toàn cục
+    allPlacesData = [];
+    visibleMarkers.clear();
+    markers = [];
+    window.placeMarkersById = {};
+    console.log('🧹 Cleared all global variables');
+    
+    // 5️⃣ GỌI displayPlaces()
+    clearAllMarkers();
     displayPlaces(favorites, true);
+    
+    console.log('🍕 [SHOW FAVORITES] Step 5: Done!');
+    console.log('   🗺️ Total markers after display:', markers.length);
+    
     return true;
   } catch (err) {
-    console.error("Lỗi khi lấy danh sách quán yêu thích:", err);
+    console.error("❌ [FAVORITES ERROR]:", err);
     alert("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
     return false;
   }
@@ -1483,28 +1585,42 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   // Nếu là filter-only search → không đụng tới notFoundCount
 });
 
+
 // ✅ NÚT YÊU THÍCH Ở HEADER (ICON TRÁI TIM)
 const favoriteModeBtnHeader = document.getElementById("favoriteModeBtnHeader");
 
 if (favoriteModeBtnHeader) {
   favoriteModeBtnHeader.addEventListener("click", async () => {
-    // 🔴 Đang tắt → bật chế độ "chỉ quán yêu thích"
+    console.log('🔴 [FAVORITE BTN] Clicked!');
+    console.log('🔴 [FAVORITE BTN] Current mode:', isFavoriteMode);
+    
     if (!isFavoriteMode) {
-      isFavoriteMode = true;
+      // ✅ BẬT FAVORITE MODE
       favoriteModeBtnHeader.classList.add("active");
 
+      console.log('🔴 [FAVORITE BTN] Calling showFavoritePlaces()...');
+      
       const ok = await showFavoritePlaces();
-      // Nếu không có quán / lỗi → tắt lại nút
+      
+      console.log('🔴 [FAVORITE BTN] Result:', ok);
+      console.log('🔴 [FAVORITE BTN] Total markers on map:', markers.length);
+      
       if (!ok) {
+        // ✅ NẾU THẤT BẠI THÌ TẮT LẠI
         isFavoriteMode = false;
         favoriteModeBtnHeader.classList.remove("active");
       }
     }
-    // 🟢 Đang bật → tắt chế độ, quay về kết quả tìm kiếm gần nhất
     else {
+      // ✅ TẮT FAVORITE MODE
+      console.log('🟢 [FAVORITE BTN] Turning OFF favorite mode');
+      
       isFavoriteMode = false;
       favoriteModeBtnHeader.classList.remove("active");
 
+      // ✅ TẮT lazy load cũ trước
+      map.off("moveend", loadMarkersInViewport);
+      
       await fetchPlaces(
         lastSearchParams.query,
         lastSearchParams.flavors,
@@ -1512,10 +1628,11 @@ if (favoriteModeBtnHeader) {
         lastSearchParams.radius,
         true
       );
+      
+      console.log('🟢 [FAVORITE BTN] Restored to last search');
     }
   });
 }
-
 
 // =======================================================
 // ✅ MULTI-SELECT KHẨU VỊ
@@ -2771,3 +2888,20 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
+function clearAllMarkers() {
+    // Xóa toàn bộ markers trong map
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+            map.removeLayer(layer);
+        }
+    });
+
+    // Xóa tất cả cluster (dù là biến nào)
+    if (markerClusterGroup) markerClusterGroup.clearLayers();
+    if (window.markerClusterGroup) window.markerClusterGroup.clearLayers();
+
+    // Reset data
+    markers = [];
+    visibleMarkers.clear();
+    window.placeMarkersById = {};
+}

@@ -666,18 +666,26 @@ def change_password_api(request):
 @login_required
 def toggle_favorite(request, place_id):
     try:
+        # 🔍 DEBUG
+        print(f"\n🔍 [TOGGLE FAVORITE] User: {request.user.username}")
+        print(f"📊 [TOGGLE] place_id type: {type(place_id)}")
+        print(f"📊 [TOGGLE] place_id value: '{place_id}'")
+        
         favorite, created = FavoritePlace.objects.get_or_create(
             user=request.user, 
-            place_id=str(place_id)
+            place_id=str(place_id)  # ✅ Đảm bảo luôn lưu dạng string
         )
         
         if not created:
             favorite.delete()
+            print(f"❌ [TOGGLE] REMOVED from favorites\n")
             return JsonResponse({'status': 'removed', 'message': 'Đã xóa khỏi yêu thích'})
         else:
+            print(f"✅ [TOGGLE] ADDED to favorites\n")
             return JsonResponse({'status': 'added', 'message': 'Đã thêm vào yêu thích'})
             
     except Exception as e:
+        print(f"❌ [TOGGLE ERROR] {e}\n")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @login_required
@@ -685,29 +693,57 @@ def toggle_favorite(request, place_id):
 def get_user_favorites_api(request):
     user = request.user
 
-    # Lấy danh sách ID từ DB
+    # ✅ LẤY DANH SÁCH ID TỪ DB
     favorite_ids = list(
         FavoritePlace.objects.filter(user=user).values_list('place_id', flat=True)
     )
 
-    # Đọc CSV
+    # 🔍 DEBUG: In ra console
+    print(f"\n{'='*60}")
+    print(f"🔍 [DEBUG] User: {user.username}")
+    print(f"📊 [DEBUG] Favorite IDs from DB: {favorite_ids}")
+    print(f"📊 [DEBUG] Count: {len(favorite_ids)}")
+    print(f"{'='*60}\n")
+
+    # ĐỌC CSV
     csv_path = os.path.join(settings.BASE_DIR, '..', 'backend', 'Data_with_flavor.csv')
     csv_path = os.path.abspath(csv_path)
 
     favorite_places = []
     try:
         df = pd.read_csv(csv_path)
-        df['data_id'] = df['data_id'].astype(str)  # Ép kiểu string để so sánh
+        df['data_id'] = df['data_id'].astype(str)  # ✅ Ép kiểu string
 
-        # Lọc những quán có id nằm trong danh sách favorite
+        # 🔍 DEBUG: Kiểm tra CSV
+        print(f"📄 [DEBUG] CSV total rows: {len(df)}")
+        print(f"📄 [DEBUG] CSV data_id sample: {df['data_id'].head().tolist()}")
+
+        # LỌC QUÁN
         filtered_df = df[df['data_id'].isin(favorite_ids)]
 
-        # Chuyển dữ liệu thành List of Dict
-        favorite_places = filtered_df.fillna('').to_dict('records')
-    except Exception as e:
-        print(f"Lỗi đọc CSV: {e}")
+        # 🔍 DEBUG: Kiểm tra kết quả filter
+        print(f"✅ [DEBUG] Filtered rows: {len(filtered_df)}")
+        print(f"✅ [DEBUG] Filtered IDs: {filtered_df['data_id'].tolist()}")
+        
+        # ❌ KIỂM TRA TRÙNG LẶP
+        if len(filtered_df) > len(favorite_ids):
+            print(f"⚠️ [WARNING] CSV has DUPLICATES!")
+            print(f"   Expected: {len(favorite_ids)} rows")
+            print(f"   Got: {len(filtered_df)} rows")
+            
+            # Tìm các ID bị trùng
+            duplicates = filtered_df[filtered_df.duplicated(subset=['data_id'], keep=False)]
+            if not duplicates.empty:
+                print(f"🔴 [DUPLICATES]:")
+                print(duplicates[['data_id', 'ten_quan', 'dia_chi']])
 
-    # Trả về JSON
+        favorite_places = filtered_df.fillna('').to_dict('records')
+        
+        print(f"{'='*60}\n")
+
+    except Exception as e:
+        print(f"❌ [ERROR] {e}")
+
     return JsonResponse({'favorites': favorite_places})
 # ==========================================================
 # ✏️ LOGIC API KẾT BẠN
