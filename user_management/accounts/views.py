@@ -233,32 +233,24 @@ def reviews_api(request: HttpRequest, place_id: str):
 # ------------------------LƯU LỊCH SỬ CHATBOT AI--------------------------
 # --- Helper để lấy Avatar ---
 def get_user_avatar(user):
-    # 1. Ảnh mặc định
     default_avatar = 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
     
     if not user.is_authenticated:
         return default_avatar
 
-    # 2. Kiểm tra UserProfile
     try:
-        # hasattr kiểm tra xem user có quan hệ với profile không
         if hasattr(user, 'profile') and user.profile.avatar:
-            avatar_url = user.profile.avatar.url
-            # user.profile.avatar.url sẽ trả về đường dẫn file media
-            if avatar_url.startswith('/'):
-                return 'http://127.0.0.1:8000' + avatar_url
-            return avatar_url
-    except Exception:
-        pass
+            # ✅ TRẢ VỀ URL TƯƠNG ĐỐI (không hardcode domain/port)
+            return user.profile.avatar.url
+    except Exception as e:
+        print(f"Error loading profile avatar: {e}")
 
-    # 3. Kiểm tra tài khoản Google 
     try:
         social_account = SocialAccount.objects.get(user=user, provider='google')
         return social_account.get_avatar_url()
     except SocialAccount.DoesNotExist:
         pass
         
-    # 4. Nếu không có gì hết thì trả về mặc định
     return default_avatar
 
 # --- API 1: Lấy danh sách các đoạn chat (Sidebar) ---
@@ -521,10 +513,10 @@ def upload_avatar_api(request):
         profile.avatar = request.FILES['avatar']
         profile.save()
         
-        # Trả về URL mới ngay lập tức để giao diện cập nhật
+        # ✅ TRẢ VỀ URL TƯƠNG ĐỐI (không hardcode domain)
         return JsonResponse({
             'status': 'success', 
-            'new_avatar_url': 'http://127.0.0.1:8000' + profile.avatar.url
+            'new_avatar_url': profile.avatar.url  # Chỉ trả về /media/avatars/xxx.png
         })
     
     return JsonResponse({'status': 'error', 'message': 'Lỗi upload'}, status=400)
@@ -2768,3 +2760,4 @@ def delete_user_preference(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
