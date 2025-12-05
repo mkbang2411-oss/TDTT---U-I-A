@@ -2393,7 +2393,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             let userPreferences = {{
                 likes: [],
                 dislikes: [],
-                allergies: []
+                allergies: [],
+                medicalconditions: []
             }};
 
             // ✅ ĐẢM BẢO HÀM NÀY ĐÚNG:
@@ -2778,13 +2779,13 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 console.log('🔍 [DETECT] Input text:', botReply.substring(0, 200)); // ← Xem text đầu vào
                 
                 // 🎯 TÌM MARKER THÊM: [PREFERENCE_ADD:type:item]
-                const addMarkerRegex = /\[PREFERENCE_ADD:(allergy|dislike|like):([^\]]+)\]/g;
+                const addMarkerRegex = /\[PREFERENCE_ADD:(allergy|dislike|like|medicalcondition):([^\]]+)\]/g;
                 const addMatches = [...botReply.matchAll(addMarkerRegex)];
 
                 console.log('🎯 [DETECT] Found ADD markers:', addMatches.length); 
 
                 // 🎯 TÌM MARKER: [PREFERENCE_REMOVED:type:item]
-                const markerRegex = /\[PREFERENCE_REMOVED:(allergy|dislike|like):([^\]]+)\]/g;
+                const markerRegex = /\[PREFERENCE_REMOVED:(allergy|dislike|like|medicalcondition):([^\]]+)\]/g;
                 const matches = [...botReply.matchAll(markerRegex)];
                 
                 if (matches.length === 0 && addMatches.length === 0) {{
@@ -2847,8 +2848,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                 // ✅ DOUBLE-CHECK ĐỂ ĐẢM BẢO XÓA HẾT
                 cleanReply = cleanReply
-                    .replace(/\[PREFERENCE_ADD:[^\]]+\]/g, '')
-                    .replace(/\[PREFERENCE_REMOVED:[^\]]+\]/g, '')
+                    .replace(/\[PREFERENCE_ADD:(allergy|dislike|like|medicalcondition):[^\]]+\]/g, '')
+                    .replace(/\[PREFERENCE_REMOVED:(allergy|dislike|like|medicalcondition):[^\]]+\]/g, '')
                     .trim();
                 
                 console.log('✅ [DETECT REMOVAL] Completed. Clean reply length:', cleanReply.length);
@@ -2978,57 +2979,16 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             }};
 
             const welcomeMessages = [
-                "Xin chào bạn iu~ 🌸 Mình là UIAboss đây, hôm nay bạn muốn mình gợi ý món ngon kiểu gì nhỉ? 💕",
-                "Chào cưng nè~ 😘 Mình biết nhiều quán cực xịn luôn, muốn ăn gì thì nói mình nghe nha~",
-                "Hello bạn yêu! 🍰 Mình ở đây để chăm sóc bạn bằng món ngon nè, hôm nay thích gì?",
-                "Chào bạn thân mến! 💖 Hôm nay muốn ăn món lạ hay món comfort food đây? Mình gợi ý liền!",
-                "Hi hi~ 🌷 Mình là UIAboss, chuyên gia ẩm thực đáng yêu của bạn nè, bạn đang thèm món gì?",
-                "Xin chào bạn nhỏ! 🍓 Mình quan tâm bạn nè, hôm nay ăn gì cho vui và no bụng nhỉ?",
-                "Hey hey! 😍 Mình ở đây để làm bạn hạnh phúc bằng đồ ăn ngon nha~ Bạn muốn thử món gì?",
-                "Chào bạn yêu thương! 💕 Mình sẽ giúp bạn chọn món xịn, ăn xong happy luôn, muốn thử không?",
-                "Hello hello~ 🌈 Hôm nay trời đẹp, cùng mình tìm món ăn làm bạn cười toe toét nhé! 😋",
-                "Hi cưng nè! 🍪 Mình sẵn sàng gợi ý món ngon và chăm sóc bạn bằng lời khuyên ăn uống nè~",
-                "Chào bạn iu! 🌸 Mình biết bạn thèm gì ngay từ ánh nhìn nè, muốn thử món lạ không? 😘",
-                "Xin chào bạn thân yêu! 🍩 Ăn gì cho no mà vẫn vui vẻ, để mình lo hết nha~",
-                "Hi bạn đáng yêu! 💖 Hôm nay mình sẽ dẫn bạn đi một chuyến ẩm thực cute cực, bắt đầu nào!",
-                "Chào cưng! 🌷 Mình muốn biết hôm nay bạn muốn ăn gì để mình tư vấn cực kỹ nè 😄",
-                "Hello bạn nhỏ xinh! 🍜 Mình sẽ giúp bạn no bụng và vui vẻ, bạn muốn ăn gì trước nào?",
-                "Chào bạn iu mến! 😍 Mình quan tâm bạn lắm nè, hôm nay muốn ăn đồ ngọt hay đồ mặn?",
-                "Hi hi! 🌸 Mình ở đây để làm bạn cười và no bụng luôn, muốn thử món nào trước?",
-                "Xin chào bạn yêu quý! 🍰 Để mình chăm sóc bạn bằng đồ ăn ngon, hôm nay muốn gì nè?",
-                "Hey cưng ơi! 💕 Mình sẽ gợi ý món ngon, ăn xong bạn hạnh phúc luôn nha~",
-                "Hello bạn iu nè! 🌈 Mình cực quan tâm bạn nè, muốn ăn món nào để mình gợi ý siêu xinh luôn?",
-                "Chào bạn yêu! 🍓 Mình đã chuẩn bị sẵn vài gợi ý món ngon cho bạn, bạn muốn thử món nào trước?",
-                "Hi cưng! 🌸 Ăn gì hôm nay để mình tư vấn cho bạn no nê và happy nè~",
-                "Xin chào bạn nhỏ! 🍪 Hôm nay mình muốn bạn ăn ngon, vui vẻ, muốn mình gợi ý món nào?",
-                "Hello hello! 💖 Mình ở đây để làm bạn cười và no bụng, cùng mình chọn món ngon nào!",
-                "Chào bạn iu! 🌈 Món ăn hôm nay sẽ được mình lựa chọn cẩn thận, bạn muốn thử món ngọt hay mặn?",
-                "Hi bạn đáng yêu! 😘 Mình quan tâm bạn nè, hôm nay ăn gì mới hợp mood đây?",
-                "Xin chào cưng! 🌷 Mình sẽ gợi ý món ngon, ăn xong bạn hạnh phúc luôn nha~",
-                "Hey hey! 🍰 Bạn đang đói đúng không? Mình sẽ chăm sóc bạn bằng đồ ăn ngon liền!",
-                "Chào bạn iu mến! 💕 Mình ở đây để giúp bạn tìm món ngon và cute nhất luôn nha~",
-                "Hello bạn nhỏ! 😍 Hôm nay muốn ăn gì cho vui nhỉ, mình gợi ý liền nè!",
-                "Hi hi~ 🌸 Mình sẽ dẫn bạn đi vòng quanh thế giới ẩm thực, bắt đầu từ món ngon nào đây?",
-                "Chào bạn yêu! 🍩 Hôm nay mình muốn làm bạn no nê và cười toe toét, muốn thử món gì?",
-                "Xin chào bạn thân! 💖 Mình quan tâm bạn lắm nè, hôm nay ăn món gì mới vui?",
-                "Hey cưng nè! 🌈 Mình sẽ gợi ý món ngon, ăn xong bạn happy luôn, muốn thử món lạ không?",
-                "Chào bạn iu! 😘 Mình sẵn sàng chăm sóc bạn bằng món ăn ngon và lời khuyên cute nè~",
-                "Hello bạn yêu thương! 🍓 Mình ở đây để làm bạn cười và no bụng, hôm nay muốn ăn gì?",
-                "Hi hi! 🌷 Hôm nay mình muốn bạn ăn ngon, vui vẻ, muốn mình gợi ý món nào trước?",
-                "Xin chào bạn đáng yêu! 🍪 Mình đã chuẩn bị vài món ngon, muốn thử món lạ hay quen thuộc nhỉ?",
-                "Chào cưng! 💖 Hôm nay ăn gì cho vui, mình gợi ý luôn nè, ăn xong happy liền!",
-                "Hey hey! 🌸 Mình sẽ giúp bạn chọn món ngon cực cute, ăn xong cười toe toét luôn nha~",
-                "Hello bạn iu nè! 🍰 Mình cực quan tâm bạn nè, muốn ăn món nào trước để mình tư vấn?",
-                "Hi bạn nhỏ! 😍 Mình ở đây để chăm sóc bạn bằng đồ ăn ngon và lời khuyên cute nha~",
-                "Chào bạn yêu thương! 🌈 Mình sẽ giúp bạn no bụng và vui vẻ, hôm nay thử món gì?",
-                "Xin chào cưng! 💕 Ăn gì hôm nay cho vui, mình gợi ý món xinh xắn luôn nha~",
-                "Hey bạn iu! 🍓 Hôm nay trời đẹp, cùng mình chọn món ngon và cute nhé 😘",
-                "Chào bạn nhỏ xinh! 🌷 Mình quan tâm bạn lắm nè, muốn ăn món lạ hay món comfort food?",
-                "Hello hello! 🍩 Mình sẽ dẫn bạn đi chuyến ẩm thực cute, ăn xong happy luôn!",
-                "Hi hi! 💖 Hôm nay ăn gì cho no và vui, mình gợi ý món ngon cực xinh nè~",
-                "Chào bạn iu mến! 🌸 Mình quan tâm bạn lắm, muốn thử món gì trước nha 😍",
-                "Xin chào cưng! 🍰 Ăn gì hôm nay để mình giúp bạn no bụng và cười toe toét luôn?",
-                "Hey hey! 🌈 Mình sẽ gợi ý món ngon cực đáng yêu, ăn xong bạn happy luôn nha~"
+                "Hello bạn ơi~ 😺🍜 Hôm nay bạn muốn ăn gì nè? Bạn nhớ nói mình biết sở thích, món ghét, dị ứng hay vấn đề sức khoẻ để mình chọn món cho chuẩn nha~",
+                "Chào bạn iu~ 🐱✨ Muốn mình gợi ý món gì hong? Bạn kể mình nghe khẩu vị, món kỵ hay bệnh lý cần chú ý để mình chăm bạn tốt hơn nha~",
+                "Hi hi bạn dễ thương~ 😸💖 Bạn đang thèm món gì? Nếu có dị ứng hay món nào không hợp cơ địa thì nói mình biết nhẹ để mình gợi ý cho an toàn nha~",
+                "Meow chào bạn~ 😻🌼 Hôm nay mood ăn uống sao rồi? Bạn chia sẻ sở thích, món ghét hay vấn đề sức khoẻ để mình chọn món hợp vibe bạn nha~",
+                "Hello bạn nhỏ cute~ 🐾🍲 Muốn ăn gì nè? Nếu bạn có dạ dày yếu, dị ứng hay món nào từng gây khó chịu thì nhớ nói mình né nha~",
+                "Chào bạn thân mến~ 🐈⭐ Bạn muốn món quen hay món mới? Bạn bật mí khẩu vị, món không thích hoặc bệnh lý cần lưu ý để mình chọn món đúng gu nha~",
+                "Hi bạn iu thương~ 😺💫 Bạn thèm món gì vậy? Bạn nói mình biết sở thích, ghét gì, dị ứng gì hay đang kiêng gì để mình lựa món dễ dàng hơn nha~",
+                "Hello hello~ 🐱🍧 Hôm nay muốn ăn gì cho vui nè? Nếu bạn có bệnh lý liên quan ăn uống hay món kỵ gì thì nói mình biết để mình tránh giúp nha~",
+                "Chào bạn đáng yêu~ 😽🌈 Để mình gợi ý món ngon cho bạn nha! Nhớ cho mình biết khẩu vị, món bạn ghét hay dị ứng để mình chăm bạn đúng kiểu nhất~",
+                "Hi bạn nhỏ~ 🐾🥗 Bạn muốn thử món gì hôm nay? Bạn chia sẻ chút về sở thích, món không thích, dị ứng hay vấn đề sức khoẻ để mình chọn món phù hợp nha~"
             ];
 
             const suggestionQuestions = [
@@ -4496,6 +4456,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 - LIKES: ${{userPreferences.likes.length > 0 ? userPreferences.likes.join(', ') : 'Not learned yet'}}
                 - DISLIKES: ${{userPreferences.dislikes.length > 0 ? userPreferences.dislikes.join(', ') : 'Not learned yet'}}
                 - ALLERGIES: ${{userPreferences.allergies.length > 0 ? userPreferences.allergies.join(', ') : 'Not learned yet'}}
+                - MEDICAL CONDITIONS: ${{userPreferences.medicalconditions.length > 0 ? userPreferences.medicalconditions.join(', ') : 'Not learned yet'}}
+                ⚠️ CRITICAL: Medical conditions take HIGHEST PRIORITY - even above allergies!
 
                 LEARNING USER PREFERENCES (ADDING)
 
@@ -4524,11 +4486,31 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 - "Tôi bị dị ứng hải sản" → Detect: hải sản
                 - "I'm allergic to peanuts" → Detect: peanuts
 
+                **ALLERGIES** - Health-related restrictions:
+                - Vietnamese: "dị ứng", "không ăn được", "bị dị ứng"
+                - English: "allergic", "allergy", "can't eat due to allergy"
+                Examples:
+                - "Tôi bị dị ứng hải sản" → Detect: hải sản
+                - "I'm allergic to peanuts" → Detect: peanuts
+
+                **MEDICAL CONDITIONS** - Disease/health conditions requiring diet restrictions:
+                - Vietnamese: 
+                * "bị bệnh [X]", "có bệnh [X]", "bị [X]"
+                * "tiền sử [X]", "đang điều trị [X]"
+                
+                - English: 
+                * "have [disease]", "diagnosed with [disease]"
+                * "need to avoid [food] because of [disease]"
+
+                Examples:
+                - "Tôi bị tiểu đường type 2" → Detect: tiểu đường type 2
+                - "I have high blood pressure" → Detect: high blood pressure  
+
                 MARKER FORMAT:
                 When you detect a preference, ADD THIS EXACT MARKER in your response:
 
                 \`[PREFERENCE_ADD:type:item]\`
-                - type: "like", "dislike", or "allergy"
+                - type: "like", "dislike", "allergy", or "medicalcondition"
                 - item: Vietnamese name of dish/ingredient
                 EXAMPLES:
 
@@ -4547,6 +4529,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 Bot: "Cảm ơn bạn đã cho mình biết! ⚠️
                 [PREFERENCE_ADD:allergy:tôm]
                 Mình sẽ tuyệt đối không gợi ý món có tôm cho bạn nữa nhé!"
+
+                4. User: "Tôi bị tiểu đường, phải hạn chế đồ ngọt"
+                Bot: "Mình hiểu rồi! Cảm ơn bạn đã chia sẻ về tình trạng sức khỏe 🏥
+                [PREFERENCE_ADD:medicalcondition:tiểu đường]
+                Mình sẽ ưu tiên gợi ý những món ít đường, phù hợp với người tiểu đường nhé! 
+                Món nào có nguy cơ mình sẽ cảnh báo rõ ràng cho bạn 💙"
 
                 IMPORTANT RULES:
                 DO:
@@ -4680,6 +4668,22 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 CRITICAL CHECKING PROTOCOL - MUST FOLLOW FOR EVERY RECOMMENDATION:
                 BEFORE suggesting ANY dish, you MUST:
 
+                0. ⚠️ CHECK MEDICAL CONDITIONS FIRST (HIGHEST PRIORITY!)
+                - For EACH dish you want to suggest:
+                * Review ALL user's medical conditions
+                * Check if dish contains ingredients HARMFUL for those conditions
+                * Examples:
+                    - Diabetes → Avoid: desserts, sweet drinks, high-carb dishes
+                    - Hypertension → Avoid: salty dishes, processed meats, fish sauce-heavy dishes
+                
+                * If dish is UNSAFE → DO NOT suggest it at all
+                * If dish is RISKY but can be modified → Add WARNING:
+                    ⚠️ LƯU Ý: Món này [lý do], người bị [bệnh] nên [khuyến cáo].
+                    
+                * Examples:     
+                    "1. Cơm tấm: Cơm dẻo, thịt nướng thơm.
+                    ⚠️ LƯU Ý: Món này có nhiều tinh bột, người tiểu đường nên ăn vừa phải!"
+
                 1.CHECK DISH NAME against DISLIKES list
                 - If dish name matches ANY item in user's DISLIKES → NEVER suggest it
                 - Example: User dislikes "Phở" → Don't suggest "Phở bò", "Phở gà", ANY Phở variation
@@ -4717,9 +4721,10 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 - Add warnings for dishes that can be modified
 
                 PRIORITY ORDER:
-                1. ALLERGIES → Highest priority (life threatening)
-                2. DISLIKES → Must respect (user comfort)
-                3. LIKES → Nice to have (user preference)
+                1. MEDICAL CONDITIONS → ABSOLUTE HIGHEST (life & health threatening!)
+                2. ALLERGIES → Highest priority (life threatening)
+                3. DISLIKES → Must respect (user comfort)
+                4. LIKES → Nice to have (user preference)
 
                 1.NEVER suggest dishes user DISLIKES
                 - If user dislikes "cay" (spicy) → DO NOT suggest: mì cay, bún bò Huế cay, phở cay
@@ -4810,7 +4815,9 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                 Detect phrases like:
                 - Vietnamese: "giờ ăn được [X] rồi", "không còn dị ứng [X]", "không ghét [X] nữa", "bỏ dị ứng [X]"
+                * "hết bệnh [X] rồi", "khỏi bệnh [X]", "không còn bị [X]", "bác sĩ cho phép ăn [X]"
                 - English: "I can eat [X] now", "no longer allergic to [X]", "not allergic anymore"
+                * "recovered from [disease]", "no longer have [disease]", "cured", "doctor cleared me"
 
                 YOUR RESPONSE MUST INCLUDE THIS EXACT MARKER:
                 Format (Vietnamese example):
@@ -4818,9 +4825,15 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 [PREFERENCE_REMOVED:allergy:tôm]
                 Vậy giờ mình có thể gợi ý [món có tôm] cho bạn rồi đó 😋"
 
+                User: "Tôi đã khỏi bệnh tiểu đường, bác sĩ cho phép ăn ngọt rồi"
+                Bot: "Waooo tuyệt vời! 🎉 Chúc mừng bạn đã phục hồi sức khỏe!
+                [PREFERENCE_REMOVED:medicalcondition:tiểu đường]
+                Giờ bạn có thể thưởng thức nhiều món ăn hơn rồi nè! 😋 
+                (Nhưng vẫn nên ăn uống điều độ nhé! 💙)"
+
                 Format rules:
                 - ALWAYS include marker: [PREFERENCE_REMOVED:type:item]
-                - Types: "allergy", "dislike", "like"
+                - Types: "allergy", "dislike", "like", "medicalcondition"
                 - Item: exact ingredient/dish name in Vietnamese
                 - Place marker AFTER the congratulation sentence
                 - Keep natural, friendly tone around the marker
