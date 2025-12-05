@@ -21,6 +21,7 @@ from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
 import requests 
+from .models import UserPreference
 from .models import (
     FoodPlan, 
     SharedFoodPlan,  # ← Thêm dòng này
@@ -1602,11 +1603,8 @@ def send_password_reset_otp_api(request):
                 'message': 'Tài khoản Google không thể đặt lại mật khẩu'
             }, status=400)
         
-        # Xóa OTP cũ nếu có
-        PasswordResetOTP.objects.filter(email=email).delete()
-        
-        # Tạo OTP mới
-        otp = PasswordResetOTP.objects.create(email=email)
+        # Tạo OTP mới (tự động xóa OTP cũ)
+        otp = PasswordResetOTP.generate_otp(email)
         
         # Gửi email
         if send_password_reset_otp_email(email, otp.otp_code):
@@ -1668,18 +1666,15 @@ def verify_password_reset_otp_api(request):
                 'message': 'Mã OTP đã hết hạn'
             }, status=400)
         
-        # Kiểm tra số lần thử
-        if otp_obj.attempts >= 5:
-            otp_obj.delete()
+        # Kiểm tra đã bị khóa
+        if otp_obj.is_locked:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Bạn đã nhập sai quá nhiều lần'
             }, status=400)
         
-        otp_obj.attempts += 1
-        otp_obj.save()
-        
-        # Xác thực thành công
+        # Xác thực thành công - đánh dấu và xóa
+        otp_obj.mark_as_verified()
         otp_obj.delete()
         
         # Lưu session
@@ -1705,26 +1700,26 @@ def reset_password_api(request):
     """
     API đặt lại mật khẩu mới
     POST /api/password-reset/reset/
-    Body: {"email": "example@email.com", "new_password": "newpass123"}
+    Body: {"new_password": "newpass123"}
     """
     try:
         data = json.loads(request.body)
-        email = data.get('email', '').strip()
         new_password = data.get('new_password', '').strip()
         
-        if not email or not new_password:
+        # Lấy email từ session (đã verify OTP)
+        email = request.session.get('password_reset_verified')
+        
+        if not email:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Phiên xác thực không hợp lệ. Vui lòng thực hiện lại từ đầu.'
+            }, status=403)
+        
+        if not new_password:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Thiếu thông tin'
             }, status=400)
-        
-        # Kiểm tra session
-        verified_email = request.session.get('password_reset_verified')
-        if verified_email != email:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Phiên xác thực không hợp lệ'
-            }, status=403)
         
         # Kiểm tra độ dài mật khẩu
         if len(new_password) < 6:
@@ -1775,7 +1770,7 @@ def password_reset_verify_otp_page(request):
         return redirect('password_reset_request')
     
     return render(request, 'account/password_reset_verify_otp.html', {
-        'email': email
+        'reset_email': email
     })
 
 
@@ -2627,8 +2622,6 @@ def suggestion_approve_single(request):
 # 🍽️ USER PREFERENCES APIs
 # ==========================================================
 
-from .models import UserPreference
-
 @login_required
 @require_http_methods(["GET"])
 def get_user_preferences(request):
@@ -2660,31 +2653,22 @@ def get_user_preferences(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@login_required  # ✅ ĐẢM BẢO USER ĐÃ LOGIN
 def save_user_preference(request):
-    """
-    Lưu 1 preference mới
-    POST /api/preferences/
-    Body: {
-        "type": "like",  // like/dislike/allergy
-        "item": "Phở bò"
-    }
-    """
     try:
         data = json.loads(request.body)
         pref_type = data.get('type')
         item = data.get('item', '').strip()
         
+        # ✅ THÊM LOG ĐỂ DEBUG
+        print(f"[SAVE PREF] User: {request.user.username}")
+        print(f"[SAVE PREF] Type: {pref_type}")
+        print(f"[SAVE PREF] Item: {item}")
+        
         if not pref_type or not item:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Thiếu thông tin type hoặc item'
-            }, status=400)
-        
-        if pref_type not in ['like', 'dislike', 'allergy']:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Type không hợp lệ'
             }, status=400)
         
         # Tạo hoặc bỏ qua nếu đã tồn tại
@@ -2693,6 +2677,9 @@ def save_user_preference(request):
             preference_type=pref_type,
             item=item
         )
+        
+        # ✅ THÊM LOG
+        print(f"[SAVE PREF] Created: {created}")
         
         if created:
             return JsonResponse({
@@ -2708,6 +2695,9 @@ def save_user_preference(request):
             })
             
     except Exception as e:
+        print(f"[SAVE PREF ERROR] {e}")  # ✅ THÊM LOG LỖI
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
