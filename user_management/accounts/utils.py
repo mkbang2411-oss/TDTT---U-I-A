@@ -15,12 +15,8 @@ def send_otp_email(email, otp_code):
     """
     subject = '🔐 Mã OTP xác thực tài khoản UIA Food'
 
-    # Lưu ý:
-    # - Với email HTML, ảnh nền phải là URL public (http/https), KHÔNG dùng đường dẫn ổ đĩa kiểu D:\...
-    # - Hãy upload file mail.png (A4) lên static/server và thay URL bên dưới cho đúng.
     background_url = 'https://res.cloudinary.com/dbmq2hme4/image/upload/v1764926423/disc_covers/mail.png'
 
-    # Template HTML cho email OTP (nền A4, font Poppins, màu #fff4bf)
     html_message = f"""
     <!DOCTYPE html>
     <html>
@@ -32,86 +28,152 @@ def send_otp_email(email, otp_code):
 
             * {{
                 box-sizing: border-box;
+                margin: 0;
+                padding: 0;
             }}
 
             body {{
                 margin: 0;
                 padding: 0;
-                background-color: #000000;
+                background-color: #e5e5e5;
                 font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 font-weight: 500;
+                min-height: 100% !important;
+                height: 100% !important;
             }}
 
-            /* Nền A4 */
+            .email-container {{
+                max-width: 850px;
+                margin: 0 auto;
+                background-color: #f5f5f5;
+                padding: 40px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }}
+
             .email-bg {{
                 width: 100%;
-                min-height: 100vh;
+                max-width: 595px;
+                margin: 0 auto;
                 background-image: url('{background_url}');
                 background-repeat: no-repeat;
-                background-position: center top;
-                background-size: cover;
+                background-position: center center;
+                background-size: 100% 100%;
+                position: relative;
+                min-height: 842px;
                 display: flex;
-                align-items: center;
+                align-items: flex-start;
                 justify-content: center;
-                padding: 0;
             }}
 
-            /* Block chữ nằm giữa, padding đều 4 phía */
             .content-wrapper {{
-                max-width: 800px;
                 width: 100%;
-                padding: 64px;
-                color: #fff4bf;
+                height: 100%;
+                padding: 200px 60px 80px 60px;
                 display: flex;
                 justify-content: center;
+                align-items: flex-start;
             }}
 
             .content {{
-                max-width: 520px;
-                margin: 0 auto;
+                max-width: 100%;
+                width: 100%;
                 color: #fff4bf;
-                line-height: 1.7;
-                text-align: left;
+                line-height: 1.9;
+                text-align: justify;
+                text-justify: inter-word;
+                font-size: 15px;
+                white-space: normal;
+                word-wrap: break-word;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
             }}
 
             .content p {{
-                margin: 0 0 12px 0;
+                margin: 0 0 16px 0;
+                font-size: 15px;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
             }}
 
             .content p:last-child {{
                 margin-bottom: 0;
             }}
+
+            .content strong {{
+                font-weight: 600;
+            }}
+
+            .otp-code {{
+                font-size: 24px;
+                font-weight: 600;
+                letter-spacing: 2px;
+            }}
+
+            @media only screen and (max-width: 600px) {{
+                body {{
+                    padding: 0;
+                }}
+                
+                .email-container {{
+                    padding: 20px;
+                }}
+
+                .email-bg {{
+                    min-height: 600px;
+                }}
+                
+                .content-wrapper {{
+                    padding: 160px 40px 60px 40px;
+                }}
+                
+                .content {{
+                    font-size: 13px;
+                }}
+                
+                .content p {{
+                    font-size: 13px;
+                    margin-bottom: 14px;
+                }}
+                
+                .otp-code {{
+                    font-size: 20px;
+                }}
+            }}
         </style>
     </head>
     <body>
-        <div class="email-bg">
-            <div class="content-wrapper">
-                <div class="content">
-                    <p>Kính gửi Quý khách,</p>
+        <div class="email-container">
+            <div class="email-bg">
+                <div class="content-wrapper">
+                    <div class="content">
+                        <p>Kính gửi Quý khách,</p>
 
-                    <p>
-                        Hệ thống <strong>UIA Food</strong> xin thông báo mã OTP xác minh tài khoản của Quý khách là:
-                        <strong>{otp_code}</strong>.
-                    </p>
+                        <p>
+                            Hệ thống <strong>UIA Food</strong> xin thông báo mã OTP xác minh tài khoản của Quý khách là: 
+                            <span class="otp-code">{otp_code}</span>.
+                        </p>
 
-                    <p>
-                        Vui lòng sử dụng mã này để hoàn tất quy trình xác thực. Mã OTP sẽ hết hạn sau
-                        <strong>5 phút</strong>.
-                    </p>
+                        <p>
+                            Vui lòng sử dụng mã này để hoàn tất quy trình xác thực. Mã OTP sẽ hết hạn sau 
+                            <strong>5 phút</strong>.
+                        </p>
 
-                    <p>
-                        Quý khách vui lòng không cung cấp mã OTP cho bất kỳ ai nhằm đảm bảo an toàn thông tin.
-                    </p>
+                        <p>
+                            Quý khách vui lòng không cung cấp mã OTP cho bất kỳ ai nhằm đảm bảo an toàn thông tin.
+                        </p>
 
-                    <p>
-                        Nếu Quý khách không yêu cầu mã OTP, vui lòng bỏ qua thông điệp này hoặc liên hệ với bộ phận
-                        hỗ trợ của chúng tôi để được trợ giúp.
-                    </p>
+                        <p>
+                            Nếu Quý khách không yêu cầu mã OTP, vui lòng bỏ qua thông điệp này hoặc liên hệ với bộ phận 
+                            hỗ trợ của chúng tôi để được trợ giúp.
+                        </p>
 
-                    <p style="margin-top: 24px;">
-                        Trân trọng,<br/>
-                        Đội ngũ UIA Food
-                    </p>
+                        <p style="margin-top: 24px;">
+                            Trân trọng,<br/>
+                            Đội ngũ UIA Food
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,7 +181,6 @@ def send_otp_email(email, otp_code):
     </html>
     """
 
-    # Plain text version (fallback)
     plain_message = f"""
     Kính gửi Quý khách,
 
@@ -162,106 +223,153 @@ def send_welcome_email(email, username):
     """
     subject = '🎉 Chào mừng bạn đến với UIA Food!'
 
+    background_url = 'https://res.cloudinary.com/dbmq2hme4/image/upload/v1764926423/disc_covers/mail.png'
+
     html_message = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
+        <title>Chào mừng bạn đến với UIA Food</title>
         <style>
-            body {{
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background-color: #f4f4f4;
+            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+            * {{
+                box-sizing: border-box;
                 margin: 0;
                 padding: 0;
             }}
-            .container {{
-                max-width: 600px;
-                margin: 40px auto;
-                background: white;
-                border-radius: 15px;
-                overflow: hidden;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            }}
-            .header {{
-                background: linear-gradient(135deg, #BC2A12 0%, #E63B21 100%);
-                color: white;
-                padding: 40px 30px;
-                text-align: center;
-            }}
-            .header h1 {{
+
+            body {{
                 margin: 0;
-                font-size: 32px;
+                padding: 0;
+                background-color: #e5e5e5;
+                font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                font-weight: 500;
+                min-height: 100% !important;
+                height: 100% !important;
             }}
+
+            .email-container {{
+                max-width: 850px;
+                margin: 0 auto;
+                background-color: #f5f5f5;
+                padding: 40px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }}
+
+            .email-bg {{
+                width: 100%;
+                max-width: 595px;
+                margin: 0 auto;
+                background-image: url('{background_url}');
+                background-repeat: no-repeat;
+                background-position: center center;
+                background-size: 100% 100%;
+                position: relative;
+                min-height: 842px;
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+            }}
+
+            .content-wrapper {{
+                width: 100%;
+                height: 100%;
+                padding: 200px 60px 80px 60px;
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+            }}
+
             .content {{
-                padding: 40px 30px;
+                max-width: 100%;
+                width: 100%;
+                color: #fff4bf;
+                line-height: 1.9;
+                text-align: justify;
+                text-justify: inter-word;
+                font-size: 15px;
+                white-space: normal;
+                word-wrap: break-word;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
             }}
-            .feature-box {{
-                background: #f9f9f9;
-                border-radius: 10px;
-                padding: 20px;
-                margin: 20px 0;
+
+            .content p {{
+                margin: 0 0 16px 0;
+                font-size: 15px;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
             }}
-            .feature-box h3 {{
-                color: #BC2A12;
-                margin-top: 0;
+
+            .content p:last-child {{
+                margin-bottom: 0;
             }}
-            .cta-button {{
-                display: inline-block;
-                background: linear-gradient(135deg, #BC2A12 0%, #E63B21 100%);
-                color: white;
-                padding: 15px 40px;
-                border-radius: 25px;
-                text-decoration: none;
-                font-weight: bold;
-                margin: 20px 0;
+
+            .content strong {{
+                font-weight: 600;
             }}
-            .footer {{
-                background: #f9f9f9;
-                padding: 20px;
-                text-align: center;
-                color: #666;
-                font-size: 14px;
+
+            @media only screen and (max-width: 600px) {{
+                body {{
+                    padding: 0;
+                }}
+                
+                .email-container {{
+                    padding: 20px;
+                }}
+
+                .email-bg {{
+                    min-height: 600px;
+                }}
+                
+                .content-wrapper {{
+                    padding: 160px 40px 60px 40px;
+                }}
+                
+                .content {{
+                    font-size: 13px;
+                }}
+                
+                .content p {{
+                    font-size: 13px;
+                    margin-bottom: 14px;
+                }}
             }}
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <h1>🎉 Chào mừng đến với UIA Food!</h1>
-                <p style="font-size: 18px; margin: 10px 0 0 0;">Find Food Find Us</p>
-            </div>
+        <div class="email-container">
+            <div class="email-bg">
+                <div class="content-wrapper">
+                    <div class="content">
+                        <p>Xin chào <strong>{username}</strong>!</p>
 
-            <div class="content">
-                <h2>Xin chào {username}!</h2>
-                <p>Chúc mừng bạn đã tạo tài khoản thành công tại <strong>UIA Food</strong>!</p>
+                        <p>
+                            Chúc mừng bạn đã tạo tài khoản thành công tại <strong>UIA Food</strong> - nền tảng tìm kiếm và khám phá ẩm thực hàng đầu!
+                        </p>
 
-                <div class="feature-box">
-                    <h3>🗺️ Khám phá địa điểm ăn uống</h3>
-                    <p>Tìm kiếm hàng ngàn quán ăn ngon khắp thành phố với bản đồ tương tác.</p>
+                        <p>
+                            <strong>UIA Food</strong> là hệ thống hỗ trợ tìm kiếm quán ăn thông minh, được thiết kế đặc biệt để giúp bạn khám phá hàng ngàn địa điểm, quán ăn ẩm thực nổi tiếng.
+                        </p>
+
+                        <p>
+                            Hệ thống <strong>Chatbot AI</strong> của chúng tôi hoạt động 24/24, luôn sẵn sàng hỗ trợ bạn tìm kiếm quán ăn phù hợp với khẩu vị, ngân sách và nhu cầu của bạn.
+                        </p>
+
+                        <p>
+                            Hãy bắt đầu hành trình khám phá ẩm thực của bạn cùng <strong>UIA Food</strong> ngay hôm nay!
+                        </p>
+
+                        <p style="margin-top: 24px;">
+                            Trân trọng,<br/>
+                            Đội ngũ UIA Food
+                        </p>
+                    </div>
                 </div>
-
-                <div class="feature-box">
-                    <h3>🤖 Chatbot AI thông minh</h3>
-                    <p>Trò chuyện với AI để nhận gợi ý món ăn phù hợp với sở thích của bạn.</p>
-                </div>
-
-                <div class="feature-box">
-                    <h3>⭐ Đánh giá &amp; Chia sẻ</h3>
-                    <p>Lưu quán yêu thích, viết review và chia sẻ trải nghiệm ăn uống.</p>
-                </div>
-
-                <div style="text-align: center;">
-                    <a href="http://127.0.0.1:8000/" class="cta-button">Bắt đầu khám phá ngay!</a>
-                </div>
-
-                <p style="color: #999; font-size: 14px; margin-top: 40px;">
-                    Nếu bạn cần hỗ trợ, đừng ngần ngại liên hệ với chúng tôi!
-                </p>
-            </div>
-
-            <div class="footer">
-                <p>© 2025 UIA Food - Find Food Find Us</p>
-                <p>Email này được gửi tự động, vui lòng không trả lời.</p>
             </div>
         </div>
     </body>
@@ -312,7 +420,6 @@ def send_password_reset_otp_email(email, otp_code):
     """
     subject = '🔑 Mã OTP khôi phục mật khẩu - UIA Food'
 
-    # Dùng cùng layout nền A4 như mail OTP đăng ký
     background_url = 'https://res.cloudinary.com/dbmq2hme4/image/upload/v1764926423/disc_covers/mail.png'
 
     html_message = f"""
@@ -326,83 +433,151 @@ def send_password_reset_otp_email(email, otp_code):
 
             * {{
                 box-sizing: border-box;
+                margin: 0;
+                padding: 0;
             }}
 
             body {{
                 margin: 0;
                 padding: 0;
-                background-color: #000000;
+                background-color: #e5e5e5;
                 font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 font-weight: 500;
+                min-height: 100% !important;
+                height: 100% !important;
+            }}
+
+            .email-container {{
+                max-width: 850px;
+                margin: 0 auto;
+                background-color: #f5f5f5;
+                padding: 40px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             }}
 
             .email-bg {{
                 width: 100%;
-                min-height: 100vh;
+                max-width: 595px;
+                margin: 0 auto;
                 background-image: url('{background_url}');
                 background-repeat: no-repeat;
-                background-position: center top;
-                background-size: cover;
+                background-position: center center;
+                background-size: 100% 100%;
+                position: relative;
+                min-height: 842px;
                 display: flex;
-                align-items: center;
+                align-items: flex-start;
                 justify-content: center;
-                padding: 0;
             }}
 
             .content-wrapper {{
-                max-width: 800px;
                 width: 100%;
-                padding: 64px;
-                color: #fff4bf;
+                height: 100%;
+                padding: 200px 60px 80px 60px;
                 display: flex;
                 justify-content: center;
+                align-items: flex-start;
             }}
 
             .content {{
-                max-width: 520px;
-                margin: 0 auto;
+                max-width: 100%;
+                width: 100%;
                 color: #fff4bf;
-                line-height: 1.7;
-                text-align: left;
+                line-height: 1.9;
+                text-align: justify;
+                text-justify: inter-word;
+                font-size: 15px;
+                white-space: normal;
+                word-wrap: break-word;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
             }}
 
             .content p {{
-                margin: 0 0 12px 0;
+                margin: 0 0 16px 0;
+                font-size: 15px;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
             }}
 
             .content p:last-child {{
                 margin-bottom: 0;
             }}
+
+            .content strong {{
+                font-weight: 600;
+            }}
+
+            .otp-code {{
+                font-size: 24px;
+                font-weight: 600;
+                letter-spacing: 2px;
+            }}
+
+            @media only screen and (max-width: 600px) {{
+                body {{
+                    padding: 0;
+                }}
+                
+                .email-container {{
+                    padding: 20px;
+                }}
+
+                .email-bg {{
+                    min-height: 600px;
+                }}
+                
+                .content-wrapper {{
+                    padding: 160px 40px 60px 40px;
+                }}
+                
+                .content {{
+                    font-size: 13px;
+                }}
+                
+                .content p {{
+                    font-size: 13px;
+                    margin-bottom: 14px;
+                }}
+                
+                .otp-code {{
+                    font-size: 20px;
+                }}
+            }}
         </style>
     </head>
     <body>
-        <div class="email-bg">
-            <div class="content-wrapper">
-                <div class="content">
-                    <p>Kính gửi Quý khách,</p>
+        <div class="email-container">
+            <div class="email-bg">
+                <div class="content-wrapper">
+                    <div class="content">
+                        <p>Kính gửi Quý khách,</p>
 
-                    <p>
-                        Hệ thống <strong>UIA Food</strong> nhận được yêu cầu khôi phục mật khẩu cho tài khoản của Quý khách.
-                        Mã OTP khôi phục mật khẩu của Quý khách là: <strong>{otp_code}</strong>.
-                    </p>
+                        <p>
+                            Hệ thống <strong>UIA Food</strong> nhận được yêu cầu khôi phục mật khẩu cho tài khoản của Quý khách. 
+                            Mã OTP khôi phục mật khẩu của Quý khách là: <span class="otp-code">{otp_code}</span>.
+                        </p>
 
-                    <p>
-                        Vui lòng sử dụng mã này để tiếp tục quy trình khôi phục mật khẩu. Mã OTP sẽ hết hạn sau
-                        <strong>5 phút</strong>.
-                    </p>
+                        <p>
+                            Vui lòng sử dụng mã này để tiếp tục quy trình khôi phục mật khẩu. Mã OTP sẽ hết hạn sau 
+                            <strong>5 phút</strong>.
+                        </p>
 
-                    <p>
-                        Quý khách vui lòng không cung cấp mã OTP cho bất kỳ ai nhằm đảm bảo an toàn thông tin.
-                    </p>
+                        <p>
+                            Quý khách vui lòng không cung cấp mã OTP cho bất kỳ ai nhằm đảm bảo an toàn thông tin.
+                        </p>
 
-                    <p>
-                        Nếu Quý khách không thực hiện yêu cầu khôi phục mật khẩu, vui lòng bỏ qua thông điệp này.
-                    </p>
+                        <p>
+                            Nếu Quý khách không thực hiện yêu cầu khôi phục mật khẩu, vui lòng bỏ qua thông điệp này.
+                        </p>
 
-                    <p style="margin-top: 24px;">
-                        Trân trọng,<br/>
-                        Đội ngũ UIA Food
-                    </p>
+                        <p style="margin-top: 24px;">
+                            Trân trọng,<br/>
+                            Đội ngũ UIA Food
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
