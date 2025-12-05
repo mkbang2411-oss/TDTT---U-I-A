@@ -1,10 +1,10 @@
-# upload_keep_original_names.py
+# upload_images_optimized.py
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from pathlib import Path
 
-# ⭐⭐⭐ ĐIỀN THÔNG TIN API ⭐⭐⭐
+# ⭐ ĐIỀN THÔNG TIN API
 cloudinary.config(
     cloud_name="dbmq2hme4",
     api_key="987591597383922",
@@ -21,26 +21,49 @@ folders_to_upload = [
 
 frontend_path = Path(r"D:\Food_map\frontend")
 
-def image_exists_on_cloudinary(public_id):
+def get_all_cloudinary_images():
     """
-    Kiểm tra ảnh đã tồn tại trên Cloudinary chưa
-    Return: True nếu đã có, False nếu chưa có
+    Lấy danh sách TẤT CẢ ảnh trên Cloudinary một lần
+    Tiết kiệm API calls!
     """
+    print("🔍 Đang lấy danh sách ảnh từ Cloudinary...")
+    all_public_ids = set()
+    next_cursor = None
+    
     try:
-        cloudinary.api.resource(public_id, resource_type="image")
-        return True
-    except cloudinary.exceptions.NotFound:
-        return False
+        while True:
+            # Lấy tối đa 500 ảnh mỗi lần (max của Cloudinary)
+            result = cloudinary.api.resources(
+                type="upload",
+                resource_type="image",
+                max_results=500,
+                next_cursor=next_cursor
+            )
+            
+            # Thêm public_id vào set
+            for resource in result.get('resources', []):
+                all_public_ids.add(resource['public_id'])
+            
+            print(f"   📥 Đã tải: {len(all_public_ids)} ảnh...")
+            
+            # Kiểm tra có trang tiếp theo không
+            next_cursor = result.get('next_cursor')
+            if not next_cursor:
+                break
+                
     except Exception as e:
-        # Nếu có lỗi khác (network, api...) thì vẫn coi như chưa có để thử upload
-        print(f"      ⚠️  Không kiểm tra được: {e}")
-        return False
+        print(f"⚠️  Lỗi khi lấy danh sách: {e}")
+    
+    print(f"✅ Tổng cộng: {len(all_public_ids)} ảnh trên cloud\n")
+    return all_public_ids
 
 print("🚀 Bắt đầu upload ảnh lên Cloudinary...")
 print(f"📁 Thư mục gốc: {frontend_path}")
 print(f"🌐 Cloud: dbmq2hme4")
-print(f"📂 Các folder sẽ upload: {', '.join(folders_to_upload)}")
-print(f"✨ Tối ưu: Chỉ upload ảnh mới (bỏ qua ảnh đã có)\n")
+print(f"📂 Các folder sẽ upload: {', '.join(folders_to_upload)}\n")
+
+# ✅ LẤY DANH SÁCH ẢNH MỘT LẦN DUY NHẤT
+existing_images = get_all_cloudinary_images()
 
 uploaded = 0
 skipped = 0
@@ -64,13 +87,12 @@ for folder_name in folders_to_upload:
                 relative_path = image_path.relative_to(frontend_path)
                 
                 # Tạo public_id giữ nguyên cấu trúc
-                # Ví dụ: frontend/images/food/pho.png → public_id = "images/food/pho"
                 public_id = str(relative_path.with_suffix('')).replace("\\", "/")
                 
-                # ✅ KIỂM TRA ẢNH ĐÃ TỒN TẠI CHƯA
-                if image_exists_on_cloudinary(public_id):
+                # ✅ KIỂM TRA TRONG SET (CỰC NHANH, KHÔNG TỐN API CALL)
+                if public_id in existing_images:
                     skipped += 1
-                    if skipped % 100 == 0:  # Hiện progress mỗi 100 ảnh bỏ qua
+                    if skipped % 100 == 0:
                         print(f"   ⏭️  Đã bỏ qua: {skipped} ảnh (đã có trên cloud)")
                     continue
                 
@@ -78,7 +100,7 @@ for folder_name in folders_to_upload:
                 result = cloudinary.uploader.upload(
                     str(image_path),
                     public_id=public_id,
-                    overwrite=False,  # ← Đổi thành False để không đè
+                    overwrite=False,
                     invalidate=True,
                     resource_type="image"
                 )
@@ -87,7 +109,7 @@ for folder_name in folders_to_upload:
                 file_size_mb = image_path.stat().st_size / (1024 * 1024)
                 total_size_mb += file_size_mb
                 
-                # Hiện progress mỗi 20 ảnh upload thành công
+                # Hiện progress mỗi 20 ảnh
                 if uploaded % 20 == 0:
                     print(f"   📤 Đã upload: {uploaded} ảnh mới ({total_size_mb:.1f} MB)")
                 
@@ -107,4 +129,4 @@ print(f"   🎯 Tổng xử lý: {uploaded + skipped + failed} ảnh")
 print(f"\n📋 Các folder đã xử lý:")
 for folder in folders_to_upload:
     print(f"   - {folder}/")
-print(f"\n💡 Lần chạy tiếp theo sẽ nhanh hơn vì chỉ upload ảnh mới!")
+print(f"\n💡 Tiết kiệm: Chỉ dùng ~3-5 API calls thay vì hàng trăm!")

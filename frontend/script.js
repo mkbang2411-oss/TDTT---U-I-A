@@ -107,193 +107,25 @@ let lastSearchParams = {
 // 🍴 ICON TƯƠNG ỨNG LOẠI QUÁN
 // =========================
 const icons = {
-  pho: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/pho.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  cafe: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/coffee.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  tra_sua: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/tra_sua.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  bun: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/bun.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  banh_mi: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_mi.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  banh_ngot: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_ngot.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  my_cay: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/my_cay.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  com: L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/3174/3174880.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  banh_kem: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_kem.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-
-  kem: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/kem.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-
-  lau: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/lau.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  mi: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/ramen.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }), 
-  khu_am_thuc: L.icon({
-  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/street_food.png", // 👉 Bạn đặt file này trong thư mục /icons
-  iconSize: [26, 26],
-  iconAnchor: [13, 26],
-  className: 'fixed-size-icon'  
-  }),
   default: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/default.png",
+    iconUrl: "icons/icon.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png", // đặt file PNG vào thư mục /icons
-  iconSize: [26, 26],
-  iconAnchor: [13, 26],
-  className: 'fixed-size-icon'  
-}),
+    iconUrl: "icons/star.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
+  })
 };
 
 // =========================
 // 🧠 XÁC ĐỊNH LOẠI QUÁN
 // =========================
 function detectCategory(name = "") {
-  name = name.toLowerCase();
-
-  // 🥣 Phở
-  if (name.includes("phở") || name.includes("pho")) return "pho";
-
-  // ☕ Cà phê
-  if (name.includes("cà phê") || name.includes("coffee")) return "cafe";
-
-  // 🧋 Trà sữa
-  if (
-    name.includes("trà sữa") ||
-    name.includes("milktea") ||
-    name.includes("milk tea") ||
-    name.includes("bubble tea")
-  )
-    return "tra_sua";
-
-  // 🍜 Bún / Bún bò
-  if (
-    name.includes("bún") ||
-    name.includes("bun bo") ||
-    name.includes("bò huế")
-  )
-    return "bun";
-
-  // 🥖 Bánh mì
-  if (name.includes("bánh mì") || name.includes("banh mi")) return "banh_mi";
-
-  // 🍰 Bánh ngọt / Bakery / Dessert
-  if (
-    name.includes("bánh ngọt") ||
-    name.includes("banh ngot") ||
-    name.includes("cake") ||
-    name.includes("tiệm bánh") ||
-    name.includes("dessert") ||
-    name.includes("bakery")
-  )
-    return "banh_ngot";
-
-  // 🍜 Mì cay
-  if (
-    name.includes("mì cay") ||
-    name.includes("mi cay") ||
-    name.includes("spicy noodles") ||
-    name.includes("ramen")
-  )
-    return "my_cay";
-
-  // 🍚 Cơm
-  if (name.includes("cơm") || name.includes("com") || name.includes("rice"))
-    return "com";
-
-  // 🎂 Bánh kem / Cake sinh nhật
-  if (
-    name.includes("bánh kem") ||
-    name.includes("banh kem") ||
-    name.includes("birthday cake")
-  )
-    return "banh_kem";
-
-  // 🍦 Kem
-  if (
-    name.includes("kem") ||
-    name.includes("ice cream") ||
-    name.includes("gelato") ||
-    name.includes("snow ice") ||
-    name.includes("frozen")
-  )
-    return "kem";
-
-  // 🔥 Lẩu
-  if (
-    name.includes("lẩu") ||
-    name.includes("lau") ||
-    name.includes("hotpot") ||
-    name.includes("hot pot") ||
-    name.includes("thái") ||
-    name.includes("suki")
-  )
-    return "lau";
-
-  // 🍜 Mì (chung)
-  if (
-    (name.includes("mì") || name.includes("my") || name.includes("mỳ")) &&
-    !name.includes("cay") // tránh trùng với "mì cay"
-  )
-    return "mi";
-
-  // ⚙️ Mặc định
+  // Tất cả quán đều dùng icon mặc định
   return "default";
 }
 
@@ -689,16 +521,13 @@ function loadMarkersInViewport() {
 // =========================
 function createMarker(p, lat, lon) {
   // 🎯 Chọn icon phù hợp
-  let icon;
+let icon;
 
-  if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
-    icon = icons.michelin;
-  } else if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
-    icon = icons.khu_am_thuc;
-  } else {
-    const category = detectCategory(p.ten_quan);
-    icon = icons[category] || icons.default;
-  }
+if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+  icon = icons.michelin;  // ⭐ Chỉ quán Michelin dùng icon sao
+} else {
+  icon = icons.default;   // 🍽️ Tất cả quán khác dùng icon chung
+}
 
   // 🎯 Tạo marker (KHÔNG dùng .addTo(map) nữa)
   const marker = L.marker([lat, lon], { 
