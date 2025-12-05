@@ -790,43 +790,68 @@ if (placeId) {
 
     // 📤 GỬI ĐÁNH GIÁ
     const submitBtn = document.getElementById("submitReview");
-    if (submitBtn) {
-      submitBtn.addEventListener("click", async () => {
-        const review = {
-          rating: selectedRating,
-          comment: document.getElementById("reviewComment").value.trim(),
-        };
+if (submitBtn) {
+  submitBtn.addEventListener("click", async () => {
+    const review = {
+      rating: selectedRating,
+      comment: document.getElementById("reviewComment").value.trim(),
+    };
 
-        if (!review.comment || review.rating === 0) {
-          alert("Vui lòng nhập nội dung và chọn số sao!");
-          return;
-        }
-
-        try {
-          const response = await fetch(`/api/reviews/${place_id}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": getCookie("csrftoken"),
-            },
-            body: JSON.stringify(review),
-            credentials: "include",
-          });
-
-          const result = await response.json();
-
-          if (response.ok && result.success) {
-            alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
-            marker.fire("click"); // Reload sidebar
-          } else {
-            alert(result.message || "Lỗi khi gửi đánh giá. Bạn đã đăng nhập chưa?");
-          }
-        } catch (err) {
-          console.error("Lỗi fetch API:", err);
-          alert("Lỗi kết nối. Không thể gửi đánh giá.");
-        }
-      });
+    if (!review.comment || review.rating === 0) {
+      alert("Vui lòng nhập nội dung và chọn số sao!");
+      return;
     }
+
+    // 🔄 Hiển thị loading
+    submitBtn.disabled = true;
+    submitBtn.textContent = "🔄 Đang kiểm tra...";
+
+    try {
+      const response = await fetch(`/api/reviews/${place_id}/`, {  // ← THÊM DẤU /
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify(review),
+        credentials: "include",
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
+        marker.fire("click");
+      } else {
+        // ❌ Nội dung không hợp lệ
+        let errorMsg = result.message || "Lỗi khi gửi đánh giá";
+        
+        // Nếu có gợi ý nội dung tốt hơn
+        if (result.suggested_content) {
+          const useSuggestion = confirm(
+            `${errorMsg}\n\n💡 Bạn có muốn dùng nội dung gợi ý không?`
+          );
+          
+          if (useSuggestion) {
+            document.getElementById("reviewComment").value = result.suggested_content;
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Gửi đánh giá";
+            return;
+          }
+        }
+        
+        alert(errorMsg);
+      }
+    } catch (err) {
+      console.error("Lỗi fetch API:", err);
+      alert("Lỗi kết nối. Không thể gửi đánh giá.");
+    } finally {
+      // ✅ Reset button
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Gửi đánh giá";
+    }
+  });
+}
 
     // 🚗 NÚT TÌM ĐƯỜNG ĐI
     const tongquanTab = sidebarContent.querySelector("#tab-tongquan");

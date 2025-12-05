@@ -21,6 +21,7 @@ from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
 import requests 
+from .gemini_utils import check_review_content
 from .models import UserPreference
 from .models import (
     FoodPlan, 
@@ -151,7 +152,7 @@ def save_user_reviews(data):
 @csrf_exempt
 def reviews_api(request: HttpRequest, place_id: str):
     
-    # === GET REVIEW ===
+    # === 1. GET REVIEW ===
     if request.method == 'GET':
         all_reviews = load_user_reviews()
         place_data = all_reviews.get(place_id)
@@ -182,6 +183,7 @@ def reviews_api(request: HttpRequest, place_id: str):
                 ).exists()
             except Exception:
                 pass
+        
         return JsonResponse({
             'reviews': review_content,
             'user': user_info,
@@ -191,45 +193,139 @@ def reviews_api(request: HttpRequest, place_id: str):
     # === 2. XỬ LÝ VIỆC THÊM (POST) REVIEW ===
     if request.method == 'POST':
         if not request.user.is_authenticated:
-            return JsonResponse({"success": False, "message": "Bạn cần đăng nhập"}, status=403)
+            return JsonResponse({
+                "success": False, 
+                "message": "Bạn cần đăng nhập"
+            }, status=403)
         
-        # 👇 GỌI HÀM HELPER (Logic lấy avatar tự động chuẩn xác)
-        # Dù user dùng Google hay ảnh tự up, hàm này đều lấy đúng cái mới nhất
         avatar_nguoi_dung = get_user_avatar(request.user)
 
         try:
             data = json.loads(request.body)
-            comment = data.get("comment")
+            comment = data.get("comment", "").strip()
             rating = int(data.get("rating", 0))
+            
+            print(f"\n{'='*60}")
+            print(f"📝 [NEW REVIEW] User: {request.user.username}")
+            print(f"   Place ID: {place_id}")
+            print(f"   Rating: {rating}/5")
+            print(f"   Comment: {comment}")
+            print(f"{'='*60}\n")
+            
             if not comment or rating == 0:
-                return JsonResponse({"success": False, "message": "Thiếu thông tin"}, status=400)
+                return JsonResponse({
+                    "success": False, 
+                    "message": "Thiếu thông tin"
+                }, status=400)
+            
+            # 🔥 KIỂM TRA NỘI DUNG VỚI GEMINI
+            print(f"🤖 [GEMINI] Bắt đầu kiểm tra nội dung...")
+            
+            try:
+                validation = check_review_content(comment, rating)
+                
+                print(f"📊 [GEMINI] Kết quả kiểm tra:")
+                print(f"   - is_valid: {validation.get('is_valid')}")
+                print(f"   - reason: {validation.get('reason')}")
+                print(f"   - severity: {validation.get('severity')}")
+                print(f"   - suggested: {validation.get('suggested_content', 'N/A')[:50]}")
+                
+                if not validation['is_valid']:
+                    print(f"❌ [GEMINI] CHẶN REVIEW - Lý do: {validation['reason']}\n")
+                    
+                    response_data = {
+                        "success": False,
+                        "message": f"❌ Nội dung không phù hợp: {validation['reason']}"
+                    }
+                    
+                    # Nếu có gợi ý nội dung tốt hơn
+                    if validation.get('suggested_content'):
+                        response_data['suggested_content'] = validation['suggested_content']
+                        response_data['message'] += f"\n\n💡 Gợi ý: {validation['suggested_content']}"
+                    
+                    return JsonResponse(response_data, status=400)
+                
+                print(f"✅ [GEMINI] CHO PHÉP GỬI REVIEW\n")
+            
+            except Exception as gemini_error:
+                # Nếu Gemini lỗi, vẫn cho phép gửi review (fail-safe)
+                print(f"⚠️ [GEMINI] LỖI KHI GỌI API:")
+                print(f"   Error: {gemini_error}")
+                import traceback
+                traceback.print_exc()
+                print(f"   → Cho phép gửi review (fail-safe mode)\n")
+            
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "message": "Lỗi dữ liệu"}, status=400)
+            print(f"❌ [ERROR] Lỗi parse JSON\n")
+            return JsonResponse({
+                "success": False, 
+                "message": "Lỗi dữ liệu JSON"
+            }, status=400)
+        except ValueError as ve:
+            print(f"❌ [ERROR] Rating không hợp lệ: {ve}\n")
+            return JsonResponse({
+                "success": False, 
+                "message": "Rating không hợp lệ"
+            }, status=400)
+        except Exception as e:
+            print(f"❌ [ERROR] Lỗi không xác định:")
+            print(f"   {e}")
+            import traceback
+            traceback.print_exc()
+            print()
+            return JsonResponse({
+                "success": False, 
+                "message": "Có lỗi xảy ra khi xử lý đánh giá"
+            }, status=500)
 
-        # Logic lưu file (giữ nguyên)
-        all_reviews = load_user_reviews()
-        if all_reviews.get(place_id) is None:
-            all_reviews[place_id] = {"google": [], "user": []}
+        # === 3. LƯU REVIEW VÀO JSON ===
+        try:
+            print(f"💾 [SAVE] Đang lưu review vào JSON...")
+            
+            all_reviews = load_user_reviews()
+            
+            if all_reviews.get(place_id) is None:
+                all_reviews[place_id] = {"google": [], "user": []}
+            
+            # Đảm bảo cấu trúc dict
+            if isinstance(all_reviews[place_id], list):
+                all_reviews[place_id] = {"google": all_reviews[place_id], "user": []}
+
+            new_review = {
+                "ten": request.user.username,
+                "avatar": avatar_nguoi_dung,
+                "rating": rating,
+                "comment": comment,
+                "date": datetime.now().isoformat()
+            }
+            
+            all_reviews[place_id]["user"].append(new_review)
+            save_user_reviews(all_reviews)
+            
+            print(f"✅ [SAVE] Lưu thành công!")
+            print(f"{'='*60}\n")
+            
+            return JsonResponse({
+                "success": True, 
+                "message": "✅ Đánh giá thành công!"
+            })
         
-        # Đảm bảo cấu trúc dict
-        if isinstance(all_reviews[place_id], list):
-             all_reviews[place_id] = {"google": all_reviews[place_id], "user": []}
+        except Exception as save_error:
+            print(f"❌ [SAVE] Lỗi khi lưu review:")
+            print(f"   {save_error}")
+            import traceback
+            traceback.print_exc()
+            print()
+            return JsonResponse({
+                "success": False, 
+                "message": "Không thể lưu đánh giá"
+            }, status=500)
 
-        new_review = {
-            "ten": request.user.username,
-            "avatar": avatar_nguoi_dung, # ✅ Lưu URL avatar chuẩn vào JSON
-            "rating": rating,
-            "comment": comment,
-            "date": datetime.now().isoformat()
-        }
-        
-        all_reviews[place_id]["user"].append(new_review)
-        save_user_reviews(all_reviews)
-        
-        return JsonResponse({"success": True, "message": "Đánh giá thành công!"})
-
-    return JsonResponse({"success": False, "message": "Method not allowed"}, status=405)
-
+    # === 4. METHOD NOT ALLOWED ===
+    return JsonResponse({
+        "success": False, 
+        "message": "Method not allowed"
+    }, status=405)
 
 # ------------------------LƯU LỊCH SỬ CHATBOT AI--------------------------
 # --- Helper để lấy Avatar ---
