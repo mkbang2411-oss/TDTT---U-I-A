@@ -26,99 +26,45 @@ window.placeMarkersById = {};
 
 let markers = [];
 
-let markerClusterGroup = L.markerClusterGroup({
-  iconCreateFunction: function(cluster) {
-    const count = cluster.getChildCount();
-    let size = 'small';
-    let colorClass = 'cluster-small';
-    
-    if (count > 100) {
-      size = 'large';
-      colorClass = 'cluster-large';
-    } else if (count > 50) {
-      size = 'medium';
-      colorClass = 'cluster-medium';
-    }
-    
-    return L.divIcon({
-      html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
-      className: `marker-cluster marker-cluster-${size}`,
-      iconSize: L.point(50, 50)
-    });
-  },
-  spiderfyOnMaxZoom: true,
-  showCoverageOnHover: false,
-  zoomToBoundsOnClick: true,
-  maxClusterRadius: 80,
-  disableClusteringAtZoom: 16,
-  animate: false,
-  animateAddingMarkers: false,
-  spiderfyDistanceMultiplier: 1.5
+window.markerClusterGroup = L.markerClusterGroup({
+    iconCreateFunction: function(cluster) {
+        const count = cluster.getChildCount();
+        let size = 'small';
+        let colorClass = 'cluster-small';
+        
+        if (count > 100) {
+            size = 'large';
+            colorClass = 'cluster-large';
+        } else if (count > 50) {
+            size = 'medium';
+            colorClass = 'cluster-medium';
+        }
+        
+        return L.divIcon({
+            html: `<div class="cluster-inner ${colorClass}"><span>${count}</span></div>`,
+            className: `marker-cluster marker-cluster-${size}`,
+            iconSize: L.point(50, 50)
+        });
+    },
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    maxClusterRadius: 80,
+    disableClusteringAtZoom: 16,
+    animate: false,
+    animateAddingMarkers: false,
+    spiderfyDistanceMultiplier: 1.5
 });
+
+const markerClusterGroup = window.markerClusterGroup; // alias
+
 
 let allPlacesData = [];
 let visibleMarkers = new Set();
 let isLoadingMarkers = false;
 let currentRouteLine = null;
 let routeControl = null;
-// =========================
-// 🛡️ DANH SÁCH TỪ KHÓA BỊ CẤM
-// =========================
-const BLACKLIST_WORDS = [
-  // --- Chửi tục tiếng Việt ---
-  'địt','đụ','đjt','djt','đmm','dm','đm','dmm','đcm','dcm','clgt',
-  'vcl','vl','vãi','vãi lồn','vãi loz','vãi lon','vailon','vailoz',
-  'cl','clm','clo','cln','clmm','cldm','cmm','cmn','ccmm','đéo','đếch',
-  'đek','dek','đekm','dmj','dmz','vlz','vkl','vch','vđ','vđm','vđmm',
 
-  // --- Xúc phạm, nhục mạ ---
-  'ngu','ngu học','óc chó','não phẳng','não cá vàng','khùng','ngáo','điên',
-  'khốn nạn','mất dạy','vô học','láo','bố láo','láo toét','chó má','súc vật',
-  'thằng ngu','con ngu','đồ điên','đồ chó','rảnh háng','bố đời','đồ rẻ rách',
-
-  // --- Tục tả sinh lý ---
-  'lồn','buồi','cu','chim to','chim nhỏ','bướm','nứng','cặc','đỉ','đĩ',
-  'điếm','cave','gái gọi','đi khách','dâm','râm','râm dục','biến thái',
-  'thủ dâm','dương vật','âm đạo','âm vật','hiếp','hiếp dâm','giao cấu',
-
-  // --- Chửi liên quan gia đình ---
-  'mẹ mày','bố mày','cha mày','má mày','ông nội mày','bà nội mày',
-  'tổ cha','tổ sư','con mẹ mày','con chó','đồ chó','con đĩ mẹ mày',
-
-  // --- Viết tắt / chat ---
-  'vcc','vklm','cmnr','cmnl','vcđ','vđc','vcml','dkm','vml','vclm',
-  'vcmm','dmnr','dcmj','ccmnr','vchz','cc','cái lồn',
-
-  // --- Không dấu / né lọc ---
-  'dit','ditme','dit me','ditmemay','du','djtme','dmme','dmmay','vclon',
-  'vai lon','vai loz','vai lonz','dmml','dcmm','dcmay','vlon','vailon',
-  'vailoz','vailonzz','ditconme','dmconcho','cac','loz','lol','đụ má',
-
-  // --- Chửi tiếng Anh Việt hoá ---
-  'fuck','fuk','fukk','fucc','fucck','fuking','fucking','fck','fcku','fcking',
-  'phắc','phẹc','phâk','phúc kiu','phẹc kiu','phắc kiu','phuck','sịt','sít',
-  'sịt mẹ','shit','shjt','sh1t','shet','sịt lờ','bít','bitch','b1tch','btch',
-  'biatch','bich','bịt','bitchass','đem','đem mờn','đem men','đem mai',
-  'damn','daemn','damm','sặc','sắc','suck','sux','suk','suck my','suckyou',
-  'sucku','wtf','wth','wtfff','wtfuk','wdf','omfg','omg','holyshit','holy fuck',
-  'bullshit','bullshjt','bullsh1t','bulsit','bs','bsht','crap','crp',
-  'hell','go to hell','dumbass','dipshit','moron','loser',
-  'jerk','mf','mofo','motherfucker','sonofabitch','son of a bitch','retard',
-  'idiot','porn','p0rn','sex','sexy','horny','nude','naked','gay',
-
-  // --- Từ danh sách tiếng Anh bạn đưa ---
-  'asshole','bastard','cunt','dick','pussy','cock','stfu','ass','piss',
-  'slut','whore','fcku','fckn','fckoff','azz','azzhole','a$$','d1ck',
-  'fux','fuxk','phuk','phuck','fml','fk','fkin','cum','cumming','orgasm',
-  'jerkoff','wank','nsfw','nigger',
-
-  // --- Từ nhạy cảm khác (từ danh sách gốc của bạn) ---
-  'cứt','clgc','xxx',
-
-  // --- Từ khóa không phù hợp khác ---
-  'ma túy','chất cấm','cần sa','heroin','cocaine',
-  'casino','cờ bạc','đánh bạc','cá độ'
-];
 
 // =========================
 // 🔍 HÀM KIỂM TRA TỪ CẤM
@@ -164,193 +110,25 @@ let lastSearchParams = {
 // 🍴 ICON TƯƠNG ỨNG LOẠI QUÁN
 // =========================
 const icons = {
-  pho: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/pho.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  cafe: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/coffee.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  tra_sua: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/tra_sua.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  bun: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/bun.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  banh_mi: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_mi.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  banh_ngot: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_ngot.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  my_cay: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/my_cay.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  com: L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/3174/3174880.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  banh_kem: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/banh_kem.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-
-  kem: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/kem.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-
-  lau: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/lau.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }),
-  mi: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/ramen.png",
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    className: 'fixed-size-icon'  
-  }), 
-  khu_am_thuc: L.icon({
-  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/street_food.png", // 👉 Bạn đặt file này trong thư mục /icons
-  iconSize: [26, 26],
-  iconAnchor: [13, 26],
-  className: 'fixed-size-icon'  
-  }),
   default: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/default.png",
+    iconUrl: "icons/icon.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-  iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png", // đặt file PNG vào thư mục /icons
-  iconSize: [26, 26],
-  iconAnchor: [13, 26],
-  className: 'fixed-size-icon'  
-}),
+    iconUrl: "icons/star.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
+  })
 };
 
 // =========================
 // 🧠 XÁC ĐỊNH LOẠI QUÁN
 // =========================
 function detectCategory(name = "") {
-  name = name.toLowerCase();
-
-  // 🥣 Phở
-  if (name.includes("phở") || name.includes("pho")) return "pho";
-
-  // ☕ Cà phê
-  if (name.includes("cà phê") || name.includes("coffee")) return "cafe";
-
-  // 🧋 Trà sữa
-  if (
-    name.includes("trà sữa") ||
-    name.includes("milktea") ||
-    name.includes("milk tea") ||
-    name.includes("bubble tea")
-  )
-    return "tra_sua";
-
-  // 🍜 Bún / Bún bò
-  if (
-    name.includes("bún") ||
-    name.includes("bun bo") ||
-    name.includes("bò huế")
-  )
-    return "bun";
-
-  // 🥖 Bánh mì
-  if (name.includes("bánh mì") || name.includes("banh mi")) return "banh_mi";
-
-  // 🍰 Bánh ngọt / Bakery / Dessert
-  if (
-    name.includes("bánh ngọt") ||
-    name.includes("banh ngot") ||
-    name.includes("cake") ||
-    name.includes("tiệm bánh") ||
-    name.includes("dessert") ||
-    name.includes("bakery")
-  )
-    return "banh_ngot";
-
-  // 🍜 Mì cay
-  if (
-    name.includes("mì cay") ||
-    name.includes("mi cay") ||
-    name.includes("spicy noodles") ||
-    name.includes("ramen")
-  )
-    return "my_cay";
-
-  // 🍚 Cơm
-  if (name.includes("cơm") || name.includes("com") || name.includes("rice"))
-    return "com";
-
-  // 🎂 Bánh kem / Cake sinh nhật
-  if (
-    name.includes("bánh kem") ||
-    name.includes("banh kem") ||
-    name.includes("birthday cake")
-  )
-    return "banh_kem";
-
-  // 🍦 Kem
-  if (
-    name.includes("kem") ||
-    name.includes("ice cream") ||
-    name.includes("gelato") ||
-    name.includes("snow ice") ||
-    name.includes("frozen")
-  )
-    return "kem";
-
-  // 🔥 Lẩu
-  if (
-    name.includes("lẩu") ||
-    name.includes("lau") ||
-    name.includes("hotpot") ||
-    name.includes("hot pot") ||
-    name.includes("thái") ||
-    name.includes("suki")
-  )
-    return "lau";
-
-  // 🍜 Mì (chung)
-  if (
-    (name.includes("mì") || name.includes("my") || name.includes("mỳ")) &&
-    !name.includes("cay") // tránh trùng với "mì cay"
-  )
-    return "mi";
-
-  // ⚙️ Mặc định
+  // Tất cả quán đều dùng icon mặc định
   return "default";
 }
 
@@ -661,22 +439,67 @@ function displayPlaces(places, shouldZoom = true) {
     return false;
   }
 
-  // Xóa cluster cũ
-  if (markerClusterGroup) {
-    map.removeLayer(markerClusterGroup);
+  // 🔥🔥🔥 XÓA TẤT CẢ CLUSTER CŨ (CẢ LOCAL VÀ GLOBAL) 🔥🔥🔥
+  
+  // 1️⃣ Xóa cluster LOCAL
+  if (typeof markerClusterGroup !== 'undefined' && markerClusterGroup) {
+    if (map.hasLayer(markerClusterGroup)) {
+      map.removeLayer(markerClusterGroup);
+      console.log('🧹 [displayPlaces] Removed LOCAL cluster');
+    }
+  }
+  
+  // 2️⃣ Xóa cluster GLOBAL
+  if (window.markerClusterGroup) {
+    if (map.hasLayer(window.markerClusterGroup)) {
+      map.removeLayer(window.markerClusterGroup);
+      console.log('🧹 [displayPlaces] Removed GLOBAL cluster');
+    }
   }
 
   markers = []; // reset mảng markers
-  // reset index marker theo place_id
   window.placeMarkersById = {};
+  
   // 👉 Gắn cluster vào map trước
   map.addLayer(markerClusterGroup);
 
-  // 👉 Đăng ký lazy load theo move/zoom
-  map.off("moveend", loadMarkersInViewport);
+// ✅ TẮT lazy load cũ
+
+map.off("moveend", loadMarkersInViewport);
+console.log('⚠️ [displayPlaces] Removed old lazy load listener');
+
+// 🔥 NẾU LÀ FAVORITE MODE: LOAD TẤT CẢ MARKERS NGAY
+if (isFavoriteMode) {
+  console.log('🔥 [FAVORITE MODE] Loading ALL markers immediately...');
+  
+  // Tạo tất cả markers từ danh sách places
+  places.forEach((p) => {
+    const lat = parseFloat(p.lat?.toString().replace(",", "."));
+    const lon = parseFloat(p.lon?.toString().replace(",", "."));
+    
+    if (isNaN(lat) || isNaN(lon)) return;
+    
+    const placeId = p.data_id || p.ten_quan;
+    
+    // Tạo marker
+    const marker = createMarker(p, lat, lon);
+    markers.push(marker);
+    markerClusterGroup.addLayer(marker);
+    visibleMarkers.add(placeId);
+  });
+  
+  console.log(`✅ [FAVORITE MODE] Loaded ${markers.length} markers`);
+  
+  // ⚠️ QUAN TRỌNG: KHÔNG BẬT LẠI lazy load trong favorite mode!
+  
+} else {
+  // CHẾ ĐỘ BÌNH THƯỜNG: Bật lại lazy load
   map.on("moveend", loadMarkersInViewport);
+  console.log('✅ [displayPlaces] Re-enabled lazy load (normal mode)');
+}
 
   if (shouldZoom && places.length > 0) {
+ 
     // 🔍 Tính bounds theo TOÀN BỘ các quán đã lọc
     const bounds = L.latLngBounds([]);
 
@@ -708,6 +531,12 @@ function displayPlaces(places, shouldZoom = true) {
 // 🚀 HÀM LAZY LOADING
 // =========================
 function loadMarkersInViewport() {
+  // ✅ THÊM CHECK NÀY
+  if (isFavoriteMode) {
+    console.log('🚫 Lazy load bị chặn vì đang ở favorite mode');
+    return;
+  }
+  
   if (isLoadingMarkers) return;
   isLoadingMarkers = true;
 
@@ -717,7 +546,7 @@ function loadMarkersInViewport() {
   let maxMarkersToLoad = zoom > 14 ? 200 : zoom > 12 ? 100 : 50;
   let loadedCount = 0;
 
-  const markersToAdd = []; // ⭐ Gom marker vào đây
+  const markersToAdd = [];
 
   allPlacesData.forEach((p) => {
     const placeId = p.data_id || p.ten_quan;
@@ -732,7 +561,7 @@ function loadMarkersInViewport() {
 
     const marker = createMarker(p, lat, lon);
     markers.push(marker);
-    markersToAdd.push(marker);        // ⭐ gom lại
+    markersToAdd.push(marker);
     visibleMarkers.add(placeId);
     loadedCount++;
   });
@@ -746,16 +575,13 @@ function loadMarkersInViewport() {
 // =========================
 function createMarker(p, lat, lon) {
   // 🎯 Chọn icon phù hợp
-  let icon;
+let icon;
 
-  if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
-    icon = icons.michelin;
-  } else if (p.mo_ta && p.mo_ta.toLowerCase().includes("khu ẩm thực")) {
-    icon = icons.khu_am_thuc;
-  } else {
-    const category = detectCategory(p.ten_quan);
-    icon = icons[category] || icons.default;
-  }
+if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
+  icon = icons.michelin;  // ⭐ Chỉ quán Michelin dùng icon sao
+} else {
+  icon = icons.default;   // 🍽️ Tất cả quán khác dùng icon chung
+}
 
   // 🎯 Tạo marker (KHÔNG dùng .addTo(map) nữa)
   const marker = L.marker([lat, lon], { 
@@ -1018,43 +844,68 @@ if (placeId) {
 
     // 📤 GỬI ĐÁNH GIÁ
     const submitBtn = document.getElementById("submitReview");
-    if (submitBtn) {
-      submitBtn.addEventListener("click", async () => {
-        const review = {
-          rating: selectedRating,
-          comment: document.getElementById("reviewComment").value.trim(),
-        };
+if (submitBtn) {
+  submitBtn.addEventListener("click", async () => {
+    const review = {
+      rating: selectedRating,
+      comment: document.getElementById("reviewComment").value.trim(),
+    };
 
-        if (!review.comment || review.rating === 0) {
-          alert("Vui lòng nhập nội dung và chọn số sao!");
-          return;
-        }
-
-        try {
-          const response = await fetch(`/api/reviews/${place_id}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": getCookie("csrftoken"),
-            },
-            body: JSON.stringify(review),
-            credentials: "include",
-          });
-
-          const result = await response.json();
-
-          if (response.ok && result.success) {
-            alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
-            marker.fire("click"); // Reload sidebar
-          } else {
-            alert(result.message || "Lỗi khi gửi đánh giá. Bạn đã đăng nhập chưa?");
-          }
-        } catch (err) {
-          console.error("Lỗi fetch API:", err);
-          alert("Lỗi kết nối. Không thể gửi đánh giá.");
-        }
-      });
+    if (!review.comment || review.rating === 0) {
+      alert("Vui lòng nhập nội dung và chọn số sao!");
+      return;
     }
+
+    // 🔄 Hiển thị loading
+    submitBtn.disabled = true;
+    submitBtn.textContent = "🔄 Đang kiểm tra...";
+
+    try {
+      const response = await fetch(`/api/reviews/${place_id}/`, {  // ← THÊM DẤU /
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify(review),
+        credentials: "include",
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
+        marker.fire("click");
+      } else {
+        // ❌ Nội dung không hợp lệ
+        let errorMsg = result.message || "Lỗi khi gửi đánh giá";
+        
+        // Nếu có gợi ý nội dung tốt hơn
+        if (result.suggested_content) {
+          const useSuggestion = confirm(
+            `${errorMsg}\n\n💡 Bạn có muốn dùng nội dung gợi ý không?`
+          );
+          
+          if (useSuggestion) {
+            document.getElementById("reviewComment").value = result.suggested_content;
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Gửi đánh giá";
+            return;
+          }
+        }
+        
+        alert(errorMsg);
+      }
+    } catch (err) {
+      console.error("Lỗi fetch API:", err);
+      alert("Lỗi kết nối. Không thể gửi đánh giá.");
+    } finally {
+      // ✅ Reset button
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Gửi đánh giá";
+    }
+  });
+}
 
     // 🚗 NÚT TÌM ĐƯỜNG ĐI
     const tongquanTab = sidebarContent.querySelector("#tab-tongquan");
@@ -1246,10 +1097,14 @@ if (placeId) {
 // =========================
 async function showFavoritePlaces() {
   try {
+    console.log('🍕 [SHOW FAVORITES] Step 1: Calling API...');
+    
     const res = await fetch("/api/get-favorites/", {
       method: "GET",
       credentials: "include",
     });
+
+    console.log('🍕 [SHOW FAVORITES] Step 2: Response status:', res.status);
 
     if (res.status === 401 || res.status === 403) {
       alert("Vui lòng đăng nhập để xem danh sách quán yêu thích!");
@@ -1259,15 +1114,59 @@ async function showFavoritePlaces() {
     const data = await res.json();
     const favorites = data.favorites || [];
 
+    console.log('🍕 [SHOW FAVORITES] Step 3: Received data');
+    console.log('   📊 Count:', favorites.length);
+    console.log('   📦 Data:', favorites);
+
     if (!favorites.length) {
       alert("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
       return false;
     }
 
+    console.log('🍕 [SHOW FAVORITES] Step 4: Calling displayPlaces()...');
+    
+    // ✅✅✅ SET isFavoriteMode = true TRƯỚC ✅✅✅
+    isFavoriteMode = true;
+    
+    // 🔥🔥🔥 QUAN TRỌNG: XÓA TẤT CẢ CLUSTER CŨ 🔥🔥🔥
+    
+    // 1️⃣ Xóa cluster local (nếu có)
+    if (typeof markerClusterGroup !== 'undefined' && markerClusterGroup) {
+      if (map.hasLayer(markerClusterGroup)) {
+        map.removeLayer(markerClusterGroup);
+        console.log('🧹 Removed LOCAL cluster');
+      }
+    }
+    
+    // 2️⃣ Xóa cluster global (nếu có)
+    if (window.markerClusterGroup) {
+      if (map.hasLayer(window.markerClusterGroup)) {
+        map.removeLayer(window.markerClusterGroup);
+        console.log('🧹 Removed GLOBAL cluster');
+      }
+    }
+    
+    // 3️⃣ TẮT lazy load
+    map.off("moveend", loadMarkersInViewport);
+    console.log('   ⚠️ Disabled lazy load');
+    
+    // 4️⃣ Reset biến toàn cục
+    allPlacesData = [];
+    visibleMarkers.clear();
+    markers = [];
+    window.placeMarkersById = {};
+    console.log('🧹 Cleared all global variables');
+    
+    // 5️⃣ GỌI displayPlaces()
+    clearAllMarkers();
     displayPlaces(favorites, true);
+    
+    console.log('🍕 [SHOW FAVORITES] Step 5: Done!');
+    console.log('   🗺️ Total markers after display:', markers.length);
+    
     return true;
   } catch (err) {
-    console.error("Lỗi khi lấy danh sách quán yêu thích:", err);
+    console.error("❌ [FAVORITES ERROR]:", err);
     alert("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
     return false;
   }
@@ -1364,12 +1263,7 @@ async function fetchPlaces(
   shouldZoom = true
 ) {
   try {
-    // 🛡️ KIỂM TRA TỪ CẤM TRƯỚC KHI TÌM KIẾM
-    if (containsBadWords(query)) {
-      alert("⚠️ Từ khóa không phù hợp! Vui lòng nhập từ khóa lịch sự hơn.");
-      return false;
-    }
-
+    
     const res = await fetch("/api/places");
     let data = await res.json();
     allPlacesData = [];
@@ -1592,16 +1486,7 @@ let notFoundCount = 0;
 document.getElementById("btnSearch").addEventListener("click", async () => {
   const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
-// 🛡️ KIỂM TRA TỪ CẤM TRƯỚC KHI XỬ LÝ
-  if (containsBadWords(query)) {
-   showWarningToast("Từ khóa tìm kiếm không hợp lệ! Vui lòng nhập nội dung phù hợp.");
-    
-    // Reset ô input
-    document.getElementById("query").value = "";
-    document.getElementById("query").focus();
-    
-    return; // Dừng ngay, không search
-  }
+
   const selectedFlavors = Array.from(
     document.querySelectorAll("#flavorDropdown input:checked")
   ).map((c) => c.value);
@@ -1700,28 +1585,42 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   // Nếu là filter-only search → không đụng tới notFoundCount
 });
 
+
 // ✅ NÚT YÊU THÍCH Ở HEADER (ICON TRÁI TIM)
 const favoriteModeBtnHeader = document.getElementById("favoriteModeBtnHeader");
 
 if (favoriteModeBtnHeader) {
   favoriteModeBtnHeader.addEventListener("click", async () => {
-    // 🔴 Đang tắt → bật chế độ "chỉ quán yêu thích"
+    console.log('🔴 [FAVORITE BTN] Clicked!');
+    console.log('🔴 [FAVORITE BTN] Current mode:', isFavoriteMode);
+    
     if (!isFavoriteMode) {
-      isFavoriteMode = true;
+      // ✅ BẬT FAVORITE MODE
       favoriteModeBtnHeader.classList.add("active");
 
+      console.log('🔴 [FAVORITE BTN] Calling showFavoritePlaces()...');
+      
       const ok = await showFavoritePlaces();
-      // Nếu không có quán / lỗi → tắt lại nút
+      
+      console.log('🔴 [FAVORITE BTN] Result:', ok);
+      console.log('🔴 [FAVORITE BTN] Total markers on map:', markers.length);
+      
       if (!ok) {
+        // ✅ NẾU THẤT BẠI THÌ TẮT LẠI
         isFavoriteMode = false;
         favoriteModeBtnHeader.classList.remove("active");
       }
     }
-    // 🟢 Đang bật → tắt chế độ, quay về kết quả tìm kiếm gần nhất
     else {
+      // ✅ TẮT FAVORITE MODE
+      console.log('🟢 [FAVORITE BTN] Turning OFF favorite mode');
+      
       isFavoriteMode = false;
       favoriteModeBtnHeader.classList.remove("active");
 
+      // ✅ TẮT lazy load cũ trước
+      map.off("moveend", loadMarkersInViewport);
+      
       await fetchPlaces(
         lastSearchParams.query,
         lastSearchParams.flavors,
@@ -1729,10 +1628,11 @@ if (favoriteModeBtnHeader) {
         lastSearchParams.radius,
         true
       );
+      
+      console.log('🟢 [FAVORITE BTN] Restored to last search');
     }
   });
 }
-
 
 // =======================================================
 // ✅ MULTI-SELECT KHẨU VỊ
@@ -2988,3 +2888,20 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
+function clearAllMarkers() {
+    // Xóa toàn bộ markers trong map
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+            map.removeLayer(layer);
+        }
+    });
+
+    // Xóa tất cả cluster (dù là biến nào)
+    if (markerClusterGroup) markerClusterGroup.clearLayers();
+    if (window.markerClusterGroup) window.markerClusterGroup.clearLayers();
+
+    // Reset data
+    markers = [];
+    visibleMarkers.clear();
+    window.placeMarkersById = {};
+}

@@ -246,6 +246,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 animation: fireGlow 2s ease-in-out infinite;
             }}
 
+            .speech-bubble.fire-mode::after {{
+                border-top-color: white; /* Giữ màu nền trắng */
+                filter: drop-shadow(0 3px 3px rgba(0,0,0,0.08)) 
+                        drop-shadow(0 0 0 2px #FF6B35); /* Thêm viền đỏ cam */
+            }}
+
             @keyframes fireGlow {{
                 0%, 100% {{
                     box-shadow: 0 6px 25px rgba(255,107,53,0.4);
@@ -1283,6 +1289,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             .history-item-input {{
                 flex: 1;
+                min-width: 0; /* ← THÊM DÒNG NÀY */
                 border: 2px solid #FF6B35;
                 border-radius: 6px;
                 padding: 4px 8px;
@@ -1290,18 +1297,49 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 font-weight: 500;
                 outline: none;
                 background: white;
+                max-width: 100%; /* ← THÊM DÒNG NÀY */
+            }}
+
+            .history-item-rename {{
+                background: rgba(255,107,53,0.2);
+                border: none;
+                color: white;
+                cursor: pointer;
+                padding: 0;
+                font-size: 18px;
+                border-radius: 50%;
+                width: 34px;
+                height: 34px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+                flex-shrink: 0;
+            }}
+
+            .history-item-rename:hover {{
+                background: rgba(255,107,53,0.3);
+            }}
+
+            .history-item.active .history-item-rename {{
+                background: rgba(255,255,255,0.2);
+                color: white;
+            }}
+
+            .history-item.active .history-item-rename:hover {{
+                background: rgba(255,255,255,0.3);
             }}
 
             .history-item-edit {{
                 background: rgba(255,107,53,0.2);
                 border: none;
-                color: #FF6B35;
+                color: white;
                 cursor: pointer;
-                padding: 4px;
-                font-size: 14px;
-                border-radius: 6px;
-                width: 24px;
-                height: 24px;
+                padding: 0;
+                font-size: 18px;
+                border-radius: 50%;
+                width: 34px;
+                height: 34px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -1311,28 +1349,27 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             .history-item-edit:hover {{
                 background: rgba(255,107,53,0.3);
-                transform: scale(1.1);
             }}
 
             .history-item.active .history-item-edit {{
-                background: rgba(255,255,255,0.3);
+                background: rgba(255,255,255,0.2);
                 color: white;
             }}
 
             .history-item.active .history-item-edit:hover {{
-                background: rgba(255,255,255,0.4);
+                background: rgba(255,255,255,0.3);
             }}
 
             .history-item-delete {{
-                background: rgba(239,68,68,0.2);
+                background: rgba(255,107,53,0.2);
                 border: none;
-                color: #ef4444;
+                color: white;
                 cursor: pointer;
-                padding: 4px;
-                font-size: 14px;
-                border-radius: 6px;
-                width: 24px;
-                height: 24px;
+                padding: 0;
+                font-size: 18px;
+                border-radius: 50%;
+                width: 34px;
+                height: 34px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -1341,17 +1378,16 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             }}
 
             .history-item-delete:hover {{
-                background: rgba(239,68,68,0.3);
-                transform: scale(1.1);
+                background: rgba(255,107,53,0.3);
             }}
 
             .history-item.active .history-item-delete {{
-                background: rgba(255,255,255,0.3);
+                background: rgba(255,255,255,0.2);
                 color: white;
             }}
 
             .history-item.active .history-item-delete:hover {{
-                background: rgba(255,255,255,0.4);
+                background: rgba(255,255,255,0.3);
             }}
 
             .history-item-actions {{
@@ -1739,7 +1775,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     'tổ cha', 'tổ sư', 'con mẹ mày', 'con chó', 'đồ chó', 'con đĩ mẹ mày',
 
                     // --- nhóm viết tắt & kiểu chat Việt hóa ---
-                    'vl', 'vkl', 'vcc', 'vklm', 'cmn', 'cmnr', 'cmnl', 'vcđ', 'vđc', 'vcml',
+                    'vl', 'vkl', 'vcc', 'vklm', 'cmn', 'cmnr', 'cmnl', 'vcđ', 'vđc', 'vcml', 'lz',
                     'dkm', 'vml', 'vclm', 'vcmm', 'dmnr', 'dcmj', 'dmj', 'ccmnr', 'vchz', 'vlz', 'cc', 'cái lồn',
 
                     // --- nhóm không dấu / né lọc ---
@@ -2142,7 +2178,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     
                     // --- Từ chứa "lồn/lon" nhưng không phải tục ---
                     'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng',
-                    'salon', 'lớn', 'nguồn', 'ngày', 'gay go', 'long lanh', 'long trọng', 'long', 
+                    'salon', 'lớn', 'nguồn', 'ngày', 'gay go', 'long lanh', 'long trọng', 'long', 'người',
 
                     // Tiếng Trung - chào hỏi
                     '你好','您好','哈喽','嗨','早上好','下午好','晚上好',
@@ -2357,19 +2393,21 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             let userPreferences = {{
                 likes: [],
                 dislikes: [],
-                allergies: []
+                allergies: [],
+                medicalconditions: []
             }};
 
-            // 💾 HÀM LƯU PREFERENCE VÀO SERVER
+            // ✅ ĐẢM BẢO HÀM NÀY ĐÚNG:
             async function savePreferenceToServer(type, item) {{
                 try {{
                     console.log(`💾 [SAVE PREFERENCE] Đang lưu ${{type}}: ${{item}}`);
                     
                     const response = await fetch(`${{API_BASE_URL}}/accounts/preferences/save/`, {{
                         method: 'POST',
-                        credentials: 'include',
+                        credentials: 'include',  // ← QUAN TRỌNG: Gửi cookie session
                         headers: {{
                             'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')  // ← NẾU CẦN CSRF
                         }},
                         body: JSON.stringify({{
                             type: type,      // 'like', 'dislike', 'allergy'
@@ -2377,59 +2415,32 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         }})
                     }});
                     
+                    const data = await response.json();
+                    
                     if (response.ok) {{
-                        const data = await response.json();
                         console.log(`✅ [SAVE PREFERENCE] Đã lưu ${{type}}: ${{item}}`, data);
                     }} else {{
-                        console.error(`❌ [SAVE PREFERENCE] Lỗi lưu ${{type}}:`, response.status);
+                        console.error(`❌ [SAVE PREFERENCE] Lỗi lưu ${{type}}:`, response.status, data);
                     }}
                 }} catch (error) {{
                     console.error(`❌ [SAVE PREFERENCE] Exception:`, error);
                 }}
-            }}            
+            }}
 
-            async function extractPreferences(userMessage, botReply) {{
-                const lowerMsg = userMessage.toLowerCase();
-
-                // 🍽️ EXTRACT LIKES
-                if (lowerMsg.includes('thích') || lowerMsg.includes('yêu') ||
-                    lowerMsg.includes('ngon') || lowerMsg.includes('like') ||
-                    lowerMsg.includes('love')) {{
-                    const dishes = extractDishNames(userMessage + ' ' + botReply);
-                    for (const dish of dishes) {{
-                        if (!userPreferences.likes.includes(dish)) {{
-                            userPreferences.likes.push(dish);
-                            await savePreferenceToServer('like', dish);  // ✅ GỌI API LƯU
+            // ✅ THÊM HÀM LẤY CSRF TOKEN NẾU CHƯA CÓ:
+            function getCookie(name) {{
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {{
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {{
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {{
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
                         }}
                     }}
                 }}
-
-                // 🚫 EXTRACT DISLIKES
-                if (lowerMsg.includes('không thích') || lowerMsg.includes('ghét') ||
-                    lowerMsg.includes('không ăn') || lowerMsg.includes('hate') ||
-                    lowerMsg.includes("don't like")) {{
-                    const dishes = extractDishNames(userMessage);
-                    for (const dish of dishes) {{
-                        if (!userPreferences.dislikes.includes(dish)) {{
-                            userPreferences.dislikes.push(dish);
-                            await savePreferenceToServer('dislike', dish);  // ✅ GỌI API LƯU
-                        }}
-                    }}
-                }}
-
-                // ⚠️ EXTRACT ALLERGIES
-                if (lowerMsg.includes('dị ứng') || lowerMsg.includes('allergic') ||
-                    lowerMsg.includes('không ăn được')) {{
-                    const ingredients = extractIngredients(userMessage);
-                    for (const ing of ingredients) {{
-                        if (!userPreferences.allergies.includes(ing)) {{
-                            userPreferences.allergies.push(ing);
-                            await savePreferenceToServer('allergy', ing);  // ✅ GỌI API LƯU
-                        }}
-                    }}
-                }}
-
-                console.log('📊 User Preferences:', userPreferences);
+                return cookieValue;
             }}
 
             // ===== HÀM HELPER: TRÍCH XUẤT TÊN MÓN CHÍNH XÁC =====
@@ -2476,28 +2487,205 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             function extractIngredientsFromText(text) {{
                 const allIngredients = [
-                    // Hải sản
-                    'tôm', 'cua', 'cá', 'mực', 'ốc', 'nghêu', 'sò', 'hải sản', 'seafood',
-                    // Sữa & trứng
-                    'sữa', 'milk', 'trứng', 'egg',
-                    // Đậu & hạt
-                    'đậu', 'đậu phụ', 'đậu nành', 'lạc', 'hạt', 'hạt điều', 'hạnh nhân', 'peanut', 'nut',
-                    // Gluten
-                    'gluten', 'lúa mì', 'bột mì',
-                    // Khác
-                    'nấm', 'mushroom', 'hành', 'onion', 'tỏi', 'garlic'
+                    //////////////////////////////////////
+                    // HẢI SẢN
+                    //////////////////////////////////////
+                    'tôm', 'shrimp',
+                    'cua', 'crab',
+                    'cá', 'fish',
+                    'mực', 'squid',
+                    'bạch tuộc', 'octopus',
+                    'sò', 'scallop',
+                    'nghêu', 'clam',
+                    'hàu', 'oyster',
+                    'cá hồi', 'salmon',
+                    'cá ngừ', 'tuna',
+                    'ốc', 'snail',
+                    'hải sản', 'seafood',
+
+                    //////////////////////////////////////
+                    // SỮA & TRỨNG
+                    //////////////////////////////////////
+                    'sữa', 'milk',
+                    'trứng', 'egg',
+                    'phô mai', 'cheese',
+                    'bơ', 'butter',
+                    'kem', 'cream',
+                    'sữa chua', 'yogurt',
+                    'kem tươi', 'fresh cream',
+
+                    //////////////////////////////////////
+                    // ĐẬU – HẠT – NUTS
+                    //////////////////////////////////////
+                    'đậu', 'bean',
+                    'đậu phụ', 'tofu',
+                    'đậu nành', 'soy', 'soybean',
+                    'lạc', 'peanut',
+                    'hạt', 'nut',
+                    'hạt điều', 'cashew',
+                    'hạnh nhân', 'almond',
+                    'óc chó', 'walnut',
+                    'hạt dẻ', 'hazelnut',
+                    'pistachio',
+                    'mè', 'vừng', 'sesame',
+
+                    //////////////////////////////////////
+                    // GLUTEN – NGŨ CỐC
+                    //////////////////////////////////////
+                    'gluten',
+                    'lúa mì', 'wheat',
+                    'bột mì', 'flour',
+                    'yến mạch', 'oat',
+                    'lúa mạch', 'barley',
+                    'lúa mạch đen', 'rye',
+
+                    //////////////////////////////////////
+                    // RAU CỦ NHIỀU NGƯỜI GHÉT
+                    //////////////////////////////////////
+                    'rau mùi', 'ngò', 'cilantro',
+                    'cần tây', 'celery',
+                    'ớt chuông', 'bell pepper',
+                    'bông cải xanh', 'broccoli',
+                    'bắp cải', 'cabbage',
+                    'cà rốt', 'carrot',
+                    'củ dền', 'beetroot',
+                    'măng tây', 'asparagus',
+                    'khổ qua', 'bitter melon',
+                    'rau diếp cá', 'fish mint',
+                    'su hào', 'kohlrabi',
+                    'hành lá', 'spring onion',
+
+                    //////////////////////////////////////
+                    // GIA VỊ – MÙI MẠNH – AROMATICS
+                    //////////////////////////////////////
+                    'nấm', 'mushroom',
+                    'hành', 'onion',
+                    'tỏi', 'garlic',
+                    'gừng', 'ginger',
+                    'sả', 'lemongrass',
+                    'ớt', 'chili',
+                    'tiêu', 'pepper',
+                    'mù tạt', 'mustard',
+                    'wasabi',
+                    'ngò gai', 'sawtooth herb',
+                    'thì là', 'dill',
+                    'bạc hà', 'mint',
+                    'quế', 'cinnamon',
+                    'đinh hương', 'clove',
+                    'nước mắm', 'fish sauce',
+                    'mắm tôm', 'shrimp paste',
+                    'giấm', 'vinegar',
+                    'dầu mè', 'sesame oil',
+                    'dầu hào', 'oyster sauce',
+                    'tương ớt', 'chili sauce',
+                    'tương đen', 'hoisin',
+
+                    //////////////////////////////////////
+                    // MÓN ĂN (dish names)
+                    //////////////////////////////////////
+                    'phở', 'pho',
+                    'bún bò', 'beef noodle soup',
+                    'bún riêu', 'crab noodle soup',
+                    'bánh mì', 'banh mi',
+                    'mì gói', 'instant noodles',
+                    'hủ tiếu', 'rice noodle soup',
+                    'cháo', 'porridge',
+                    'cơm tấm', 'broken rice',
+                    'xôi', 'sticky rice',
+                    'cơm chiên', 'fried rice',
+                    'mì xào', 'stir fried noodles',
+                    'lẩu', 'hotpot',
+                    'pizza',
+                    'burger',
+                    'pasta',
+                    'spaghetti',
+                    'salad',
+                    'sushi',
+                    'tempura',
+                    'ramen',
+                    'kimbap',
+                    'tokbokki',
+
+                    //////////////////////////////////////
+                    // THỊT – PROTEINS
+                    //////////////////////////////////////
+                    'bò', 'beef',
+                    'heo', 'pork',
+                    'gà', 'chicken',
+                    'vịt', 'duck',
+                    'cừu', 'lamb',
+                    'gan', 'liver',
+                    'lòng', 'organ meat',
+
+                    //////////////////////////////////////
+                    // ĐỒ UỐNG – CHẤT KÍCH THÍCH
+                    //////////////////////////////////////
+                    'cà phê', 'coffee',
+                    'trà', 'tea',
+                    'cacao', 'cocoa',
+                    'rượu', 'alcohol',
+                    'bia', 'beer',
+
+                    //////////////////////////////////////
+                    // VỊ GIÁC – FLAVOR PROFILES
+                    //////////////////////////////////////
+                    'mặn', 'salty',
+                    'ngọt', 'sweet',
+                    'chua', 'sour',
+                    'đắng', 'bitter',
+                    'cay', 'spicy',
+                    'nhạt', 'bland',
+                    'béo', 'rich',
+                    'ngậy', 'creamy',
+                    'hăng', 'pungent',
+                    'tanh', 'fishy',
+                    'umami',
+
+                    //////////////////////////////////////
+                    // MÓN / NGUYÊN LIỆU GÂY “ÁM ẢNH” NHIỀU NGƯỜI
+                    //////////////////////////////////////
+                    'sầu riêng', 'durian',
+                    'pho mát xanh', 'blue cheese',
+                    'mắm', 'fermented fish',
+                    'hành sống', 'raw onion',
+                    'tỏi sống', 'raw garlic',
+                    'kem tỏi', 'garlic sauce',
+                    'trứng sống', 'raw egg',
+                    'hải sản tanh', 'fishy seafood',
+                    'cá khô', 'dried fish',
+                    'tôm khô', 'dried shrimp',
+                    'cá mòi', 'sardine',
+                    'anchovy', 'cá cơm', 'mắm tôm', 'hột vịt lộn'
                 ];
                 
                 const found = new Set();
-                const lowerText = text.toLowerCase();
-                
-                allIngredients.forEach(ing => {{
-                    const regex = new RegExp('\\b' + ing.toLowerCase().replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&') + '\\b', 'i');
-                    if (regex.test(lowerText)) {{
-                        found.add(ing);
+                const lowerText = (text || '').normalize('NFC').toLowerCase();
+
+                // Chữ cái/chữ số (cả tiếng Việt)
+                const letterRegex = /[a-z0-9à-ỹđ]/i;
+                const isLetter = ch => ch && letterRegex.test(ch);
+
+                allIngredients.forEach(rawIng => {{
+                    const ing = rawIng.toLowerCase();
+                    const escaped = ing.replace(/[.*+?^${{}}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escaped, 'gi');
+
+                    let match;
+                    while ((match = regex.exec(lowerText)) !== null) {{
+                        const start = match.index;
+                        const end = start + match[0].length;
+
+                        const before = lowerText[start - 1];
+                        const after = lowerText[end];
+
+                        // Chỉ nhận nếu hai bên KHÔNG phải chữ cái (tránh match bên trong từ dài hơn)
+                        if (!isLetter(before) && !isLetter(after)) {{
+                            found.add(rawIng);
+                            break; // đủ rồi, khỏi tìm tiếp từ này
+                        }}
                     }}
                 }});
-                
+
                 console.log('🥕 [EXTRACT INGREDIENTS] Found:', Array.from(found));
                 return Array.from(found);
             }}
@@ -2585,6 +2773,118 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 console.log('📊 [FINAL PREFERENCES]', userPreferences);
             }}
 
+            // ===== HÀM XÓA PREFERENCES =====
+            async function detectAndRemovePreferences(botReply) {{
+                console.log('🔍 [DETECT REMOVAL] Checking bot reply for removal markers...');
+                console.log('🔍 [DETECT] Input text:', botReply.substring(0, 200)); // ← Xem text đầu vào
+                
+                // 🎯 TÌM MARKER THÊM: [PREFERENCE_ADD:type:item]
+                const addMarkerRegex = /\[PREFERENCE_ADD:(allergy|dislike|like|medicalcondition):([^\]]+)\]/g;
+                const addMatches = [...botReply.matchAll(addMarkerRegex)];
+
+                console.log('🎯 [DETECT] Found ADD markers:', addMatches.length); 
+
+                // 🎯 TÌM MARKER: [PREFERENCE_REMOVED:type:item]
+                const markerRegex = /\[PREFERENCE_REMOVED:(allergy|dislike|like|medicalcondition):([^\]]+)\]/g;
+                const matches = [...botReply.matchAll(markerRegex)];
+                
+                if (matches.length === 0 && addMatches.length === 0) {{
+                    console.log('   ⭐ No markers found at all');
+                    return botReply;
+                }}
+
+                // 🔄 XỬ LÝ THÊM PREFERENCES
+                for (const match of addMatches) {{
+                    const [fullMarker, prefType, item] = match;
+                    const cleanItem = item.trim();
+                    
+                    console.log(`   ✅ Found ADD marker: type=${{prefType}}, item=${{cleanItem}}`);
+                    
+                    // 🗂️ THÊM VÀO LOCAL ARRAY
+                    const listName = prefType === 'like' ? 'likes' : 
+                                    prefType === 'dislike' ? 'dislikes' : 'allergies';
+                    const list = userPreferences[listName];
+                    
+                    if (!list.includes(cleanItem)) {{
+                        list.push(cleanItem);
+                        console.log(`   💾 Added to local array: ${{listName}} = ${{cleanItem}}`);
+                        
+                        // 📡 GỌI API LƯU TRÊN SERVER
+                        await savePreferenceToServer(prefType, cleanItem);
+                    }} else {{
+                        console.log(`   ⏭️ Already exists in ${{listName}}, skipping`);
+                    }}
+                }}
+                
+                // 🔄 XỬ LÝ TỪNG MARKER
+                for (const match of matches) {{
+                    const [fullMarker, prefType, item] = match;
+                    const cleanItem = item.trim();
+                    
+                    console.log(`   ✅ Found marker: type=${{prefType}}, item=${{cleanItem}}`);
+                    
+                    // 🗑️ XÓA KHỎI LOCAL ARRAY
+                    const listName = prefType === 'like' ? 'likes' : 
+                                    prefType === 'dislike' ? 'dislikes' : 'allergies';
+                    const list = userPreferences[listName];
+                    
+                    const index = list.indexOf(cleanItem);
+                    if (index > -1) {{
+                        list.splice(index, 1);
+                        console.log(`   💾 Removed from local array: ${{listName}}[${{index}}] = ${{cleanItem}}`);
+                    }} else {{
+                        console.log(`   ⚠️ Item not in ${{listName}}, skipping local removal`);
+                    }}
+                    
+                    // 📡 GỌI API XÓA TRÊN SERVER
+                    await deletePreferenceFromServer(prefType, cleanItem);
+                }}
+                
+                // 🧹 XÓA TẤT CẢ MARKER KHỎI TEXT (Quan trọng!)
+                let cleanReply = botReply
+                    .replace(addMarkerRegex, '')     // ← XÓA ADD markers
+                    .replace(markerRegex, '')        // ← XÓA REMOVE markers
+                    .trim();
+
+                // ✅ DOUBLE-CHECK ĐỂ ĐẢM BẢO XÓA HẾT
+                cleanReply = cleanReply
+                    .replace(/\[PREFERENCE_ADD:(allergy|dislike|like|medicalcondition):[^\]]+\]/g, '')
+                    .replace(/\[PREFERENCE_REMOVED:(allergy|dislike|like|medicalcondition):[^\]]+\]/g, '')
+                    .trim();
+                
+                console.log('✅ [DETECT REMOVAL] Completed. Clean reply length:', cleanReply.length);
+                console.log('📊 [CURRENT PREFERENCES]', userPreferences);
+                return cleanReply;
+            }}
+
+            // 🗑️ HÀM GỌI API XÓA PREFERENCE
+            async function deletePreferenceFromServer(type, item) {{
+                try {{
+                    console.log(`🗑️ [DELETE PREFERENCE] Deleting ${{type}}: ${{item}}`);
+                    
+                    const response = await fetch(`${{API_BASE_URL}}/accounts/preferences/delete/`, {{
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            type: type,
+                            item: item
+                        }})
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        console.log(`✅ [DELETE PREFERENCE] Deleted ${{type}}: ${{item}}`, data);
+                    }} else {{
+                        console.error(`❌ [DELETE PREFERENCE] Failed to delete ${{type}}:`, response.status);
+                    }}
+                }} catch (error) {{
+                    console.error(`❌ [DELETE PREFERENCE] Exception:`, error);
+                }}
+            }}
+
             function extractIngredients(text) {{
                 const ingredients = ['tôm', 'cua', 'cá', 'hải sản', 'sữa', 'trứng', 'đậu', 'lạc', 'hạt', 'seafood', 'milk', 'egg', 'peanut', 'nut'];
                 const found = [];
@@ -2638,10 +2938,10 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             const streakBubbleMessages = {{
                 frozen: [
                     "Đứt chuỗi roài pà ơi💔😿",
-                    "Ối! Streak của bạn đã đóng băng rồi 🧊 Nhắn tin ngay để khởi động lại nhé!",
-                    "Chuỗi streak bị đóng băng rồi nè ❄️ Chat với mình để mở khóa lại đi!",
+                    "Ối! Streak của đôi ta đã đóng băng rồi 🧊 Nhắn tin ngay với UIA để khởi động lại nhé!😢",
+                    "Chuỗi streak bị đóng băng rồi nè ❄️ Chat với mình để mở khóa lại đi mòo!",
                     "Streak đã bị đứt rồi 😢 Nhưng không sao! Nhắn tin để bắt đầu lại nào!",
-                    "Hôm nay chưa chat với mình à? 🧊 Streak đang chờ bạn đó~",
+                    "Chat với UIA ngayyyy 😠💢",
                     "Ê ê, streak đóng băng rồi! ❄️ Nhắn tin ngay để rã đông nhé!"
                 ],
                 
@@ -2670,7 +2970,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 ],
                 
                 zero: [
-                    "Bắt đầu xây streak với mình đi! 🚀 Chat mỗi ngày để nhận thành tích nha~",
+                    "Bắt đầu xây streak với mình đi! 🚀 Chat mỗi ngày để tăng tình bạn đôi taaa~",
                     "Chào bạn! 👋 Hãy chat với mình mỗi ngày để giữ streak nhé!",
                     "Streak đang ở 0 nè! 🌱 Hôm nay là ngày đầu tiên, bắt đầu thôi!",
                     "Muốn xây streak không? 🔥 Nhắn tin với mình mỗi ngày là được!",
@@ -2679,62 +2979,21 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             }};
 
             const welcomeMessages = [
-                "Xin chào bạn iu~ 🌸 Mình là UIAboss đây, hôm nay bạn muốn mình gợi ý món ngon kiểu gì nhỉ? 💕",
-                "Chào cưng nè~ 😘 Mình biết nhiều quán cực xịn luôn, muốn ăn gì thì nói mình nghe nha~",
-                "Hello bạn yêu! 🍰 Mình ở đây để chăm sóc bạn bằng món ngon nè, hôm nay thích gì?",
-                "Chào bạn thân mến! 💖 Hôm nay muốn ăn món lạ hay món comfort food đây? Mình gợi ý liền!",
-                "Hi hi~ 🌷 Mình là UIAboss, chuyên gia ẩm thực đáng yêu của bạn nè, bạn đang thèm món gì?",
-                "Xin chào bạn nhỏ! 🍓 Mình quan tâm bạn nè, hôm nay ăn gì cho vui và no bụng nhỉ?",
-                "Hey hey! 😍 Mình ở đây để làm bạn hạnh phúc bằng đồ ăn ngon nha~ Bạn muốn thử món gì?",
-                "Chào bạn yêu thương! 💕 Mình sẽ giúp bạn chọn món xịn, ăn xong happy luôn, muốn thử không?",
-                "Hello hello~ 🌈 Hôm nay trời đẹp, cùng mình tìm món ăn làm bạn cười toe toét nhé! 😋",
-                "Hi cưng nè! 🍪 Mình sẵn sàng gợi ý món ngon và chăm sóc bạn bằng lời khuyên ăn uống nè~",
-                "Chào bạn iu! 🌸 Mình biết bạn thèm gì ngay từ ánh nhìn nè, muốn thử món lạ không? 😘",
-                "Xin chào bạn thân yêu! 🍩 Ăn gì cho no mà vẫn vui vẻ, để mình lo hết nha~",
-                "Hi bạn đáng yêu! 💖 Hôm nay mình sẽ dẫn bạn đi một chuyến ẩm thực cute cực, bắt đầu nào!",
-                "Chào cưng! 🌷 Mình muốn biết hôm nay bạn muốn ăn gì để mình tư vấn cực kỹ nè 😄",
-                "Hello bạn nhỏ xinh! 🍜 Mình sẽ giúp bạn no bụng và vui vẻ, bạn muốn ăn gì trước nào?",
-                "Chào bạn iu mến! 😍 Mình quan tâm bạn lắm nè, hôm nay muốn ăn đồ ngọt hay đồ mặn?",
-                "Hi hi! 🌸 Mình ở đây để làm bạn cười và no bụng luôn, muốn thử món nào trước?",
-                "Xin chào bạn yêu quý! 🍰 Để mình chăm sóc bạn bằng đồ ăn ngon, hôm nay muốn gì nè?",
-                "Hey cưng ơi! 💕 Mình sẽ gợi ý món ngon, ăn xong bạn hạnh phúc luôn nha~",
-                "Hello bạn iu nè! 🌈 Mình cực quan tâm bạn nè, muốn ăn món nào để mình gợi ý siêu xinh luôn?",
-                "Chào bạn yêu! 🍓 Mình đã chuẩn bị sẵn vài gợi ý món ngon cho bạn, bạn muốn thử món nào trước?",
-                "Hi cưng! 🌸 Ăn gì hôm nay để mình tư vấn cho bạn no nê và happy nè~",
-                "Xin chào bạn nhỏ! 🍪 Hôm nay mình muốn bạn ăn ngon, vui vẻ, muốn mình gợi ý món nào?",
-                "Hello hello! 💖 Mình ở đây để làm bạn cười và no bụng, cùng mình chọn món ngon nào!",
-                "Chào bạn iu! 🌈 Món ăn hôm nay sẽ được mình lựa chọn cẩn thận, bạn muốn thử món ngọt hay mặn?",
-                "Hi bạn đáng yêu! 😘 Mình quan tâm bạn nè, hôm nay ăn gì mới hợp mood đây?",
-                "Xin chào cưng! 🌷 Mình sẽ gợi ý món ngon, ăn xong bạn hạnh phúc luôn nha~",
-                "Hey hey! 🍰 Bạn đang đói đúng không? Mình sẽ chăm sóc bạn bằng đồ ăn ngon liền!",
-                "Chào bạn iu mến! 💕 Mình ở đây để giúp bạn tìm món ngon và cute nhất luôn nha~",
-                "Hello bạn nhỏ! 😍 Hôm nay muốn ăn gì cho vui nhỉ, mình gợi ý liền nè!",
-                "Hi hi~ 🌸 Mình sẽ dẫn bạn đi vòng quanh thế giới ẩm thực, bắt đầu từ món ngon nào đây?",
-                "Chào bạn yêu! 🍩 Hôm nay mình muốn làm bạn no nê và cười toe toét, muốn thử món gì?",
-                "Xin chào bạn thân! 💖 Mình quan tâm bạn lắm nè, hôm nay ăn món gì mới vui?",
-                "Hey cưng nè! 🌈 Mình sẽ gợi ý món ngon, ăn xong bạn happy luôn, muốn thử món lạ không?",
-                "Chào bạn iu! 😘 Mình sẵn sàng chăm sóc bạn bằng món ăn ngon và lời khuyên cute nè~",
-                "Hello bạn yêu thương! 🍓 Mình ở đây để làm bạn cười và no bụng, hôm nay muốn ăn gì?",
-                "Hi hi! 🌷 Hôm nay mình muốn bạn ăn ngon, vui vẻ, muốn mình gợi ý món nào trước?",
-                "Xin chào bạn đáng yêu! 🍪 Mình đã chuẩn bị vài món ngon, muốn thử món lạ hay quen thuộc nhỉ?",
-                "Chào cưng! 💖 Hôm nay ăn gì cho vui, mình gợi ý luôn nè, ăn xong happy liền!",
-                "Hey hey! 🌸 Mình sẽ giúp bạn chọn món ngon cực cute, ăn xong cười toe toét luôn nha~",
-                "Hello bạn iu nè! 🍰 Mình cực quan tâm bạn nè, muốn ăn món nào trước để mình tư vấn?",
-                "Hi bạn nhỏ! 😍 Mình ở đây để chăm sóc bạn bằng đồ ăn ngon và lời khuyên cute nha~",
-                "Chào bạn yêu thương! 🌈 Mình sẽ giúp bạn no bụng và vui vẻ, hôm nay thử món gì?",
-                "Xin chào cưng! 💕 Ăn gì hôm nay cho vui, mình gợi ý món xinh xắn luôn nha~",
-                "Hey bạn iu! 🍓 Hôm nay trời đẹp, cùng mình chọn món ngon và cute nhé 😘",
-                "Chào bạn nhỏ xinh! 🌷 Mình quan tâm bạn lắm nè, muốn ăn món lạ hay món comfort food?",
-                "Hello hello! 🍩 Mình sẽ dẫn bạn đi chuyến ẩm thực cute, ăn xong happy luôn!",
-                "Hi hi! 💖 Hôm nay ăn gì cho no và vui, mình gợi ý món ngon cực xinh nè~",
-                "Chào bạn iu mến! 🌸 Mình quan tâm bạn lắm, muốn thử món gì trước nha 😍",
-                "Xin chào cưng! 🍰 Ăn gì hôm nay để mình giúp bạn no bụng và cười toe toét luôn?",
-                "Hey hey! 🌈 Mình sẽ gợi ý món ngon cực đáng yêu, ăn xong bạn happy luôn nha~"
+                "Hello bạn ơi~ 😺🍜 Hôm nay bạn muốn ăn gì nè? Bạn nhớ nói mình biết sở thích, món ghét, dị ứng hay vấn đề sức khoẻ để mình chọn món cho chuẩn nha~",
+                "Chào bạn iu~ 🐱✨ Muốn mình gợi ý món gì hong? Bạn kể mình nghe khẩu vị, món kỵ hay bệnh lý cần chú ý để mình chăm bạn tốt hơn nha~",
+                "Hi hi bạn dễ thương~ 😸💖 Bạn đang thèm món gì? Nếu có dị ứng hay món nào không hợp cơ địa thì nói mình biết nhẹ để mình gợi ý cho an toàn nha~",
+                "Meow chào bạn~ 😻🌼 Hôm nay mood ăn uống sao rồi? Bạn chia sẻ sở thích, món ghét hay vấn đề sức khoẻ để mình chọn món hợp vibe bạn nha~",
+                "Hello bạn nhỏ cute~ 🐾🍲 Muốn ăn gì nè? Nếu bạn có dạ dày yếu, dị ứng hay món nào từng gây khó chịu thì nhớ nói mình né nha~",
+                "Chào bạn thân mến~ 🐈⭐ Bạn muốn món quen hay món mới? Bạn bật mí khẩu vị, món không thích hoặc bệnh lý cần lưu ý để mình chọn món đúng gu nha~",
+                "Hi bạn iu thương~ 😺💫 Bạn thèm món gì vậy? Bạn nói mình biết sở thích, ghét gì, dị ứng gì hay đang kiêng gì để mình lựa món dễ dàng hơn nha~",
+                "Hello hello~ 🐱🍧 Hôm nay muốn ăn gì cho vui nè? Nếu bạn có bệnh lý liên quan ăn uống hay món kỵ gì thì nói mình biết để mình tránh giúp nha~",
+                "Chào bạn đáng yêu~ 😽🌈 Để mình gợi ý món ngon cho bạn nha! Nhớ cho mình biết khẩu vị, món bạn ghét hay dị ứng để mình chăm bạn đúng kiểu nhất~",
+                "Hi bạn nhỏ~ 🐾🥗 Bạn muốn thử món gì hôm nay? Bạn chia sẻ chút về sở thích, món không thích, dị ứng hay vấn đề sức khoẻ để mình chọn món phù hợp nha~"
             ];
 
             const suggestionQuestions = [
                 "Tui muốn ăn đồ nóng hổi 🔥",
-                "Gợi ý món lạ một chút đi ✨",
+                "Gợi ý món gì đo thú vị đi ✨",
                 "Ăn gì cho bổ dưỡng nhỉ? 💪",
                 "Món nào dễ tiêu hóa vậy? 😌",
                 "Trời mưa kiểu này ăn gì ngon ta ☔",
@@ -2751,31 +3010,23 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 "Tối nay mà có gì ăn cùng bạn bè thì vui á 🥳",
                 "Ăn gì mà không béo hông 😅",
                 "Thời tiết kiểu này chắc hợp ăn món nước ha 🍜",
-                "Lâu rồi chưa ăn món Việt ngon ngon 😋",
+                "Lâu rồi chưa ăn đồ Việt Nam á 😋",
                 "Nghĩ mãi không ra ăn gì hết 😭",
                 "Có món nào vừa rẻ vừa ngon hông nè 💸",
                 "Nay thèm hải sản xíu 🦐",
                 "Gợi ý mình vài món hot trend đi 😎",
-                "Thèm ăn gì kiểu fusion, vừa Việt vừa Tây 🌮",
-                "Muốn ăn đồ lên mood sáng tạo 🌈",
-                "Ăn gì mà vừa nhìn là thèm ngay 😍",
-                "Thử món gì mà màu sắc bắt mắt 🥗",
+                "Thèm ăn gì kiểu vừa Việt vừa Tây 🌮",
+                "Có món gì mà vừa nhìn là thèm ngay hongg 😍",
+                "Món gì mà màu sắc bắt mắ zạaa 🥗",
                 "Đang muốn ăn vừa ngon vừa có story để check-in 📸",
                 "Ăn gì mà kiểu “chill” cuối tuần 🎶",
                 "Có món nào vừa ăn vừa thư giãn tâm hồn 🧘",
-                "Muốn thử món độc lạ kiểu street food 🌯",
-                "Hôm nay ăn kiểu healthy nhưng không nhàm chán 🥦",
+                "Muốn thử món độc lạ kiểu đường phố 🌯",
                 "Ăn gì mà kiểu tròn vị, đủ chua ngọt mặn 😋",
-                "Thèm món gì mà vừa ăn vừa kể chuyện cười 😂",
-                "Ăn gì kiểu retro vintage, gợi nhớ tuổi thơ 🍡",
-                "Muốn ăn gì mà thử 1 lần trong đời 🌟",
-                "Đói kiểu ‘muốn nhiều món ăn cùng lúc’ 🥢",
+                "Có món nào mà ăn vào là gợi nhớ tuổi thơ hăm 🍡",
                 "Ăn gì mà kiểu mood café chill, nhẹ nhàng ☕",
-                "Muốn món gì mà vừa lạ vừa dễ làm tại nhà 🏠",
-                "Thèm snack kiểu vặt vặt, nhâm nhi 🍿",
                 "Ăn gì mà kiểu trendy trên TikTok 😎",
-                "Hôm nay ăn gì mà kiểu luxury, sang chảnh 🥂",
-                "Muốn món gì mà vừa ăn vừa feel like travel ✈️"
+                "Hôm nay ăn gì mà kiểu luxury, sang chảnh 🥂"
             ];
 
             // Lấy các elements
@@ -3440,9 +3691,20 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                     // Render HTML
                     item.innerHTML = `
-                        <span class="history-item-name">${{session.title}}</span> <div class="history-item-actions">
-                            <button class="history-item-edit" title="Đổi tên">✏️</button>
-                            <button class="history-item-delete" title="Xóa">🗑️</button>
+                        <span class="history-item-name">${{session.title}}</span>
+                        <div class="history-item-actions">
+                            <button class="history-item-edit" title="Đổi tên">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="history-item-delete" title="Xóa">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
                         </div>
                     `;
 
@@ -3459,13 +3721,29 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     editBtn.addEventListener('click', (e) => {{
                         e.stopPropagation();
 
+                        const deleteBtn = item.querySelector('.history-item-delete');
+                        const actionsDiv = item.querySelector('.history-item-actions');
+
                         const input = document.createElement('input');
                         input.type = 'text';
                         input.className = 'history-item-input';
                         input.value = session.title; // Dùng title
 
+                        const renameBtn = document.createElement('button');
+                        renameBtn.className = 'history-item-rename';
+                        renameBtn.title = 'Lưu';
+                        renameBtn.innerHTML = `
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        `;
                         const nameSpan = item.querySelector('.history-item-name');
                         nameSpan.replaceWith(input);
+
+                        editBtn.style.display = 'none';
+                        deleteBtn.style.display = 'none';
+                        actionsDiv.appendChild(renameBtn);
+                        
                         input.focus();
                         input.select();
 
@@ -4172,93 +4450,408 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     : '';
 
                 const preferencesContext = `
-                === 🎯 USER PREFERENCES - CRITICAL RULES ===
+                ===USER PREFERENCES - CRITICAL RULES===
 
-                📊 User's Food Profile:
-                - ❤️ LIKES: ${{userPreferences.likes.length > 0 ? userPreferences.likes.join(', ') : 'Not learned yet'}}
-                - ❌ DISLIKES: ${{userPreferences.dislikes.length > 0 ? userPreferences.dislikes.join(', ') : 'Not learned yet'}}
-                - ⚠️ ALLERGIES: ${{userPreferences.allergies.length > 0 ? userPreferences.allergies.join(', ') : 'Not learned yet'}}
+                User's Food Profile:
+                - LIKES: ${{userPreferences.likes.length > 0 ? userPreferences.likes.join(', ') : 'Not learned yet'}}
+                - DISLIKES: ${{userPreferences.dislikes.length > 0 ? userPreferences.dislikes.join(', ') : 'Not learned yet'}}
+                - ALLERGIES: ${{userPreferences.allergies.length > 0 ? userPreferences.allergies.join(', ') : 'Not learned yet'}}
+                - MEDICAL CONDITIONS: ${{userPreferences.medicalconditions.length > 0 ? userPreferences.medicalconditions.join(', ') : 'Not learned yet'}}
+                ⚠️ CRITICAL: Medical conditions take HIGHEST PRIORITY - even above allergies!
 
-                🚫 ABSOLUTE RULES (NEVER BREAK):
+                LEARNING USER PREFERENCES (ADDING)
 
-                1. **NEVER suggest dishes user DISLIKES**
+                You MUST detect and save user preferences by adding markers in your response.
+                DETECTION RULES:
+
+                **LIKES** - User expresses positive feelings:
+                - Vietnamese: "thích", "yêu", "ngon", "ưa", "mê", "ham", "thèm'
+                - English: "like", "love", "enjoy", "prefer", "favorite"
+                Examples:
+                - "Tôi thích phở bò lắm" → Detect: Phở bò
+                - "I love banh mi" → Detect: Bánh mì
+                - "Món này ngon quá!" (after bot suggests Bún chả) → Detect: Bún chả
+
+                **DISLIKES** - User expresses negative feelings:
+                - Vietnamese: "không thích", "ghét", "không ăn", "chán"
+                - English: "don't like", "hate", "dislike", "can't eat"
+                Examples:
+                - "Tôi không thích cay" → Detect: cay
+                - "I hate mushrooms" → Detect: mushrooms
+
+                **ALLERGIES** - Health-related restrictions:
+                - Vietnamese: "dị ứng", "không ăn được", "bị dị ứng"
+                - English: "allergic", "allergy", "can't eat due to allergy"
+                Examples:
+                - "Tôi bị dị ứng hải sản" → Detect: hải sản
+                - "I'm allergic to peanuts" → Detect: peanuts
+
+                **ALLERGIES** - Health-related restrictions:
+                - Vietnamese: "dị ứng", "không ăn được", "bị dị ứng"
+                - English: "allergic", "allergy", "can't eat due to allergy"
+                Examples:
+                - "Tôi bị dị ứng hải sản" → Detect: hải sản
+                - "I'm allergic to peanuts" → Detect: peanuts
+
+                **MEDICAL CONDITIONS** - Disease/health conditions requiring diet restrictions:
+                - Vietnamese: 
+                * "bị bệnh [X]", "có bệnh [X]", "bị [X]"
+                * "tiền sử [X]", "đang điều trị [X]"
+                
+                - English: 
+                * "have [disease]", "diagnosed with [disease]"
+                * "need to avoid [food] because of [disease]"
+
+                Examples:
+                - "Tôi bị tiểu đường type 2" → Detect: tiểu đường type 2
+                - "I have high blood pressure" → Detect: high blood pressure  
+
+                MARKER FORMAT:
+                When you detect a preference, ADD THIS EXACT MARKER in your response:
+
+                \`[PREFERENCE_ADD:type:item]\`
+                - type: "like", "dislike", "allergy", or "medicalcondition"
+                - item: Vietnamese name of dish/ingredient
+                EXAMPLES:
+
+                1. User: "I love bánh mì and spring rolls"
+                Bot: "Great taste! Those are classic Vietnamese dishes 😍
+                [PREFERENCE_ADD:like:Bánh mì]
+                [PREFERENCE_ADD:like:Gỏi cuốn]
+                Let me suggest similar dishes!"
+
+                2. User: "Tôi không thích ăn cay"
+                Bot: "Ok mình nhớ rồi nha! 📝
+                [PREFERENCE_ADD:dislike:cay]
+                Mình sẽ gợi ý những món không cay cho bạn!"
+
+                3. User: "Tôi bị dị ứng tôm"
+                Bot: "Cảm ơn bạn đã cho mình biết! ⚠️
+                [PREFERENCE_ADD:allergy:tôm]
+                Mình sẽ tuyệt đối không gợi ý món có tôm cho bạn nữa nhé!"
+
+                4. User: "Tôi bị tiểu đường, phải hạn chế đồ ngọt"
+                Bot: "Mình hiểu rồi! Cảm ơn bạn đã chia sẻ về tình trạng sức khỏe 🏥
+                [PREFERENCE_ADD:medicalcondition:tiểu đường]
+                Mình sẽ ưu tiên gợi ý những món ít đường, phù hợp với người tiểu đường nhé! 
+                Món nào có nguy cơ mình sẽ cảnh báo rõ ràng cho bạn 💙"
+
+                IMPORTANT RULES:
+                DO:
+                - Add marker on separate line
+                - Multiple markers if user mentions multiple items
+                - Natural friendly response around markers
+
+                DON'T:
+                - Don't mention the marker to user
+                - Don't add markers for unclear statements
+                - Don't add if already in user's profile
+                - Don't add for hypothetical scenarios
+
+                CONTEXT AWARENESS:
+
+                If user just said they like a dish AFTER you suggested it:
+                - User: "Gợi ý món ngon đi"
+                - Bot suggests: "1. Phở bò, 2. Bún chả, 3. Bánh mì"
+                - User: "Món đầu tiên ngon quá!"
+                → Detect: Phở bò
+                → Add: [PREFERENCE_ADD:like:Phở bò]
+                
+                ===CRITICAL RULE: WHEN USER SHARES DISLIKE/ALLERGY===
+
+                STEP 1: CHECK IF IT CONFLICTS WITH THEIR LIKED DISHES
+
+                When user says they DISLIKE or are ALLERGIC to an ingredient:
+                1. First, check if any dishes in their LIKES list contain that ingredient
+                2. If YES → Mention the conflict + add warning
+                3. If NO → Just acknowledge + save
+                
+                EXAMPLES:
+                Case 1: CONFLICT DETECTED
+                User previously liked: "Phở"
+                User now says: "Tôi ghét hành"
+
+                Step 1: Check → Phở usually contains hành (onion)
+                Step 2: Conflict detected!
+                Step 3: Respond with warning
+
+                CORRECT Response:
+                "Ok mình nhớ rồi nha! 📝
+                [PREFERENCE_ADD:dislike:hành]
+
+                À mình nhớ bạn rất thích Phở đó, nhưng món này thường có hành nhé. 
+                Khi ăn Phở, bạn nhớ dặn người bán ĐỪNG BỎ HÀNH vào cho bạn! 💡"
+
+                Case 2: NO CONFLICT
+                User previously liked: "Cơm tấm"
+                User now says: "Tôi không thích ăn cay"
+
+                Step 1: Check → Cơm tấm không cay
+                Step 2: No conflict
+                Step 3: Just acknowledge
+
+                CORRECT Response:
+                "Ok mình nhớ rồi nha! 📝
+                [PREFERENCE_ADD:dislike:cay]
+                Mình sẽ gợi ý những món không cay cho bạn nhé~ 💕"
+
+                Case 3: ALLERGY WITH CONFLICT
+                User previously liked: "Bún riêu"
+                User now says: "Tôi bị dị ứng gạch cua"
+
+                Step 1: Check → Bún riêu contains gạch cua
+                Step 2: SERIOUS CONFLICT (allergy!)
+                Step 3: Strong warning
+
+                CORRECT Response:
+                "Cảm ơn bạn đã cho mình biết! ⚠️
+                [PREFERENCE_ADD:allergy:gạch cua]
+
+                Ối! Mình nhớ bạn rất thích Bún riêu, nhưng món này có tgạch cua đó. 
+                Vì bạn bị dị ứng nên tốt nhất là KHÔNG NÊN ĂN món này nữa nhé! 
+                Để mình gợi ý các món khác an toàn hơn cho bạn! 💙"
+
+                Case 4: MULTIPLE LIKES WITH CONFLICT
+                User previously liked: "Phở bò", "Bún chả", "Bánh mì"
+                User now says: "Tôi ghét rau mùi"
+
+                Step 1: Check → Phở bò has rau mùi, Bún chả might have, Bánh mì has
+                Step 2: Multiple conflicts!
+                Step 3: Mention all conflicts
+
+                CORRECT Response:
+                "Ok mình nhớ rồi nha! 📝
+                [PREFERENCE_ADD:dislike:rau mùi]
+
+                À mình nhớ bạn thích Phở bò và Bánh mì, nhưng 2 món này thường có rau mùi đó. 
+                Khi ăn, bạn nhớ dặn người bán ĐỪNG CHO RAU MÙI vào nhé! 💡"
+
+                ===RESPONSE RULES===
+                RULE 1: When user shares DISLIKE/ALLERGY
+                - ALWAYS add marker: [PREFERENCE_ADD:type:item]
+                - CHECK if it conflicts with their LIKES
+                - IF conflict → Mention + add specific warning
+                - IF no conflict → Just acknowledge briefly
+
+                RULE 2: DO NOT suggest dishes immediately
+                - This is just acknowledging their preference
+                - Wait for them to ask for recommendations
+
+                RULE 3: Mention conflicting liked dishes ONLY IF:
+                - They actually have dishes in LIKES list
+                - AND those dishes contain the disliked/allergic ingredient
+                - Keep it brief (1-2 sentences max)
+
+                RULE 4: If multiple conflicts:
+                - Mention the most important/common ones (max 2-3 dishes)
+                - Don't overwhelm with full list
+
+                RULE 5: Tone adjustment:
+                - DISLIKE → Gentle reminder: "Nhớ dặn người bán đừng cho X"
+                - ALLERGY → Strong warning: "Tốt nhất là KHÔNG NÊN ĂN món này"
+
+                ===WHAT NOT TO DO===
+
+                - DON'T suggest 5 dishes when they share preferences
+                - DON'T mention liked dishes if there's NO conflict
+                - DON'T recommend dishes that conflict with new preference
+                - DON'T make up conflicts (only mention if you're sure)
+                - DON'T repeat the same warning multiple times
+
+                REMEMBER: 
+                - Only mention conflict if you're SURE the ingredient is in that dish
+                - If unsure → Better to just acknowledge without mentioning liked dishes
+                - Priority: SAFETY > BEING HELPFUL
+
+                ===ABSOLUTE RULES (NEVER BREAK)===
+
+                CRITICAL CHECKING PROTOCOL - MUST FOLLOW FOR EVERY RECOMMENDATION:
+                BEFORE suggesting ANY dish, you MUST:
+
+                0. ⚠️ CHECK MEDICAL CONDITIONS FIRST (HIGHEST PRIORITY!)
+                - For EACH dish you want to suggest:
+                * Review ALL user's medical conditions
+                * Check if dish contains ingredients HARMFUL for those conditions
+                * Examples:
+                    - Diabetes → Avoid: desserts, sweet drinks, high-carb dishes
+                    - Hypertension → Avoid: salty dishes, processed meats, fish sauce-heavy dishes
+                
+                * If dish is UNSAFE → DO NOT suggest it at all
+                * If dish is RISKY but can be modified → Add WARNING:
+                    ⚠️ LƯU Ý: Món này [lý do], người bị [bệnh] nên [khuyến cáo].
+                    
+                * Examples:     
+                    "1. Cơm tấm: Cơm dẻo, thịt nướng thơm.
+                    ⚠️ LƯU Ý: Món này có nhiều tinh bột, người tiểu đường nên ăn vừa phải!"
+
+                1.CHECK DISH NAME against DISLIKES list
+                - If dish name matches ANY item in user's DISLIKES → NEVER suggest it
+                - Example: User dislikes "Phở" → Don't suggest "Phở bò", "Phở gà", ANY Phở variation
+
+                2.CHECK ALL INGREDIENTS against DISLIKES & ALLERGIES
+                - For EACH dish you want to suggest:
+                List ALL common ingredients of that dish (from INGREDIENT KNOWLEDGE BASE)
+                Compare with user's DISLIKES list
+                Compare with user's ALLERGIES list
+                
+                3.WARNING FORMAT - MANDATORY
+                - If dish contains ingredient from DISLIKES (removable) → Add warning like:
+                    1. [Dish Name]: [Description]
+                    ⚠️ Món này thường có [INGREDIENT]. Bạn nhớ dặn người bán ĐỪNG CHO [INGREDIENT] vào nhé!
+
+                EXAMPLE CHECKING FLOW:
+                User preferences:
+                - DISLIKES: cay, hành
+                - ALLERGIES: tôm
+
+                You want to suggest: "Phở bò"
+                STEP 1: Check dish name → "Phở bò" not in DISLIKES
+                STEP 2: List ingredients → nước dùng, bánh phở, thịt bò, hành, ngò, rau thơm
+                STEP 3: Check ingredients:
+                - "hành" found in DISLIKES! → Add warning
+                - No items from ALLERGIES → OK
+                STEP 4: Format response:
+                1. Phở bò: Nước dùng thơm ngon, thịt bò mềm.
+                ⚠️ Món này thường có hành. Bạn nhớ dặn người bán ĐỪNG BỎ HÀNH vì bạn không thích nhé!
+
+                CHECKING MUST BE DONE FOR ALL DISHES:
+                - Don't suggest 5 dishes first then check later
+                - Check EACH dish BEFORE adding to your response
+                - Remove dishes that can't be made safe
+                - Add warnings for dishes that can be modified
+
+                PRIORITY ORDER:
+                1. MEDICAL CONDITIONS → ABSOLUTE HIGHEST (life & health threatening!)
+                2. ALLERGIES → Highest priority (life threatening)
+                3. DISLIKES → Must respect (user comfort)
+                4. LIKES → Nice to have (user preference)
+
+                1.NEVER suggest dishes user DISLIKES
                 - If user dislikes "cay" (spicy) → DO NOT suggest: mì cay, bún bò Huế cay, phở cay
                 - If user dislikes "ngọt" (sweet) → DO NOT suggest: chè, bánh ngọt, nước ngọt
                 - If user dislikes specific dishes → NEVER mention them
 
-                2. **CRITICAL: ALLERGY WARNINGS (Priority #1)**
+                2.CRITICAL: ALLERGY WARNINGS (Priority #1)
                 - If user is allergic to ingredients → NEVER suggest dishes with that ingredient
                 - If you MUST suggest a dish with potential allergen → ADD CLEAR WARNING
                 
                 Examples:
                 - User allergic to "hành" (onion):
-                    "Phở bò: Món này thường có hành. ⚠️ BẠN NHỚ NHỚ người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!"
+                "Phở bò: Món này thường có hành. ⚠️ BẠN NHỚ NHỚ người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!"
                 
-                - User allergic to "tôm" (shrimp):
-                    "⚠️ Món này có tôm, bạn bị dị ứng nên TRÁNH TUYỆT ĐỐI!"
-                
-                - User allergic to "sữa" (milk):
-                    "Cà phê sữa: ⚠️ Món này có sữa, bạn nhớ cân nhắc nhé!"
+                - User allergic to "tôm" (shrimp): Do not suggest dishes that contain shrimp.
 
-                3. **SPICY FOOD SPECIAL HANDLING**
-                - If user dislikes/cannot eat "cay" (spicy):
-                    * DO NOT suggest: mì cay, lẩu cay, bún bò Huế
-                    * If suggesting dishes that CAN be spicy → add instruction:
-                    "Phở bò: Món này thường có ớt riêng. Bạn nhớ nói với người bán ĐỪNG CHO ỚT nhé!"
-                    "Bún bò Huế: ⚠️ Món này mặc định hơi cay. Nhớ dặn người bán bỏ bớt ớt hoặc cho riêng!"
-
-                4. **PRIORITIZE USER'S LIKES**
+                3.PRIORITIZE USER'S LIKES
                 - If user likes specific dishes → suggest similar dishes or variations
                 - Example: User likes "Phở bò" → suggest "Phở gà", "Phở tái", "Phở bò viên"
                 - Mention: "Vì bạn thích [món], mình nghĩ bạn sẽ thích [món tương tự]"
 
-                5. **DIETARY RESTRICTIONS INTELLIGENCE**
-                Common allergies and what to avoid:
-                - "Hải sản" (seafood): NO tôm, cua, cá, mực, nghêu, sò
-                - "Đậu" (beans/soy): NO đậu phụ, tương, nước tương, đậu hũ
-                - "Lạc/hạt" (peanuts/nuts): NO đồ có lạc, hạt điều, hạnh nhân
-                - "Trứng" (eggs): NO trứng, món chiên trứng
-                - "Gluten": NO bánh mì, mì Ý, bánh pizza
-
-                6. **RESPONSE FORMAT WITH WARNINGS**
-                
-                Format warnings professionally like this:
-                
-                CORRECT Format:
-                "1. Phở bò: Nước dùng thơm ngon, thịt bò mềm.
-                
-                ⚠️ Món này thường có hành. Bạn nhớ dặn người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!
-                
-                FORMATTING RULES:
-                - Start warning on NEW LINE (don't inline with dish description)
-                - Use emoji ONCE at start of warning line: ⚠️
-                - Keep warning SHORT and CLEAR (1-2 sentences max)
-                - Add blank line between dishes for readability
-                - DON'T use 👉 emoji (looks messy)
-                
-                ❌ BAD Format (DON'T DO THIS):
-                "1. Bánh bông lan: Bánh mềm.
-                    👉 Đây là món ngọt..." (ngón tay chỉ trông lộn xộn)
-                
-                ✅ GOOD Format (DO THIS):
-                "1. Phở bò: Nước dùng thơm ngon, thịt bò mềm.
-                
-                ⚠️ Món này thường có hành. Bạn nhớ dặn người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!
-
-                7. **CROSS-CONTAMINATION WARNINGS**
+                4.CROSS-CONTAMINATION WARNINGS
                 - If user has severe allergy → warn about cross-contamination:
-                    "⚠️ Quan trọng: Nếu bạn bị dị ứng nghiêm trọng, nhớ hỏi quán về việc chế biến riêng!"
+                "⚠️ Quan trọng: Nếu bạn bị dị ứng nghiêm trọng, nhớ hỏi quán về việc chế biến riêng!"
 
-                8. **NEVER ASSUME USER FORGOT THEIR ALLERGIES**
-                - Even if user asks for spicy food but has allergy → remind them:
-                    "Bạn có nói bạn không ăn được cay trước đó. Mình gợi ý món không cay nhé!"
+                5.CONFLICT BETWEEN SAVED PREFERENCES AND NEW REQUESTS
+                - Luôn nhớ những gì user đã nói trước đó (không ăn được, không thích, dị ứng).
+                - Nếu câu yêu cầu mới có vẻ MÂU THUẪN với profile hiện tại, bạn PHẢI phản ứng, không được giả vờ như không biết.
 
-                === 📋 SUMMARY ===
-                - Dislikes → NEVER suggest
-                - Allergies → CRITICAL warnings or DON'T suggest
-                - Likes → PRIORITIZE and suggest similar
-                - Spicy intolerance → Always add "đừng cho ớt" instruction
-                - Common allergens → Proactive warnings
+                6.1.Trường hợp NGUYÊN LIỆU CÓ THỂ BỎ (vẫn gợi ý món bình thường)
+                - Đây là những thứ người bán thường có thể bỏ ra khỏi món nếu user dặn:
+                  ví dụ: hành, hành lá, hành tây, ngò, rau thơm, tỏi, ớt tươi để riêng, tiêu rắc, mè, sốt mayonnaise, nước mắm, v.v.
+                - Nếu user DISLIKE hoặc ALLERGY với các nguyên liệu dạng này
+                  nhưng lại hỏi/nhờ gợi ý một món mà thông thường có nguyên liệu đó:
+                    → VẪN ĐƯỢC gợi ý món đó.
+                    → Nhưng LUÔN kèm 1 câu dặn rõ ràng, ví dụ:
+                "1. Phở bò: Nước dùng thơm ngon, thịt bò mềm.
+                ⚠️ Món này thường có hành. Bạn nhớ dặn người bán ĐỪNG BỎ HÀNH vì bạn bị dị ứng nhé!
+                - Tone nên thân thiện, giống người bạn nhắc nhẹ: an toàn nhưng không “cấm đoán” quá.
+
+                6.2. Trường hợp QUY TẮC LỚN / KHẨU VỊ CHUNG (phải hỏi lại user trước)
+                - Những câu kiểu:
+                    "không ăn được ngọt"
+                    "không ăn cay"
+                    "đang kiêng chiên xào, đồ nhiều dầu mỡ"
+                    "đang giảm cân, hạn chế đồ béo"
+                    "không uống nước ngọt có gas"
+                    "uống cà phê bị say, hạn chế caffeine"
+                  → coi là **QUY TẮC ĂN UỐNG**, không phải topping bỏ ra là xong.
+
+                - Nếu sau đó user lại yêu cầu một thứ có vẻ NGƯỢC LẠI, ví dụ:
+                    Trước đó: "mình không ăn được ngọt"
+                    Bây giờ:  "cho mình món gì ngọt ngọt / dessert ngọt ngọt"
+                    Hoặc:
+                    Trước đó: "mình không ăn cay"
+                    Bây giờ:  "nay thèm gì đó cay cay, cay xé lưỡi luôn"
+                  → Trong LẦN TRẢ LỜI ĐẦU TIÊN bạn phải:
+                    a. NHẮC LẠI NHẸ NHÀNG:
+                       "UIAboss nhớ là trước đó bạn có nói không ăn được ngọt / cay đó nha 🧡"
+                    b. HỎI LẠI, đưa 2 lựa chọn rõ ràng, ví dụ:
+                       "Bạn muốn mình:
+                        1) Giữ đúng thói quen đó và gợi ý những món ÍT NGỌT / KHÔNG NGỌT cho an toàn hơn,
+                        hay
+                        2) Hôm nay ưu tiên cảm xúc, mình vẫn gợi ý vài món ngọt nhưng nhắc bạn ăn vừa phải thôi?"
+                    c. Trả lời chủ yếu là: lời nhắc + câu hỏi lựa chọn.
+                       → CHƯA cần liệt kê danh sách món chi tiết ngay lập tức.
+                - Chỉ SAU KHI user trả lời xác nhận:
+                    "thôi hôm nay cho món ngọt đi" / "nay phá lệ ăn cay xíu"
+                  → lúc đó mới đưa list món phù hợp với lựa chọn đó.
+                  Nhưng nếu liên quan sức khoẻ (giảm cân, dạ dày, tiểu đường, dị ứng…) vẫn nên nhắc nhẹ thêm 1 câu cảnh báo.
+
+                6.3. Luật ưu tiên khi có BOTH “thèm” và “dị ứng”
+                - Nếu user vừa:
+                    + có ALLERGY đã lưu (ví dụ: đậu phộng, hải sản…)
+                    + lại nói thèm món thường chứa thứ đó
+                  → ALLERGY luôn ưu tiên cao nhất:
+                    * Không cổ vũ user “phá luật”.
+                    * Nhắc rõ ràng nguy cơ, khuyên TRÁNH món đó:
+                        "Món này có khả năng chứa đậu phộng, mà bạn bị dị ứng nên tốt nhất là ĐỪNG ăn."
+                    * Gợi ý ngay các lựa chọn thay thế an toàn hơn.
+                - Tóm lại:
+                    * Nguyên liệu nhỏ dễ bỏ → vẫn gợi ý món, dặn user nói với quán.
+                    * Quy tắc lớn / khẩu vị chung / vấn đề sức khoẻ → phải xác nhận lại trước khi đề xuất món trái quy tắc.
+                    * Dị ứng → luôn ưu tiên an toàn, không khuyến khích bỏ qua.
+
+                7. REMOVING PREFERENCES (XÓA SỞ THÍCH)
+                CRITICAL RULE: When user says they CAN NOW eat something they previously couldn't:
+
+                Detect phrases like:
+                - Vietnamese: "giờ ăn được [X] rồi", "không còn dị ứng [X]", "không ghét [X] nữa", "bỏ dị ứng [X]"
+                * "hết bệnh [X] rồi", "khỏi bệnh [X]", "không còn bị [X]", "bác sĩ cho phép ăn [X]"
+                - English: "I can eat [X] now", "no longer allergic to [X]", "not allergic anymore"
+                * "recovered from [disease]", "no longer have [disease]", "cured", "doctor cleared me"
+
+                YOUR RESPONSE MUST INCLUDE THIS EXACT MARKER:
+                Format (Vietnamese example):
+                "Waooo tuyệt vời! 🎉 Giờ bạn đã mở rộng khẩu vị rồi nha!
+                [PREFERENCE_REMOVED:allergy:tôm]
+                Vậy giờ mình có thể gợi ý [món có tôm] cho bạn rồi đó 😋"
+
+                User: "Tôi đã khỏi bệnh tiểu đường, bác sĩ cho phép ăn ngọt rồi"
+                Bot: "Waooo tuyệt vời! 🎉 Chúc mừng bạn đã phục hồi sức khỏe!
+                [PREFERENCE_REMOVED:medicalcondition:tiểu đường]
+                Giờ bạn có thể thưởng thức nhiều món ăn hơn rồi nè! 😋 
+                (Nhưng vẫn nên ăn uống điều độ nhé! 💙)"
+
+                Format rules:
+                - ALWAYS include marker: [PREFERENCE_REMOVED:type:item]
+                - Types: "allergy", "dislike", "like", "medicalcondition"
+                - Item: exact ingredient/dish name in Vietnamese
+                - Place marker AFTER the congratulation sentence
+                - Keep natural, friendly tone around the marker
+
+                Examples:
+                User: "Mình không còn dị ứng tôm nữa, ăn được rồi"
+                Bot: "Chúc mừng bạn! 🎊 Cơ thể bạn đã thích nghi tốt rồi nha!
+                [PREFERENCE_REMOVED:allergy:tôm]
+                Giờ bạn có thể thử nhiều món hải sản ngon hơn rồi đó! 💪✨"
+
+                IMPORTANT:
+                - Marker must be on separate line
+                - Must include exact item name user mentioned
+                - Natural friendly response around the marker
+                - Don't explain what the marker is (it's invisible to user)             
+                - For other allergy vs craving conflicts (ví dụ: dị ứng sữa nhưng muốn ăn kem),
+                  làm tương tự: nhắc dị ứng, giải thích nhẹ nhàng, hỏi user muốn đổi hướng sang lựa chọn an toàn hơn
+                  hay tìm phương án "lách" nhưng vẫn ưu tiên an toàn tối đa.
 
                 Treat allergies as MEDICAL CONDITION, not just preference!
                 `;
@@ -4277,18 +4870,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     /^(こんにちは|おはよう|こんばんは|やあ|もしもし)$/i,
                     // Tiếng Hàn
                     /^(안녕하세요|안녕|여보세요)$/i,
-                    // Tiếng Pháp
-                    /^(bonjour|salut|bonsoir|coucou)$/i,
-                    // Tiếng Tây Ban Nha
-                    /^(hola|buenos días|buenas tardes|buenas noches)$/i,
-                    // Tiếng Đức
-                    /^(hallo|guten tag|guten morgen|guten abend)$/i,
-                    // Tiếng Ý
-                    /^(ciao|buongiorno|buonasera)$/i,
-                    // Tiếng Thái
-                    /^(สวัสดี|หวัดดี)$/i,
-                    // Tiếng Indonesia/Malay
-                    /^(halo|hai|selamat pagi|selamat siang|selamat malam)$/i
                 ];
 
                 const isGreeting = greetingPatterns.some(pattern => pattern.test(lowerMsg)) ||
@@ -4318,6 +4899,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     contextPrompt = `
             IMPORTANT: User just sent a greeting or unclear/random message.
             DO NOT suggest dishes immediately!
+
             Instead:
             1. Greet them warmly back (in their language)
             2. Ask gentle questions to understand their needs:
@@ -4354,7 +4936,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - Current season: ${{season}}
             - User location: Ho Chi Minh City, Vietnam (tropical climate)
 
-            Since user doesn't know what to eat, suggest 8-10 NEW dishes (not previously suggested) that are:
+            Since user doesn't know what to eat, suggest 5 NEW dishes (not previously suggested) that are:
             1. Appropriate for ${{timeOfDay}}
             2. Suitable for ${{season}} weather
             3. Popular in Vietnamese cuisine
@@ -4368,7 +4950,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             const prompt = `You are UIAboss, a friendly and attentive customer service staff at a Vietnamese restaurant.
 
             DISH RECOMMENDATIONS (when appropriate):
-            - Suggest 8-10 different dishes when user wants recommendations
+            - Suggest 5 different dishes when user wants recommendations
             - Provide variety: different types (soup, rice, noodles, snacks, drinks)
             - Number them clearly (1. Dish Name, 2. Dish Name, etc.)
             - Give brief description for each dish (1-2 sentences)
@@ -4385,20 +4967,20 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             2. Compare with AVAILABLE MENU DATABASE (${{MENU_DATA.dishes.length}} dishes above)
             3. Determine if it's a typo/incomplete word OR random gibberish
             
-            🔸 IF TYPO/INCOMPLETE (e.g., "bún thieetk nuosnfg", "pho bo", "com tam suon"):
-               - Find 1-2 closest matching dishes from the menu
-               - Respond in Vietnamese (user's language)
-               - Format: "À bạn đang tìm món <span class="dish-name">Bún thịt nướng</span> phải không? Bạn có thể tham khảo thêm món <span class="dish-name">Bún thịt nướng chả giò</span>. Cần hỗ trợ thêm hãy nói mình nha! 😊"
-               - CRITICAL: Wrap dish names in <span class="dish-name">...</span>
-               - Maximum 2 dishes only
-               - Be natural, friendly, helpful
+            IF TYPO/INCOMPLETE (e.g., "bún thieetk nuosnfg", "pho bo", "com tam suon"):
+            - Find 1-2 closest matching dishes from the menu
+            - Respond in Vietnamese (user's language)
+            - Format: "À bạn đang tìm món <span class="dish-name">Bún thịt nướng</span> phải không? Bạn có thể tham khảo thêm món <span class="dish-name">Bún thịt nướng chả giò</span>. Cần hỗ trợ thêm hãy nói mình nha! 😊"
+            - CRITICAL: Wrap dish names in <span class="dish-name">...</span>
+            - Maximum 2 dishes only
+            - Be natural, friendly, helpful
             
-            🔸 IF GIBBERISH (e.g., "asdahdhd", "xyzabc123"):
-               - Don't try to match any dish
-               - Do NOT ask user to retype the exact dish name
-               - Ask user what they feel like eating or to describe the dish they have in mind
-                 (e.g. món nước hay món khô, nóng hay lạnh, có cay không, ăn no hay ăn vặt, muốn nhiều thịt hay nhiều rau, v.v.)
-               - Format: "Ối, từ khóa này hơi khó hiểu một xíu nè 😅 Nhưng không sao đâu, bạn thử kể cho mình nghe bạn đang thèm món gì hoặc miêu tả sơ sơ (món nước/khô, nóng/lạnh, có cay không, ăn no hay ăn vặt...) để mình gợi ý quán cho chuẩn hơn nha! 💕"
+            IF GIBBERISH (e.g., "asdahdhd", "xyzabc123"):
+            - Don't try to match any dish
+            - Do NOT ask user to retype the exact dish name
+            - Ask user what they feel like eating or to describe the dish they have in mind
+            (e.g. món nước hay món khô, nóng hay lạnh, có cay không, ăn no hay ăn vặt, muốn nhiều thịt hay nhiều rau, v.v.)
+            - Format: "Ối, từ khóa bạn đang tìm hơi khó hiểu một xíu nè 😅 Nhưng không sao đâu, bạn thử kể cho UIA nghe bạn đang thèm món gì hoặc miêu tả sơ sơ (món nước/khô, nóng/lạnh, có cay không, ăn no hay ăn vặt...) để mình gợi ý quán cho chuẩn hơn nha! 💕"
             
             Detection rules:
             - Typo: has 50%+ valid Vietnamese/English food-related characters
@@ -4410,19 +4992,18 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - Keep response short (2-3 sentences max)
             - Focus on helpfulness
 
-
             CRITICAL: You can ONLY suggest dishes from this list of ${{MENU_DATA.dishes.length}} available dishes:
             ${{MENU_DATA.dishes.map((d, i) => `${{i + 1}}. ${{d}}`).join('\n')}}
 
             Available flavors in our restaurant: ${{MENU_DATA.flavors.join(', ')}}
 
             IMPORTANT RULES:
-                - NEVER suggest dishes NOT in the list above
-                - If user asks for a dish not in the list, politely say we don't have it and suggest similar available dishes
-                - Always verify your suggestions are from the AVAILABLE MENU DATABASE
-                - ❌ NEVER mention the number of dishes in the menu (e.g., "Tìm thấy trong menu: 372")
-                - ❌ DO NOT say things like "I found 5 dishes in the menu" or "There are 200 dishes available"
-                - Just suggest the dishes naturally without mentioning database statistics
+            - NEVER suggest dishes NOT in the list above
+            - If user asks for a dish not in the list, politely say we don't have it and suggest similar available dishes
+            - Always verify your suggestions are from the AVAILABLE MENU DATABASE
+            - NEVER mention the number of dishes in the menu (e.g., "Tìm thấy trong menu: 372")
+            - DO NOT say things like "I found 5 dishes in the menu" or "There are 200 dishes available"
+            - Just suggest the dishes naturally without mentioning database statistics
 
             === PRIORITY CHECK #1: TOPIC RESTRICTION ===
             CRITICAL - CHECK THIS FIRST BEFORE ANYTHING ELSE:
@@ -4430,31 +5011,16 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             You ONLY discuss topics related to: food, drinks, dishes, restaurants, cafes, cuisine, cooking, recipes, eating, dining.
 
             If the user's message is about OTHER topics (weather, news, programming, math, history, sports, politics, science, technology, games, movies, music, etc.):
-            → STOP IMMEDIATELY
-            → DO NOT answer the question
-            → Politely decline and redirect to food topics
-            → Be gentle, friendly, and brief in your refusal
+            - STOP IMMEDIATELY
+            - DO NOT answer the question
+            - Politely decline and redirect to food topics
+            - Be gentle, friendly, and brief in your refusal
 
             Examples of how to decline (match user's language):
             - English: "I appreciate the question, but I'm specialized in food and dining recommendations only! 😊 I'd love to help you find something delicious to eat instead. What are you in the mood for?"
             - Vietnamese: "Cảm ơn bạn đã hỏi, nhưng mình chỉ chuyên về món ăn thôi nha! 😊 Để mình giúp bạn tìm món ngon hơn nhé. Bạn đang thèm ăn gì không?"
-            - Chinese: "谢谢你的提问,不过我只专注于美食推荐哦!😊 让我帮你找些好吃的吧。你想吃什么呢?"
-            - Japanese: "ご質問ありがとうございます。でも、私は料理の専門家なんです!😊 美味しいものを探しましょう。何が食べたいですか?"
-            - Korean: "질문해 주셔서 감사합니다만, 저는 음식 전문이에요! 😊 맛있는 음식을 찾아드릴게요. 무엇을 드시고 싶으세요?"
-            - French: "Merci pour la question, mais je me spécialise uniquement dans la nourriture! 😊 Que voulez-vous manger?"
-            - Spanish: "Gracias por la pregunta, pero solo me especializo en comida! 😊 ¿Qué te gustaría comer?"
 
             === IF TOPIC IS FOOD-RELATED, CONTINUE BELOW ===
-
-            LANGUAGE ADAPTATION:
-            - ALWAYS respond in the SAME LANGUAGE the user uses
-            - Detect and match: Vietnamese, English, Chinese, Japanese, Korean, Thai, French, Spanish, German, Italian, Indonesian, etc.
-            - Match the user's language naturally and fluently
-
-            PRESENTATION STYLE:
-            - ❌ NEVER mention menu statistics like "(Tìm thấy trong menu: 372)" or "I found 5 dishes"
-            - ✅ Just suggest dishes naturally: "Mình gợi ý cho bạn mấy món này nhé: 1. Phở bò, 2. Bún chả..."
-            - Keep responses conversational and natural, not like a database query result
 
             AVOID REPEAT SUGGESTIONS:
             ${{suggestedDishesContext}}
@@ -4462,7 +5028,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - Always suggest NEW and DIFFERENT dishes
             - Keep track of what's been mentioned
 
-            ⚠️ CRITICAL: DETECT USER LANGUAGE FIRST
+            CRITICAL: DETECT USER LANGUAGE FIRST
             Before naming any dish, ALWAYS:
             1. Check what language the user is using
             2. If user writes in Vietnamese → Use ONLY Vietnamese names
@@ -4472,68 +5038,38 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             EXAMPLE DETECTION:
             User says: "Tôi muốn ăn cà phê" → VIETNAMESE → Answer: "Cà phê đá"
             User says: "I want coffee" → ENGLISH → Answer: "Vietnamese Coffee (Cà phê)"
-            User says: "我想喝咖啡" → CHINESE → Answer: "越南咖啡 (Cà phê)"
             
-            ❌ NEVER mix languages for Vietnamese users
-            ❌ NEVER write "Cà phê (đá)" - this is nonsense
-            ✅ ALWAYS write "Cà phê đá" when user speaks Vietnamese
-
+            - NEVER mix languages for Vietnamese users
+            - NEVER write "Cà phê (đá)" - this is nonsense
+            - ALWAYS write "Cà phê đá" when user speaks Vietnamese
             
             - CRITICAL NAMING RULES - READ CAREFULLY:
 
-            ✅ RULE 1: Dish names - LANGUAGE PRIORITY
-            → ALWAYS write dish name in the USER'S LANGUAGE first
-            → Then add Vietnamese name in parentheses if different
+            RULE 1: Dish names - LANGUAGE PRIORITY
+            - ALWAYS write dish name in the USER'S LANGUAGE first
+            - Then add Vietnamese name in parentheses if different
 
             Examples based on user language:
 
-            **If user speaks ENGLISH:**
+            If user speaks ENGLISH:
             - "Cơm tấm" → "Broken Rice (Cơm tấm)"
-            - "Phở bò" → "Beef Noodle Soup (Phở bò)"
-            - "Bánh mì" → "Vietnamese Sandwich (Bánh mì)"
-            - "Cà phê" → "Vietnamese Coffee (Cà phê)"
             - "Pizza" → "Pizza" (no Vietnamese needed - already English)
-
-            **If user speaks CHINESE:**
-            - "Phở bò" → "越南牛肉河粉 (Phở bò)"
-            - "Bánh mì" → "越南法棍三明治 (Bánh mì)"
-            - "Cà phê" → "越南咖啡 (Cà phê)"
-
-            **If user speaks JAPANESE:**
-            - "Phở bò" → "ベトナム牛肉フォー (Phở bò)"
-            - "Bánh mì" → "バインミー (Bánh mì)"
-            - "Cà phê" → "ベトナムコーヒー (Cà phê)"
-
-            **If user speaks KOREAN:**
-            - "Phở bò" → "베트남 쌀국수 (Phở bò)"
-            - "Bánh mì" → "반미 (Bánh mì)"
-            - "Cà phê" → "베트남 커피 (Cà phê)"
 
             **If user speaks VIETNAMESE:**
             → CRITICAL: Use ONLY Vietnamese names, NO parentheses, NO translations
             → The Vietnamese name IS the dish name, don't add anything extra
             → Format: "Cà phê đá" NOT "Cà phê (đá)" or "Coffee (Cà phê)"
 
-            ❌ WRONG examples (NEVER do this):
-            - "Cà phê (đá)" ← WRONG! This looks stupid
-            - "Coffee (Cà phê)" ← WRONG! User speaks Vietnamese
-            - "Phở bò (Beef noodle)" ← WRONG! Unnecessary
-
-            ✅ CORRECT examples:
+            CORRECT examples:
             - "Cà phê đá" ← Just Vietnamese, clean and simple
             - "Phở bò" ← No translation needed
-            - "Bánh mì thịt" ← Keep it pure Vietnamese
-            - "Bún chả" ← Natural Vietnamese name
 
-            REMEMBER: Vietnamese users don't need translations or parentheses!
-
-            ⚠️ IMPORTANT DETECTION:
+            IMPORTANT DETECTION:
             - Detect user's language from their message
             - Match the language style consistently throughout response
             - Keep dish descriptions also in user's language
 
             ${{preferencesContext}}
-
             ${{contextPrompt}}
 
             Conversation style:
@@ -4616,8 +5152,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         let botReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
                         if (botReply) {{
-                            botReply = cleanMarkdown(botReply);
                             
+                            // ✅ THÊM DÒNG NÀY: BẮT TÍN HIỆU & XÓA MARKER
+                            botReply = await detectAndRemovePreferences(botReply);
+
+                            botReply = cleanMarkdown(botReply);
+
                             // ✅ THÊM: FORCE XUỐNG DÒNG GIỮA CÁC MÓN
                             botReply = botReply.replace(/(\d+\.\s+[^\n]+?)(?=\s*\d+\.)/g, '$1\n');
                             
@@ -4651,8 +5191,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                     console.log('✅ [SEARCH CORRECTION] Đã lưu tin nhắn user với title:', defaultTitle);
                                 }}
                             }}
-
-                            extractPreferences(userMessage, botReply);
 
                             if (!isGreeting) {{
                                 const dishMatches = botReply.match(/\d+\.\s*([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]+(?:\s+[a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđA-Z]+)*)/g);

@@ -214,6 +214,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5000',
     'http://127.0.0.1:5000',
     'https://*.trycloudflare.com',  # ✅ Wildcard cho TẤT CẢ subdomain Cloudflare
+    'https://*.ngrok-free.app', # Dấu * để chấp nhận mọi sub-domain của ngrok
+    'https://*.ngrok.io',
 ]
 
 # ✅ CORS settings

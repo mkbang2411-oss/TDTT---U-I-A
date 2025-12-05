@@ -22,6 +22,7 @@ urlpatterns = [
     # Share Food Plan
     path('food-plan/share/<int:plan_id>/', views.share_food_plan_api, name='share_food_plan'),
     path('food-plan/shared/', views.get_shared_plans_api, name='get_shared_plans'),
+    
     # 🍽️ User Preferences APIs
     path('preferences/', views.get_user_preferences, name='get_preferences'),
     path('preferences/save/', views.save_user_preference, name='save_preference'),
@@ -36,6 +37,10 @@ urlpatterns = [
     path('food-plan/suggestion-detail/<int:suggestion_id>/', views.get_suggestion_detail_api, name='get_suggestion_detail'),
     path('food-plan/suggestion-approve/<int:suggestion_id>/', views.approve_suggestion_api, name='approve_suggestion'),
     path('food-plan/suggestion-reject/<int:suggestion_id>/', views.reject_suggestion_api, name='reject_suggestion'),
+    
+    # 🔥 THÊM DÒNG NÀY - API xem đề xuất của bản thân
+    path('food-plan/my-suggestions/<int:plan_id>/', views.get_my_suggestions_api, name='get_my_suggestions'),
+    
     path('food-plan/leave-shared/<int:plan_id>/', views.leave_shared_plan_api, name='leave_shared_plan'),
-
+    path('food-plan/suggestion-approve-single/', views.suggestion_approve_single, name='suggestion_approve_single'),
 ]
