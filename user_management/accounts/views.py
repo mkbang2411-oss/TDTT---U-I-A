@@ -20,6 +20,7 @@ from .utils import send_otp_email, send_welcome_email, send_password_reset_otp_e
 from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
+from .nudenet_detector import check_nsfw_image_local
 import requests 
 from .gemini_utils import check_review_content
 from .models import UserPreference
@@ -601,22 +602,48 @@ def get_user_info(request):
 def upload_avatar_api(request):
     if request.method == 'POST' and request.FILES.get('avatar'):
         if not request.user.is_authenticated:
-             return JsonResponse({'status': 'error', 'message': 'Chưa đăng nhập'}, status=401)
-
-        # Tìm hoặc tạo profile
-        profile, created = UserProfile.objects.get_or_create(user=request.user)
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Chưa đăng nhập'
+            }, status=401)
         
-        # Lưu ảnh mới
-        profile.avatar = request.FILES['avatar']
+        image_file = request.FILES['avatar']
+        
+        # 🔍 KIỂM TRA NSFW BẰNG NUDENET
+        print(f"\n{'='*60}")
+        print(f"🔍 [AVATAR MODERATION]")
+        print(f"   User: {request.user.username}")
+        print(f"   File: {image_file.name}")
+        print(f"   Size: {image_file.size/1024:.1f} KB")
+        
+        # ✅ DÙNG NUDENET
+        check_result = check_nsfw_image_local(image_file)
+        
+        print(f"   Result: is_safe={check_result['is_safe']}, reason={check_result['reason']}")
+        print(f"{'='*60}\n")
+        
+        if not check_result['is_safe']:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ {check_result["reason"]}',
+                'details': check_result.get('details', {})
+            }, status=400)
+        
+        # ✅ ẢNH AN TOÀN → LƯU
+        image_file.seek(0)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        profile.avatar = image_file
         profile.save()
         
-        # ✅ TRẢ VỀ URL TƯƠNG ĐỐI (không hardcode domain)
         return JsonResponse({
-            'status': 'success', 
-            'new_avatar_url': profile.avatar.url  # Chỉ trả về /media/avatars/xxx.png
+            'status': 'success',
+            'new_avatar_url': profile.avatar.url
         })
     
-    return JsonResponse({'status': 'error', 'message': 'Lỗi upload'}, status=400)
+    return JsonResponse({
+        'status': 'error', 
+        'message': 'Lỗi upload'
+    }, status=400)
 
 @csrf_exempt
 def change_password_api(request):
