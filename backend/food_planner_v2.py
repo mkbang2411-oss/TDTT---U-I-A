@@ -3003,31 +3003,6 @@ def get_food_planner_html():
     <h2 style="font-size: 22px;">
         <span style="font-size: 26px;">📋</span> Lịch trình bữa ăn
     </h2>
-    
-    <!-- 🔥 NÚT X - CHỈ HIỆN KHI XEM SHARED PLAN -->
-    <button id="exitSharedPlanBtn" 
-        onclick="exitSharedPlanView()" 
-        style="
-            display: none; /* 🔥 MẶC ĐỊNH ẨN HOÀN TOÀN */
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
-            transition: all 0.3s ease;
-        "
-        onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(231, 76, 60, 0.5)';"
-        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(231, 76, 60, 0.3)';"
-        title="Thoát chế độ xem shared plan">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: white;">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-        </svg>
-    </button>
 </div>
         
         <div class="panel-content">
