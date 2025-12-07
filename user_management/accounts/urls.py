@@ -43,4 +43,13 @@ urlpatterns = [
     
     path('food-plan/leave-shared/<int:plan_id>/', views.leave_shared_plan_api, name='leave_shared_plan'),
     path('food-plan/suggestion-approve-single/', views.suggestion_approve_single, name='suggestion_approve_single'),
+
+    # 🔔 NOTIFICATION APIs
+    path('notifications/', views.get_notifications_api, name='get_notifications'),
+    path('notifications/stream/', views.notification_stream, name='notification_stream'),
+    path('notifications/<int:notification_id>/read/', views.mark_notification_read_api, name='mark_notification_read'),
+    path('notifications/read-all/', views.mark_all_notifications_read_api, name='mark_all_notifications_read'),
+    path('notifications/<int:notification_id>/delete/', views.delete_notification_api, name='delete_notification'),
+    path('notifications/clear-all/', views.clear_all_notifications_api, name='clear_all_notifications'),
+    path('friend/<int:user_id>/favorites/view/', views.record_favorite_view, name='record_favorite_view'),
 ]
