@@ -2383,9 +2383,9 @@ def get_shared_plans_api(request):
 def submit_plan_suggestion_api(request, plan_id):
     """
     Bạn bè submit suggestion cho plan
-    POST /api/food-plan/suggest/<plan_id>/
+    POST /api/accounts/food-plan/suggest/<plan_id>/
     Body: {
-        "suggested_data": {...},  // Plan sau khi edit
+        "suggested_data": {...},
         "message": "Tôi đã thêm quán X vào lịch trình"
     }
     """
@@ -2405,13 +2405,14 @@ def submit_plan_suggestion_api(request, plan_id):
         # Lấy dữ liệu gốc
         original_data = shared_plan.food_plan.plan_data
         
-        # Tạo suggestion
+        # 🔥 TẠO SUGGESTION - THÊM pending_changes={}
         suggestion = PlanEditSuggestion.objects.create(
             shared_plan=shared_plan,
             suggested_by=request.user,
             original_data=original_data,
             suggested_data=suggested_data,
-            message=message
+            message=message,
+            pending_changes={}  # 🔥 THÊM DÒNG NÀY
         )
 
         create_suggestion_notification(
@@ -2433,6 +2434,8 @@ def submit_plan_suggestion_api(request, plan_id):
             'message': 'Bạn không có quyền chỉnh sửa lịch trình này'
         }, status=403)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)

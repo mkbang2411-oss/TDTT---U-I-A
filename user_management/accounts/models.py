@@ -347,6 +347,9 @@ class PlanEditSuggestion(models.Model):
     original_data = models.JSONField()  # Plan gốc trước khi edit
     suggested_data = models.JSONField()  # Plan sau khi edit
     
+    # 🔥 THÊM DÒNG NÀY
+    pending_changes = models.JSONField(default=dict, blank=True)  # Lưu trạng thái các thay đổi đã chọn
+    
     # Metadata
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     message = models.TextField(blank=True)  # Lời nhắn kèm theo suggestion
@@ -357,7 +360,7 @@ class PlanEditSuggestion(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Suggestion by {self.suggested_by.username} - {self.status}"            
+        return f"Suggestion by {self.suggested_by.username} - {self.status}"           
     
 class UserPreference(models.Model):
     """
