@@ -26,9 +26,21 @@ from .gemini_utils import check_review_content
 from .models import UserPreference
 from .models import (
     FoodPlan, 
-    SharedFoodPlan,  # ← Thêm dòng này
-    PlanEditSuggestion  # ← Thêm dòng này
+    SharedFoodPlan,
+    PlanEditSuggestion
 )
+from .models import Notification
+from .utils import (
+    create_friend_request_notification,
+    create_shared_plan_notification,
+    create_suggestion_notification
+)
+import time
+from django.http import StreamingHttpResponse
+from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -803,6 +815,9 @@ def send_friend_request(request):
         
         # Tạo lời mời kết bạn
         friend_request = FriendRequest.objects.create(sender=sender, receiver=receiver)
+        
+        # ✅ TẠO THÔNG BÁO
+        create_friend_request_notification(receiver, sender, friend_request.id)
         
         return JsonResponse({
             'success': True,
@@ -2255,6 +2270,7 @@ def share_food_plan_api(request, plan_id):
                 
                 if created:
                     shared_count += 1
+                    create_shared_plan_notification(friend, request.user, plan.id, plan.name)
                 else:
                     # Nếu đã share rồi thì cập nhật permission
                     share.permission = permission
@@ -2396,6 +2412,13 @@ def submit_plan_suggestion_api(request, plan_id):
             original_data=original_data,
             suggested_data=suggested_data,
             message=message
+        )
+
+        create_suggestion_notification(
+            shared_plan.owner,
+            request.user,
+            plan_id,
+            shared_plan.food_plan.name
         )
         
         return JsonResponse({
@@ -2958,6 +2981,312 @@ def delete_user_preference(request):
             
     except Exception as e:
         return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+# ==========================================================
+# 🔔 NOTIFICATION APIs
+# ==========================================================
+
+@login_required
+@require_http_methods(["GET"])
+def get_notifications_api(request):
+    """
+    Lấy danh sách thông báo của user
+    GET /api/accounts/notifications/
+    Query params:
+        - unread_only=true: chỉ lấy thông báo chưa đọc
+        - limit=20: giới hạn số lượng
+    """
+    try:
+        unread_only = request.GET.get('unread_only', 'false').lower() == 'true'
+        limit = int(request.GET.get('limit', 50))
+        
+        # Query notifications
+        notifications = Notification.objects.filter(user=request.user)
+        
+        if unread_only:
+            notifications = notifications.filter(is_read=False)
+        
+        notifications = notifications[:limit]
+        
+        # Serialize data
+        notifications_data = []
+        for notif in notifications:
+            notifications_data.append({
+                'id': notif.id,
+                'type': notif.notification_type,
+                'title': notif.title,
+                'message': notif.message,
+                'is_read': notif.is_read,
+                'created_at': notif.created_at.isoformat(),
+                'read_at': notif.read_at.isoformat() if notif.read_at else None,
+                'related_id': notif.related_id,
+                'metadata': notif.metadata
+            })
+        
+        # Đếm số thông báo chưa đọc
+        unread_count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).count()
+        
+        return JsonResponse({
+            'status': 'success',
+            'notifications': notifications_data,
+            'unread_count': unread_count
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def mark_notification_read_api(request, notification_id):
+    """
+    Đánh dấu 1 thông báo đã đọc
+    POST /api/accounts/notifications/<id>/read/
+    """
+    try:
+        notification = Notification.objects.get(
+            id=notification_id,
+            user=request.user
+        )
+        
+        notification.mark_as_read()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã đánh dấu đã đọc'
+        })
+        
+    except Notification.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông báo'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def mark_all_notifications_read_api(request):
+    """
+    Đánh dấu TẤT CẢ thông báo đã đọc
+    POST /api/accounts/notifications/read-all/
+    """
+    try:
+        updated_count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).update(is_read=True, read_at=timezone.now())
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Đã đánh dấu {updated_count} thông báo',
+            'count': updated_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def delete_notification_api(request, notification_id):
+    """
+    Xóa 1 thông báo
+    POST /api/accounts/notifications/<id>/delete/
+    """
+    try:
+        notification = Notification.objects.get(
+            id=notification_id,
+            user=request.user
+        )
+        
+        notification.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã xóa thông báo'
+        })
+        
+    except Notification.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông báo'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def clear_all_notifications_api(request):
+    """
+    Xóa TẤT CẢ thông báo đã đọc
+    POST /api/accounts/notifications/clear-all/
+    """
+    try:
+        deleted_count, _ = Notification.objects.filter(
+            user=request.user,
+            is_read=True
+        ).delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Đã xóa {deleted_count} thông báo',
+            'count': deleted_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+# ==========================================================
+# 🔔 SSE - REAL-TIME NOTIFICATION STREAM
+# ==========================================================
+
+@login_required
+def notification_stream(request):
+    """
+    SSE endpoint để push thông báo real-time
+    GET /api/accounts/notifications/stream/
+    """
+    def event_stream():
+        """
+        Generator function để stream events
+        """
+        last_check = timezone.now()
+        
+        # Gửi initial connection message
+        yield f"data: {json.dumps({'type': 'connected', 'message': 'Connected to notification stream'})}\n\n"
+        
+        while True:
+            try:
+                # Check for new notifications mỗi 3 giây
+                time.sleep(3)
+                
+                # Lấy notifications mới từ lần check cuối
+                new_notifications = Notification.objects.filter(
+                    user=request.user,
+                    created_at__gt=last_check,
+                    is_read=False
+                ).order_by('-created_at')
+                
+                if new_notifications.exists():
+                    # Cập nhật last_check
+                    last_check = timezone.now()
+                    
+                    # Serialize notifications
+                    notifications_data = []
+                    for notif in new_notifications:
+                        notifications_data.append({
+                            'id': notif.id,
+                            'type': notif.notification_type,
+                            'title': notif.title,
+                            'message': notif.message,
+                            'is_read': notif.is_read,
+                            'created_at': notif.created_at.isoformat(),
+                            'related_id': notif.related_id,
+                            'metadata': notif.metadata
+                        })
+                    
+                    # Đếm tổng số unread
+                    unread_count = Notification.objects.filter(
+                        user=request.user,
+                        is_read=False
+                    ).count()
+                    
+                    # Send event
+                    event_data = {
+                        'type': 'new_notifications',
+                        'notifications': notifications_data,
+                        'unread_count': unread_count
+                    }
+                    
+                    yield f"data: {json.dumps(event_data)}\n\n"
+                
+                # Gửi heartbeat mỗi 30 giây để giữ connection
+                if int(time.time()) % 30 == 0:
+                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+                    
+            except GeneratorExit:
+                # Client đã ngắt kết nối
+                break
+            except Exception as e:
+                print(f"❌ Error in notification stream: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                break
+    
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    
+    # Headers quan trọng cho SSE
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'  # Tắt buffering của nginx
+    
+    return response
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def record_favorite_view(request, user_id):
+    try:
+        viewed_user = User.objects.get(id=user_id)
+        viewer = request.user
+
+        if viewer.id == viewed_user.id:
+            return Response({
+                'status': 'ignored',
+                'message': 'Không tạo thông báo cho chính mình'
+            })
+
+        notification = Notification.objects.create(
+            user=viewed_user,  # Người nhận thông báo
+            notification_type='favorite_viewed',  # 🔴 SỬA CHỖ NÀY
+            title='👀 Có người xem quán yêu thích của bạn',
+            message=f'{viewer.username} đã xem danh sách quán yêu thích của bạn',
+            related_id=viewer.id
+        )
+
+        return Response({
+            'status': 'success',
+            'message': 'Đã ghi nhận lượt xem',
+            'notification_id': notification.id
+        })
+
+    except User.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'message': 'Không tìm thấy user'
+        }, status=404)
+    except Exception as e:
+        return Response({
             'status': 'error',
             'message': str(e)
         }, status=500)

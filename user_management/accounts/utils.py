@@ -1,6 +1,6 @@
 from django.core.mail import send_mail
 from django.conf import settings
-
+from .models import Notification
 
 def send_otp_email(email, otp_code):
     """
@@ -614,3 +614,73 @@ def send_password_reset_otp_email(email, otp_code):
     except Exception as e:
         print(f"Lỗi gửi email reset password: {e}")
         return False
+    
+def create_friend_request_notification(receiver_user, sender_user, request_id):
+    """
+    Tạo thông báo lời mời kết bạn
+    """
+    return Notification.objects.create(
+        user=receiver_user,
+        notification_type='friend_request',
+        title='Lời mời kết bạn',
+        message=f'{sender_user.username} đã gửi lời mời kết bạn cho bạn',
+        related_id=request_id,
+        metadata={
+            'sender_id': sender_user.id,
+            'sender_username': sender_user.username,
+            'request_id': request_id
+        }
+    )
+
+
+def create_shared_plan_notification(receiver_user, owner_user, plan_id, plan_name):
+    """
+    Tạo thông báo plan được share
+    """
+    return Notification.objects.create(
+        user=receiver_user,
+        notification_type='shared_plan',
+        title='Plan được chia sẻ',
+        message=f'{owner_user.username} đã share plan "{plan_name}" cho bạn',
+        related_id=plan_id,
+        metadata={
+            'owner_id': owner_user.id,
+            'owner_username': owner_user.username,
+            'plan_id': plan_id,
+            'plan_name': plan_name
+        }
+    )
+
+
+def create_suggestion_notification(receiver_user, suggester_user, plan_id, plan_name):
+    """
+    Tạo thông báo đề xuất mới
+    """
+    return Notification.objects.create(
+        user=receiver_user,
+        notification_type='suggestion',
+        title='Đề xuất mới',
+        message=f'{suggester_user.username} đã đề xuất chỉnh sửa plan "{plan_name}"',
+        related_id=plan_id,
+        metadata={
+            'suggester_id': suggester_user.id,
+            'suggester_username': suggester_user.username,
+            'plan_id': plan_id,
+            'plan_name': plan_name
+        }
+    )
+
+
+def mark_notifications_as_read(user, notification_type=None, related_id=None):
+    """
+    Đánh dấu thông báo đã đọc
+    """
+    queryset = Notification.objects.filter(user=user, is_read=False)
+    
+    if notification_type:
+        queryset = queryset.filter(notification_type=notification_type)
+    
+    if related_id:
+        queryset = queryset.filter(related_id=related_id)
+    
+    return queryset.update(is_read=True)
