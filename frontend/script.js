@@ -1737,10 +1737,7 @@ if (!gpsInputValue || gpsInputValue === "") {
           iconSize: [120, 100],
           iconAnchor: [60, 100],
       }),
-    })
-      .addTo(map)
-      .bindPopup(`📍 ${gpsInputValue}`)
-      .openPopup();
+    }).addTo(map)
 
     window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
 
@@ -2278,10 +2275,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
           iconSize: [120, 100],
           iconAnchor: [60, 100],
         }),
-      })
-        .addTo(map)
-        .bindPopup("📍 Bạn đang ở đây (tọa độ thật)")
-        .openPopup();
+      }).addTo(map)
 
       map.setView([userLat, userLon], 16);
     },
