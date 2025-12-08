@@ -398,7 +398,10 @@ function openChatboxAutomatically() {
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
 function displayPlaces(places, shouldZoom = true) {
-  console.log('🎯 displayPlaces được gọi với', places ? places.length : 0, 'quán');
+ console.log('🎯 displayPlaces được gọi với', places ? places.length : 0, 'quán');
+  console.log('📊 shouldZoom:', shouldZoom);
+  console.log('📊 isFavoriteMode:', isFavoriteMode);
+  
   
   allPlacesData = places || [];
   visibleMarkers.clear();
@@ -407,6 +410,8 @@ function displayPlaces(places, shouldZoom = true) {
     alert("Không tìm thấy quán nào!");
     return false;
   }
+// 👉 THÊM DÒNG NÀY
+  const isSinglePlaceMode = !isFavoriteMode && places.length === 1;
 
   // 🔥🔥🔥 THÊM ĐOẠN NÀY 🔥🔥🔥
   // ✅ XÓA SẠCH TẤT CẢ MARKER CŨ TRƯỚC KHI VẼ MỚI
@@ -437,7 +442,11 @@ function displayPlaces(places, shouldZoom = true) {
   // 🔥🔥🔥 HẾT ĐOẠN THÊM 🔥🔥🔥
 
   // 👉 Gắn cluster vào map trước (code cũ của bạn tiếp tục)
-  map.addLayer(markerClusterGroup);
+    // 👉 Gắn cluster vào map nếu KHÔNG phải 1-quán-mode
+  if (!isSinglePlaceMode) {
+    map.addLayer(markerClusterGroup);
+  }
+
 
 // ✅ TẮT lazy load cũ
 
@@ -445,35 +454,55 @@ map.off("moveend", loadMarkersInViewport);
 console.log('⚠️ [displayPlaces] Removed old lazy load listener');
 
 // 🔥 NẾU LÀ FAVORITE MODE: LOAD TẤT CẢ MARKERS NGAY
-clearAllMarkers(); // ⬅️ XÓA SẠCH TẤT CẢ MARKER CŨ
-if (isFavoriteMode) {
-  console.log('🔥 [FAVORITE MODE] Loading ALL markers immediately...');
-  
-  // Tạo tất cả markers từ danh sách places
-  places.forEach((p) => {
-    const lat = parseFloat(p.lat?.toString().replace(",", "."));
-    const lon = parseFloat(p.lon?.toString().replace(",", "."));
-    
-    if (isNaN(lat) || isNaN(lon)) return;
-    
-    const placeId = p.data_id || p.ten_quan;
-    
-    // Tạo marker
-    const marker = createMarker(p, lat, lon);
-    markers.push(marker);
-    markerClusterGroup.addLayer(marker);
-    visibleMarkers.add(placeId);
-  });
-  
-  console.log(`✅ [FAVORITE MODE] Loaded ${markers.length} markers`);
-  
-  // ⚠️ QUAN TRỌNG: KHÔNG BẬT LẠI lazy load trong favorite mode!
-  
-} else {
-  // CHẾ ĐỘ BÌNH THƯỜNG: Bật lại lazy load
-  map.on("moveend", loadMarkersInViewport);
-  console.log('✅ [displayPlaces] Re-enabled lazy load (normal mode)');
-}
+  // 🔥 NẾU LÀ FAVORITE MODE HOẶC KẾT QUẢ ÍT → LOAD TẤT CẢ MARKERS NGAY
+  clearAllMarkers(); // ⬅️ XÓA SẠCH TẤT CẢ MARKER CŨ
+
+  // 👇 THÊM DÒNG NÀY: search ít quán thì vẽ luôn, không lazy-load
+    const shouldLoadAllNow = isFavoriteMode || places.length <= 200;
+
+  if (shouldLoadAllNow) {
+    console.log('🔥 [displayPlaces] Loading ALL markers immediately...', {
+      favoriteMode: isFavoriteMode,
+      total: places.length,
+      singleMode: isSinglePlaceMode,
+    });
+
+    places.forEach((p) => {
+      const lat = parseFloat(p.lat?.toString().replace(",", "."));
+      const lon = parseFloat(p.lon?.toString().replace(",", "."));
+      
+      if (isNaN(lat) || isNaN(lon)) return;
+      
+      const placeId = p.data_id || p.ten_quan;
+      
+      // Tạo marker
+      const marker = createMarker(p, lat, lon);
+      markers.push(marker);
+      visibleMarkers.add(placeId);
+
+      if (isSinglePlaceMode) {
+        // ✅ CASE CHỈ 1 QUÁN: add thẳng vào map, không dùng cluster
+        marker.addTo(map);
+        console.log('✅ [displayPlaces] Single-place mode: marker add trực tiếp vào map');
+      } else {
+        // ✅ Nhiều quán: dùng cluster như cũ
+        markerClusterGroup.addLayer(marker);
+      }
+    });
+
+
+
+    console.log(`✅ [displayPlaces] Loaded ${markers.length} markers (immediate mode)`);
+
+    // ❗ QUAN TRỌNG: KHÔNG BẬT LẠI lazy load trong mode này
+    // (Không cần map.on("moveend", loadMarkersInViewport);)
+
+  } else {
+    // CHẾ ĐỘ BÌNH THƯỜNG: Bật lại lazy load
+    map.on("moveend", loadMarkersInViewport);
+    console.log('✅ [displayPlaces] Re-enabled lazy load (normal mode)');
+  }
+
 
   if (shouldZoom && places.length > 0) {
  
@@ -489,8 +518,57 @@ if (isFavoriteMode) {
     });
 
     if (bounds.isValid()) {
-      // fit xong sẽ trigger 'moveend' ⇒ loadMarkersInViewport()
-      map.fitBounds(bounds.pad(0.2));
+      // 🔥 FIX: Nếu chỉ có 1 quán, load marker ngay không cần chờ moveend
+      if (places.length === 1) {
+  const p = places[0];
+  const lat = parseFloat(p.lat?.toString().replace(",", "."));
+  const lon = parseFloat(p.lon?.toString().replace(",", "."));
+  
+  if (!isNaN(lat) && !isNaN(lon)) {
+    console.log('🔥 [1 QUÁN] Bắt đầu xử lý marker duy nhất...');
+    
+    // ✅ QUAN TRỌNG: Đảm bảo cluster đã được add vào map
+    if (!map.hasLayer(markerClusterGroup)) {
+      console.warn('⚠️ Cluster chưa có trên map, thêm lại...');
+      map.addLayer(markerClusterGroup);
+    }
+    
+    // Zoom trước
+    map.setView([lat, lon], 17, { animate: true });
+    
+    // Load marker sau khi zoom xong
+    setTimeout(() => {
+      const placeId = p.data_id || p.ten_quan;
+      
+      if (!visibleMarkers.has(placeId)) {
+        console.log('🏗️ [1 QUÁN] Tạo marker mới...');
+        
+        const marker = createMarker(p, lat, lon);
+        markers.push(marker);
+        markerClusterGroup.addLayer(marker);
+        visibleMarkers.add(placeId);
+        
+        // 🔥 ĐẢM BẢO CLUSTER REFRESH
+        markerClusterGroup.refreshClusters();
+        
+        console.log('✅ [1 QUÁN] Marker đã được tạo và thêm vào cluster');
+        console.log('✅ [1 QUÁN] Tổng markers:', markers.length);
+        console.log('✅ [1 QUÁN] Cluster có layer không?', markerClusterGroup.hasLayer(marker));
+        
+        // Click vào marker để mở sidebar
+        setTimeout(() => {
+          console.log('🔥 [1 QUÁN] Click vào marker');
+          marker.fire('click');
+        }, 300);
+      } else {
+        console.warn('⚠️ [1 QUÁN] Marker đã tồn tại, không tạo mới');
+      }
+    }, 500); // Tăng timeout lên 500ms để chắc chắn zoom xong
+  }
+} else {
+        // Nhiều quán → fit bounds bình thường, moveend sẽ trigger lazy load
+        map.fitBounds(bounds.pad(0.2));
+      }
     } else {
       // fallback nếu dữ liệu không có lat/lon
       loadMarkersInViewport();
@@ -548,6 +626,7 @@ function loadMarkersInViewport() {
   isLoadingMarkers = false;
   console.log(`✅ Đã load ${loadedCount} markers`);
 }
+
 
 // =========================
 function createMarker(p, lat, lon) {
@@ -1880,8 +1959,6 @@ input.addEventListener("input", () => {
   console.log("🎯 [AUTOCOMPLETE] Clicked:", p.ten_quan);
 
   // // 🔥 BƯỚC 1: TẮT lazy load HOÀN TOÀN
-  // map.off("moveend", loadMarkersInViewport);
-  // console.log("⚠️ [AUTOCOMPLETE] Disabled lazy load");
 
   // 🔥 BƯỚC 2: XÓA TẤT CẢ MARKER CŨ
   clearAllMarkers();
