@@ -3467,7 +3467,7 @@ async function savePlan() {
             })
         });
 
-        const result = await response.json();
+                const result = await response.json();
 
         if (result.status === 'success') {
             alert('✅ Đã lưu kế hoạch thành công!');
@@ -3478,8 +3478,27 @@ async function savePlan() {
                 toggleEditMode();
             }
             
-            // ✅ LOAD LẠI DANH SÁCH PLANS
-            await loadSavedPlans();
+            // 🔥 LẤY ID PLAN VỪA LƯU (NẾU API TRẢ VỀ)
+            let newPlanId = null;
+            if (result.plan && result.plan.id) {
+                newPlanId = result.plan.id;
+            } else if (result.plan_id) {
+                newPlanId = result.plan_id;
+            }
+
+            if (newPlanId) {
+                currentPlanId = newPlanId;
+            }
+            
+            // ✅ LOAD LẠI DANH SÁCH + MỞ LUÔN PLAN VỪA LƯU
+            if (newPlanId) {
+                // forceReload = true để không bị nhánh "click lại cùng planId" đóng plan
+                await loadSavedPlans(newPlanId, true);
+            } else {
+                // fallback: nếu API chưa trả id thì giữ behaviour cũ
+                await loadSavedPlans();
+            }
+
         } else {
             alert('❌ Lỗi: ' + result.message);
         }
@@ -3860,7 +3879,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function openFoodPlanner() {
-    console.log('🚀 Opening Food Planner...');
+    console.log('🚀 Opening Food Planner.');
     
     const panel = document.getElementById('foodPlannerPanel');
     console.log('Panel element:', panel);
@@ -3874,6 +3893,7 @@ function openFoodPlanner() {
     isPlannerOpen = true;
     loadSavedPlans();
     
+    // 🔥 Nếu đã có currentPlan (và không ở edit mode) thì vẽ lại route + marker theo plan
     setTimeout(() => {
         if (currentPlan && !isEditMode) {
             const hasPlaces = Object.keys(currentPlan)
@@ -3881,34 +3901,70 @@ function openFoodPlanner() {
                 .some(k => currentPlan[k] && currentPlan[k].place);
             
             if (hasPlaces) {
-                drawRouteOnMap(currentPlan);
+                // Vẽ đường đi cho lịch trình
+                if (typeof drawRouteOnMap === 'function') {
+                    drawRouteOnMap(currentPlan);
+                }
+
+                // 🔥 Ẩn marker quán ngoài lịch trình, chỉ giữ quán trong plan
+                if (typeof window.showMarkersForPlaceIds === 'function') {
+                    window.showMarkersForPlaceIds(currentPlan);
+                }
             }
         }
     }, 300);
 }
 
+
 function closeFoodPlanner() {
-    document.getElementById('foodPlannerPanel').classList.remove('active');
+    const panel = document.getElementById('foodPlannerPanel');
+    if (panel) {
+        panel.classList.remove('active');
+    }
+
     isPlannerOpen = false;
     isViewingSharedPlan = false;
     
-    // ✅ Cleanup toàn bộ
+    // ✅ Cleanup toàn bộ route / drag
     clearRoutes();
     stopAutoScroll();
     disableGlobalDragTracking();
     
-    // ✅ Reset states
+    // ✅ Reset drag state
     draggedElement = null;
     window.draggedElement = null;
     lastTargetElement = null;
     lastDragY = 0;
+
+    // ✅ Reset trạng thái chọn quán cho bữa ăn (nếu đang chờ)
+    waitingForPlaceSelection = null;
+    selectedPlaceForReplacement = null;
     
     // 🔥 ẨN NÚT X KHI ĐÓNG PANEL
     const exitBtn = document.getElementById('exitSharedPlanBtn');
     if (exitBtn) {
         exitBtn.style.display = 'none';
     }
+
+    // 🔥 KHI ĐÓNG FOOD PLANNER → HIỆN LẠI TẤT CẢ MARKER QUÁN BÌNH THƯỜNG
+    try {
+        // Ưu tiên dùng data search đang có (allPlacesData)
+        if (typeof displayPlaces === 'function' &&
+            Array.isArray(window.allPlacesData) &&
+            window.allPlacesData.length > 0) {
+
+            // false = không đổi zoom, chỉ vẽ lại marker
+            displayPlaces(window.allPlacesData, false);
+        } else if (typeof loadMarkersInViewport === 'function' && window.map) {
+            // Fallback: nếu chưa có allPlacesData thì bật lại lazy-load + load marker
+            window.map.on('moveend', loadMarkersInViewport);
+            loadMarkersInViewport();
+        }
+    } catch (e) {
+        console.error('❌ Lỗi khi restore marker sau khi đóng Food Planner:', e);
+    }
 }
+
 
 // ========== GET SELECTED FLAVORS ==========
 function getSelectedFlavors() {
