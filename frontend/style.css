@@ -989,36 +989,65 @@ body {
   margin-bottom: 3px;
 }
 
-/* ==========================================
-   🔔 TOAST THÔNG BÁO (Giữa màn hình)
-========================================== */
+/* ==============================================
+   🔔 TOAST NOTIFICATION (Already exists - ENHANCE)
+   ============================================== */
+
 .toast {
   position: fixed;
   bottom: 25px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: #333;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
-  padding: 12px 20px;
-  border-radius: 10px;
+  padding: 15px 25px;
+  border-radius: 12px;
   font-size: 15px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
   opacity: 0;
-  transition: all 0.3s ease;
-  z-index: 9999;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 999999;
+  max-width: 400px;
+  text-align: center;
+  pointer-events: none;
 }
 
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
 }
 
 .toast.success {
-  background: #4caf50; /* xanh lá */
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4);
 }
 
 .toast.error {
-  background: #e53935; /* đỏ */
+  background: linear-gradient(135deg, #e53935, #c62828);
+  box-shadow: 0 8px 24px rgba(229, 57, 53, 0.4);
+}
+
+.toast.info {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  box-shadow: 0 8px 24px rgba(33, 150, 243, 0.4);
+}
+
+/* ✅ ANIMATION */
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+.toast.show {
+  animation: slideUp 0.3s ease;
 }
 
 .budget-selector select,
@@ -1552,6 +1581,17 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+.notification-badge.new {
+    background: linear-gradient(135deg, #FFB084, #FF8E53);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);
+}
+
+.notification-badge.read {
+    background: #e0e0e0;
+    color: #888888;
+}
+
 /* Animation lắc chuông */
 @keyframes bellRing {
     0%, 100% { transform: rotate(0deg); }
@@ -1564,7 +1604,513 @@ body {
     order: 3; /* Nút thông báo - ở giữa */
 }
 
+/* =============================
+   🔔 POPUP THÔNG BÁO FOOD PLANNER
+   ============================= */
+.notification-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999999999999;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
 
+.notification-overlay.show {
+    display: flex;
+}
+
+.notification-modal {
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    border-radius: 28px;
+    max-width: 450px;
+    width: 100%;
+    max-height: 85vh;
+    border: 1px solid #FFE5D9;
+    box-shadow:
+        0 10px 35px rgba(148, 85, 45, 0.25),
+        0 24px 60px rgba(203, 92, 37, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    font-family: "Montserrat", sans-serif;
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.notification-modal-header {
+    position: relative;
+    padding: 18px 24px 14px;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 107, 53, 0.14) 0%,
+        rgba(255, 142, 83, 0.10) 100%
+    );
+    color: #1f2933;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #FFE5D9;
+}
+
+.notification-modal-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+}
+
+.notification-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.notification-modal-icon {
+    font-size: 20px;
+}
+
+.notification-close-btn {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid #FFE5D9;
+    color: #94a3b8;
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 300;
+}
+
+.notification-close-btn:hover {
+    background: #FFFFFF;
+    color: #FFB084;
+    transform: rotate(90deg);
+    border-color: #FFB084;
+    box-shadow: 0 4px 14px rgba(255, 126, 75, 0.4);
+}
+
+/* ✨ THANH CUỘN GIỐNG MUSIC PLAYER */
+.notification-list {
+    padding: 12px 16px;
+    overflow-y: auto;
+    max-height: 60vh;
+    overflow-x: hidden;
+    background: #FFF5F0;
+}
+
+.notification-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+    background: #FFE5D9;
+    border-radius: 10px;
+    margin: 8px 0;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #FFB084, #FF8E53);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.notification-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border-radius: 18px;
+    background: #FFFFFF;
+    backdrop-filter: blur(10px);
+    border: 1px solid #FFE5D9;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.notification-item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 107, 53, 0.10),
+        rgba(255, 142, 83, 0.06)
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+/* ✨ ANIMATION XUẤT HIỆN TỪ TRÁI SANG PHẢI */
+.notification-item.new-item {
+    opacity: 0;
+    transform: translateX(-100%);
+}
+
+.notification-item.slide-in {
+    animation: slideInFromLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes slideInFromLeft {
+    0% {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ✨ HIỆU ỨNG SHINE CHO THÔNG BÁO MỚI */
+.notification-item:not(.read)::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 176, 132, 0.4) 50%,
+        transparent 100%
+    );
+    animation: shine-slide 3s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes shine-slide {
+    0% {
+        left: -100%;
+    }
+    50%, 100% {
+        left: 100%;
+    }
+}
+
+/* Khi hover thì tạm dừng animation */
+.notification-item:not(.read):hover::after {
+    animation-play-state: paused;
+}
+
+.notification-item:hover::before {
+    opacity: 1;
+}
+
+.notification-item:hover {
+    background: #FFF9F5;
+    transform: translateY(-2px) translateX(4px);
+    border-color: #FFB084;
+    box-shadow:
+        0 8px 24px rgba(255, 126, 75, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.notification-item.read {
+    opacity: 0.75;
+    border-color: #e0e0e0;
+    background: #f9f9f9;
+}
+
+.notification-item.read:hover {
+    opacity: 0.85;
+}
+
+.notification-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2933;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: -0.01em;
+    position: relative; /* ← THÊM dòng này để text nằm trên shine */
+    z-index: 2;
+}
+
+.notification-item-title::before {
+    content: '🔔';
+    font-size: 16px;
+}
+
+.notification-item-message {
+    font-size: 13px;
+    color: #555555;
+    line-height: 1.5;
+    position: relative; /* ← THÊM */
+    z-index: 2;
+}
+
+.notification-item-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* ✅ Đẩy phần phải sang góc */
+    gap: 8px;
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+    font-weight: 500;
+    position: relative;
+    z-index: 2;
+}
+
+.notification-item-meta::before {
+    content: '🕐';
+    font-size: 12px;
+}
+
+.notification-item-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* ========== BADGE MỚI/ĐÃ ĐỌC ========== */
+.notification-status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.notification-item:not(.read) .notification-status-badge {
+    content: 'Mới';
+    background: linear-gradient(135deg, #FFB084, #FF8E53);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);
+}
+
+.notification-item.read .notification-status-badge {
+    background: #e0e0e0;
+    color: #888888;
+}
+
+/* ========== NÚT XÓA THÔNG BÁO ========== */
+.notification-item-delete {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #EF4444;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.notification-item-delete:hover {
+    background: #EF4444;
+    color: white;
+    border-color: #EF4444;
+    transform: scale(1.1);
+}
+
+.notification-item-delete:active {
+    transform: scale(0.95);
+}
+
+.notification-item-delete svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+}
+/* ✅ CHỈNH LẠI .notification-item-meta - THÊM FLEXBOX */
+.notification-item-meta {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    position: relative;
+    z-index: 2;
+}
+
+.notification-modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #FFE5D9;
+    display: flex;
+    justify-content: space-between; /* ✅ ĐỔI từ flex-end */
+    gap: 3px; /* ✅ THÊM khoảng cách */
+    background: linear-gradient(
+        135deg,
+        #FFF5F0 0%,
+        #FFE5D9 100%
+    );
+    position: relative;
+}
+
+.notification-modal-footer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+}
+
+.notification-footer-btn {
+    border: none;
+    padding: 10px 18px;
+    border-radius: 25px;
+    background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow:
+        0 4px 16px rgba(255, 126, 75, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ✅ NO DOUBLE TICK */
+.notification-footer-btn::before {
+    content: none;
+}
+
+.notification-footer-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow:
+        0 8px 24px rgba(255, 126, 75, 0.7),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.notification-footer-btn:active {
+    transform: translateY(0);
+}
+
+/* Empty state */
+.notification-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: #6b7280;
+}
+
+.notification-empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.6;
+}
+
+.notification-empty-text {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .notification-modal {
+        max-width: 100%;
+        border-radius: 20px 20px 0 0;
+        max-height: 90vh;
+    }
+    
+    .notification-list {
+        max-height: 70vh;
+    }
+}
+
+/* ========== HIỆU ỨNG XÓA THÔNG BÁO - TRƯỢT SANG PHẢI ========== */
+.notification-item.deleting {
+    animation: slideOutRight 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+    pointer-events: none; /* Ngăn click trong lúc xóa */
+}
+
+@keyframes slideOutRight {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(120%);
+    }
+}
+
+/* ========== NÚT XÓA TẤT CẢ THÔNG BÁO ========== */
+.notification-delete-all-btn {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #EF4444;
+    cursor: pointer;
+    padding: 10px 18px;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.notification-delete-all-btn:hover {
+    background: #EF4444;
+    color: white;
+    border-color: #EF4444;
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+}
+
+.notification-delete-all-btn:active {
+    transform: translateY(0);
+}
+
+.notification-delete-all-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+}
 
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,

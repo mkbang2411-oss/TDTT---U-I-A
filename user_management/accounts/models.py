@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings 
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 class ChatConversation(models.Model):
     """
@@ -346,6 +347,9 @@ class PlanEditSuggestion(models.Model):
     original_data = models.JSONField()  # Plan gốc trước khi edit
     suggested_data = models.JSONField()  # Plan sau khi edit
     
+    # 🔥 THÊM DÒNG NÀY
+    pending_changes = models.JSONField(default=dict, blank=True)  # Lưu trạng thái các thay đổi đã chọn
+    
     # Metadata
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     message = models.TextField(blank=True)  # Lời nhắn kèm theo suggestion
@@ -356,7 +360,7 @@ class PlanEditSuggestion(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Suggestion by {self.suggested_by.username} - {self.status}"            
+        return f"Suggestion by {self.suggested_by.username} - {self.status}"           
     
 class UserPreference(models.Model):
     """
@@ -380,3 +384,79 @@ class UserPreference(models.Model):
     def __str__(self):
         type_icon = {'like': '❤️', 'dislike': '❌', 'allergy': '⚠️'}
         return f"{type_icon.get(self.preference_type, '')} {self.user.username} - {self.item}"
+
+# ==========================================================
+# 🔔 NOTIFICATION SYSTEM
+# ==========================================================
+
+class Notification(models.Model):
+    """
+    Model lưu trữ thông báo cho user
+    """
+    NOTIFICATION_TYPES = (
+        ('friend_request', 'Lời mời kết bạn'),
+        ('shared_plan', 'Plan được chia sẻ'),
+        ('suggestion', 'Đề xuất mới'),
+    )
+    
+    # User nhận thông báo
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='notifications'
+    )
+    
+    # Loại thông báo
+    notification_type = models.CharField(
+        max_length=20, 
+        choices=NOTIFICATION_TYPES
+    )
+    
+    # Nội dung thông báo
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    
+    # Trạng thái đã đọc
+    is_read = models.BooleanField(default=False)
+    
+    # Thời gian
+    created_at = models.DateTimeField(default=timezone.now)
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    # Link tới đối tượng liên quan (tùy chọn)
+    related_id = models.IntegerField(null=True, blank=True)  # ID của plan, friend request, etc.
+    
+    # Metadata JSON (lưu thêm thông tin nếu cần)
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']  # Mới nhất lên đầu
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['user', 'is_read']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.title} - {'Đã đọc' if self.is_read else 'Chưa đọc'}"
+    
+    def mark_as_read(self):
+        """Đánh dấu đã đọc"""
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save()
+
+class StreakPopupLog(models.Model):
+    """
+    Lưu lịch sử hiển thị popup streak frozen
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='streak_popups')
+    popup_type = models.CharField(max_length=20, default='frozen')  # frozen/milestone
+    shown_at = models.DateTimeField(auto_now_add=True)
+    streak_value = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['-shown_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.popup_type} popup at {self.shown_at}"

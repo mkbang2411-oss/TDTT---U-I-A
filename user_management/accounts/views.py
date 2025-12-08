@@ -20,12 +20,27 @@ from .utils import send_otp_email, send_welcome_email, send_password_reset_otp_e
 from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
+from .nudenet_detector import check_nsfw_image_local
 import requests 
+from .gemini_utils import check_review_content
+from .models import UserPreference
 from .models import (
     FoodPlan, 
-    SharedFoodPlan,  # ← Thêm dòng này
-    PlanEditSuggestion  # ← Thêm dòng này
+    SharedFoodPlan,
+    PlanEditSuggestion
 )
+from .models import Notification
+from .utils import (
+    create_friend_request_notification,
+    create_shared_plan_notification,
+    create_suggestion_notification
+)
+import time
+from django.http import StreamingHttpResponse
+from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -150,7 +165,7 @@ def save_user_reviews(data):
 @csrf_exempt
 def reviews_api(request: HttpRequest, place_id: str):
     
-    # === GET REVIEW ===
+    # === 1. GET REVIEW ===
     if request.method == 'GET':
         all_reviews = load_user_reviews()
         place_data = all_reviews.get(place_id)
@@ -181,6 +196,7 @@ def reviews_api(request: HttpRequest, place_id: str):
                 ).exists()
             except Exception:
                 pass
+        
         return JsonResponse({
             'reviews': review_content,
             'user': user_info,
@@ -190,75 +206,161 @@ def reviews_api(request: HttpRequest, place_id: str):
     # === 2. XỬ LÝ VIỆC THÊM (POST) REVIEW ===
     if request.method == 'POST':
         if not request.user.is_authenticated:
-            return JsonResponse({"success": False, "message": "Bạn cần đăng nhập"}, status=403)
+            return JsonResponse({
+                "success": False, 
+                "message": "Bạn cần đăng nhập"
+            }, status=403)
         
-        # 👇 GỌI HÀM HELPER (Logic lấy avatar tự động chuẩn xác)
-        # Dù user dùng Google hay ảnh tự up, hàm này đều lấy đúng cái mới nhất
         avatar_nguoi_dung = get_user_avatar(request.user)
 
         try:
             data = json.loads(request.body)
-            comment = data.get("comment")
+            comment = data.get("comment", "").strip()
             rating = int(data.get("rating", 0))
+            
+            print(f"\n{'='*60}")
+            print(f"📝 [NEW REVIEW] User: {request.user.username}")
+            print(f"   Place ID: {place_id}")
+            print(f"   Rating: {rating}/5")
+            print(f"   Comment: {comment}")
+            print(f"{'='*60}\n")
+            
             if not comment or rating == 0:
-                return JsonResponse({"success": False, "message": "Thiếu thông tin"}, status=400)
+                return JsonResponse({
+                    "success": False, 
+                    "message": "Thiếu thông tin"
+                }, status=400)
+            
+            # 🔥 KIỂM TRA NỘI DUNG VỚI GEMINI
+            print(f"🤖 [GEMINI] Bắt đầu kiểm tra nội dung...")
+            
+            try:
+                validation = check_review_content(comment, rating)
+                
+                print(f"📊 [GEMINI] Kết quả kiểm tra:")
+                print(f"   - is_valid: {validation.get('is_valid')}")
+                print(f"   - reason: {validation.get('reason')}")
+                print(f"   - severity: {validation.get('severity')}")
+                print(f"   - suggested: {validation.get('suggested_content', 'N/A')[:50]}")
+                
+                if not validation['is_valid']:
+                    print(f"❌ [GEMINI] CHẶN REVIEW - Lý do: {validation['reason']}\n")
+                    
+                    response_data = {
+                        "success": False,
+                        "message": f"❌ Nội dung không phù hợp: {validation['reason']}"
+                    }
+                    
+                    # Nếu có gợi ý nội dung tốt hơn
+                    if validation.get('suggested_content'):
+                        response_data['suggested_content'] = validation['suggested_content']
+                        response_data['message'] += f"\n\n💡 Gợi ý: {validation['suggested_content']}"
+                    
+                    return JsonResponse(response_data, status=400)
+                
+                print(f"✅ [GEMINI] CHO PHÉP GỬI REVIEW\n")
+            
+            except Exception as gemini_error:
+                # Nếu Gemini lỗi, vẫn cho phép gửi review (fail-safe)
+                print(f"⚠️ [GEMINI] LỖI KHI GỌI API:")
+                print(f"   Error: {gemini_error}")
+                import traceback
+                traceback.print_exc()
+                print(f"   → Cho phép gửi review (fail-safe mode)\n")
+            
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "message": "Lỗi dữ liệu"}, status=400)
+            print(f"❌ [ERROR] Lỗi parse JSON\n")
+            return JsonResponse({
+                "success": False, 
+                "message": "Lỗi dữ liệu JSON"
+            }, status=400)
+        except ValueError as ve:
+            print(f"❌ [ERROR] Rating không hợp lệ: {ve}\n")
+            return JsonResponse({
+                "success": False, 
+                "message": "Rating không hợp lệ"
+            }, status=400)
+        except Exception as e:
+            print(f"❌ [ERROR] Lỗi không xác định:")
+            print(f"   {e}")
+            import traceback
+            traceback.print_exc()
+            print()
+            return JsonResponse({
+                "success": False, 
+                "message": "Có lỗi xảy ra khi xử lý đánh giá"
+            }, status=500)
 
-        # Logic lưu file (giữ nguyên)
-        all_reviews = load_user_reviews()
-        if all_reviews.get(place_id) is None:
-            all_reviews[place_id] = {"google": [], "user": []}
+        # === 3. LƯU REVIEW VÀO JSON ===
+        try:
+            print(f"💾 [SAVE] Đang lưu review vào JSON...")
+            
+            all_reviews = load_user_reviews()
+            
+            if all_reviews.get(place_id) is None:
+                all_reviews[place_id] = {"google": [], "user": []}
+            
+            # Đảm bảo cấu trúc dict
+            if isinstance(all_reviews[place_id], list):
+                all_reviews[place_id] = {"google": all_reviews[place_id], "user": []}
+
+            new_review = {
+                "ten": request.user.username,
+                "avatar": avatar_nguoi_dung,
+                "rating": rating,
+                "comment": comment,
+                "date": datetime.now().isoformat()
+            }
+            
+            all_reviews[place_id]["user"].append(new_review)
+            save_user_reviews(all_reviews)
+            
+            print(f"✅ [SAVE] Lưu thành công!")
+            print(f"{'='*60}\n")
+            
+            return JsonResponse({
+                "success": True, 
+                "message": "✅ Đánh giá thành công!"
+            })
         
-        # Đảm bảo cấu trúc dict
-        if isinstance(all_reviews[place_id], list):
-             all_reviews[place_id] = {"google": all_reviews[place_id], "user": []}
+        except Exception as save_error:
+            print(f"❌ [SAVE] Lỗi khi lưu review:")
+            print(f"   {save_error}")
+            import traceback
+            traceback.print_exc()
+            print()
+            return JsonResponse({
+                "success": False, 
+                "message": "Không thể lưu đánh giá"
+            }, status=500)
 
-        new_review = {
-            "ten": request.user.username,
-            "avatar": avatar_nguoi_dung, # ✅ Lưu URL avatar chuẩn vào JSON
-            "rating": rating,
-            "comment": comment,
-            "date": datetime.now().isoformat()
-        }
-        
-        all_reviews[place_id]["user"].append(new_review)
-        save_user_reviews(all_reviews)
-        
-        return JsonResponse({"success": True, "message": "Đánh giá thành công!"})
-
-    return JsonResponse({"success": False, "message": "Method not allowed"}, status=405)
-
+    # === 4. METHOD NOT ALLOWED ===
+    return JsonResponse({
+        "success": False, 
+        "message": "Method not allowed"
+    }, status=405)
 
 # ------------------------LƯU LỊCH SỬ CHATBOT AI--------------------------
 # --- Helper để lấy Avatar ---
 def get_user_avatar(user):
-    # 1. Ảnh mặc định
     default_avatar = 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
     
     if not user.is_authenticated:
         return default_avatar
 
-    # 2. Kiểm tra UserProfile
     try:
-        # hasattr kiểm tra xem user có quan hệ với profile không
         if hasattr(user, 'profile') and user.profile.avatar:
-            avatar_url = user.profile.avatar.url
-            # user.profile.avatar.url sẽ trả về đường dẫn file media
-            if avatar_url.startswith('/'):
-                return 'http://127.0.0.1:8000' + avatar_url
-            return avatar_url
-    except Exception:
-        pass
+            # ✅ TRẢ VỀ URL TƯƠNG ĐỐI (không hardcode domain/port)
+            return user.profile.avatar.url
+    except Exception as e:
+        print(f"Error loading profile avatar: {e}")
 
-    # 3. Kiểm tra tài khoản Google 
     try:
         social_account = SocialAccount.objects.get(user=user, provider='google')
         return social_account.get_avatar_url()
     except SocialAccount.DoesNotExist:
         pass
         
-    # 4. Nếu không có gì hết thì trả về mặc định
     return default_avatar
 
 # --- API 1: Lấy danh sách các đoạn chat (Sidebar) ---
@@ -512,22 +614,48 @@ def get_user_info(request):
 def upload_avatar_api(request):
     if request.method == 'POST' and request.FILES.get('avatar'):
         if not request.user.is_authenticated:
-             return JsonResponse({'status': 'error', 'message': 'Chưa đăng nhập'}, status=401)
-
-        # Tìm hoặc tạo profile
-        profile, created = UserProfile.objects.get_or_create(user=request.user)
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Chưa đăng nhập'
+            }, status=401)
         
-        # Lưu ảnh mới
-        profile.avatar = request.FILES['avatar']
+        image_file = request.FILES['avatar']
+        
+        # 🔍 KIỂM TRA NSFW BẰNG NUDENET
+        print(f"\n{'='*60}")
+        print(f"🔍 [AVATAR MODERATION]")
+        print(f"   User: {request.user.username}")
+        print(f"   File: {image_file.name}")
+        print(f"   Size: {image_file.size/1024:.1f} KB")
+        
+        # ✅ DÙNG NUDENET
+        check_result = check_nsfw_image_local(image_file)
+        
+        print(f"   Result: is_safe={check_result['is_safe']}, reason={check_result['reason']}")
+        print(f"{'='*60}\n")
+        
+        if not check_result['is_safe']:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ {check_result["reason"]}',
+                'details': check_result.get('details', {})
+            }, status=400)
+        
+        # ✅ ẢNH AN TOÀN → LƯU
+        image_file.seek(0)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        profile.avatar = image_file
         profile.save()
         
-        # Trả về URL mới ngay lập tức để giao diện cập nhật
         return JsonResponse({
-            'status': 'success', 
-            'new_avatar_url': 'http://127.0.0.1:8000' + profile.avatar.url
+            'status': 'success',
+            'new_avatar_url': profile.avatar.url
         })
     
-    return JsonResponse({'status': 'error', 'message': 'Lỗi upload'}, status=400)
+    return JsonResponse({
+        'status': 'error', 
+        'message': 'Lỗi upload'
+    }, status=400)
 
 @csrf_exempt
 def change_password_api(request):
@@ -577,18 +705,26 @@ def change_password_api(request):
 @login_required
 def toggle_favorite(request, place_id):
     try:
+        # 🔍 DEBUG
+        print(f"\n🔍 [TOGGLE FAVORITE] User: {request.user.username}")
+        print(f"📊 [TOGGLE] place_id type: {type(place_id)}")
+        print(f"📊 [TOGGLE] place_id value: '{place_id}'")
+        
         favorite, created = FavoritePlace.objects.get_or_create(
             user=request.user, 
-            place_id=str(place_id)
+            place_id=str(place_id)  # ✅ Đảm bảo luôn lưu dạng string
         )
         
         if not created:
             favorite.delete()
+            print(f"❌ [TOGGLE] REMOVED from favorites\n")
             return JsonResponse({'status': 'removed', 'message': 'Đã xóa khỏi yêu thích'})
         else:
+            print(f"✅ [TOGGLE] ADDED to favorites\n")
             return JsonResponse({'status': 'added', 'message': 'Đã thêm vào yêu thích'})
             
     except Exception as e:
+        print(f"❌ [TOGGLE ERROR] {e}\n")
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @login_required
@@ -596,29 +732,57 @@ def toggle_favorite(request, place_id):
 def get_user_favorites_api(request):
     user = request.user
 
-    # Lấy danh sách ID từ DB
+    # ✅ LẤY DANH SÁCH ID TỪ DB
     favorite_ids = list(
         FavoritePlace.objects.filter(user=user).values_list('place_id', flat=True)
     )
 
-    # Đọc CSV
+    # 🔍 DEBUG: In ra console
+    print(f"\n{'='*60}")
+    print(f"🔍 [DEBUG] User: {user.username}")
+    print(f"📊 [DEBUG] Favorite IDs from DB: {favorite_ids}")
+    print(f"📊 [DEBUG] Count: {len(favorite_ids)}")
+    print(f"{'='*60}\n")
+
+    # ĐỌC CSV
     csv_path = os.path.join(settings.BASE_DIR, '..', 'backend', 'Data_with_flavor.csv')
     csv_path = os.path.abspath(csv_path)
 
     favorite_places = []
     try:
         df = pd.read_csv(csv_path)
-        df['data_id'] = df['data_id'].astype(str)  # Ép kiểu string để so sánh
+        df['data_id'] = df['data_id'].astype(str)  # ✅ Ép kiểu string
 
-        # Lọc những quán có id nằm trong danh sách favorite
+        # 🔍 DEBUG: Kiểm tra CSV
+        print(f"📄 [DEBUG] CSV total rows: {len(df)}")
+        print(f"📄 [DEBUG] CSV data_id sample: {df['data_id'].head().tolist()}")
+
+        # LỌC QUÁN
         filtered_df = df[df['data_id'].isin(favorite_ids)]
 
-        # Chuyển dữ liệu thành List of Dict
-        favorite_places = filtered_df.fillna('').to_dict('records')
-    except Exception as e:
-        print(f"Lỗi đọc CSV: {e}")
+        # 🔍 DEBUG: Kiểm tra kết quả filter
+        print(f"✅ [DEBUG] Filtered rows: {len(filtered_df)}")
+        print(f"✅ [DEBUG] Filtered IDs: {filtered_df['data_id'].tolist()}")
+        
+        # ❌ KIỂM TRA TRÙNG LẶP
+        if len(filtered_df) > len(favorite_ids):
+            print(f"⚠️ [WARNING] CSV has DUPLICATES!")
+            print(f"   Expected: {len(favorite_ids)} rows")
+            print(f"   Got: {len(filtered_df)} rows")
+            
+            # Tìm các ID bị trùng
+            duplicates = filtered_df[filtered_df.duplicated(subset=['data_id'], keep=False)]
+            if not duplicates.empty:
+                print(f"🔴 [DUPLICATES]:")
+                print(duplicates[['data_id', 'ten_quan', 'dia_chi']])
 
-    # Trả về JSON
+        favorite_places = filtered_df.fillna('').to_dict('records')
+        
+        print(f"{'='*60}\n")
+
+    except Exception as e:
+        print(f"❌ [ERROR] {e}")
+
     return JsonResponse({'favorites': favorite_places})
 # ==========================================================
 # ✏️ LOGIC API KẾT BẠN
@@ -651,6 +815,9 @@ def send_friend_request(request):
         
         # Tạo lời mời kết bạn
         friend_request = FriendRequest.objects.create(sender=sender, receiver=receiver)
+        
+        # ✅ TẠO THÔNG BÁO
+        create_friend_request_notification(receiver, sender, friend_request.id)
         
         return JsonResponse({
             'success': True,
@@ -1020,12 +1187,33 @@ def streak_handler(request):
                     profile.save()
                     print("   ❄️ STREAK FROZEN")
             
+            # ✅ KIỂM TRA ĐÃ HIỆN POPUP FROZEN HÔM NAY CHƯA
+            from .models import StreakPopupLog
+            
+            # 🔥 SỬA: Kiểm tra CẢ frozen VÀ milestone popup
+            has_shown_frozen_today = StreakPopupLog.objects.filter(
+                user=user,
+                popup_type='frozen',
+                shown_at__date=today
+            ).exists()
+            
+            has_shown_milestone_today = StreakPopupLog.objects.filter(
+                user=user,
+                popup_type='milestone',
+                shown_at__date=today
+            ).exists()
+            
+            print(f"   Has shown frozen popup today: {has_shown_frozen_today}")
+            print(f"   Has shown milestone popup today: {has_shown_milestone_today}")
+            
             return JsonResponse({
                 'status': 'success',
                 'streak': profile.current_streak,
                 'longest_streak': profile.longest_streak,
                 'is_frozen': profile.streak_frozen,
-                'last_update': profile.last_streak_date.isoformat() if profile.last_streak_date else None
+                'last_update': profile.last_streak_date.isoformat() if profile.last_streak_date else None,
+                'has_shown_frozen_popup': has_shown_frozen_today,  # ✅ Trả về cho frontend
+                'has_shown_milestone_popup': has_shown_milestone_today  # ✅ THÊM field mới
             })
             
         except Exception as e:
@@ -2103,6 +2291,7 @@ def share_food_plan_api(request, plan_id):
                 
                 if created:
                     shared_count += 1
+                    create_shared_plan_notification(friend, request.user, plan.id, plan.name)
                 else:
                     # Nếu đã share rồi thì cập nhật permission
                     share.permission = permission
@@ -2215,9 +2404,9 @@ def get_shared_plans_api(request):
 def submit_plan_suggestion_api(request, plan_id):
     """
     Bạn bè submit suggestion cho plan
-    POST /api/food-plan/suggest/<plan_id>/
+    POST /api/accounts/food-plan/suggest/<plan_id>/
     Body: {
-        "suggested_data": {...},  // Plan sau khi edit
+        "suggested_data": {...},
         "message": "Tôi đã thêm quán X vào lịch trình"
     }
     """
@@ -2237,13 +2426,21 @@ def submit_plan_suggestion_api(request, plan_id):
         # Lấy dữ liệu gốc
         original_data = shared_plan.food_plan.plan_data
         
-        # Tạo suggestion
+        # 🔥 TẠO SUGGESTION - THÊM pending_changes={}
         suggestion = PlanEditSuggestion.objects.create(
             shared_plan=shared_plan,
             suggested_by=request.user,
             original_data=original_data,
             suggested_data=suggested_data,
-            message=message
+            message=message,
+            pending_changes={}  # 🔥 THÊM DÒNG NÀY
+        )
+
+        create_suggestion_notification(
+            shared_plan.owner,
+            request.user,
+            plan_id,
+            shared_plan.food_plan.name
         )
         
         return JsonResponse({
@@ -2258,6 +2455,8 @@ def submit_plan_suggestion_api(request, plan_id):
             'message': 'Bạn không có quyền chỉnh sửa lịch trình này'
         }, status=403)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
@@ -2518,7 +2717,58 @@ def review_suggestion_api(request, suggestion_id):
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        }, status=500)            
+        }, status=500)     
+
+@login_required
+@require_http_methods(["GET"])
+def get_my_suggestions_api(request, plan_id):
+    """
+    Lấy danh sách suggestion của user cho 1 plan cụ thể
+    GET /api/accounts/food-plan/my-suggestions/<plan_id>/
+    """
+    try:
+        # Kiểm tra user có được share plan này không
+        shared_plan = SharedFoodPlan.objects.filter(
+            food_plan_id=plan_id,
+            shared_with=request.user,
+            is_active=True
+        ).first()
+        
+        if not shared_plan:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xem lịch trình này'
+            }, status=403)
+        
+        # Lấy tất cả suggestions của user này cho plan này
+        suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user
+        ).order_by('-created_at')
+        
+        suggestions_data = []
+        for suggestion in suggestions:
+            suggestions_data.append({
+                'id': suggestion.id,
+                'message': suggestion.message,
+                'status': suggestion.status,
+                'created_at': suggestion.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'reviewed_at': suggestion.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if suggestion.reviewed_at else None
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'suggestions': suggestions_data
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
 @csrf_exempt
 @require_POST
 @login_required
@@ -2629,8 +2879,6 @@ def suggestion_approve_single(request):
 # 🍽️ USER PREFERENCES APIs
 # ==========================================================
 
-from .models import UserPreference
-
 @login_required
 @require_http_methods(["GET"])
 def get_user_preferences(request):
@@ -2645,7 +2893,8 @@ def get_user_preferences(request):
         data = {
             'likes': [p.item for p in preferences.filter(preference_type='like')],
             'dislikes': [p.item for p in preferences.filter(preference_type='dislike')],
-            'allergies': [p.item for p in preferences.filter(preference_type='allergy')]
+            'allergies': [p.item for p in preferences.filter(preference_type='allergy')],
+            'medicalconditions': [p.item for p in preferences.filter(preference_type='medicalcondition')]
         }
         
         return JsonResponse({
@@ -2662,31 +2911,22 @@ def get_user_preferences(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@login_required  # ✅ ĐẢM BẢO USER ĐÃ LOGIN
 def save_user_preference(request):
-    """
-    Lưu 1 preference mới
-    POST /api/preferences/
-    Body: {
-        "type": "like",  // like/dislike/allergy
-        "item": "Phở bò"
-    }
-    """
     try:
         data = json.loads(request.body)
         pref_type = data.get('type')
         item = data.get('item', '').strip()
         
+        # ✅ THÊM LOG ĐỂ DEBUG
+        print(f"[SAVE PREF] User: {request.user.username}")
+        print(f"[SAVE PREF] Type: {pref_type}")
+        print(f"[SAVE PREF] Item: {item}")
+        
         if not pref_type or not item:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Thiếu thông tin type hoặc item'
-            }, status=400)
-        
-        if pref_type not in ['like', 'dislike', 'allergy']:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Type không hợp lệ'
             }, status=400)
         
         # Tạo hoặc bỏ qua nếu đã tồn tại
@@ -2695,6 +2935,9 @@ def save_user_preference(request):
             preference_type=pref_type,
             item=item
         )
+        
+        # ✅ THÊM LOG
+        print(f"[SAVE PREF] Created: {created}")
         
         if created:
             return JsonResponse({
@@ -2710,6 +2953,9 @@ def save_user_preference(request):
             })
             
     except Exception as e:
+        print(f"[SAVE PREF ERROR] {e}")  # ✅ THÊM LOG LỖI
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
@@ -2758,6 +3004,352 @@ def delete_user_preference(request):
             }, status=404)
             
     except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+# ==========================================================
+# 🔔 NOTIFICATION APIs
+# ==========================================================
+
+@login_required
+@require_http_methods(["GET"])
+def get_notifications_api(request):
+    """
+    Lấy danh sách thông báo của user
+    GET /api/accounts/notifications/
+    Query params:
+        - unread_only=true: chỉ lấy thông báo chưa đọc
+        - limit=20: giới hạn số lượng
+    """
+    try:
+        unread_only = request.GET.get('unread_only', 'false').lower() == 'true'
+        limit = int(request.GET.get('limit', 50))
+        
+        # Query notifications
+        notifications = Notification.objects.filter(user=request.user)
+        
+        if unread_only:
+            notifications = notifications.filter(is_read=False)
+        
+        notifications = notifications[:limit]
+        
+        # Serialize data
+        notifications_data = []
+        for notif in notifications:
+            notifications_data.append({
+                'id': notif.id,
+                'type': notif.notification_type,
+                'title': notif.title,
+                'message': notif.message,
+                'is_read': notif.is_read,
+                'created_at': notif.created_at.isoformat(),
+                'read_at': notif.read_at.isoformat() if notif.read_at else None,
+                'related_id': notif.related_id,
+                'metadata': notif.metadata
+            })
+        
+        # Đếm số thông báo chưa đọc
+        unread_count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).count()
+        
+        return JsonResponse({
+            'status': 'success',
+            'notifications': notifications_data,
+            'unread_count': unread_count
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def mark_notification_read_api(request, notification_id):
+    """
+    Đánh dấu 1 thông báo đã đọc
+    POST /api/accounts/notifications/<id>/read/
+    """
+    try:
+        notification = Notification.objects.get(
+            id=notification_id,
+            user=request.user
+        )
+        
+        notification.mark_as_read()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã đánh dấu đã đọc'
+        })
+        
+    except Notification.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông báo'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def mark_all_notifications_read_api(request):
+    """
+    Đánh dấu TẤT CẢ thông báo đã đọc
+    POST /api/accounts/notifications/read-all/
+    """
+    try:
+        updated_count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).update(is_read=True, read_at=timezone.now())
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Đã đánh dấu {updated_count} thông báo',
+            'count': updated_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def delete_notification_api(request, notification_id):
+    """
+    Xóa 1 thông báo
+    POST /api/accounts/notifications/<id>/delete/
+    """
+    try:
+        notification = Notification.objects.get(
+            id=notification_id,
+            user=request.user
+        )
+        
+        notification.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã xóa thông báo'
+        })
+        
+    except Notification.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông báo'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def clear_all_notifications_api(request):
+    """
+    Xóa TẤT CẢ thông báo đã đọc
+    POST /api/accounts/notifications/clear-all/
+    """
+    try:
+        deleted_count, _ = Notification.objects.filter(
+            user=request.user,
+            is_read=True
+        ).delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Đã xóa {deleted_count} thông báo',
+            'count': deleted_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+# ==========================================================
+# 🔔 SSE - REAL-TIME NOTIFICATION STREAM
+# ==========================================================
+
+@login_required
+def notification_stream(request):
+    """
+    SSE endpoint để push thông báo real-time
+    GET /api/accounts/notifications/stream/
+    """
+    def event_stream():
+        """
+        Generator function để stream events
+        """
+        last_check = timezone.now()
+        
+        # Gửi initial connection message
+        yield f"data: {json.dumps({'type': 'connected', 'message': 'Connected to notification stream'})}\n\n"
+        
+        while True:
+            try:
+                # Check for new notifications mỗi 3 giây
+                time.sleep(3)
+                
+                # Lấy notifications mới từ lần check cuối
+                new_notifications = Notification.objects.filter(
+                    user=request.user,
+                    created_at__gt=last_check,
+                    is_read=False
+                ).order_by('-created_at')
+                
+                if new_notifications.exists():
+                    # Cập nhật last_check
+                    last_check = timezone.now()
+                    
+                    # Serialize notifications
+                    notifications_data = []
+                    for notif in new_notifications:
+                        notifications_data.append({
+                            'id': notif.id,
+                            'type': notif.notification_type,
+                            'title': notif.title,
+                            'message': notif.message,
+                            'is_read': notif.is_read,
+                            'created_at': notif.created_at.isoformat(),
+                            'related_id': notif.related_id,
+                            'metadata': notif.metadata
+                        })
+                    
+                    # Đếm tổng số unread
+                    unread_count = Notification.objects.filter(
+                        user=request.user,
+                        is_read=False
+                    ).count()
+                    
+                    # Send event
+                    event_data = {
+                        'type': 'new_notifications',
+                        'notifications': notifications_data,
+                        'unread_count': unread_count
+                    }
+                    
+                    yield f"data: {json.dumps(event_data)}\n\n"
+                
+                # Gửi heartbeat mỗi 30 giây để giữ connection
+                if int(time.time()) % 30 == 0:
+                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+                    
+            except GeneratorExit:
+                # Client đã ngắt kết nối
+                break
+            except Exception as e:
+                print(f"❌ Error in notification stream: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                break
+    
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    
+    # Headers quan trọng cho SSE
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'  # Tắt buffering của nginx
+    
+    return response
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def record_favorite_view(request, user_id):
+    try:
+        viewed_user = User.objects.get(id=user_id)
+        viewer = request.user
+
+        if viewer.id == viewed_user.id:
+            return Response({
+                'status': 'ignored',
+                'message': 'Không tạo thông báo cho chính mình'
+            })
+
+        notification = Notification.objects.create(
+            user=viewed_user,  # Người nhận thông báo
+            notification_type='favorite_viewed',  # 🔴 SỬA CHỖ NÀY
+            title='👀 Có người xem quán yêu thích của bạn',
+            message=f'{viewer.username} đã xem danh sách quán yêu thích của bạn',
+            related_id=viewer.id
+        )
+
+        return Response({
+            'status': 'success',
+            'message': 'Đã ghi nhận lượt xem',
+            'notification_id': notification.id
+        })
+
+    except User.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'message': 'Không tìm thấy user'
+        }, status=404)
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@csrf_exempt
+@require_POST
+@login_required
+def log_streak_popup_api(request):
+    """
+    Log rằng popup đã được hiện
+    POST /api/accounts/streak/log-popup/
+    Body: {
+        "popup_type": "frozen",  // frozen/milestone
+        "streak_value": 0
+    }
+    """
+    try:
+        from .models import StreakPopupLog
+        
+        data = json.loads(request.body)
+        popup_type = data.get('popup_type', 'frozen')
+        streak_value = data.get('streak_value', 0)
+        
+        # Tạo log
+        StreakPopupLog.objects.create(
+            user=request.user,
+            popup_type=popup_type,
+            streak_value=streak_value
+        )
+        
+        print(f"✅ [LOG POPUP] User: {request.user.username}, Type: {popup_type}")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã log popup'
+        })
+        
+    except Exception as e:
+        print(f"❌ [LOG POPUP ERROR] {e}")
         return JsonResponse({
             'status': 'error',
             'message': str(e)
