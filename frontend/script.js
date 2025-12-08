@@ -1396,9 +1396,14 @@ function distance(lat1, lon1, lat2, lon2) {
   return R * c; // km
 }
 function clearAllMarkers() {
-    // Xóa toàn bộ markers trong map
+    // ✅ Xóa toàn bộ markers NHƯNG GIỮ LẠI marker GPS
     map.eachLayer(layer => {
         if (layer instanceof L.Marker) {
+            // 🔥 KHÔNG XÓA marker GPS (startMarker)
+            if (window.startMarker && layer === window.startMarker) {
+                console.log('🔒 Giữ lại marker GPS');
+                return;
+            }
             map.removeLayer(layer);
         }
     });
