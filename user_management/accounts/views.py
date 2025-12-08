@@ -809,11 +809,21 @@ def send_friend_request(request):
            Friendship.objects.filter(user1=receiver, user2=sender).exists():
             return JsonResponse({'error': 'Đã là bạn bè rồi'}, status=400)
         
-        # Kiểm tra đã gửi lời mời chưa
-        if FriendRequest.objects.filter(sender=sender, receiver=receiver, status='pending').exists():
-            return JsonResponse({'error': 'Đã gửi lời mời rồi'}, status=400)
+        # ✅ FIX: Kiểm tra và xử lý lời mời cũ
+        existing_request = FriendRequest.objects.filter(
+            sender=sender, 
+            receiver=receiver
+        ).first()
         
-        # Tạo lời mời kết bạn
+        if existing_request:
+            if existing_request.status == 'pending':
+                # Nếu đang pending → báo lỗi
+                return JsonResponse({'error': 'Đã gửi lời mời rồi'}, status=400)
+            else:
+                # Nếu đã rejected/accepted → XÓA và tạo mới
+                existing_request.delete()
+        
+        # Tạo lời mời kết bạn MỚI
         friend_request = FriendRequest.objects.create(sender=sender, receiver=receiver)
         
         # ✅ TẠO THÔNG BÁO
@@ -826,7 +836,6 @@ def send_friend_request(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
