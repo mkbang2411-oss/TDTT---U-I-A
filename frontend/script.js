@@ -662,9 +662,17 @@ console.log('⚠️ [displayPlaces] Removed old lazy load listener');
       // fallback nếu dữ liệu không có lat/lon
       loadMarkersInViewport();
     }
-  } else {
-    // Không muốn đổi zoom ⇒ chỉ load marker trong viewport hiện tại
+ } else {
+    // 🔥 QUAN TRỌNG: Dù không zoom, vẫn phải load marker + BẬT lazy load
+    console.log('⚠️ Không zoom nhưng vẫn cần load marker');
     loadMarkersInViewport();
+  }
+  
+  // 🔥 BẬT LẠI LAZY LOAD CHO MỌI TRƯỜNG HỢP (TRỪ FAVORITE MODE)
+  if (!shouldLoadAllNow) {
+    console.log('✅ Bật lại lazy load sau khi display xong');
+    map.off("moveend", loadMarkersInViewport); // Tắt cái cũ trước
+    map.on("moveend", loadMarkersInViewport);  // Bật lại
   }
 
   window.allMarkers = markers;
@@ -1725,9 +1733,9 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
     map.setView([coords.lat, coords.lon], 16);
 
     // Có filter → mới tìm quán
-    if (query || selectedFlavors.length > 0 || budget || radius) {
-      result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
-    }
+   // ✅ LUÔN LUÔN gọi fetchPlaces khi có GPS
+// Nếu không có filter gì thì fetchPlaces sẽ hiện tất cả quán gần đó
+result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
   }
 
   // =============================
