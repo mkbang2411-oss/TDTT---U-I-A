@@ -1675,7 +1675,15 @@ checkboxes.forEach((cb) => {
 // =======================================================
 // ✅ TẢI LẦN ĐẦU
 // =======================================================
-fetchPlaces("", [], "", "", false); // shouldZoom 
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // ✅ Chỉ load quán mặc định khi KHÔNG phải chế độ xem quán bạn bè
+  if (urlParams.get('view') !== 'friend-favorites') {
+    fetchPlaces("", [], "", "", false);
+  }
+  // Nếu là chế độ bạn bè thì logic phía dưới sẽ xử lý
+});
 
 // =========================
 // 💰 BUDGET DROPDOWN
