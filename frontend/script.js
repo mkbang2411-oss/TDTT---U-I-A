@@ -66,37 +66,6 @@ let currentRouteLine = null;
 let routeControl = null;
 
 
-// =========================
-// 🔍 HÀM KIỂM TRA TỪ CẤM
-// =========================
-function containsBadWords(text) {
-  if (!text) return false;
-  
-  // Chuẩn hóa text: bỏ dấu, chữ thường, bỏ khoảng trắng thừa
-  const normalizedText = text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/\s+/g, " ")
-    .trim();
-  
-  // Kiểm tra từng từ trong blacklist
-  for (const badWord of BLACKLIST_WORDS) {
-    const normalizedBadWord = badWord
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/đ/g, "d");
-    
-    // Kiểm tra xem có chứa từ cấm không (kể cả viết liền)
-    if (normalizedText.includes(normalizedBadWord)) {
-      return true;
-    }
-  }
-  
-  return false;
-}
 
 // 👉 Biến trạng thái cho nút "Quán yêu thích"
 let isFavoriteMode = false;
@@ -200,13 +169,13 @@ if (!document.getElementById('custom-alert-style')) {
 // =========================
 const icons = {
   default: L.icon({
-    iconUrl: "icons/icon.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/icon.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-    iconUrl: "icons/star.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
@@ -518,8 +487,11 @@ function openChatboxAutomatically() {
 // 🔍 HIỂN THỊ MARKER + THÔNG TIN CHI TIẾT
 // =========================
 function displayPlaces(places, shouldZoom = true) {
-  console.log('🎯 displayPlaces được gọi với', places ? places.length : 0, 'quán');
-  console.log('📦 Data:', places);
+ console.log('🎯 displayPlaces được gọi với', places ? places.length : 0, 'quán');
+  console.log('📊 shouldZoom:', shouldZoom);
+  console.log('📊 isFavoriteMode:', isFavoriteMode);
+  
+  
   allPlacesData = places || [];
   visibleMarkers.clear();
 
@@ -527,8 +499,52 @@ function displayPlaces(places, shouldZoom = true) {
     alert("Không tìm thấy quán nào!");
     return false;
   }
+// 👉 THÊM DÒNG NÀY
+  const isSinglePlaceMode = !isFavoriteMode && places.length === 1;
+    // 🔥 MODE ĐẶC BIỆT: CHỈ CÓ 1 QUÁN → ADD THẲNG MARKER VÀO MAP
+  if (isSinglePlaceMode) {
+    console.log('🎯 [displayPlaces] Single place mode → add marker trực tiếp, không dùng cluster');
 
-  // 🔥🔥🔥 XÓA TẤT CẢ CLUSTER CŨ (CẢ LOCAL VÀ GLOBAL) 🔥🔥🔥
+    // Xoá mọi marker cũ nhưng vẫn giữ marker GPS (startMarker)
+    clearAllMarkers();
+
+    const p = places[0];
+    const lat = parseFloat(p.lat?.toString().replace(",", "."));
+    const lon = parseFloat(p.lon?.toString().replace(",", "."));
+
+    if (isNaN(lat) || isNaN(lon)) {
+      showWarningToast("Quán này chưa có tọa độ hợp lệ!");
+      return false;
+    }
+
+    // Tạo marker & add thẳng vào map
+    const marker = createMarker(p, lat, lon);
+    markers.push(marker);
+    marker.addTo(map);
+
+    const placeId = p.data_id || p.ten_quan;
+    if (placeId) {
+      visibleMarkers.add(placeId);
+      if (!window.placeMarkersById) window.placeMarkersById = {};
+      window.placeMarkersById[placeId] = marker;
+    }
+
+    // Zoom tới quán
+    if (shouldZoom) {
+      map.setView([lat, lon], 17, { animate: true });
+    }
+
+    // Tự mở sidebar sau khi zoom xong 1 chút
+    setTimeout(() => {
+      marker.fire("click");
+    }, 400);
+
+    window.allMarkers = markers;
+    return true; // ⬅️ RẤT QUAN TRỌNG: KHÔNG CHẠY XUỐNG CODE CLUSTER BÊN DƯỚI NỮA
+  }
+
+  // 🔥🔥🔥 THÊM ĐOẠN NÀY 🔥🔥🔥
+  // ✅ XÓA SẠCH TẤT CẢ MARKER CŨ TRƯỚC KHI VẼ MỚI
   
   // 1️⃣ Xóa cluster LOCAL
   if (typeof markerClusterGroup !== 'undefined' && markerClusterGroup) {
@@ -536,6 +552,7 @@ function displayPlaces(places, shouldZoom = true) {
       map.removeLayer(markerClusterGroup);
       console.log('🧹 [displayPlaces] Removed LOCAL cluster');
     }
+    markerClusterGroup.clearLayers(); // ⬅️ THÊM DÒNG NÀY
   }
   
   // 2️⃣ Xóa cluster GLOBAL
@@ -544,13 +561,22 @@ function displayPlaces(places, shouldZoom = true) {
       map.removeLayer(window.markerClusterGroup);
       console.log('🧹 [displayPlaces] Removed GLOBAL cluster');
     }
+    window.markerClusterGroup.clearLayers(); // ⬅️ THÊM DÒNG NÀY
   }
 
-  markers = []; // reset mảng markers
-  window.placeMarkersById = {};
+  // 3️⃣ Reset các biến toàn cục
+  markers = []; // ⬅️ THÊM DÒNG NÀY
+  window.placeMarkersById = {}; // ⬅️ THÊM DÒNG NÀY
+  visibleMarkers.clear(); // ⬅️ ĐÃ CÓ NHƯNG ĐẢM BẢO NÓ Ở ĐÂY
   
-  // 👉 Gắn cluster vào map trước
-  map.addLayer(markerClusterGroup);
+  // 🔥🔥🔥 HẾT ĐOẠN THÊM 🔥🔥🔥
+
+  // 👉 Gắn cluster vào map trước (code cũ của bạn tiếp tục)
+    // 👉 Gắn cluster vào map nếu KHÔNG phải 1-quán-mode
+  if (!isSinglePlaceMode) {
+    map.addLayer(markerClusterGroup);
+  }
+
 
 // ✅ TẮT lazy load cũ
 
@@ -558,34 +584,59 @@ map.off("moveend", loadMarkersInViewport);
 console.log('⚠️ [displayPlaces] Removed old lazy load listener');
 
 // 🔥 NẾU LÀ FAVORITE MODE: LOAD TẤT CẢ MARKERS NGAY
-if (isFavoriteMode) {
-  console.log('🔥 [FAVORITE MODE] Loading ALL markers immediately...');
+  // 🔥 NẾU LÀ FAVORITE MODE HOẶC KẾT QUẢ ÍT → LOAD TẤT CẢ MARKERS NGAY
+  clearAllMarkers(); // ⬅️ XÓA SẠCH TẤT CẢ MARKER CŨ
+
+  // 👇 THÊM DÒNG NÀY: search ít quán thì vẽ luôn, không lazy-load
+    const shouldLoadAllNow = isFavoriteMode || places.length <= 200;
+
+  if (shouldLoadAllNow) {
+    console.log('🔥 [displayPlaces] Loading ALL markers immediately...', {
+      favoriteMode: isFavoriteMode,
+      total: places.length,
+      singleMode: isSinglePlaceMode,
+    });
+
+    places.forEach((p) => {
+  const lat = parseFloat(p.lat?.toString().replace(",", "."));
+  const lon = parseFloat(p.lon?.toString().replace(",", "."));
   
-  // Tạo tất cả markers từ danh sách places
-  places.forEach((p) => {
-    const lat = parseFloat(p.lat?.toString().replace(",", "."));
-    const lon = parseFloat(p.lon?.toString().replace(",", "."));
-    
-    if (isNaN(lat) || isNaN(lon)) return;
-    
-    const placeId = p.data_id || p.ten_quan;
-    
-    // Tạo marker
-    const marker = createMarker(p, lat, lon);
-    markers.push(marker);
+  if (isNaN(lat) || isNaN(lon)) return;
+  
+  const placeId = p.data_id || p.ten_quan;
+  
+  // Tạo marker
+  const marker = createMarker(p, lat, lon);
+  markers.push(marker);
+  visibleMarkers.add(placeId);
+
+  // 🔥 LOGIC MỚI: Nếu favorite mode VÀ chỉ 1 quán → add thẳng vào map
+  if (isFavoriteMode && places.length === 1) {
+    marker.addTo(map);
+    console.log('✅ [FAVORITES] 1 quán yêu thích → marker add trực tiếp vào map');
+    console.log('   📍 Position:', lat, lon);
+    console.log('   🏷️ ID:', placeId);
+  } 
+  // ✅ Trường hợp khác: dùng cluster bình thường
+  else {
     markerClusterGroup.addLayer(marker);
-    visibleMarkers.add(placeId);
-  });
-  
-  console.log(`✅ [FAVORITE MODE] Loaded ${markers.length} markers`);
-  
-  // ⚠️ QUAN TRỌNG: KHÔNG BẬT LẠI lazy load trong favorite mode!
-  
-} else {
-  // CHẾ ĐỘ BÌNH THƯỜNG: Bật lại lazy load
-  map.on("moveend", loadMarkersInViewport);
-  console.log('✅ [displayPlaces] Re-enabled lazy load (normal mode)');
-}
+    console.log('✅ [NORMAL] Marker add vào cluster');
+  }
+});
+
+
+
+    console.log(`✅ [displayPlaces] Loaded ${markers.length} markers (immediate mode)`);
+
+    // ❗ QUAN TRỌNG: KHÔNG BẬT LẠI lazy load trong mode này
+    // (Không cần map.on("moveend", loadMarkersInViewport);)
+
+  } else {
+    // CHẾ ĐỘ BÌNH THƯỜNG: Bật lại lazy load
+    map.on("moveend", loadMarkersInViewport);
+    console.log('✅ [displayPlaces] Re-enabled lazy load (normal mode)');
+  }
+
 
   if (shouldZoom && places.length > 0) {
  
@@ -601,15 +652,72 @@ if (isFavoriteMode) {
     });
 
     if (bounds.isValid()) {
-      // fit xong sẽ trigger 'moveend' ⇒ loadMarkersInViewport()
-      map.fitBounds(bounds.pad(0.2));
+      // 🔥 FIX: Nếu chỉ có 1 quán, load marker ngay không cần chờ moveend
+      if (places.length === 1) {
+  const p = places[0];
+  const lat = parseFloat(p.lat?.toString().replace(",", "."));
+  const lon = parseFloat(p.lon?.toString().replace(",", "."));
+  
+  if (!isNaN(lat) && !isNaN(lon)) {
+    console.log('🔥 [1 QUÁN] Bắt đầu xử lý marker duy nhất...');
+    
+    // ✅ QUAN TRỌNG: Đảm bảo cluster đã được add vào map
+    if (!map.hasLayer(markerClusterGroup)) {
+      console.warn('⚠️ Cluster chưa có trên map, thêm lại...');
+      map.addLayer(markerClusterGroup);
+    }
+    
+    // Zoom trước
+    map.setView([lat, lon], 17, { animate: true });
+    
+    // Load marker sau khi zoom xong
+    setTimeout(() => {
+      const placeId = p.data_id || p.ten_quan;
+      
+      if (!visibleMarkers.has(placeId)) {
+        console.log('🏗️ [1 QUÁN] Tạo marker mới...');
+        
+        const marker = createMarker(p, lat, lon);
+        markers.push(marker);
+        markerClusterGroup.addLayer(marker);
+        visibleMarkers.add(placeId);
+        
+        // 🔥 ĐẢM BẢO CLUSTER REFRESH
+        markerClusterGroup.refreshClusters();
+        
+        console.log('✅ [1 QUÁN] Marker đã được tạo và thêm vào cluster');
+        console.log('✅ [1 QUÁN] Tổng markers:', markers.length);
+        console.log('✅ [1 QUÁN] Cluster có layer không?', markerClusterGroup.hasLayer(marker));
+        
+        // Click vào marker để mở sidebar
+        setTimeout(() => {
+          console.log('🔥 [1 QUÁN] Click vào marker');
+          marker.fire('click');
+        }, 300);
+      } else {
+        console.warn('⚠️ [1 QUÁN] Marker đã tồn tại, không tạo mới');
+      }
+    }, 500); // Tăng timeout lên 500ms để chắc chắn zoom xong
+  }
+} else {
+        // Nhiều quán → fit bounds bình thường, moveend sẽ trigger lazy load
+        map.fitBounds(bounds.pad(0.2));
+      }
     } else {
       // fallback nếu dữ liệu không có lat/lon
       loadMarkersInViewport();
     }
-  } else {
-    // Không muốn đổi zoom ⇒ chỉ load marker trong viewport hiện tại
+ } else {
+    // 🔥 QUAN TRỌNG: Dù không zoom, vẫn phải load marker + BẬT lazy load
+    console.log('⚠️ Không zoom nhưng vẫn cần load marker');
     loadMarkersInViewport();
+  }
+  
+  // 🔥 BẬT LẠI LAZY LOAD CHO MỌI TRƯỜNG HỢP (TRỪ FAVORITE MODE)
+  if (!shouldLoadAllNow) {
+    console.log('✅ Bật lại lazy load sau khi display xong');
+    map.off("moveend", loadMarkersInViewport); // Tắt cái cũ trước
+    map.on("moveend", loadMarkersInViewport);  // Bật lại
   }
 
   window.allMarkers = markers;
@@ -660,6 +768,7 @@ function loadMarkersInViewport() {
   isLoadingMarkers = false;
   console.log(`✅ Đã load ${loadedCount} markers`);
 }
+
 
 // =========================
 function createMarker(p, lat, lon) {
@@ -1339,24 +1448,58 @@ function distance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // km
 }
+function clearAllMarkers() {
+    // ✅ Xóa toàn bộ markers NHƯNG GIỮ LẠI marker GPS
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+            // 🔥 KHÔNG XÓA marker GPS (startMarker)
+            if (window.startMarker && layer === window.startMarker) {
+                console.log('🔒 Giữ lại marker GPS');
+                return;
+            }
+            map.removeLayer(layer);
+        }
+    });
+
+    // Xóa tất cả cluster (dù là biến nào)
+    if (markerClusterGroup) markerClusterGroup.clearLayers();
+    if (window.markerClusterGroup) window.markerClusterGroup.clearLayers();
+
+    // Reset data
+    markers = [];
+    visibleMarkers.clear();
+    window.placeMarkersById = {};
+}
+
 
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU (FIXED VERSION)
 // =======================================================
 
-async function fetchPlaces(
-  query = "",
-  flavors = [],
-  budget = "",
-  radius = "",
-  shouldZoom = true
-) {
+async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", shouldZoom = true) {
   try {
+    // 🔥 THÊM ĐOẠN NÀY Ở ĐẦU HÀM
+    if (window.permanentMarker) {
+      if (window.markerClusterGroup) {
+        window.markerClusterGroup.removeLayer(window.permanentMarker);
+      } else if (map.hasLayer(window.permanentMarker)) {
+        map.removeLayer(window.permanentMarker);
+      }
+      window.permanentMarker = null;
+      window.permanentMarkerData = null;
+      console.log("🗑️ [FETCH] Cleared permanent marker");
+    }
+    
+    // ✅ RESET TRẠNG THÁI TRƯỚC KHI FETCH MỚI
+    allPlacesData = [];
+    visibleMarkers.clear();
+    
+    // Tắt lazy load cũ (nếu có)
+    map.off("moveend", loadMarkersInViewport);
     
     const res = await fetch("/api/places");
     let data = await res.json();
-    allPlacesData = [];
-    visibleMarkers.clear(); 
+
 
     // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH (chỉ bỏ dấu phụ như ă, ơ, ê)
     function normalizeKeepTone(str) {
@@ -1526,13 +1669,15 @@ async function fetchPlaces(
     }
 
 // ========== 4️⃣ Lọc bán kính ==========
+// 🔥 CHỈ LỌC BÁN KÍNH KHI USER ĐÃ TỰ CHỌN (radio được check)
 if (radius && radius !== "" && radius !== "all") {
   const r = parseFloat(radius);
   
+  // ✅ Kiểm tra bán kính hợp lệ
   if (isNaN(r) || r <= 0) {
-    // Bán kính không hợp lệ → bỏ qua filter này
+    console.warn('⚠️ Bán kính không hợp lệ, bỏ qua filter');
   } else {
-    // ⭐ CHỈ KIỂM TRA TỌA ĐỘ KHI ĐÃ CHỌN BÁN KÍNH HỢP LỆ
+    // ✅ CHỈ BẮT NHẬP GPS KHI ĐÃ CHỌN BÁN KÍNH
     if (
       !window.currentUserCoords ||
       !window.currentUserCoords.lat ||
@@ -1541,12 +1686,13 @@ if (radius && radius !== "" && radius !== "all") {
       showWarningToast(
         "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
       );
-      return false; // ⭐⭐⭐ DỪNG HÀM fetchPlaces(), không filter nữa
+      return false;
     }
 
     const userLat = parseFloat(window.currentUserCoords.lat);
     const userLon = parseFloat(window.currentUserCoords.lon);
 
+    // 🔍 Lọc quán theo bán kính
     filtered = filtered.filter((p) => {
       if (!p.lat || !p.lon) return false;
 
@@ -1557,7 +1703,12 @@ if (radius && radius !== "" && radius !== "all") {
       const d = distance(userLat, userLon, plat, plon);
       return d <= r;
     });
+    
+    console.log(`✅ Đã lọc theo bán kính ${r}km, còn ${filtered.length} quán`);
   }
+} else {
+  // 🔥 QUAN TRỌNG: Nếu KHÔNG CHỌN bán kính → KHÔNG CHECK GPS
+  console.log('ℹ️ Không lọc bán kính, hiển thị tất cả kết quả');
 }
 
     const ok = displayPlaces(filtered, shouldZoom);
@@ -1569,6 +1720,7 @@ if (radius && radius !== "" && radius !== "all") {
   }
 }
 let notFoundCount = 0;
+
 // =============================
 // 🔍 NÚT TÌM KIẾM
 // =============================
@@ -1576,21 +1728,41 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
 
-  const selectedFlavors = Array.from(
+  // ✅ XÓA MARKER GPS NẾU USER XÓA INPUT
+  if (!gpsInputValue || gpsInputValue === "") {
+    // Xóa marker GPS khỏi map
+    if (window.startMarker) {
+      map.removeLayer(window.startMarker);
+      window.startMarker = null;
+      console.log('🧹 Đã xóa marker GPS vì input rỗng');
+    }
+    
+    // Reset tọa độ GPS
+    window.currentUserCoords = null;
+    console.log('🧹 Đã reset currentUserCoords');
+
+  }
+
+
+   const selectedFlavors = Array.from(
     document.querySelectorAll("#flavorDropdown input:checked")
   ).map((c) => c.value);
 
   const budget = document.getElementById("budget").value;
-  let radius = document.getElementById("radius").value; // ⬅ LẤY GIÁ TRỊ
 
-  // ✅ ✅ ✅ FIX CHÍNH Ở ĐÂY ✅ ✅ ✅
-  // Nếu user KHÔNG TỰ CHỌN bán kính (radio không được check) → XÓA giá trị
+  // 🔍 LẤY BÁN KÍNH THEO RADIO ĐANG CHECK
   const radiusChecked = document.querySelector('input[name="radius"]:checked');
-  if (!radiusChecked) {
-    radius = ""; // ⬅ XÓA giá trị để KHÔNG LỌC bán kính
-    document.getElementById("radius").value = ""; // ⬅ Reset luôn hidden input
+  let radius = "";
+
+  if (radiusChecked) {
+    radius = radiusChecked.value;                 // ví dụ: "2", "5", "all"
+    document.getElementById("radius").value = radius; // sync lại hidden input
+  } else {
+    document.getElementById("radius").value = ""; // không có radio nào → không lọc
   }
-  // ✅ ✅ ✅ HẾT FIX ✅ ✅ ✅
+
+  console.log("📏 Radius đang dùng:", radius);
+
 
   // 🔁 Mỗi lần tìm kiếm mới thì tắt chế độ "Quán yêu thích"
   isFavoriteMode = false;
@@ -1635,9 +1807,9 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
     map.setView([coords.lat, coords.lon], 16);
 
     // Có filter → mới tìm quán
-    if (query || selectedFlavors.length > 0 || budget || radius) {
-      result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
-    }
+   // ✅ LUÔN LUÔN gọi fetchPlaces khi có GPS
+// Nếu không có filter gì thì fetchPlaces sẽ hiện tất cả quán gần đó
+result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
   }
 
   // =============================
@@ -1803,6 +1975,34 @@ budgetRadios.forEach(radio => {
         budgetDropdown.classList.remove('show');
     });
 });
+// =========================
+// 🔁 HÀM RESET BÁN KÍNH (DÙNG CHUNG)
+// =========================
+function resetRadiusFilter() {
+  // 1. Xóa hidden input
+  const radiusInput = document.getElementById('radius');
+  if (radiusInput) {
+    radiusInput.value = '';
+  }
+
+  // 2. Bỏ check toàn bộ radio
+  const radiusRadios = document.querySelectorAll('input[name="radius"]');
+  radiusRadios.forEach(r => {
+    r.checked = false;
+  });
+
+  // 3. Đưa text nút về mặc định
+  const radiusBtn = document.getElementById('radiusBtn');
+  if (radiusBtn) {
+    const radiusText = radiusBtn.querySelector('.selected-flavors');
+    if (radiusText) {
+      radiusText.textContent = 'Bán kính tìm kiếm';
+      radiusText.classList.add('empty');
+    }
+  }
+
+  console.log('✅ Đã reset filter bán kính');
+}
 
 // =========================
 // 📏 RADIUS DROPDOWN
@@ -1852,34 +2052,11 @@ document.addEventListener('click', (e) => {
 // 🧹 RESET BÁN KÍNH KHI PAGE LOAD (QUAN TRỌNG!)
 // =========================
 document.addEventListener("DOMContentLoaded", function () {
-  console.log("🧹 Đang reset bán kính về mặc định...");
-  
-  // ✅ Xóa giá trị hidden input
-  const radiusInput = document.getElementById('radius');
-  if (radiusInput) {
-    radiusInput.value = '';
-    console.log("✅ Đã xóa giá trị #radius");
-  }
-  
-  // ✅ Bỏ check tất cả radio buttons
-  const radiusRadios = document.querySelectorAll('input[name="radius"]');
-  radiusRadios.forEach(r => {
-    r.checked = false;
-  });
-  console.log("✅ Đã uncheck tất cả radio buttons");
-  
-  // ✅ Reset text hiển thị trên nút dropdown
-  const radiusBtn = document.getElementById('radiusBtn');
-  if (radiusBtn) {
-    const radiusText = radiusBtn.querySelector('.selected-flavors');
-    if (radiusText) {
-      radiusText.textContent = 'Bán kính tìm kiếm';
-      radiusText.classList.add('empty');
-    }
-    console.log("✅ Đã reset text nút bán kính");
-  }
-  
-  // ✅ Làm tương tự cho budget (nếu cần)
+  console.log("🧹 Đang reset filter mặc định...");
+
+  resetRadiusFilter();
+
+  // ✅ Reset budget tương tự như cũ
   const budgetInput = document.getElementById('budget');
   if (budgetInput) {
     budgetInput.value = '';
@@ -1901,6 +2078,7 @@ document.addEventListener("DOMContentLoaded", function () {
   
   console.log("✅ Hoàn tất reset filter mặc định!");
 });
+
 // =========================
 // 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
 // =========================
@@ -1920,14 +2098,13 @@ let allPlacesCache = [];
 
 input.addEventListener("input", () => {
   const text = input.value.trim().toLowerCase();
-  suggestionsEl.innerHTML = ""; // clear
+  suggestionsEl.innerHTML = "";
 
   if (text.length === 0) {
     suggestionsEl.classList.remove("show");
     return;
   }
 
-  // lọc, giới hạn 8 kết quả
   const filtered = allPlacesCache
     .filter((p) => p.ten_quan && p.ten_quan.toLowerCase().includes(text))
     .slice(0, 8);
@@ -1937,7 +2114,6 @@ input.addEventListener("input", () => {
     return;
   }
 
-  // tạo các div gợi ý (tương thích với CSS .suggestions)
   filtered.forEach((p) => {
     const div = document.createElement("div");
     const cat = detectCategory(p.ten_quan);
@@ -1945,7 +2121,6 @@ input.addEventListener("input", () => {
       ? icons[cat].options.iconUrl
       : icons.default.options.iconUrl;
 
-    // highlight từ khóa trong tên (ví dụ: "phở" -> <b>phở</b>)
     const name = p.ten_quan;
     const idx = name.toLowerCase().indexOf(text);
     let displayName = name;
@@ -1957,32 +2132,100 @@ input.addEventListener("input", () => {
     }
 
     div.innerHTML = `<img src="${iconUrl}" style="width:20px;height:20px;margin-right:8px;object-fit:contain;"> <div style="flex:1">${displayName}</div>`;
-    div.addEventListener("click", async () => {
-      input.value = p.ten_quan;
-      suggestionsEl.classList.remove("show");
-      
-      // 🔥 FIX: Gọi fetchPlaces và sau đó zoom vào quán cụ thể
-      await fetchPlaces(p.ten_quan, [], "", "", false); // shouldZoom = false để không auto-zoom toàn bộ
-      
-      // 🎯 Zoom trực tiếp vào marker của quán này
-      if (p.lat && p.lon) {
-        const lat = parseFloat(p.lat.toString().replace(",", "."));
-        const lon = parseFloat(p.lon.toString().replace(",", "."));
-        if (!isNaN(lat) && !isNaN(lon)) {
-          map.setView([lat, lon], 17); // zoom level 17 để nhìn rõ
-          
-          // Mở popup của marker này (nếu có)
-          if (window.allMarkers) {
-            const marker = window.allMarkers.find(m => 
-              m.getLatLng().lat === lat && m.getLatLng().lng === lon
-            );
-            if (marker) {
-              marker.openPopup();
-            }
-          }
-        }
-      }
-    });
+    
+    // 🔥🔥🔥 LOGIC MỚI BẮT ĐẦU TỪ ĐÂY 🔥🔥🔥
+   div.addEventListener("click", async () => {
+  input.value = p.ten_quan;
+  suggestionsEl.classList.remove("show");
+
+  const lat = parseFloat(p.lat?.toString().replace(",", "."));
+  const lon = parseFloat(p.lon?.toString().replace(",", "."));
+
+  if (isNaN(lat) || isNaN(lon)) {
+    alert("⚠️ Quán này không có tọa độ!");
+    return;
+  }
+
+  console.log("🎯 [AUTOCOMPLETE] Clicked:", p.ten_quan);
+
+  // // 🔥 BƯỚC 1: TẮT lazy load HOÀN TOÀN
+
+  // 🔥 BƯỚC 2: XÓA TẤT CẢ MARKER CŨ
+  clearAllMarkers();
+  console.log("🧹 [AUTOCOMPLETE] Cleared all old markers");
+
+  // 🔥 BƯỚC 3: Reset biến toàn cục
+  allPlacesData = [p]; // ⬅️ CHỈ GIỮ LẠI QUÁN NÀY
+  visibleMarkers.clear();
+  markers = [];
+  window.placeMarkersById = {};
+
+  // 🔥 BƯỚC 4: Zoom đến quán
+  map.setView([lat, lon], 17);
+  console.log("📍 [AUTOCOMPLETE] Zoomed to:", lat, lon);
+
+  // 🔥 BƯỚC 5: Tạo marker SAU KHI ZOOM XONG
+ setTimeout(() => {
+  console.log("🏗️ [AUTOCOMPLETE] Creating marker...");
+
+  const marker = createMarker(p, lat, lon);
+  markers.push(marker);
+
+  // ❗ FIX: marker autocomplete luôn nằm trực tiếp trên map
+  marker.addTo(map);
+
+  const placeId = p.data_id || p.ten_quan;
+  window.placeMarkersById[placeId] = marker;
+  visibleMarkers.add(placeId);
+
+  console.log("✅ [AUTOCOMPLETE] Marker created");
+
+  window.permanentMarker = marker;
+  window.permanentMarkerData = p;
+
+   // 🔥 BẬT LẠI LAZY LOAD NHƯNG VỚI LOGIC KHÁC
+map.on("moveend", () => {
+  // 🔒 Nếu không còn permanentMarker (đã bị xoá khi search mới) thì thoát luôn
+  if (!window.permanentMarker) return;
+
+  let markerExists = false;
+  
+  if (window.markerClusterGroup && window.markerClusterGroup.hasLayer(window.permanentMarker)) {
+    markerExists = true;
+  }
+  
+  if (map.hasLayer(window.permanentMarker)) {
+    markerExists = true;
+  }
+  
+  if (!markerExists) {
+    console.log("🔄 [AUTOCOMPLETE] Re-adding permanent marker");
+    
+    if (window.markerClusterGroup) {
+      window.markerClusterGroup.addLayer(window.permanentMarker);
+    } else {
+      window.permanentMarker.addTo(map);
+    }
+    
+    const placeId = window.permanentMarkerData.data_id || window.permanentMarkerData.ten_quan;
+    if (placeId) {
+      window.placeMarkersById[placeId] = window.permanentMarker;
+      visibleMarkers.add(placeId);
+    }
+  }
+});
+
+
+    // 🔥 CLICK VÀO MARKER
+    setTimeout(() => {
+      marker.fire("click");
+      console.log("🔥 [AUTOCOMPLETE] Marker clicked");
+    }, 300);
+
+  }, 700);
+});
+    // 🔥🔥🔥 LOGIC MỚI KẾT THÚC 🔥🔥🔥
+
     suggestionsEl.appendChild(div);
   });
 
@@ -2985,20 +3228,3 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
-function clearAllMarkers() {
-    // Xóa toàn bộ markers trong map
-    map.eachLayer(layer => {
-        if (layer instanceof L.Marker) {
-            map.removeLayer(layer);
-        }
-    });
-
-    // Xóa tất cả cluster (dù là biến nào)
-    if (markerClusterGroup) markerClusterGroup.clearLayers();
-    if (window.markerClusterGroup) window.markerClusterGroup.clearLayers();
-
-    // Reset data
-    markers = [];
-    visibleMarkers.clear();
-    window.placeMarkersById = {};
-}

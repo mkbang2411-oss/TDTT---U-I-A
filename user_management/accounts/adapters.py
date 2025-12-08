@@ -108,6 +108,31 @@ class CustomAccountAdapter(DefaultAccountAdapter):
         """
         # Trả về True vì logic kiểm tra email đã được đưa vào save_user.
         return True
+    
+    def authentication_failed(self, request, **credentials):
+        """
+        Override để custom thông báo lỗi khi đăng nhập thất bại
+        """
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        # Lấy email/username từ credentials
+        login = credentials.get('username') or credentials.get('email')
+        
+        if login:
+            # Kiểm tra xem user có tồn tại không
+            try:
+                User.objects.get(email__iexact=login)
+                # User tồn tại -> lỗi là mật khẩu sai
+                from django.core.exceptions import ValidationError
+                raise ValidationError('Mật khẩu không chính xác')
+            except User.DoesNotExist:
+                # User không tồn tại
+                from django.core.exceptions import ValidationError
+                raise ValidationError('Không tìm thấy người dùng với email này')
+        
+        # Fallback về message mặc định
+        super().authentication_failed(request, **credentials)
 
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
