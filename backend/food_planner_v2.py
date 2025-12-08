@@ -7150,11 +7150,9 @@ async function checkPendingSuggestions(planId) {
             data.suggestions.filter(s => s.status === 'pending') : [];
         
         if (pendingSuggestions.length > 0) {
-            // Có đề xuất pending → hiện nút
             suggestionsBtn.style.display = 'flex';
             suggestionCount.textContent = pendingSuggestions.length;
         } else {
-            // Không còn pending → ẩn nút
             suggestionsBtn.style.display = 'none';
             suggestionCount.textContent = '0';
         }
@@ -8171,17 +8169,58 @@ async function rejectChange(suggestionId, changeIndex, changeType, changeKey) {
     }
 }
 
-// ========== APPROVE ALL CHANGES - GỬI TẤT CẢ THAY ĐỔI ĐÃ ĐÁNH DẤU ==========
 async function approveAllChanges(suggestionId) {
-    // 🔥 KIỂM TRA CÓ THAY ĐỔI NÀO CHƯA
     const pending = pendingApprovals[suggestionId];
-    if (!pending || pending.approvedChanges.length === 0) {
-        alert('⚠️ Bạn chưa chọn thay đổi nào để chấp nhận!');
-        return;
+    
+    // 🔥 FIX: Nếu không có pending data, lấy TẤT CẢ thay đổi từ suggestion
+    if (!pending || (!pending.approvedChanges.length && !pending.rejectedChanges.length)) {
+        try {
+            // Lấy chi tiết suggestion từ API
+            const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
+            const data = await response.json();
+            
+            if (data.status !== 'success') {
+                alert('❌ ' + data.message);
+                return;
+            }
+            
+            const suggestion = data.suggestion;
+            const changes = analyzeChanges(suggestion.current_data, suggestion.suggested_data);
+            
+            // 🔥 TỰ ĐỘNG CHẤP NHẬN TẤT CẢ thay đổi
+            if (!pendingApprovals[suggestionId]) {
+                pendingApprovals[suggestionId] = {
+                    approvedChanges: [],
+                    rejectedChanges: []
+                };
+            }
+            
+            changes.forEach((change, index) => {
+                pendingApprovals[suggestionId].approvedChanges.push({
+                    changeIndex: index,
+                    changeType: change.type,
+                    changeKey: change.key
+                });
+            });
+            
+            console.log('✅ Đã tự động chấp nhận tất cả thay đổi:', pendingApprovals[suggestionId]);
+            
+        } catch (error) {
+            console.error('Error loading suggestion:', error);
+            alert('⚠️ Không thể tải thông tin đề xuất');
+            return;
+        }
     }
     
-    const approvedCount = pending.approvedChanges.length;
-    const rejectedCount = pending.rejectedChanges.length;
+    // 🔥 TIẾP TỤC LOGIC CŨ
+    const approvedCount = pendingApprovals[suggestionId].approvedChanges.length;
+    const rejectedCount = pendingApprovals[suggestionId].rejectedChanges.length;
+    
+    // 🔥 CHỈ CẢNH BÁO NẾU TẤT CẢ ĐỀU BỊ REJECT
+    if (approvedCount === 0 && rejectedCount > 0) {
+        alert('⚠️ Bạn đã từ chối tất cả thay đổi. Không có gì để chấp nhận!');
+        return;
+    }
     
     const confirmMsg = `
 📊 Tổng kết:
@@ -8194,45 +8233,35 @@ Xác nhận áp dụng các thay đổi đã chọn?
     if (!confirm(confirmMsg)) return;
     
     try {
-        // 🔥 GỬI TỪNG THAY ĐỔI ĐÃ APPROVE
-        let successCount = 0;
+        // 🔥 GỌI API - GỬI TẤT CẢ THAY ĐỔI 1 LẦN
+        const response = await fetch('/api/accounts/food-plan/approve-all-changes/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                suggestion_id: suggestionId,
+                approved_changes: pendingApprovals[suggestionId].approvedChanges
+            })
+        });
         
-        for (const change of pending.approvedChanges) {
-            const response = await fetch(`/api/accounts/food-plan/suggestion-approve-single/`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    suggestion_id: suggestionId,
-                    change_type: change.changeType,
-                    change_key: change.changeKey
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                successCount++;
-            } else {
-                console.error('Lỗi áp dụng thay đổi:', result.message);
-            }
-        }
+        const result = await response.json();
         
-        if (successCount > 0) {
-            alert(`✅ Đã áp dụng ${successCount}/${approvedCount} thay đổi!`);
+        if (result.status === 'success') {
+            alert(`✅ Đã áp dụng ${result.applied_count} thay đổi!`);
             
             // 🔥 XÓA TRẠNG THÁI TẠM
             delete pendingApprovals[suggestionId];
             
-            // Đóng modal và reload
+            // Đóng modal
             closeComparisonModal();
             closeSuggestionsModal();
             
+            // 🔥 RELOAD LẠI PLAN VÀ CHECK SUGGESTIONS
             if (currentPlanId) {
                 await checkPendingSuggestions(currentPlanId);
                 await loadSavedPlans(currentPlanId, true);
             }
         } else {
-            alert('❌ Không thể áp dụng thay đổi nào!');
+            alert('❌ ' + result.message);
         }
         
     } catch (error) {

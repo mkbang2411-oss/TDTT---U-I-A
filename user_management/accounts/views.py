@@ -2875,6 +2875,99 @@ def suggestion_approve_single(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+@csrf_exempt
+@require_POST
+@login_required
+def approve_all_changes_api(request):
+    """
+    Chấp nhận tất cả thay đổi đã đánh dấu
+    POST /api/accounts/food-plan/approve-all-changes/
+    """
+    try:
+        data = json.loads(request.body)
+        suggestion_id = data.get('suggestion_id')
+        approved_changes = data.get('approved_changes', [])
+        
+        # Lấy suggestion
+        suggestion = PlanEditSuggestion.objects.select_related(
+            'shared_plan__food_plan'
+        ).get(id=suggestion_id)
+        
+        # Kiểm tra quyền
+        if suggestion.shared_plan.food_plan.user != request.user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền duyệt suggestion này'
+            }, status=403)
+        
+        # Kiểm tra status
+        if suggestion.status != 'pending':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Suggestion đã được xử lý ({suggestion.status})'
+            }, status=400)
+        
+        # Áp dụng các thay đổi
+        plan = suggestion.shared_plan.food_plan
+        current_data = list(plan.plan_data)
+        suggested_data = suggestion.suggested_data
+        
+        success_count = 0
+        
+        for change in approved_changes:
+            change_type = change['changeType']
+            change_key = change['changeKey']
+            
+            if change_type == 'added':
+                new_item = next((item for item in suggested_data if item['key'] == change_key), None)
+                if new_item and not any(item['key'] == change_key for item in current_data):
+                    current_data.append(new_item)
+                    success_count += 1
+                    
+            elif change_type == 'removed':
+                original_length = len(current_data)
+                current_data = [item for item in current_data if item['key'] != change_key]
+                if len(current_data) < original_length:
+                    success_count += 1
+                    
+            elif change_type == 'modified':
+                new_item = next((item for item in suggested_data if item['key'] == change_key), None)
+                if new_item:
+                    for i, item in enumerate(current_data):
+                        if item['key'] == change_key:
+                            current_data[i] = new_item
+                            success_count += 1
+                            break
+        
+        # ✅ LƯU PLAN
+        plan.plan_data = current_data
+        plan.save()
+        
+        # 🔥 QUAN TRỌNG: CẬP NHẬT STATUS SUGGESTION
+        suggestion.status = 'accepted'
+        suggestion.reviewed_at = timezone.now()
+        suggestion.save()
+        
+        print(f"✅ [APPROVE ALL] Updated suggestion {suggestion_id} to 'accepted'")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Đã áp dụng {success_count} thay đổi',
+            'applied_count': success_count
+        })
+        
+    except PlanEditSuggestion.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy suggestion'
+        }, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)    
 # ==========================================================
 # 🍽️ USER PREFERENCES APIs
 # ==========================================================
