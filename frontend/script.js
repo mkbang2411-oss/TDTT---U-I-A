@@ -169,13 +169,13 @@ if (!document.getElementById('custom-alert-style')) {
 // =========================
 const icons = {
   default: L.icon({
-    iconUrl: "icons/icon.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/icon.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-    iconUrl: "icons/star.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
