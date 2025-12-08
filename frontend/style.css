@@ -1581,6 +1581,17 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+.notification-badge.new {
+    background: linear-gradient(135deg, #FFB084, #FF8E53);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);
+}
+
+.notification-badge.read {
+    background: #e0e0e0;
+    color: #888888;
+}
+
 /* Animation lắc chuông */
 @keyframes bellRing {
     0%, 100% { transform: rotate(0deg); }
@@ -1716,6 +1727,7 @@ body {
     padding: 12px 16px;
     overflow-y: auto;
     max-height: 60vh;
+    overflow-x: hidden;
     background: #FFF5F0;
 }
 
@@ -1868,14 +1880,15 @@ body {
 }
 
 .notification-item-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* ✅ Đẩy phần phải sang góc */
+    gap: 8px;
     font-size: 11px;
     color: #6b7280;
     margin-top: 2px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
     font-weight: 500;
-    position: relative; /* ← THÊM */
+    position: relative;
     z-index: 2;
 }
 
@@ -1884,37 +1897,87 @@ body {
     font-size: 12px;
 }
 
-/* 🔴 BADGE MỚI */
-.notification-item:not(.read) .notification-item-meta::after {
-    content: 'Mới';
-    background: linear-gradient(135deg, #FFB084, #FF8E53);
-    color: #ffffff;
+.notification-item-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* ========== BADGE MỚI/ĐÃ ĐỌC ========== */
+.notification-status-badge {
     font-size: 10px;
     font-weight: 700;
     padding: 3px 8px;
     border-radius: 12px;
-    margin-left: auto;
-    box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);
-    letter-spacing: 0.3px;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
-/* ✓ ĐÃ ĐỌC */
-.notification-item.read .notification-item-meta::after {
-    content: 'Đã đọc';
+.notification-item:not(.read) .notification-status-badge {
+    content: 'Mới';
+    background: linear-gradient(135deg, #FFB084, #FF8E53);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);
+}
+
+.notification-item.read .notification-status-badge {
     background: #e0e0e0;
     color: #888888;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 12px;
-    margin-left: auto;
+}
+
+/* ========== NÚT XÓA THÔNG BÁO ========== */
+.notification-item-delete {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #EF4444;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.notification-item-delete:hover {
+    background: #EF4444;
+    color: white;
+    border-color: #EF4444;
+    transform: scale(1.1);
+}
+
+.notification-item-delete:active {
+    transform: scale(0.95);
+}
+
+.notification-item-delete svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+}
+/* ✅ CHỈNH LẠI .notification-item-meta - THÊM FLEXBOX */
+.notification-item-meta {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    position: relative;
+    z-index: 2;
 }
 
 .notification-modal-footer {
     padding: 12px 16px;
     border-top: 1px solid #FFE5D9;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between; /* ✅ ĐỔI từ flex-end */
+    gap: 3px; /* ✅ THÊM khoảng cách */
     background: linear-gradient(
         135deg,
         #FFF5F0 0%,
@@ -1996,6 +2059,57 @@ body {
     .notification-list {
         max-height: 70vh;
     }
+}
+
+/* ========== HIỆU ỨNG XÓA THÔNG BÁO - TRƯỢT SANG PHẢI ========== */
+.notification-item.deleting {
+    animation: slideOutRight 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+    pointer-events: none; /* Ngăn click trong lúc xóa */
+}
+
+@keyframes slideOutRight {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(120%);
+    }
+}
+
+/* ========== NÚT XÓA TẤT CẢ THÔNG BÁO ========== */
+.notification-delete-all-btn {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #EF4444;
+    cursor: pointer;
+    padding: 10px 18px;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.notification-delete-all-btn:hover {
+    background: #EF4444;
+    color: white;
+    border-color: #EF4444;
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+}
+
+.notification-delete-all-btn:active {
+    transform: translateY(0);
+}
+
+.notification-delete-all-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
 }
 
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/

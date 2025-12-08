@@ -1187,12 +1187,33 @@ def streak_handler(request):
                     profile.save()
                     print("   ❄️ STREAK FROZEN")
             
+            # ✅ KIỂM TRA ĐÃ HIỆN POPUP FROZEN HÔM NAY CHƯA
+            from .models import StreakPopupLog
+            
+            # 🔥 SỬA: Kiểm tra CẢ frozen VÀ milestone popup
+            has_shown_frozen_today = StreakPopupLog.objects.filter(
+                user=user,
+                popup_type='frozen',
+                shown_at__date=today
+            ).exists()
+            
+            has_shown_milestone_today = StreakPopupLog.objects.filter(
+                user=user,
+                popup_type='milestone',
+                shown_at__date=today
+            ).exists()
+            
+            print(f"   Has shown frozen popup today: {has_shown_frozen_today}")
+            print(f"   Has shown milestone popup today: {has_shown_milestone_today}")
+            
             return JsonResponse({
                 'status': 'success',
                 'streak': profile.current_streak,
                 'longest_streak': profile.longest_streak,
                 'is_frozen': profile.streak_frozen,
-                'last_update': profile.last_streak_date.isoformat() if profile.last_streak_date else None
+                'last_update': profile.last_streak_date.isoformat() if profile.last_streak_date else None,
+                'has_shown_frozen_popup': has_shown_frozen_today,  # ✅ Trả về cho frontend
+                'has_shown_milestone_popup': has_shown_milestone_today  # ✅ THÊM field mới
             })
             
         except Exception as e:
@@ -3290,6 +3311,46 @@ def record_favorite_view(request, user_id):
         }, status=404)
     except Exception as e:
         return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@csrf_exempt
+@require_POST
+@login_required
+def log_streak_popup_api(request):
+    """
+    Log rằng popup đã được hiện
+    POST /api/accounts/streak/log-popup/
+    Body: {
+        "popup_type": "frozen",  // frozen/milestone
+        "streak_value": 0
+    }
+    """
+    try:
+        from .models import StreakPopupLog
+        
+        data = json.loads(request.body)
+        popup_type = data.get('popup_type', 'frozen')
+        streak_value = data.get('streak_value', 0)
+        
+        # Tạo log
+        StreakPopupLog.objects.create(
+            user=request.user,
+            popup_type=popup_type,
+            streak_value=streak_value
+        )
+        
+        print(f"✅ [LOG POPUP] User: {request.user.username}, Type: {popup_type}")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã log popup'
+        })
+        
+    except Exception as e:
+        print(f"❌ [LOG POPUP ERROR] {e}")
+        return JsonResponse({
             'status': 'error',
             'message': str(e)
         }, status=500)

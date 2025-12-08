@@ -10,7 +10,8 @@ urlpatterns = [
     path('friend-requests/<int:user_id>/', views.get_friend_requests, name='get_friend_requests'),
     path('users/search/', views.search_user, name='search_user'),
     path('current-user/', views.get_current_user, name='get_current_user'),
-    path('api/streak/', views.streak_handler, name='streak_handler'),
+    path('streak/', views.streak_handler, name='streak_handler'),
+    path('streak/log-popup/', views.log_streak_popup_api, name='log_streak_popup'),
     path('friend/unfriend/', views.unfriend, name='unfriend'),
     path('friend/<int:friend_id>/favorites/', views.get_friend_favorites, name='get_friend_favorites'),
     path('geocode/', views.geocode_proxy, name='geocode'),
@@ -45,11 +46,11 @@ urlpatterns = [
     path('food-plan/suggestion-approve-single/', views.suggestion_approve_single, name='suggestion_approve_single'),
 
     # 🔔 NOTIFICATION APIs
+    path('notifications/<int:notification_id>/delete/', views.delete_notification_api, name='delete_notification'),
     path('notifications/', views.get_notifications_api, name='get_notifications'),
     path('notifications/stream/', views.notification_stream, name='notification_stream'),
     path('notifications/<int:notification_id>/read/', views.mark_notification_read_api, name='mark_notification_read'),
     path('notifications/read-all/', views.mark_all_notifications_read_api, name='mark_all_notifications_read'),
-    path('notifications/<int:notification_id>/delete/', views.delete_notification_api, name='delete_notification'),
     path('notifications/clear-all/', views.clear_all_notifications_api, name='clear_all_notifications'),
     path('friend/<int:user_id>/favorites/view/', views.record_favorite_view, name='record_favorite_view'),
 ]
