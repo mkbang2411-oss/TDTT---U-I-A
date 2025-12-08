@@ -445,3 +445,18 @@ class Notification(models.Model):
             self.is_read = True
             self.read_at = timezone.now()
             self.save()
+
+class StreakPopupLog(models.Model):
+    """
+    Lưu lịch sử hiển thị popup streak frozen
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='streak_popups')
+    popup_type = models.CharField(max_length=20, default='frozen')  # frozen/milestone
+    shown_at = models.DateTimeField(auto_now_add=True)
+    streak_value = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['-shown_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.popup_type} popup at {self.shown_at}"

@@ -60,6 +60,15 @@
                 <button id="markAllAsReadBtn" class="notification-footer-btn">
                     ✔ Đánh dấu tất cả đã đọc
                 </button>
+
+                <button id="deleteAllNotificationsBtn" class="notification-delete-all-btn" title="Xóa tất cả thông báo">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Xóa tất cả
+                </button>
+
             </div>
         </div>
     </div>
@@ -466,7 +475,37 @@
     }
 
     let notifications = [];
-    let eventSource = null;  // ✅ SSE connection
+    let eventSource = null;
+
+    async function deleteNotification(notificationId) {
+        try {
+
+            const itemEl = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
+            if (itemEl) {
+                itemEl.classList.add('deleting');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 400));
+
+            const res = await fetch(`/api/accounts/notifications/${notificationId}/delete/`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            if (res.ok) {
+                // Xóa khỏi mảng local
+                notifications = notifications.filter(n => n.id != notificationId);
+                
+                // Re-render
+                renderList();
+                updateBadge();
+                
+            }
+        } catch (err) {
+            console.error('Lỗi khi xóa notification', err);
+            showToast('Lỗi khi xóa thông báo', 'error');
+        }
+    }
 
     function updateBadge() {
         if (!notificationBadge) return;
@@ -573,34 +612,63 @@
         }
 
         const itemsHtml = notifications
-        .slice()
-        .sort(function (a, b) {
-            return new Date(b.created_at) - new Date(a.created_at);
-        })
-        .map(function (n) {
-            return (
-            '<div class="notification-item ' + (n.is_read ? 'read' : '') + '" data-id="' + n.id + '">' +
-                '<div class="notification-item-title">' + n.title + '</div>' +
-                '<div class="notification-item-message">' + n.message + '</div>' +
-                (n.created_at ? '<div class="notification-item-meta">' + formatTimeVi(n.created_at) + '</div>' : '') +
-            '</div>'
-            );
-        })
-        .join('');
+            .slice()
+            .sort(function (a, b) {
+                return new Date(b.created_at) - new Date(a.created_at);
+            })
+            .map(function (n) {
+                return (
+                    '<div class="notification-item ' + (n.is_read ? 'read' : '') + '" data-id="' + n.id + '">' +
+                        '<div class="notification-item-title">' + n.title + '</div>' +
+                        '<div class="notification-item-message">' + n.message + '</div>' +
+                        (n.created_at ? 
+                            '<div class="notification-item-meta">' +
+                                formatTimeVi(n.created_at) +
+                                '<div class="notification-item-meta-right">' +
+                                    '<span class="notification-status-badge">' +
+                                        (n.is_read ? 'Đã đọc' : 'Mới') +
+                                    '</span>' +
+                                    '<button class="notification-item-delete" data-id="' + n.id + '" title="Xóa thông báo">' +
+                                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                                            '<polyline points="3 6 5 6 21 6"/>' +
+                                            '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+                                        '</svg>' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>'
+                        : '') +
+                    '</div>'
+                );
+            })
+            .join('');
 
         listEl.innerHTML = itemsHtml;
 
         const itemEls = listEl.querySelectorAll('.notification-item');
         itemEls.forEach(function (el) {
-        el.addEventListener('click', function () {
-            const id = el.getAttribute('data-id');
-            const item = notifications.find(function (n) { return n.id == id; });
-            if (!item) return;
-            
-            closeAllOtherPopups(item.type);
-            handleNotificationClick(item);
-            markNotificationAsRead(item.id);
+            el.addEventListener('click', function () {
+                const id = el.getAttribute('data-id');
+                const item = notifications.find(function (n) { return n.id == id; });
+                if (!item) return;
+                
+                closeAllOtherPopups(item.type);
+                handleNotificationClick(item);
+                markNotificationAsRead(item.id);
+            });
         });
+
+        const deleteButtons = listEl.querySelectorAll('.notification-item-delete');
+        deleteButtons.forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation(); // Ngăn trigger click vào notification-item
+                
+                const id = btn.getAttribute('data-id');
+                
+                // Xác nhận xóa
+                if (confirm('Bạn có chắc muốn xóa thông báo này?')) {
+                    deleteNotification(id);
+                }
+            });
         });
     }
 
@@ -646,6 +714,37 @@
     if (markAllBtn) {
         markAllBtn.addEventListener('click', function () {
         markAllNotificationsAsRead();
+        });
+    }
+
+    // ========== XÓA TẤT CẢ THÔNG BÁO ==========
+    const deleteAllBtn = document.getElementById('deleteAllNotificationsBtn');
+
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener('click', async function () {
+            // ✅ XÁC NHẬN TRƯỚC KHI XÓA
+            if (!confirm('⚠️ Bạn có chắc muốn xóa TẤT CẢ thông báo?\n\nHành động này không thể hoàn tác!')) {
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/accounts/notifications/clear-all/', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // ✅ XÓA TOÀN BỘ DANH SÁCH LOCAL
+                    notifications = [];
+                    renderList();
+                    updateBadge();
+                }
+            } catch (err) {
+                console.error('❌ Lỗi xóa tất cả notifications:', err);
+                showToast('❌ Lỗi kết nối', 'error');
+            }
         });
     }
 

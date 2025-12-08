@@ -75,6 +75,95 @@ let lastSearchParams = {
   budget: "",
   radius: ""
 };
+// ==========================================================
+// 🔔 CUSTOM ALERT - THÊM ĐOẠN NÀY VÀO SAU PHẦN KHAI BÁO BIẾN
+// ==========================================================
+function showCustomAlert(message, type = 'info') {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+  `;
+
+  const popup = document.createElement('div');
+  popup.style.cssText = `
+    background: #fff5f0;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease;
+    position: relative;
+  `;
+
+  let icon = '🔔';
+  let iconColor = '#ff9966';
+  if (type === 'success') {
+    icon = '✅';
+    iconColor = '#4caf50';
+  } else if (type === 'error') {
+    icon = '❌';
+    iconColor = '#f44336';
+  } else if (type === 'warning') {
+    icon = '⚠️';
+    iconColor = '#ff9800';
+  }
+
+  popup.innerHTML = `
+    <div style="display: flex; align-items: start; gap: 15px;">
+      <div style="font-size: 32px;">${icon}</div>
+      <div style="flex: 1;">
+        <h3 style="margin: 0 0 10px 0; color: ${iconColor}; font-size: 20px; font-weight: 600;">Thông báo</h3>
+        <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
+      </div>
+      <button id="closeAlertBtn" style="background: none; border: none; font-size: 24px; color: #999; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;">×</button>
+    </div>
+    <button id="okAlertBtn" style="margin-top: 20px; width: 100%; padding: 12px; background: linear-gradient(135deg, ${iconColor} 0%, ${iconColor}dd 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s;">OK</button>
+  `;
+
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+
+  const closeBtn = popup.querySelector('#closeAlertBtn');
+  closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#f0f0f0'; });
+  closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'none'; });
+
+  const okBtn = popup.querySelector('#okAlertBtn');
+  okBtn.addEventListener('mouseenter', () => { okBtn.style.transform = 'scale(1.02)'; });
+  okBtn.addEventListener('mouseleave', () => { okBtn.style.transform = 'scale(1)'; });
+
+  const closePopup = () => {
+    overlay.style.animation = 'fadeOut 0.3s ease';
+    popup.style.animation = 'slideUp 0.3s ease';
+    setTimeout(() => overlay.remove(), 300);
+  };
+
+  closeBtn.addEventListener('click', closePopup);
+  okBtn.addEventListener('click', closePopup);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closePopup(); });
+}
+
+if (!document.getElementById('custom-alert-style')) {
+  const style = document.createElement('style');
+  style.id = 'custom-alert-style';
+  style.textContent = `
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-50px); opacity: 0; } }
+  `;
+  document.head.appendChild(style);
+}
 // =========================
 // 🍴 ICON TƯƠNG ỨNG LOẠI QUÁN
 // =========================
@@ -1175,7 +1264,7 @@ async function showFavoritePlaces() {
     console.log('   📦 Data:', favorites);
 
     if (!favorites.length) {
-      alert("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
+      showWarningToast("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
       return false;
     }
 
@@ -1223,7 +1312,7 @@ async function showFavoritePlaces() {
     return true;
   } catch (err) {
     console.error("❌ [FAVORITES ERROR]:", err);
-    alert("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
+    showWarningToast("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
     return false;
   }
 }
@@ -1534,7 +1623,7 @@ if (radius && radius !== "" && radius !== "all") {
       !window.currentUserCoords.lat ||
       !window.currentUserCoords.lon
     ) {
-      alert(
+      showWarningToast(
         "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
       );
       return false; // ⭐⭐⭐ DỪNG HÀM fetchPlaces(), không filter nữa
@@ -1560,7 +1649,7 @@ if (radius && radius !== "" && radius !== "all") {
     return ok;
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
-    alert("Không thể tải dữ liệu từ server!");
+    showWarningToast("Không thể tải dữ liệu từ server!");
     return false;
   }
 }
@@ -1760,7 +1849,15 @@ checkboxes.forEach((cb) => {
 // =======================================================
 // ✅ TẢI LẦN ĐẦU
 // =======================================================
-fetchPlaces("", [], "", "", false); // shouldZoom 
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // ✅ Chỉ load quán mặc định khi KHÔNG phải chế độ xem quán bạn bè
+  if (urlParams.get('view') !== 'friend-favorites') {
+    fetchPlaces("", [], "", "", false);
+  }
+  // Nếu là chế độ bạn bè thì logic phía dưới sẽ xử lý
+});
 
 // =========================
 // 💰 BUDGET DROPDOWN
@@ -2111,12 +2208,12 @@ async function geocodeAddress(address) {
       };
     }
 
-    alert("❌ Không tìm thấy địa điểm này!");
+    showWarningToast("❌ Không tìm thấy địa điểm này!");
     return null;
     
   } catch (err) {
     console.error("Lỗi khi geocode:", err);
-    alert("❌ Lỗi khi tìm địa điểm: " + err.message);
+    showWarningToast("❌ Lỗi khi tìm địa điểm: " + err.message);
     return null;
   }
 }
@@ -2126,7 +2223,7 @@ async function geocodeAddress(address) {
 // =========================
 document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
   if (!navigator.geolocation) {
-    alert("Trình duyệt không hỗ trợ định vị GPS!");
+    showWarningToast("Trình duyệt không hỗ trợ định vị GPS!");
     return;
   }
 
@@ -2162,7 +2259,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
       map.setView([userLat, userLon], 16);
     },
     (err) => {
-      alert("Không thể lấy vị trí của bạn: " + err.message);
+      showWarningToast("Không thể lấy vị trí của bạn: " + err.message);
     }
   );
 });
@@ -2392,7 +2489,7 @@ window.addEventListener('DOMContentLoaded', () => {
             
             // ✅ Kiểm tra dữ liệu có hợp lệ không
             if (!places || places.length === 0) {
-                alert(`${friendName} chưa có quán yêu thích nào`);
+                showWarningToast(`${friendName} chưa có quán yêu thích nào`);
                 localStorage.removeItem('friendFavorites');
                 return;
             }
@@ -2409,7 +2506,7 @@ window.addEventListener('DOMContentLoaded', () => {
             
             // ✅ QUAN TRỌNG: Đợi 500ms để đảm bảo map đã load xong
             setTimeout(() => {
-                alert(`Đang hiển thị ${places.length} quán yêu thích của ${friendName}`);
+                showCustomAlert(`Đang hiển thị ${places.length} quán yêu thích của ${friendName}`);
                 
                 // ✅ Xóa TẤT CẢ marker cũ trước khi hiển thị
                 if (window.markerClusterGroup) {
