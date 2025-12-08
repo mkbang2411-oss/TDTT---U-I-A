@@ -31,6 +31,13 @@
 
     body.logged-in .guest-only { display: none; }
     body.logged-in .user-only { display: flex !important; } /* ĐỔI: block → flex */
+
+    /* 🔥 TẮT KHUNG ĐEN KHI CLICK VÀO ĐƯỜNG ĐI TRÊN MAP */
+    #map .leaflet-interactive:focus,
+    #map .leaflet-interactive:focus-visible {
+        outline: none !important;
+        outline-offset: 0;
+    }
 </style>
 
 
