@@ -557,27 +557,31 @@ console.log('⚠️ [displayPlaces] Removed old lazy load listener');
     });
 
     places.forEach((p) => {
-      const lat = parseFloat(p.lat?.toString().replace(",", "."));
-      const lon = parseFloat(p.lon?.toString().replace(",", "."));
-      
-      if (isNaN(lat) || isNaN(lon)) return;
-      
-      const placeId = p.data_id || p.ten_quan;
-      
-      // Tạo marker
-      const marker = createMarker(p, lat, lon);
-      markers.push(marker);
-      visibleMarkers.add(placeId);
+  const lat = parseFloat(p.lat?.toString().replace(",", "."));
+  const lon = parseFloat(p.lon?.toString().replace(",", "."));
+  
+  if (isNaN(lat) || isNaN(lon)) return;
+  
+  const placeId = p.data_id || p.ten_quan;
+  
+  // Tạo marker
+  const marker = createMarker(p, lat, lon);
+  markers.push(marker);
+  visibleMarkers.add(placeId);
 
-      if (isSinglePlaceMode) {
-        // ✅ CASE CHỈ 1 QUÁN: add thẳng vào map, không dùng cluster
-        marker.addTo(map);
-        console.log('✅ [displayPlaces] Single-place mode: marker add trực tiếp vào map');
-      } else {
-        // ✅ Nhiều quán: dùng cluster như cũ
-        markerClusterGroup.addLayer(marker);
-      }
-    });
+  // 🔥 LOGIC MỚI: Nếu favorite mode VÀ chỉ 1 quán → add thẳng vào map
+  if (isFavoriteMode && places.length === 1) {
+    marker.addTo(map);
+    console.log('✅ [FAVORITES] 1 quán yêu thích → marker add trực tiếp vào map');
+    console.log('   📍 Position:', lat, lon);
+    console.log('   🏷️ ID:', placeId);
+  } 
+  // ✅ Trường hợp khác: dùng cluster bình thường
+  else {
+    markerClusterGroup.addLayer(marker);
+    console.log('✅ [NORMAL] Marker add vào cluster');
+  }
+});
 
 
 
@@ -1737,7 +1741,10 @@ if (!gpsInputValue || gpsInputValue === "") {
           iconSize: [120, 100],
           iconAnchor: [60, 100],
       }),
-    }).addTo(map)
+    })
+      .addTo(map)
+      .bindPopup(`📍 ${gpsInputValue}`)
+      .openPopup();
 
     window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
 
@@ -2275,7 +2282,10 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
           iconSize: [120, 100],
           iconAnchor: [60, 100],
         }),
-      }).addTo(map)
+      })
+        .addTo(map)
+        .bindPopup("📍 Bạn đang ở đây (tọa độ thật)")
+        .openPopup();
 
       map.setView([userLat, userLon], 16);
     },
