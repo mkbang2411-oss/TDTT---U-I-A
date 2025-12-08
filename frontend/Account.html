@@ -612,45 +612,73 @@
       }
 
       // GỬI LỜI MỜI KẾT BẠN
-      async function sendFriendRequest(receiverId) {
-        // ✅ Đảm bảo đã load user ID
-        await ensureUserLoaded();
+      async function sendFriendRequest(receiverId, buttonElement) {
+  // ✅ Đảm bảo đã load user ID
+  await ensureUserLoaded();
 
-        if (!CURRENT_USER_ID) {
-          Swal.fire(
-            "Lỗi",
-            "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.",
-            "error"
-          );
-          return;
-        }
+  if (!CURRENT_USER_ID) {
+    Swal.fire(
+      "Lỗi",
+      "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.",
+      "error"
+    );
+    return;
+  }
 
-        console.log(
-          `📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`
-        );
+  console.log(
+    `📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`
+  );
 
-        try {
-          const response = await fetch(`${API_URL}/friend-request/send/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include", // ✅ Thêm
-            body: JSON.stringify({
-              sender_id: CURRENT_USER_ID,
-              receiver_id: receiverId,
-            }),
-          });
+  // ✅ DISABLE BUTTON NGAY LẬP TỨC
+  if (buttonElement) {
+    buttonElement.disabled = true;
+    buttonElement.textContent = "⏳ Đang gửi...";
+  }
 
-          const data = await response.json();
-          if (data.success) {
-            Swal.fire("Thành công", "Đã gửi lời mời kết bạn", "success");
-          } else {
-            Swal.fire("Lỗi", data.error, "error");
-          }
-        } catch (error) {
-          console.error("Lỗi gửi lời mời:", error);
-          Swal.fire("Lỗi", "Không thể gửi lời mời", "error");
-        }
+  try {
+    const response = await fetch(`${API_URL}/friend-request/send/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        sender_id: CURRENT_USER_ID,
+        receiver_id: receiverId,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      // ✅ THÀNH CÔNG → ĐỔI NÚT THÀNH "ĐÃ GỬI LỜI MỜI"
+      if (buttonElement) {
+        buttonElement.textContent = "✓ Đã gửi lời mời";
+        buttonElement.style.backgroundColor = "#6c757d"; // Màu xám
+        buttonElement.style.cursor = "not-allowed";
+        buttonElement.disabled = true;
       }
+      
+      Swal.fire("Thành công", "Đã gửi lời mời kết bạn", "success");
+    } else {
+      // ❌ THẤT BẠI → KHÔI PHỤC NÚT
+      if (buttonElement) {
+        buttonElement.disabled = false;
+        buttonElement.textContent = "➕ Kết bạn";
+      }
+      Swal.fire("Lỗi", data.error, "error");
+    }
+  } catch (error) {
+    console.error("Lỗi gửi lời mời:", error);
+    
+    // ❌ LỖI → KHÔI PHỤC NÚT
+    if (buttonElement) {
+      buttonElement.disabled = false;
+      buttonElement.textContent = "➕ Kết bạn";
+    }
+    
+    Swal.fire("Lỗi", "Không thể gửi lời mời", "error");
+  }
+}
+
 
       // TẢI DANH SÁCH BẠN BÈ
       async function loadFriendsList() {
@@ -1544,34 +1572,39 @@
     }
 
     function renderSearchPage() {
-      const resultsDiv = document.getElementById("search-results");
-      
-      if (allSearchResults.length === 0) {
-        resultsDiv.innerHTML = '<p class="no-data">Không tìm thấy người dùng nào</p>';
-        return;
-      }
+  const resultsDiv = document.getElementById("search-results");
+  
+  if (allSearchResults.length === 0) {
+    resultsDiv.innerHTML = '<p class="no-data">Không tìm thấy người dùng nào</p>';
+    return;
+  }
 
-      const startIndex = (currentSearchPage - 1) * FRIENDS_PER_PAGE;
-      const endIndex = startIndex + FRIENDS_PER_PAGE;
-      const currentItems = allSearchResults.slice(startIndex, endIndex);
+  const startIndex = (currentSearchPage - 1) * FRIENDS_PER_PAGE;
+  const endIndex = startIndex + FRIENDS_PER_PAGE;
+  const currentItems = allSearchResults.slice(startIndex, endIndex);
 
-      resultsDiv.innerHTML = currentItems
-        .map(
-          (user) => `
-          <div class="friend-card">
-            <div class="friend-info">
-              <div class="friend-avatar">👤</div>
-              <div>
-                <div class="friend-name">${user.username}</div>
-                <div class="friend-email">${user.email}</div>
-              </div>
-            </div>
-            <button class="btn-add" onclick="sendFriendRequest(${user.id})">➕ Kết bạn</button>
+  resultsDiv.innerHTML = currentItems
+    .map(
+      (user) => `
+      <div class="friend-card">
+        <div class="friend-info">
+          <div class="friend-avatar">👤</div>
+          <div>
+            <div class="friend-name">${user.username}</div>
+            <div class="friend-email">${user.email}</div>
           </div>
-        `
-        )
-        .join("");
-    }
+        </div>
+        <button 
+          class="btn-add" 
+          onclick="sendFriendRequest(${user.id}, this)">
+          ➕ Kết bạn
+        </button>
+      </div>
+    `
+    )
+    .join("");
+}
+
 
     function renderSearchPagination() {
       const totalPages = Math.ceil(allSearchResults.length / FRIENDS_PER_PAGE);

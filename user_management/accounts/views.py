@@ -809,11 +809,21 @@ def send_friend_request(request):
            Friendship.objects.filter(user1=receiver, user2=sender).exists():
             return JsonResponse({'error': 'Đã là bạn bè rồi'}, status=400)
         
-        # Kiểm tra đã gửi lời mời chưa
-        if FriendRequest.objects.filter(sender=sender, receiver=receiver, status='pending').exists():
-            return JsonResponse({'error': 'Đã gửi lời mời rồi'}, status=400)
+        # ✅ FIX: Kiểm tra và xử lý lời mời cũ
+        existing_request = FriendRequest.objects.filter(
+            sender=sender, 
+            receiver=receiver
+        ).first()
         
-        # Tạo lời mời kết bạn
+        if existing_request:
+            if existing_request.status == 'pending':
+                # Nếu đang pending → báo lỗi
+                return JsonResponse({'error': 'Đã gửi lời mời rồi'}, status=400)
+            else:
+                # Nếu đã rejected/accepted → XÓA và tạo mới
+                existing_request.delete()
+        
+        # Tạo lời mời kết bạn MỚI
         friend_request = FriendRequest.objects.create(sender=sender, receiver=receiver)
         
         # ✅ TẠO THÔNG BÁO
@@ -826,7 +836,6 @@ def send_friend_request(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -1305,7 +1314,7 @@ def streak_handler(request):
 @require_http_methods(["POST"])
 @login_required
 def unfriend(request):
-    """Hủy kết bạn"""
+    """Hủy kết bạn - XÓA CẢ FRIENDSHIP VÀ FRIEND REQUEST"""
     try:
         data = json.loads(request.body)
         friend_id = data.get('friend_id')
@@ -1316,7 +1325,7 @@ def unfriend(request):
         user = request.user
         friend = get_object_or_404(User, id=friend_id)
         
-        # Tìm và xóa quan hệ bạn bè (có thể user1 hoặc user2)
+        # ✅ 1. Tìm và xóa quan hệ bạn bè
         friendship = Friendship.objects.filter(
             user1=user, user2=friend
         ).first() or Friendship.objects.filter(
@@ -1328,14 +1337,28 @@ def unfriend(request):
         
         friendship.delete()
         
+        # ✅ 2. XÓA TẤT CẢ FRIEND REQUEST (cả 2 chiều)
+        FriendRequest.objects.filter(
+            sender=user, receiver=friend
+        ).delete()
+        
+        FriendRequest.objects.filter(
+            sender=friend, receiver=user
+        ).delete()
+        
+        print(f"✅ [UNFRIEND] {user.username} <-> {friend.username}")
+        print(f"   - Deleted Friendship")
+        print(f"   - Deleted all FriendRequests")
+        
         return JsonResponse({
             'success': True,
             'message': 'Đã hủy kết bạn'
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # ==========================================================
 # 👥 API XEM QUÁN YÊU THÍCH CỦA BẠN BÈ
