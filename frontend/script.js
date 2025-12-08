@@ -1674,6 +1674,20 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
 
+  // ✅ XÓA MARKER GPS NẾU USER XÓA INPUT
+if (!gpsInputValue || gpsInputValue === "") {
+  // Xóa marker GPS khỏi map
+  if (window.startMarker) {
+    map.removeLayer(window.startMarker);
+    window.startMarker = null;
+    console.log('🧹 Đã xóa marker GPS vì input rỗng');
+  }
+  
+  // Reset tọa độ GPS
+  window.currentUserCoords = null;
+  console.log('🧹 Đã reset currentUserCoords');
+}
+
   const selectedFlavors = Array.from(
     document.querySelectorAll("#flavorDropdown input:checked")
   ).map((c) => c.value);
