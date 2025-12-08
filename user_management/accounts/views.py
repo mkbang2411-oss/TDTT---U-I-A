@@ -1314,7 +1314,7 @@ def streak_handler(request):
 @require_http_methods(["POST"])
 @login_required
 def unfriend(request):
-    """Hủy kết bạn"""
+    """Hủy kết bạn - XÓA CẢ FRIENDSHIP VÀ FRIEND REQUEST"""
     try:
         data = json.loads(request.body)
         friend_id = data.get('friend_id')
@@ -1325,7 +1325,7 @@ def unfriend(request):
         user = request.user
         friend = get_object_or_404(User, id=friend_id)
         
-        # Tìm và xóa quan hệ bạn bè (có thể user1 hoặc user2)
+        # ✅ 1. Tìm và xóa quan hệ bạn bè
         friendship = Friendship.objects.filter(
             user1=user, user2=friend
         ).first() or Friendship.objects.filter(
@@ -1337,14 +1337,28 @@ def unfriend(request):
         
         friendship.delete()
         
+        # ✅ 2. XÓA TẤT CẢ FRIEND REQUEST (cả 2 chiều)
+        FriendRequest.objects.filter(
+            sender=user, receiver=friend
+        ).delete()
+        
+        FriendRequest.objects.filter(
+            sender=friend, receiver=user
+        ).delete()
+        
+        print(f"✅ [UNFRIEND] {user.username} <-> {friend.username}")
+        print(f"   - Deleted Friendship")
+        print(f"   - Deleted all FriendRequests")
+        
         return JsonResponse({
             'success': True,
             'message': 'Đã hủy kết bạn'
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # ==========================================================
 # 👥 API XEM QUÁN YÊU THÍCH CỦA BẠN BÈ
