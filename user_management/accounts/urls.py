@@ -31,13 +31,13 @@ urlpatterns = [
     
     # Suggestions
     path('food-plan/suggest/<int:plan_id>/', views.submit_plan_suggestion_api, name='submit_plan_suggestion'),
-    path('food-plan/suggestions/<int:plan_id>/', views.get_plan_suggestions_api, name='get_plan_suggestions'),
     path('food-plan/suggestion/review/<int:suggestion_id>/', views.review_suggestion_api, name='review_suggestion'),
     path('my-friends/', views.get_current_user_friends, name='get_current_user_friends'),
     path('food-plan/suggestions/<int:plan_id>/', views.get_plan_suggestions_api, name='get_plan_suggestions'),
     path('food-plan/suggestion-detail/<int:suggestion_id>/', views.get_suggestion_detail_api, name='get_suggestion_detail'),
     path('food-plan/suggestion-approve/<int:suggestion_id>/', views.approve_suggestion_api, name='approve_suggestion'),
     path('food-plan/suggestion-reject/<int:suggestion_id>/', views.reject_suggestion_api, name='reject_suggestion'),
+    path('api/accounts/food-plan/check-pending/<int:plan_id>/', views.check_pending_suggestion_api, name='check_pending_suggestion'),
     
     # 🔥 THÊM DÒNG NÀY - API xem đề xuất của bản thân
     path('food-plan/my-suggestions/<int:plan_id>/', views.get_my_suggestions_api, name='get_my_suggestions'),

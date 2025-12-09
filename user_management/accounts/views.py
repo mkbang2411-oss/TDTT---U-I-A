@@ -2449,17 +2449,30 @@ def submit_plan_suggestion_api(request, plan_id):
             permission='edit'
         )
         
+        # 🔥 THÊM: Kiểm tra xem đã có suggestion pending chưa
+        existing_pending = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user,
+            status='pending'
+        ).exists()
+        
+        if existing_pending:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn đã có 1 đề xuất đang chờ duyệt. Vui lòng đợi chủ sở hữu xử lý trước khi gửi đề xuất mới.'
+            }, status=400)
+        
         # Lấy dữ liệu gốc
         original_data = shared_plan.food_plan.plan_data
         
-        # 🔥 TẠO SUGGESTION - THÊM pending_changes={}
+        # Tạo suggestion
         suggestion = PlanEditSuggestion.objects.create(
             shared_plan=shared_plan,
             suggested_by=request.user,
             original_data=original_data,
             suggested_data=suggested_data,
             message=message,
-            pending_changes={}  # 🔥 THÊM DÒNG NÀY
+            pending_changes={}
         )
 
         create_suggestion_notification(
@@ -3004,6 +3017,45 @@ def approve_all_changes_api(request):
     except Exception as e:
         import traceback
         traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)    
+
+@login_required
+@require_http_methods(["GET"])
+def check_pending_suggestion_api(request, plan_id):
+    """
+    Kiểm tra xem user có suggestion pending cho plan này không
+    GET /api/accounts/food-plan/check-pending/<plan_id>/
+    """
+    try:
+        # Kiểm tra user có được share plan này không
+        shared_plan = SharedFoodPlan.objects.filter(
+            food_plan_id=plan_id,
+            shared_with=request.user,
+            is_active=True
+        ).first()
+        
+        if not shared_plan:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xem lịch trình này'
+            }, status=403)
+        
+        # Kiểm tra pending suggestion
+        has_pending = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user,
+            status='pending'
+        ).exists()
+        
+        return JsonResponse({
+            'status': 'success',
+            'has_pending': has_pending
+        })
+        
+    except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': str(e)
