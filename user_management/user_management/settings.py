@@ -254,8 +254,8 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER')
 OTP_EXPIRY_MINUTES = 5
 
 # ===== SESSION CONFIGURATION =====
-# Session timeout: 7 ngày (604800 giây)
-SESSION_COOKIE_AGE = 604800  # 7 days
+# Session timeout: 30 ngày (2592000 giây)
+SESSION_COOKIE_AGE = 2592000  # 30 days
 
 # Tự động gia hạn session mỗi khi user tương tác
 SESSION_SAVE_EVERY_REQUEST = True
