@@ -353,7 +353,7 @@ def send_welcome_email(email, username):
                         </p>
 
                         <p>
-                            <strong>UIA Food</strong> là hệ thống hỗ trợ tìm kiếm quán ăn thông minh, được thiết kế đặc biệt để giúp bạn khám phá hàng ngàn địa điểm, quán ăn ẩm thực nổi tiếng.
+                            <strong>UIA Food</strong> là hệ thống hỗ trợ tìm kiếm quán ăn thông minh, được thiết kế đặc biệt để giúp bạn khám phá hàng ngàn quán ăn.
                         </p>
 
                         <p>

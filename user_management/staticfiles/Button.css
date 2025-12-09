@@ -1,0 +1,166 @@
+/* Button.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+body {
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
+}
+
+.button-SignUp, .button-SignIn {
+    background-color: #BC2A21;
+    color: white;
+    padding: 0;                 /* bỏ padding để line-height hoạt động chính xác */
+    border-radius: 20px;
+    font-weight: bold;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    position: fixed;
+    top: 20px;
+    width: 110px;
+    height: 35px;
+    text-align: center;
+    text-decoration: none;
+    line-height: 35px; 
+    z-index: 1001;         
+    pointer-events: auto;
+}
+
+.button-SignUp { 
+    right: 149px;
+ }
+.button-SignIn { 
+    right: 30px;
+}
+
+/* khi di chuột vào nút */
+.button-SignUp:hover, .button-SignIn:hover {
+    background-color: #e03b31;        /* đổi màu nền khi hover */
+    transform: scale(1.05);           /* phóng to nhẹ */
+    box-shadow: 0 0 5px 3px rgba(255,255,255,0.3); /* glow trắng */
+}
+
+/* active: nhấn nút */
+.button-SignUp:active, .button-SignIn:active {
+    transform: scale(0.95);
+    box-shadow: 0 0 5px 1px rgba(255,255,255,0.3);
+}
+
+#map {
+  height: 100vh;
+  width: 100%;
+  transition: filter 0.3s ease;
+}
+
+/* Khi sidebar mở, làm mờ map nhẹ */
+#map.dimmed {
+  filter: brightness(0.7);
+}
+
+/* Thêm vào file CSS của bạn (có thể là web.css hoặc Button.css) */
+
+.search-form {
+    position: fixed;           /* ĐỔI: từ relative/absolute sang fixed */
+    top: 155px;                /* Đặt dưới banner (200px) + khoảng cách */
+    left: 50%;
+    background: white;
+    transform: translateX(-50%);
+    z-index: 1001;             /* Cao hơn map (z-index: 1) */
+    background: transparent;         /* THÊM: nền trắng cho dễ nhìn */
+    border-radius: none;  /* THÊM: đổ bóng */
+    display: flex;
+    gap: 20px;
+    flex-wrap: nowrap;
+    max-width: 90%;
+    align-items: flex-start;
+    padding: 10px;
+}
+
+.search-item {
+    flex: 0 1 100px;
+    margin: 0 5px;
+    
+}
+
+.search-input {
+    width: 100%;
+    border: 2px solid #ffffff;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+    padding: 10px 15px;
+}
+
+.search-input:focus {
+    border-color: #BC2A21;
+}
+
+/* --- Nút tài khoản (góc phải, dưới banner xíu) --- */
+/* --- Nút tài khoản --- */
+.account-button {
+    order: 2; /* Hiển thị sau nút yêu thích (bên phải) */
+    margin: 0 !important;
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    text-decoration: none !important;
+    position: relative !important; /* ĐỔI từ fixed sang relative */
+    z-index: 1 !important;
+    color: #fff !important;
+    width: auto;
+    height: 36px;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.account-button .account-text {
+    font-weight: bold;
+    color: #fff;
+    text-decoration: none !important;
+    font-size: 14px;
+}
+
+.account-button img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+}
+
+a.account-button { 
+    text-decoration: none !important; 
+    color: #fff !important;
+    font-weight: bold;
+}
+
+.gps-btn {
+    background: none;      /* bỏ nền */
+    border: none;          /* bỏ viền */
+    padding: 0;            /* sát ảnh */
+    cursor: pointer;
+}
+
+.gps-btn .gps-icon {
+    width: 40px;     /* bạn chỉnh tùy kích thước */
+    height: 40px;
+    object-fit: contain;  /* giữ tỉ lệ ảnh */
+}
+
+.gps-icon:hover {
+    transform: scale(1.1);  
+    filter: brightness(1.05);   /* số càng lớn càng sáng */
+}
+
+
+
+/*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
+input,
+button,
+select,
+textarea {
+    font-family: "Montserrat", sans-serif !important;
+}

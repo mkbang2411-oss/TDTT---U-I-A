@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Web Demo</title>
+    <link rel="stylesheet" href="Account.css" />
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body>
+    <video class="bg-video" autoplay muted loop>
+      <source src="Picture/bg1.mp4" type="video/mp4">
+    </video>
+    <div class="background-left">
+      <img src="Picture/background2.png" class ="bg" alt="UIA Logo"/>
+      <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/UIAaa.png" class="logo" alt="UIA Logo"/>
+      <a href="/">
+        <img
+          src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/đ.png"
+          class="Button_back"
+          alt="Back"
+        />
+      </a>
+          <!--Side bar bên phải-->
+    <div class="sidebar-content">
+      <div class="Menu">
+        <div class="Menu_Account" onclick="showPage('Account_Page')">
+          Tài Khoản
+        </div>
+        <div class="Menu_Favorite" onclick="showPage('Favorite_Page')">
+          Yêu Thích
+        </div>
+        <div class="Menu_Friend" onclick="showPage('Friend_Page')">
+          Bạn Bè
+        </div>
+        <div class="Menu_Logout" id="logout-button">Đăng Xuất</div>
+      </div>
+    </div>
+    
+    </div>
+
+    <div class="background-right">
+      <img src="Picture/background3.png" class ="bga"/>
+    </div>
+
+    <div class="main-content">
+      <!--Account-->
+      <div id="Account_Page" class="page active">
+        <div class="avatar">
+          <div class="avatar-wrapper">
+            <img src="Picture/avatar.png" class="avt" id="user-avatar-img"/>
+            <div
+              class="camera-btn"
+              onclick="document.getElementById('avatar-upload-input').click()"
+              style="
+                position: fixed;
+                left: 41vw;
+                top: 40vh;
+                background-color: #e4e6eb;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                border: 2px solid white;
+                transition: background 0.2s;
+              "
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="black">
+                <path
+                  d="M21.317 4.381H10.971L9.078 2.45c-.246-.251-.736-.45-1.089-.45H5.344c-.353 0-.843.199-1.089.45L2.362 4.381H2.683C1.204 4.381 0 5.593 0 7.081V18.32c0 1.488 1.204 2.699 2.683 2.699H21.317c1.479 0 2.683-1.211 2.683-2.699V7.081c0-1.488-1.204-2.7-2.683-2.7zM12 17.626c-3.146 0-5.697-2.568-5.697-5.735 0-3.167 2.55-5.735 5.697-5.735 3.147 0 5.697 2.568 5.697 5.735 0 3.167-2.55 5.735-5.697 5.735z"
+                />
+              </svg>
+            </div>
+          </div>
+          <input
+            type="file"
+            id="avatar-upload-input"
+            accept="image/*"
+            style="display: none"
+            onchange="handleFileSelect()"
+          />
+        </div>
+
+        <div class="account_Info">
+          <div class="form-group">
+            <div class="input-box">
+              <label>Email</label>
+              <input
+                type="email"
+                id="user-email"
+                placeholder="abc@gmail.com"
+                readonly
+                style="
+                  background: rgba(255, 255, 255, 0.3); /* mờ mờ */
+                  transition: all 0.3s;
+                  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                  backdrop-filter: blur(15px);
+                  -webkit-backdrop-filter: blur(15px);"
+              />
+            </div>
+
+            <div class="input-box">
+              <label>Mật khẩu</label>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <input
+                  type="password"
+                  id="main-password-display"
+                  value="******"
+                  disabled
+                  style="flex: 1;
+                  background: rgba(255, 255, 255, 0.3); /* mờ mờ */
+                  transition: all 0.3s;
+                  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                  backdrop-filter: blur(15px);
+                  -webkit-backdrop-filter: blur(15px);"
+                />
+
+                <button
+                  id="btn-open-changepass"
+                  onclick="openPassModal()"
+                  style="
+                    display: none;
+                    padding: 10px 15px;
+                    background: #ff3561;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    white-space: nowrap;
+                    backdrop-filter: blur(15px);
+                    -webkit-backdrop-filter: blur(15px);
+                  "
+                >
+                  Đổi mật khẩu
+                </button>
+              </div>
+              <small
+                id="google-note"
+                style="
+                  display: none;
+                  color: #888;
+                  margin-top: 5px;
+                  font-style: italic;
+                "
+                >* Tài khoản Google được quản lý bảo mật bởi Google.</small
+              >
+            </div>
+
+            <!-- Beautiful Password Change Modal -->
+            <div id="password-modal" class="password-modal-overlay">
+              <div class="password-modal-content">
+                <div class="password-modal-header">
+                  <div class="header-content">
+                    <div class="icon-wrapper">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        width="45"
+                        height="45"
+                        fill="white"
+                      >
+                        <path
+                          d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"
+                        />
+                      </svg>
+                    </div>
+                    <h1>Đổi mật khẩu</h1>
+                    <p>Bảo vệ tài khoản với mật khẩu mạnh 🔒</p>
+                  </div>
+                  <span class="close-password-modal" onclick="closePassModal()"
+                    >&times;</span
+                  >
+                </div>
+
+                <div class="password-modal-body">
+                  <div
+                    id="password-error-message"
+                    class="validation-message error"
+                    style="display: none; margin-bottom: 20px"
+                  ></div>
+
+                  <form id="change-password-form">
+                    <div class="form-group-pass">
+                      <label for="inp-old-pass">Mật khẩu hiện tại</label>
+                      <div class="password-wrapper">
+                        <input
+                          type="password"
+                          id="inp-old-pass"
+                          placeholder="Nhập mật khẩu hiện tại..."
+                          required
+                        />
+                        <button
+                          type="button"
+                          class="toggle-password"
+                          id="toggle-old"
+                          title="Hiện/Ẩn mật khẩu"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="eye-open"
+                          >
+                            <path
+                              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                            ></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="eye-closed"
+                          >
+                            <path
+                              d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                            ></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="form-group-pass">
+                      <label for="inp-new-pass">Mật khẩu mới</label>
+                      <div class="password-wrapper">
+                        <input
+                          type="password"
+                          id="inp-new-pass"
+                          placeholder="Nhập mật khẩu mới..."
+                          required
+                        />
+                        <button
+                          type="button"
+                          class="toggle-password"
+                          id="toggle-new"
+                          title="Hiện/Ẩn mật khẩu"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="eye-open"
+                          >
+                            <path
+                              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                            ></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="eye-closed"
+                          >
+                            <path
+                              d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                            ></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                          </svg>
+                        </button>
+                      </div>
+                      <div
+                        id="strength-indicator-change"
+                        class="strength-indicator"
+                      ></div>
+                      <div class="requirements">
+                        <div class="requirement" id="req-length-change">
+                          <span class="icon">○</span> Ít nhất 8 ký tự
+                        </div>
+                        <div class="requirement" id="req-uppercase-change">
+                          <span class="icon">○</span> Có chữ in hoa (A-Z)
+                        </div>
+                        <div class="requirement" id="req-lowercase-change">
+                          <span class="icon">○</span> Có chữ thường (a-z)
+                        </div>
+                        <div class="requirement" id="req-number-change">
+                          <span class="icon">○</span> Có số (0-9)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-group-pass">
+                      <label for="inp-confirm-pass"
+                        >Xác nhận mật khẩu mới</label
+                      >
+                      <div class="password-wrapper">
+                        <input
+                          type="password"
+                          id="inp-confirm-pass"
+                          placeholder="Nhập lại mật khẩu mới..."
+                          required
+                        />
+                        <button
+                          type="button"
+                          class="toggle-password"
+                          id="toggle-confirm"
+                          title="Hiện/Ẩn mật khẩu"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="eye-open"
+                          >
+                            <path
+                              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                            ></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="eye-closed"
+                          >
+                            <path
+                              d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                            ></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                          </svg>
+                        </button>
+                      </div>
+                      <div
+                        id="confirm-validation-change"
+                        class="validation-message"
+                      ></div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      class="btn-change-password"
+                      id="btn-submit-change"
+                    >
+                      Đổi mật khẩu
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="avatar-modal" class="modal-overlay" style="display: none">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Cập nhật ảnh đại diện</h3>
+              <span class="close-modal" onclick="closeModal()">×</span>
+            </div>
+
+            <div class="modal-body">
+              <p>Xem trước ảnh của bạn</p>
+              <div class="preview-container">
+                <img id="avatar-preview-img" src="" alt="Preview" />
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+              <button class="btn-save" onclick="confirmUpload()">Lưu</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!--Favorite-->
+      <div id="Favorite_Page" class="page">
+        <div id="favorites-list" class="favorites-grid-container">
+          <p style="text-align: center; color: #666">⏳ Đang tải dữ liệu...</p>
+        </div>
+        <!-- Pagination Controls -->
+        <div id="pagination-controls" class="pagination-wrapper" style="display: none;">
+          <button class="pagination-btn" id="prev-page-btn" onclick="changePage(-1)">◀ Trước</button>
+          <div id="page-numbers" class="page-numbers"></div>
+          <button class="pagination-btn" id="next-page-btn" onclick="changePage(1)">Sau ▶</button>
+        </div>
+      </div>
+
+      <!--Friends-->
+      <div id="Friend_Page" class="page">
+        <!-- TABS -->
+        <div class="friend-tabs">
+          <button class="tab-btn active" onclick="switchTab('search')">
+            🔍 Tìm kiếm
+          </button>
+          <button class="tab-btn" onclick="switchTab('requests')">
+            📨 Lời mời Kết bạn (<span id="request-count">0</span>)
+          </button>
+          <button class="tab-btn" onclick="switchTab('list')">
+            👥 Danh sách bạn
+          </button>
+        </div>
+
+        <!-- TAB 1: TÌM KIẾM -->
+        <div id="search-tab" class="tab-content active">
+          <div class="search-container">
+            <div class="search-box">
+              <input
+                type="email"
+                id="search-input"
+                class="search-input"
+                placeholder="Nhập email để tìm bạn bè..."
+              />
+              <button class="search-button" onclick="searchUsers()">🔎</button>
+            </div>
+          </div>
+          <div id="search-results" class="friends-list"></div>
+        </div>
+
+        <!-- TAB 2: LỜI MỜI KẾT BẠN -->
+        <div id="requests-tab" class="tab-content">
+          <div id="friend-requests" class="friends-list"></div>
+        </div>
+
+        <!-- TAB 3: DANH SÁCH BẠN BÈ -->
+        <div id="list-tab" class="tab-content">
+          <div id="friends-list" class="friends-list"></div>
+        </div>
+      </div>
+    </div>
+    <!-- JAVASCRIPT -->
+    <script>
+      const API_URL = "/api/accounts";
+      let CURRENT_USER_ID = null;
+      let isLoadingUser = false; // ✅ Thêm flag
+
+      // ✅ LẤY THÔNG TIN USER HIỆN TẠI
+      async function loadCurrentUser() {
+        if (isLoadingUser) return; // ✅ Tránh gọi nhiều lần
+        isLoadingUser = true;
+
+        try {
+          const response = await fetch(`${API_URL}/current-user/`, {
+            credentials: "include", // ✅ Gửi cookie
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          CURRENT_USER_ID = data.id;
+          console.log("✅ Current User ID:", CURRENT_USER_ID);
+        } catch (error) {
+          console.error("❌ Không thể lấy user hiện tại:", error);
+          Swal.fire(
+            "Lỗi",
+            "Không thể xác định user. Vui lòng đăng nhập lại.",
+            "error"
+          );
+        } finally {
+          isLoadingUser = false;
+        }
+      }
+
+      // ✅ GỌI NGAY KHI TRANG LOAD
+      loadCurrentUser();
+
+      function showPage(pageId) {
+        var pages = document.querySelectorAll(".page");
+        pages.forEach(function (page) {
+          page.classList.remove("active");
+        });
+
+        document.getElementById(pageId).classList.add("active");
+
+        document.querySelectorAll(".Menu > div").forEach(function (menu) {
+          menu.classList.remove("active");
+        });
+
+        if (pageId === "Account_Page") {
+          document.querySelector(".Menu_Account").classList.add("active");
+        } else if (pageId === "Favorite_Page") {
+          document.querySelector(".Menu_Favorite").classList.add("active");
+        } else if (pageId === "Friend_Page") {
+          document.querySelector(".Menu_Friend").classList.add("active");
+          // ✅ Đảm bảo load xong user ID
+          ensureUserLoaded().then(() => {
+            loadFriendRequests();
+            loadFriendsList();
+          });
+        }
+      }
+
+      // ✅ THÊM FUNCTION NÀY - Đợi user load xong
+      async function ensureUserLoaded() {
+        if (CURRENT_USER_ID) return; // Đã có rồi
+
+        // Đợi tối đa 5 giây
+        for (let i = 0; i < 50; i++) {
+          if (CURRENT_USER_ID) return;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        // Nếu vẫn chưa có, thử load lại
+        if (!CURRENT_USER_ID) {
+          await loadCurrentUser();
+        }
+      }
+
+      function switchTab(tabName) {
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((btn) => btn.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((content) => content.classList.remove("active"));
+
+        if (tabName === "search") {
+          document
+            .querySelector(".tab-btn:nth-child(1)")
+            .classList.add("active");
+          document.getElementById("search-tab").classList.add("active");
+        } else if (tabName === "requests") {
+          document
+            .querySelector(".tab-btn:nth-child(2)")
+            .classList.add("active");
+          document.getElementById("requests-tab").classList.add("active");
+          ensureUserLoaded().then(() => loadFriendRequests());
+        } else if (tabName === "list") {
+          document
+            .querySelector(".tab-btn:nth-child(3)")
+            .classList.add("active");
+          document.getElementById("list-tab").classList.add("active");
+          ensureUserLoaded().then(() => loadFriendsList());
+        }
+      }
+
+    // 🔔 AUT0 MỞ "Bạn Bè" + TAB "Lời mời Kết bạn" NẾU ĐƯỢC GỌI TỪ THÔNG BÁO
+    (function () {
+      try {
+        const shouldOpenFriendRequests = localStorage.getItem("openFriendRequestsTab");
+        if (shouldOpenFriendRequests === "1") {
+          // Xài xong rồi thì xóa flag
+          localStorage.removeItem("openFriendRequestsTab");
+
+          // Mở trang Bạn Bè
+          showPage("Friend_Page");
+          // Mở luôn tab Lời mời
+          switchTab("requests");
+        }
+      } catch (e) {
+        console.warn("Không đọc được openFriendRequestsTab từ localStorage:", e);
+      }
+    })();
+
+      // TÌM KIẾM USER
+      async function searchUsers() {
+        const query = document.getElementById("search-input").value.trim();
+        if (!query) {
+          Swal.fire("Lỗi", "Vui lòng nhập tên để tìm kiếm", "warning");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/users/search/?q=${query}`);
+          const data = await response.json();
+
+          const resultsDiv = document.getElementById("search-results");
+          if (data.users && data.users.length > 0) {
+            resultsDiv.innerHTML = data.users
+              .map(
+                (user) => `
+                        <div class="friend-card">
+                            <div class="friend-info">
+                                <div class="friend-avatar">👤</div>
+                                <div>
+                                    <div class="friend-name">${user.username}</div>
+                                    <div class="friend-email">${user.email}</div>
+                                </div>
+                            </div>
+                            <button class="btn-add" onclick="sendFriendRequest(${user.id})">➕ Kết bạn</button>
+                        </div>
+                    `
+              )
+              .join("");
+          } else {
+            resultsDiv.innerHTML =
+              '<p class="no-data">Không tìm thấy người dùng nào</p>';
+          }
+        } catch (error) {
+          console.error("Lỗi tìm kiếm:", error);
+          Swal.fire("Lỗi", "Không thể tìm kiếm", "error");
+        }
+      }
+
+      // GỬI LỜI MỜI KẾT BẠN
+      async function sendFriendRequest(receiverId) {
+        // ✅ Đảm bảo đã load user ID
+        await ensureUserLoaded();
+
+        if (!CURRENT_USER_ID) {
+          Swal.fire(
+            "Lỗi",
+            "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.",
+            "error"
+          );
+          return;
+        }
+
+        console.log(
+          `📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`
+        );
+
+        try {
+          const response = await fetch(`${API_URL}/friend-request/send/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include", // ✅ Thêm
+            body: JSON.stringify({
+              sender_id: CURRENT_USER_ID,
+              receiver_id: receiverId,
+            }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            Swal.fire("Thành công", "Đã gửi lời mời kết bạn", "success");
+          } else {
+            Swal.fire("Lỗi", data.error, "error");
+          }
+        } catch (error) {
+          console.error("Lỗi gửi lời mời:", error);
+          Swal.fire("Lỗi", "Không thể gửi lời mời", "error");
+        }
+      }
+
+      // TẢI DANH SÁCH BẠN BÈ
+      async function loadFriendsList() {
+        if (!CURRENT_USER_ID) {
+          console.log("⏳ Chưa có CURRENT_USER_ID");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${API_URL}/friends/${CURRENT_USER_ID}/`
+          );
+          const data = await response.json();
+
+          const friendsDiv = document.getElementById("friends-list");
+          if (data.friends && data.friends.length > 0) {
+            friendsDiv.innerHTML = data.friends
+              .map(
+                (friend) => `
+                          <div class="friend-card">
+                              <div class="friend-info">
+                                  <div class="friend-avatar">👤</div>
+                                  <div>
+                                      <div class="friend-name">${friend.username}</div>
+                                      <div class="friend-email">${friend.email}</div>
+                                  </div>
+                              </div>
+                              <div class="btn-group">
+                                  <button class="btn-chat" onclick="viewFriendFavorites(${friend.id}, '${friend.username}')">❤️ Quán yêu thích</button>
+                                  <button class="btn-reject" onclick="unfriendUser(${friend.id}, '${friend.username}')">🗑️ Hủy kết bạn</button>
+                              </div>
+                          </div>
+                      `
+              )
+              .join("");
+          } else {
+            friendsDiv.innerHTML = '<p class="no-data">Chưa có bạn bè nào</p>';
+          }
+        } catch (error) {
+          console.error("Lỗi tải danh sách bạn:", error);
+        }
+      }
+
+      // XEM QUÁN YÊU THÍCH CỦA BẠN BÈ - HIỂN THỊ TRÊN BẢN ĐỒ
+      async function viewFriendFavorites(friendId, friendName) {
+        try {
+          console.log("📤 [VIEW FAVORITES] Starting...");
+          console.log("📤 [VIEW FAVORITES] Friend ID:", friendId);
+          console.log("📤 [VIEW FAVORITES] Friend Name:", friendName);
+          console.log("📤 [VIEW FAVORITES] API URL:", `${API_URL}/friend/${friendId}/favorites/`);
+
+          const response = await fetch(
+            `${API_URL}/friend/${friendId}/favorites/`,
+            {
+              credentials: "include",
+            }
+          );
+
+          console.log("📥 [VIEW FAVORITES] Response status:", response.status);
+          const data = await response.json();
+          console.log("📦 [VIEW FAVORITES] Data:", data);
+
+          if (data.status === "success") {
+            console.log("✅ [VIEW FAVORITES] Status is success");
+            
+            if (data.favorites && data.favorites.length > 0) {
+              console.log("✅ [VIEW FAVORITES] Has favorites:", data.favorites.length);
+              
+              // ✅✅✅ GHI NHẬN LƯỢT XEM - CRITICAL SECTION ✅✅✅
+              console.log("🔥 [RECORD VIEW] ===== STARTING RECORD VIEW =====");
+              
+              try {
+                // 1️⃣ Kiểm tra getCookie
+                const csrfToken = getCookie('csrftoken');
+                console.log("🔑 [RECORD VIEW] CSRF Token:", csrfToken ? "✅ Found" : "❌ Not found");
+                console.log("🔑 [RECORD VIEW] CSRF Token value:", csrfToken);
+                
+                // 2️⃣ Chuẩn bị URL
+                const viewUrl = `${API_URL}/friend/${friendId}/favorites/view/`;
+                console.log("🌐 [RECORD VIEW] View URL:", viewUrl);
+                
+                // 3️⃣ Chuẩn bị headers
+                const headers = {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken || ''
+                };
+                console.log("📋 [RECORD VIEW] Headers:", headers);
+                
+                // 4️⃣ Gọi API
+                console.log("📡 [RECORD VIEW] Calling API...");
+                const viewResponse = await fetch(viewUrl, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: headers
+                });
+
+                console.log("📊 [RECORD VIEW] Response status:", viewResponse.status);
+                console.log("📊 [RECORD VIEW] Response ok:", viewResponse.ok);
+                
+                // 5️⃣ Đọc response
+                const viewData = await viewResponse.json();
+                console.log("📦 [RECORD VIEW] Response data:", viewData);
+                
+                if (viewResponse.ok) {
+                  console.log("✅ [RECORD VIEW] SUCCESS!");
+                } else {
+                  console.error("❌ [RECORD VIEW] FAILED - Status:", viewResponse.status);
+                  console.error("❌ [RECORD VIEW] Error data:", viewData);
+                }
+                
+              } catch (viewError) {
+                console.error("💥 [RECORD VIEW] EXCEPTION:", viewError);
+                console.error("💥 [RECORD VIEW] Error stack:", viewError.stack);
+              }
+              
+              console.log("🔥 [RECORD VIEW] ===== FINISHED RECORD VIEW =====");
+
+              // Lưu vào localStorage
+              console.log("💾 [VIEW FAVORITES] Saving to localStorage...");
+              localStorage.setItem(
+                "friendFavorites",
+                JSON.stringify({
+                  friendName: friendName,
+                  places: data.favorites,
+                })
+              );
+              console.log("💾 [VIEW FAVORITES] Saved successfully");
+
+              // Chuyển sang trang map
+              console.log("🔄 [VIEW FAVORITES] Redirecting to map...");
+              window.location.href = "/?view=friend-favorites";
+            } else {
+              console.warn("⚠️ [VIEW FAVORITES] No favorites found");
+              Swal.fire(
+                "Thông báo",
+                `${friendName} chưa có quán yêu thích nào`,
+                "info"
+              );
+            }
+          } else {
+            console.error("❌ [VIEW FAVORITES] Status not success:", data.status);
+            console.error("❌ [VIEW FAVORITES] Error:", data.error);
+            Swal.fire("Lỗi", data.error, "error");
+          }
+        } catch (error) {
+          console.error("💥 [VIEW FAVORITES] EXCEPTION:", error);
+          console.error("💥 [VIEW FAVORITES] Error stack:", error.stack);
+          Swal.fire("Lỗi", "Không thể tải danh sách yêu thích", "error");
+        }
+      }
+
+      // Tìm kiếm khi nhấn Enter
+      document
+        .getElementById("search-input")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            searchUsers();
+          }
+        });
+
+      // HÀM LẤY CSRF TOKEN TỪ COOKIE
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      document
+        .getElementById("logout-button")
+        .addEventListener("click", function (e) {
+          e.preventDefault(); // Ngăn thẻ <a> chuyển trang
+
+          Swal.fire({
+            title: "Bạn có chắc chắn?",
+            text: "Bạn sắp đăng xuất khỏi tài khoản!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Đúng, Đăng xuất!",
+            cancelButtonText: "Hủy",
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Nếu người dùng đồng ý, gọi API đăng xuất của Django
+              fetch("/accounts/logout/", {
+                method: "POST",
+                headers: {
+                  // Django đọc CSRF token từ cookie
+                  "X-CSRFToken": getCookie("csrftoken"),
+                  "X-Requested-With": "XMLHttpRequest",
+                },
+
+                // Bảo trình duyệt gửi cookie (phiên đăng nhập)
+                // từ cổng 5000 sang cổng 8000
+                credentials: "include",
+              })
+                .then((response) => {
+                  if (!response.ok) {
+                    throw new Error("Server từ chối. Lỗi " + response.status);
+                  }
+                  // Yêu cầu allauth trả về JSON
+                  return response.json();
+                })
+                .then((data) => {
+                  Swal.fire(
+                    "Đã đăng xuất!",
+                    "Bạn đã đăng xuất thành công.",
+                    "success"
+                  );
+
+                  // Chờ 2 giây rồi chuyển về trang chủ
+                  setTimeout(() => {
+                    window.location.href = "/";
+                  }, 2000);
+                })
+                .catch((error) => {
+                  console.error("Lỗi đăng xuất:", error);
+                  Swal.fire(
+                    "Lỗi!",
+                    "Có lỗi xảy ra, không thể đăng xuất từ server.",
+                    "error"
+                  );
+                });
+            }
+          });
+        });
+      const BACKEND_URL = "";
+
+      // Các biến toàn cục cho Modal
+      let selectedFile = null;
+      const modal = document.getElementById("avatar-modal");
+      const previewImg = document.getElementById("avatar-preview-img");
+      const passModal = document.getElementById("password-modal");
+
+      // 1. Hàm tải thông tin user từ API và điền vào form
+      function loadUserInfo() {
+        fetch(`${BACKEND_URL}/api/user-info/`, {
+          method: "GET",
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              // Avatar & Email
+              document.getElementById("user-avatar-img").src = data.avatar_url;
+              const emailInput = document.getElementById("user-email");
+              if (emailInput) emailInput.value = data.email || "";
+
+              // Xử lý Nút đổi mật khẩu
+              const btnChangePass = document.getElementById(
+                "btn-open-changepass"
+              );
+              const googleNote = document.getElementById("google-note");
+
+              if (data.is_social_login) {
+                // Nếu là Google: Ẩn nút đổi pass, Hiện ghi chú
+                if (btnChangePass) btnChangePass.style.display = "none";
+                if (googleNote) googleNote.style.display = "block";
+              } else {
+                // Nếu là Django: Hiện nút đổi pass, Ẩn ghi chú
+                if (btnChangePass) btnChangePass.style.display = "block";
+                if (googleNote) googleNote.style.display = "none";
+              }
+            }
+          })
+          .catch((err) => console.error("Lỗi tải thông tin:", err));
+      }
+      function openPassModal() {
+        const modal = document.getElementById("password-modal");
+
+        if (!modal) return;
+
+        // Reset các ô input
+        document.getElementById("inp-old-pass").value = "";
+        document.getElementById("inp-new-pass").value = "";
+        document.getElementById("inp-confirm-pass").value = "";
+
+        // Reset validation messages
+        document.getElementById("password-error-message").style.display =
+          "none";
+        document.getElementById("strength-indicator-change").className =
+          "strength-indicator";
+        document.getElementById("confirm-validation-change").className =
+          "validation-message";
+
+        // Reset requirements
+        ["length", "uppercase", "lowercase", "number"].forEach((req) => {
+          const elem = document.getElementById(`req-${req}-change`);
+          if (elem) {
+            elem.classList.remove("met");
+            elem.querySelector(".icon").textContent = "○";
+          }
+        });
+
+        // Show modal
+        modal.style.display = "flex";
+      }
+
+      function closePassModal() {
+        const modal = document.getElementById("password-modal");
+        if (modal) {
+          modal.style.display = "none";
+        }
+      }
+
+      // Password visibility toggle
+      document.addEventListener("DOMContentLoaded", function () {
+        const toggleOld = document.getElementById("toggle-old");
+        const toggleNew = document.getElementById("toggle-new");
+        const toggleConfirm = document.getElementById("toggle-confirm");
+
+        function togglePasswordVisibility(button, inputId) {
+          const input = document.getElementById(inputId);
+          const eyeOpen = button.querySelector(".eye-open");
+          const eyeClosed = button.querySelector(".eye-closed");
+
+          if (input.type === "password") {
+            input.type = "text";
+            eyeOpen.style.display = "none";
+            eyeClosed.style.display = "block";
+          } else {
+            input.type = "password";
+            eyeOpen.style.display = "block";
+            eyeClosed.style.display = "none";
+          }
+        }
+
+        if (toggleOld) {
+          toggleOld.addEventListener("click", function () {
+            togglePasswordVisibility(this, "inp-old-pass");
+          });
+        }
+
+        if (toggleNew) {
+          toggleNew.addEventListener("click", function () {
+            togglePasswordVisibility(this, "inp-new-pass");
+          });
+        }
+
+        if (toggleConfirm) {
+          toggleConfirm.addEventListener("click", function () {
+            togglePasswordVisibility(this, "inp-confirm-pass");
+          });
+        }
+      });
+
+      // Password strength checker
+      function checkPasswordStrength(password) {
+        const checks = {
+          length: password.length >= 8,
+          uppercase: /[A-Z]/.test(password),
+          lowercase: /[a-z]/.test(password),
+          number: /\d/.test(password),
+        };
+
+        const requirements = {
+          length: document.getElementById("req-length-change"),
+          uppercase: document.getElementById("req-uppercase-change"),
+          lowercase: document.getElementById("req-lowercase-change"),
+          number: document.getElementById("req-number-change"),
+        };
+
+        for (const [key, element] of Object.entries(requirements)) {
+          if (element) {
+            if (checks[key]) {
+              element.classList.add("met");
+              element.querySelector(".icon").textContent = "✓";
+            } else {
+              element.classList.remove("met");
+              element.querySelector(".icon").textContent = "○";
+            }
+          }
+        }
+
+        const strengthIndicator = document.getElementById(
+          "strength-indicator-change"
+        );
+        const metCount = Object.values(checks).filter(Boolean).length;
+
+        if (password.length === 0) {
+          strengthIndicator.className = "strength-indicator";
+          return null;
+        }
+
+        if (metCount <= 2) {
+          strengthIndicator.className = "strength-indicator weak";
+          strengthIndicator.innerHTML =
+            "<strong>⚠️ Yếu:</strong> Mật khẩu cần mạnh hơn";
+          return "weak";
+        } else if (metCount === 3) {
+          strengthIndicator.className = "strength-indicator medium";
+          strengthIndicator.innerHTML =
+            "<strong>⚡ Trung bình:</strong> Mật khẩu khá tốt";
+          return "medium";
+        } else {
+          strengthIndicator.className = "strength-indicator strong";
+          strengthIndicator.innerHTML =
+            "<strong>✓ Mạnh:</strong> Mật khẩu rất tốt!";
+          return "strong";
+        }
+      }
+
+      function validatePasswords() {
+        const password = document.getElementById("inp-new-pass").value;
+        const confirm = document.getElementById("inp-confirm-pass").value;
+        const confirmValidation = document.getElementById(
+          "confirm-validation-change"
+        );
+
+        if (!confirm) {
+          confirmValidation.className = "validation-message";
+          return false;
+        }
+
+        if (password !== confirm) {
+          confirmValidation.className = "validation-message error";
+          confirmValidation.textContent = "❌ Mật khẩu không khớp";
+          return false;
+        }
+
+        const strength = checkPasswordStrength(password);
+        if (strength === "weak" || !strength) {
+          confirmValidation.className = "validation-message";
+          return false;
+        }
+
+        confirmValidation.className = "validation-message success";
+        confirmValidation.textContent = "✓ Mật khẩu khớp";
+        return true;
+      }
+
+      // Event listeners for password validation
+      document.addEventListener("DOMContentLoaded", function () {
+        const newPassInput = document.getElementById("inp-new-pass");
+        const confirmPassInput = document.getElementById("inp-confirm-pass");
+
+        if (newPassInput) {
+          newPassInput.addEventListener("input", function () {
+            checkPasswordStrength(this.value);
+            validatePasswords();
+          });
+        }
+
+        if (confirmPassInput) {
+          confirmPassInput.addEventListener("input", validatePasswords);
+        }
+
+        // Form submission
+        const changePasswordForm = document.getElementById(
+          "change-password-form"
+        );
+        if (changePasswordForm) {
+          changePasswordForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            submitChangePass();
+          });
+        }
+      });
+
+      function showPasswordError(message) {
+        const errorDiv = document.getElementById("password-error-message");
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+      }
+
+      function submitChangePass() {
+        const oldPass = document.getElementById("inp-old-pass").value;
+        const newPass = document.getElementById("inp-new-pass").value;
+        const confirmPass = document.getElementById("inp-confirm-pass").value;
+        const btnSubmit = document.getElementById("btn-submit-change");
+
+        // Validate
+        if (!oldPass || !newPass || !confirmPass) {
+          showPasswordError("Vui lòng nhập đầy đủ thông tin!");
+          return;
+        }
+
+        if (newPass !== confirmPass) {
+          showPasswordError("Mật khẩu xác nhận không khớp!");
+          return;
+        }
+
+        const strength = checkPasswordStrength(newPass);
+        if (strength === "weak") {
+          showPasswordError(
+            "Mật khẩu quá yếu. Vui lòng đáp ứng đủ các yêu cầu!"
+          );
+          return;
+        }
+
+        if (newPass.length < 8) {
+          showPasswordError("Mật khẩu mới phải có ít nhất 8 ký tự!");
+          return;
+        }
+
+        // Disable button and show loading
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span class="loading"></span> Đang cập nhật...';
+
+        // Call API
+        fetch(`${BACKEND_URL}/api/change-password/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            old_password: oldPass,
+            new_password: newPass,
+            confirm_password: confirmPass,
+          }),
+          credentials: "include",
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Thành công!",
+                text: "Đã đổi mật khẩu thành công",
+                confirmButtonColor: "#BC2A12",
+              });
+              closePassModal();
+            } else {
+              showPasswordError(data.message || "Có lỗi xảy ra");
+            }
+          })
+          .catch((err) => {
+            console.error("Lỗi:", err);
+            showPasswordError("Lỗi kết nối server");
+          })
+          .finally(() => {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Đổi mật khẩu";
+          });
+      }
+
+      // Sự kiện click ra ngoài để đóng modal (Dùng chung cho cả Avatar Modal và Pass Modal)
+      window.onclick = function (event) {
+        const avatarModal = document.getElementById("avatar-modal");
+        if (event.target == avatarModal) avatarModal.style.display = "none";
+        if (event.target == passModal) passModal.style.display = "none";
+      };
+
+      // Hàm gọi API đổi mật khẩu
+      function changePassword() {
+        const newPass = document.getElementById("user-password").value;
+        if (!newPass) {
+          alert("Vui lòng nhập mật khẩu mới!");
+          return;
+        }
+        if (newPass.length < 6) {
+          alert("Mật khẩu phải dài hơn 6 ký tự!");
+          return;
+        }
+
+        fetch(`${BACKEND_URL}/api/change-password/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: newPass }),
+          credentials: "include",
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "success") {
+              Swal.fire("Thành công", "Đổi mật khẩu thành công!", "success");
+              document.getElementById("user-password").value = "";
+            } else {
+              alert("Lỗi: " + data.message);
+            }
+          })
+          .catch((err) => alert("Lỗi kết nối server."));
+      }
+
+      // 2. Khi người dùng chọn file -> Hiện Modal Preview
+      function handleFileSelect() {
+        const fileInput = document.getElementById("avatar-upload-input");
+
+        if (fileInput.files && fileInput.files[0]) {
+          selectedFile = fileInput.files[0];
+          const objectUrl = URL.createObjectURL(selectedFile);
+          previewImg.src = objectUrl;
+          modal.style.display = "flex";
+        }
+      }
+
+      // 3. Đóng Modal
+      function closeModal() {
+        modal.style.display = "none";
+        document.getElementById("avatar-upload-input").value = ""; // Reset input
+        selectedFile = null;
+      }
+
+      // 4. Xác nhận Upload (Khi bấm LƯU trong Modal)
+      function confirmUpload() {
+        if (!selectedFile) return;
+
+        const formData = new FormData();
+        formData.append("avatar", selectedFile);
+
+        // Hiệu ứng nút bấm
+        const btnSave = document.querySelector(".btn-save");
+        const oldText = btnSave.innerText;
+        btnSave.innerText = "Đang lưu...";
+        btnSave.disabled = true;
+
+        fetch(`${BACKEND_URL}/api/upload-avatar/`, {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              // Cập nhật ảnh thật ngoài màn hình
+              document.getElementById("user-avatar-img").src =
+                data.new_avatar_url;
+              closeModal(); // Tắt modal
+              Swal.fire("Thành công", "Đã cập nhật ảnh đại diện!", "success");
+            } else {
+              alert("Lỗi: " + data.message);
+            }
+          })
+          .catch((err) => {
+            console.error("Lỗi upload:", err);
+            alert("Có lỗi kết nối.");
+          })
+          .finally(() => {
+            btnSave.innerText = oldText;
+            btnSave.disabled = false;
+          });
+      }
+
+      // Đóng modal khi click ra ngoài vùng trắng
+      window.onclick = function (event) {
+        if (event.target == modal) {
+          closeModal();
+        }
+      };
+
+      document.addEventListener("DOMContentLoaded", loadUserInfo);
+    </script>
+
+    <script>
+    // ===== PHÂN TRANG FAVORITES =====
+    let allFavorites = []; // Lưu toàn bộ dữ liệu
+    let currentPage = 1;
+    const ITEMS_PER_PAGE = 8; // 👈 THAY ĐỔI SỐ NÀY để đổi số quán/trang
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const listContainer = document.getElementById("favorites-list");
+      if (!listContainer) return;
+
+      try {
+        const response = await fetch("/api/get-favorites/", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+
+        if (response.status === 403) {
+          listContainer.innerHTML = `
+            <div style="text-align:center; padding: 20px; width: 100%;">
+              <p>⚠️ Bạn chưa đăng nhập!</p>
+              <a href="/accounts/login/" target="_blank" style="color: blue; text-decoration: underline;">
+                Bấm vào đây để đăng nhập
+              </a>
+            </div>`;
+          return;
+        }
+
+        const data = await response.json();
+        allFavorites = data.favorites || [];
+
+        if (allFavorites.length === 0) {
+          listContainer.innerHTML = `
+             <div style="
+              position: fixed;
+              top: 44vh;
+              left: 13vw;
+              text-align:center;
+              color: #777;
+              width: 100%;
+              z-index: 10;
+            ">
+              <p>Bạn chưa lưu quán nào 🍜</p>
+            </div>`;
+          return;
+        }
+
+        renderFavoritesPage();
+        renderPagination();
+      } catch (err) {
+        console.error("Lỗi load favorite:", err);
+        listContainer.innerHTML = `
+          <div style="text-align:center; color: red; padding: 20px;">
+            <p>❌ Không kết nối được server Django (Port 8000)</p>
+            <small>Hãy chắc chắn bạn đã bật server backend.</small>
+          </div>`;
+      }
+    });
+
+    function renderFavoritesPage() {
+      const listContainer = document.getElementById("favorites-list");
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const currentItems = allFavorites.slice(startIndex, endIndex);
+
+      const htmlContent = currentItems
+        .map(
+          (place) => `
+            <div class="fav-card">
+              <img src="${place.hinh_anh}" alt="${
+            place.ten_quan
+          }" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22%3E%3Crect fill=%22%23ddd%22 width=%22150%22 height=%22150%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2214%22 fill=%22%23999%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+              <div class="fav-info">
+                <h4>${place.ten_quan}</h4>
+                <p class="address"><i class="fa-solid fa-location-dot"></i> ${
+                  place.dia_chi
+                }</p>
+                <p class="price">${place.gia_trung_binh}</p>
+                <a href="/?search=${encodeURIComponent(
+                  place.ten_quan
+                )}" class="view-btn">
+                  <i class="fa-solid fa-map-location-dot"></i> Xem vị trí
+                </a>
+              </div>
+            </div>
+          `
+        )
+        .join("");
+
+      listContainer.innerHTML = htmlContent;
+    }
+
+    function renderPagination() {
+      const totalPages = Math.ceil(allFavorites.length / ITEMS_PER_PAGE);
+      const paginationContainer = document.getElementById("pagination-controls");
+      const pageNumbersContainer = document.getElementById("page-numbers");
+      const prevBtn = document.getElementById("prev-page-btn");
+      const nextBtn = document.getElementById("next-page-btn");
+
+      if (totalPages <= 1) {
+        paginationContainer.style.display = "none";
+        return;
+      }
+
+      paginationContainer.style.display = "flex";
+
+      let pageButtonsHTML = "";
+      const maxVisible = 4; // Số trang hiển thị tối đa
+      
+      if (totalPages <= maxVisible + 2) {
+        // Nếu tổng số trang ít, hiện tất cả
+        for (let i = 1; i <= totalPages; i++) {
+          pageButtonsHTML += `
+            <button class="page-number-btn ${i === currentPage ? "active" : ""}" 
+                    onclick="goToPage(${i})">
+              ${i}
+            </button>
+          `;
+        }
+      } else {
+        // Nhiều trang: hiển thị thông minh
+        // Luôn hiện trang 1
+        pageButtonsHTML += `
+          <button class="page-number-btn ${currentPage === 1 ? "active" : ""}" 
+                  onclick="goToPage(1)">
+            1
+          </button>
+        `;
+
+        let startPage, endPage;
+        
+        if (currentPage <= 3) {
+          // Gần đầu
+          startPage = 2;
+          endPage = maxVisible;
+        } else if (currentPage >= totalPages - 2) {
+          // Gần cuối
+          startPage = totalPages - maxVisible + 1;
+          endPage = totalPages - 1;
+        } else {
+          // Ở giữa
+          startPage = currentPage - 1;
+          endPage = currentPage + 1;
+        }
+
+        // Thêm "..." nếu cần
+        if (startPage > 2) {
+          pageButtonsHTML += `<span class="pagination-dots">...</span>`;
+        }
+
+        // Hiện các trang ở giữa
+        for (let i = startPage; i <= endPage; i++) {
+          pageButtonsHTML += `
+            <button class="page-number-btn ${i === currentPage ? "active" : ""}" 
+                    onclick="goToPage(${i})">
+              ${i}
+            </button>
+          `;
+        }
+
+        // Thêm "..." nếu cần
+        if (endPage < totalPages - 1) {
+          pageButtonsHTML += `<span class="pagination-dots">...</span>`;
+        }
+
+        // Luôn hiện trang cuối
+        pageButtonsHTML += `
+          <button class="page-number-btn ${currentPage === totalPages ? "active" : ""}" 
+                  onclick="goToPage(${totalPages})">
+            ${totalPages}
+          </button>
+        `;
+      }
+
+      pageNumbersContainer.innerHTML = pageButtonsHTML;
+
+      prevBtn.disabled = currentPage === 1;
+      nextBtn.disabled = currentPage === totalPages;
+    }
+
+    function changePage(direction) {
+      const totalPages = Math.ceil(allFavorites.length / ITEMS_PER_PAGE);
+      const newPage = currentPage + direction;
+
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderFavoritesPage();
+        renderPagination();
+        
+        document.getElementById("favorites-list").scrollIntoView({ 
+          behavior: "smooth", 
+          block: "start" 
+        });
+      }
+    }
+
+    function goToPage(pageNumber) {
+      currentPage = pageNumber;
+      renderFavoritesPage();
+      renderPagination();
+      
+      document.getElementById("favorites-list").scrollIntoView({ 
+        behavior: "smooth", 
+        block: "start" 
+      });
+    }
+  </script>
+  <script>
+    // ===== PHÂN TRANG CHO FRIEND PAGE =====
+    let allSearchResults = [];
+    let allFriendRequests = [];
+    let allFriendsList = [];
+
+    let currentSearchPage = 1;
+    let currentRequestsPage = 1;
+    let currentFriendsPage = 1;
+
+    const FRIENDS_PER_PAGE = 8;
+
+    // ===== TÌM KIẾM USER =====
+    async function searchUsers() {
+      const query = document.getElementById("search-input").value.trim();
+      if (!query) {
+        Swal.fire("Lỗi", "Vui lòng nhập email để tìm kiếm", "warning");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/users/search/?q=${query}`);
+        const data = await response.json();
+
+        allSearchResults = data.users || [];
+        currentSearchPage = 1;
+        renderSearchPage();
+        renderSearchPagination();
+      } catch (error) {
+        console.error("Lỗi tìm kiếm:", error);
+        Swal.fire("Lỗi", "Không thể tìm kiếm", "error");
+      }
+    }
+
+    function renderSearchPage() {
+      const resultsDiv = document.getElementById("search-results");
+      
+      if (allSearchResults.length === 0) {
+        resultsDiv.innerHTML = '<p class="no-data">Không tìm thấy người dùng nào</p>';
+        return;
+      }
+
+      const startIndex = (currentSearchPage - 1) * FRIENDS_PER_PAGE;
+      const endIndex = startIndex + FRIENDS_PER_PAGE;
+      const currentItems = allSearchResults.slice(startIndex, endIndex);
+
+      resultsDiv.innerHTML = currentItems
+        .map(
+          (user) => `
+          <div class="friend-card">
+            <div class="friend-info">
+              <div class="friend-avatar">👤</div>
+              <div>
+                <div class="friend-name">${user.username}</div>
+                <div class="friend-email">${user.email}</div>
+              </div>
+            </div>
+            <button class="btn-add" onclick="sendFriendRequest(${user.id})">➕ Kết bạn</button>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function renderSearchPagination() {
+      const totalPages = Math.ceil(allSearchResults.length / FRIENDS_PER_PAGE);
+      
+      // Tạo hoặc lấy pagination container
+      let paginationDiv = document.querySelector('#search-tab .pagination-wrapper');
+      if (!paginationDiv) {
+        paginationDiv = document.createElement('div');
+        paginationDiv.className = 'pagination-wrapper';
+        paginationDiv.style.position = 'fixed';
+        paginationDiv.style.bottom = '5vh';
+        paginationDiv.style.left = '61vw';
+        document.getElementById('search-tab').appendChild(paginationDiv);
+      }
+
+      if (totalPages <= 1) {
+        paginationDiv.style.display = 'none';
+        return;
+      }
+
+      paginationDiv.style.display = 'flex';
+      paginationDiv.innerHTML = `
+        <button class="pagination-btn" id="search-prev-btn" onclick="changeSearchPage(-1)" ${currentSearchPage === 1 ? 'disabled' : ''}>
+          ◀ Trước
+        </button>
+        <div id="search-page-numbers" class="page-numbers"></div>
+        <button class="pagination-btn" id="search-next-btn" onclick="changeSearchPage(1)" ${currentSearchPage === totalPages ? 'disabled' : ''}>
+          Sau ▶
+        </button>
+      `;
+
+      renderPageNumbers('search', totalPages, currentSearchPage);
+    }
+
+    function changeSearchPage(direction) {
+      const totalPages = Math.ceil(allSearchResults.length / FRIENDS_PER_PAGE);
+      const newPage = currentSearchPage + direction;
+
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentSearchPage = newPage;
+        renderSearchPage();
+        renderSearchPagination();
+      }
+    }
+
+    function goToSearchPage(pageNumber) {
+      currentSearchPage = pageNumber;
+      renderSearchPage();
+      renderSearchPagination();
+    }
+
+    // ===== LỜI MỜI KẾT BẠN =====
+    async function loadFriendRequests() {
+      if (!CURRENT_USER_ID) {
+        console.log("⏳ Chưa có CURRENT_USER_ID");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/friend-requests/${CURRENT_USER_ID}/`);
+        const data = await response.json();
+
+        allFriendRequests = data.requests || [];
+        currentRequestsPage = 1;
+        
+        const count = allFriendRequests.length;
+        document.getElementById("request-count").textContent = count;
+
+        renderRequestsPage();
+        renderRequestsPagination();
+      } catch (error) {
+        console.error("Lỗi tải lời mời:", error);
+      }
+    }
+
+    function renderRequestsPage() {
+      const requestsDiv = document.getElementById("friend-requests");
+
+      if (allFriendRequests.length === 0) {
+        requestsDiv.innerHTML = '<p class="no-data">Không có lời mời kết bạn nào</p>';
+        return;
+      }
+
+      const startIndex = (currentRequestsPage - 1) * FRIENDS_PER_PAGE;
+      const endIndex = startIndex + FRIENDS_PER_PAGE;
+      const currentItems = allFriendRequests.slice(startIndex, endIndex);
+
+      requestsDiv.innerHTML = currentItems
+        .map(
+          (req) => `
+          <div class="friend-card">
+            <div class="friend-info">
+              <div class="friend-avatar">👤</div>
+              <div>
+                <div class="friend-name">${req.sender_username}</div>
+                <div class="friend-email">Gửi lúc: ${req.created_at}</div>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn-accept" onclick="acceptRequest(${req.id})">✓</button>
+              <button class="btn-reject" onclick="rejectRequest(${req.id})">✗</button>
+            </div>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function renderRequestsPagination() {
+      const totalPages = Math.ceil(allFriendRequests.length / FRIENDS_PER_PAGE);
+      
+      let paginationDiv = document.querySelector('#requests-tab .pagination-wrapper');
+      if (!paginationDiv) {
+        paginationDiv = document.createElement('div');
+        paginationDiv.className = 'pagination-wrapper';
+        paginationDiv.style.position = 'fixed';
+        paginationDiv.style.bottom = '5vh';
+        paginationDiv.style.left = '61vw';
+        document.getElementById('requests-tab').appendChild(paginationDiv);
+      }
+
+      if (totalPages <= 1) {
+        paginationDiv.style.display = 'none';
+        return;
+      }
+
+      paginationDiv.style.display = 'flex';
+      paginationDiv.innerHTML = `
+        <button class="pagination-btn" onclick="changeRequestsPage(-1)" ${currentRequestsPage === 1 ? 'disabled' : ''}>
+          ◀ Trước
+        </button>
+        <div id="requests-page-numbers" class="page-numbers"></div>
+        <button class="pagination-btn" onclick="changeRequestsPage(1)" ${currentRequestsPage === totalPages ? 'disabled' : ''}>
+          Sau ▶
+        </button>
+      `;
+
+      renderPageNumbers('requests', totalPages, currentRequestsPage);
+    }
+
+    function changeRequestsPage(direction) {
+      const totalPages = Math.ceil(allFriendRequests.length / FRIENDS_PER_PAGE);
+      const newPage = currentRequestsPage + direction;
+
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentRequestsPage = newPage;
+        renderRequestsPage();
+        renderRequestsPagination();
+      }
+    }
+
+    function goToRequestsPage(pageNumber) {
+      currentRequestsPage = pageNumber;
+      renderRequestsPage();
+      renderRequestsPagination();
+    }
+
+    // ===== DANH SÁCH BẠN BÈ =====
+    async function loadFriendsList() {
+      if (!CURRENT_USER_ID) {
+        console.log("⏳ Chưa có CURRENT_USER_ID");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/friends/${CURRENT_USER_ID}/`);
+        const data = await response.json();
+
+        allFriendsList = data.friends || [];
+        currentFriendsPage = 1;
+
+        renderFriendsPage();
+        renderFriendsPagination();
+      } catch (error) {
+        console.error("Lỗi tải danh sách bạn:", error);
+      }
+    }
+
+    function renderFriendsPage() {
+      const friendsDiv = document.getElementById("friends-list");
+
+      if (allFriendsList.length === 0) {
+        friendsDiv.innerHTML = '<p class="no-data">Chưa có bạn bè nào</p>';
+        return;
+      }
+
+      const startIndex = (currentFriendsPage - 1) * FRIENDS_PER_PAGE;
+      const endIndex = startIndex + FRIENDS_PER_PAGE;
+      const currentItems = allFriendsList.slice(startIndex, endIndex);
+
+      friendsDiv.innerHTML = currentItems
+        .map(
+          (friend) => `
+          <div class="friend-card">
+            <div class="friend-info">
+              <div class="friend-avatar">👤</div>
+              <div>
+                <div class="friend-name">${friend.username}</div>
+                <div class="friend-email">${friend.email}</div>
+              </div>
+            </div>
+            <div class="friend-actions">
+                <button class="btn-more" onclick="toggleActionMenu(this)">⋯</button>
+
+                <div class="action-overlay">
+                    <button onclick="viewFriendFavorites(${friend.id}, '${friend.username}')">❤️ Quán yêu thích</button>
+                    <button onclick="unfriendUser(${friend.id}, '${friend.username}')">🗑️ Hủy kết bạn</button>
+                </div>
+            </div>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function renderFriendsPagination() {
+      const totalPages = Math.ceil(allFriendsList.length / FRIENDS_PER_PAGE);
+      
+      let paginationDiv = document.querySelector('#list-tab .pagination-wrapper');
+      if (!paginationDiv) {
+        paginationDiv = document.createElement('div');
+        paginationDiv.className = 'pagination-wrapper';
+        paginationDiv.style.position = 'fixed';
+        paginationDiv.style.bottom = '5vh';
+        paginationDiv.style.left = '61vw';
+        document.getElementById('list-tab').appendChild(paginationDiv);
+      }
+
+      if (totalPages <= 1) {
+        paginationDiv.style.display = 'none';
+        return;
+      }
+
+      paginationDiv.style.display = 'flex';
+      paginationDiv.innerHTML = `
+        <button class="pagination-btn" onclick="changeFriendsPage(-1)" ${currentFriendsPage === 1 ? 'disabled' : ''}>
+          ◀ Trước
+        </button>
+        <div id="friends-page-numbers" class="page-numbers"></div>
+        <button class="pagination-btn" onclick="changeFriendsPage(1)" ${currentFriendsPage === totalPages ? 'disabled' : ''}>
+          Sau ▶
+        </button>
+      `;
+
+      renderPageNumbers('friends', totalPages, currentFriendsPage);
+    }
+
+    function changeFriendsPage(direction) {
+      const totalPages = Math.ceil(allFriendsList.length / FRIENDS_PER_PAGE);
+      const newPage = currentFriendsPage + direction;
+
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentFriendsPage = newPage;
+        renderFriendsPage();
+        renderFriendsPagination();
+      }
+    }
+
+    function goToFriendsPage(pageNumber) {
+      currentFriendsPage = pageNumber;
+      renderFriendsPage();
+      renderFriendsPagination();
+    }
+
+    // ===== RENDER PAGE NUMBERS (DÙng CHUNG) =====
+    function renderPageNumbers(type, totalPages, currentPage) {
+      const container = document.getElementById(`${type}-page-numbers`);
+      if (!container) return;
+
+      let pageButtonsHTML = "";
+      const maxVisible = 4;
+      
+      if (totalPages <= maxVisible + 2) {
+        for (let i = 1; i <= totalPages; i++) {
+          pageButtonsHTML += `
+            <button class="page-number-btn ${i === currentPage ? "active" : ""}" 
+                    onclick="goTo${type.charAt(0).toUpperCase() + type.slice(1)}Page(${i})">
+              ${i}
+            </button>
+          `;
+        }
+      } else {
+        // Trang 1
+        pageButtonsHTML += `
+          <button class="page-number-btn ${currentPage === 1 ? "active" : ""}" 
+                  onclick="goTo${type.charAt(0).toUpperCase() + type.slice(1)}Page(1)">
+            1
+          </button>
+        `;
+
+        let startPage, endPage;
+        
+        if (currentPage <= 3) {
+          startPage = 2;
+          endPage = maxVisible;
+        } else if (currentPage >= totalPages - 2) {
+          startPage = totalPages - maxVisible + 1;
+          endPage = totalPages - 1;
+        } else {
+          startPage = currentPage - 1;
+          endPage = currentPage + 1;
+        }
+
+        if (startPage > 2) {
+          pageButtonsHTML += `<span class="pagination-dots">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          pageButtonsHTML += `
+            <button class="page-number-btn ${i === currentPage ? "active" : ""}" 
+                    onclick="goTo${type.charAt(0).toUpperCase() + type.slice(1)}Page(${i})">
+              ${i}
+            </button>
+          `;
+        }
+
+        if (endPage < totalPages - 1) {
+          pageButtonsHTML += `<span class="pagination-dots">...</span>`;
+        }
+
+        // Trang cuối
+        pageButtonsHTML += `
+          <button class="page-number-btn ${currentPage === totalPages ? "active" : ""}" 
+                  onclick="goTo${type.charAt(0).toUpperCase() + type.slice(1)}Page(${totalPages})">
+            ${totalPages}
+          </button>
+        `;
+      }
+
+      container.innerHTML = pageButtonsHTML;
+    }
+
+    // ===== CẬP NHẬT LẠI CÁC HÀM CŨ =====
+    // Sau khi accept/reject request
+    async function acceptRequest(requestId) {
+      try {
+        const response = await fetch(`${API_URL}/friend-request/accept/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: requestId }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          Swal.fire("Thành công", "Đã chấp nhận lời mời", "success");
+          await loadFriendRequests(); // ✅ Reload với pagination
+          await loadFriendsList();
+        }
+      } catch (error) {
+        console.error("Lỗi:", error);
+        Swal.fire("Lỗi", "Không thể chấp nhận", "error");
+      }
+    }
+
+    async function rejectRequest(requestId) {
+      try {
+        const response = await fetch(`${API_URL}/friend-request/reject/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: requestId }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          Swal.fire("Đã từ chối", "Lời mời đã bị từ chối", "info");
+          await loadFriendRequests(); // ✅ Reload với pagination
+        }
+      } catch (error) {
+        console.error("Lỗi:", error);
+      }
+    }
+
+    async function unfriendUser(friendId, friendName) {
+      const result = await Swal.fire({
+        title: "Xác nhận hủy kết bạn?",
+        text: `Bạn muốn hủy kết bạn với ${friendName}?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Đúng, hủy kết bạn!",
+        cancelButtonText: "Hủy",
+      });
+
+      if (result.isConfirmed) {
+        try {
+          const response = await fetch(`${API_URL}/friend/unfriend/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ friend_id: friendId }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            Swal.fire("Thành công", "Đã hủy kết bạn", "success");
+            await loadFriendsList(); // ✅ Reload với pagination
+          } else {
+            Swal.fire("Lỗi", data.error, "error");
+          }
+        } catch (error) {
+          console.error("Lỗi:", error);
+          Swal.fire("Lỗi", "Không thể hủy kết bạn", "error");
+        }
+      }
+    }
+
+    function toggleActionMenu(button) {
+        const card = button.closest(".friend-card");
+        const overlay = card.querySelector(".action-overlay");
+
+        // Nếu đang mở → đóng
+        if (overlay.classList.contains("show")) {
+            overlay.classList.remove("show");
+            return;
+        }
+
+        // Đóng mọi overlay khác
+        document.querySelectorAll(".action-overlay").forEach(el => {
+            el.classList.remove("show");
+        });
+
+        // Mở overlay của chính card đang bấm
+        overlay.classList.add("show");
+    }
+
+    // Ấn ra ngoài để đóng
+    document.addEventListener("click", function(e) {
+        if (!e.target.closest(".friend-card")) {
+            document.querySelectorAll(".action-overlay").forEach(el => {
+                el.classList.remove("show");
+            });
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      const openFriendRequests = params.get('openFriendRequests');
+
+      // Ví dụ: bạn đã có sẵn mấy hàm kiểu:
+      //   - switchToFriendsTab()
+      //   - showFriendRequestsSection()
+      // Chỉ cần gọi lại ở đây.
+
+      if (tab === 'friends') {
+        if (typeof switchToFriendsTab === 'function') {
+          switchToFriendsTab();
+        }
+
+        if (openFriendRequests === '1' &&
+            typeof showFriendRequestsSection === 'function') {
+          showFriendRequestsSection(); // scroll tới / active block "Lời mời kết bạn"
+        }
+      }
+    });
+
+    </script>
+  </body>
+</html>
