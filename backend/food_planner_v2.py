@@ -3467,7 +3467,7 @@ async function savePlan() {
             })
         });
 
-        const result = await response.json();
+                const result = await response.json();
 
         if (result.status === 'success') {
             alert('✅ Đã lưu kế hoạch thành công!');
@@ -3478,8 +3478,27 @@ async function savePlan() {
                 toggleEditMode();
             }
             
-            // ✅ LOAD LẠI DANH SÁCH PLANS
-            await loadSavedPlans();
+            // 🔥 LẤY ID PLAN VỪA LƯU (NẾU API TRẢ VỀ)
+            let newPlanId = null;
+            if (result.plan && result.plan.id) {
+                newPlanId = result.plan.id;
+            } else if (result.plan_id) {
+                newPlanId = result.plan_id;
+            }
+
+            if (newPlanId) {
+                currentPlanId = newPlanId;
+            }
+            
+            // ✅ LOAD LẠI DANH SÁCH + MỞ LUÔN PLAN VỪA LƯU
+            if (newPlanId) {
+                // forceReload = true để không bị nhánh "click lại cùng planId" đóng plan
+                await loadSavedPlans(newPlanId, true);
+            } else {
+                // fallback: nếu API chưa trả id thì giữ behaviour cũ
+                await loadSavedPlans();
+            }
+
         } else {
             alert('❌ Lỗi: ' + result.message);
         }
@@ -3645,6 +3664,40 @@ async function loadSavedPlans(planId, forceReload = false) {
     }
 }
 
+// ========== HELPER: CONVERT UTC TO LOCAL TIMEZONE ==========
+function formatDateTimeWithTimezone(datetimeString) {
+    if (!datetimeString) return 'Không rõ ngày';
+    
+    try {
+        // Parse ISO string
+        let date;
+        
+        // Nếu có 'T' thì đã đúng format ISO
+        if (datetimeString.includes('T')) {
+            date = new Date(datetimeString);
+        } else {
+            // Nếu format 'YYYY-MM-DD HH:MM:SS' thì thêm 'T'
+            const normalized = datetimeString.replace(' ', 'T');
+            date = new Date(normalized);
+        }
+        
+        // 🔥 BỎ PHẦN CỘNG 7 GIỜ - CHỈ FORMAT LẠI
+        // JavaScript Date tự động convert sang timezone local rồi
+        
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hour = String(date.getHours()).padStart(2, '0');
+        const minute = String(date.getMinutes()).padStart(2, '0');
+        const second = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${hour}:${minute}:${second} ${day}/${month}/${year}`;
+        
+    } catch (error) {
+        console.error('❌ Lỗi format datetime:', error);
+        return 'Lỗi định dạng';
+    }
+}
 // ========== DELETE PLAN - Xóa từ Database Django ==========
 async function deleteSavedPlan(planId) {
     if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
@@ -3860,7 +3913,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function openFoodPlanner() {
-    console.log('🚀 Opening Food Planner...');
+    console.log('🚀 Opening Food Planner.');
     
     const panel = document.getElementById('foodPlannerPanel');
     console.log('Panel element:', panel);
@@ -3874,6 +3927,7 @@ function openFoodPlanner() {
     isPlannerOpen = true;
     loadSavedPlans();
     
+    // 🔥 Nếu đã có currentPlan (và không ở edit mode) thì vẽ lại route + marker theo plan
     setTimeout(() => {
         if (currentPlan && !isEditMode) {
             const hasPlaces = Object.keys(currentPlan)
@@ -3881,34 +3935,70 @@ function openFoodPlanner() {
                 .some(k => currentPlan[k] && currentPlan[k].place);
             
             if (hasPlaces) {
-                drawRouteOnMap(currentPlan);
+                // Vẽ đường đi cho lịch trình
+                if (typeof drawRouteOnMap === 'function') {
+                    drawRouteOnMap(currentPlan);
+                }
+
+                // 🔥 Ẩn marker quán ngoài lịch trình, chỉ giữ quán trong plan
+                if (typeof window.showMarkersForPlaceIds === 'function') {
+                    window.showMarkersForPlaceIds(currentPlan);
+                }
             }
         }
     }, 300);
 }
 
+
 function closeFoodPlanner() {
-    document.getElementById('foodPlannerPanel').classList.remove('active');
+    const panel = document.getElementById('foodPlannerPanel');
+    if (panel) {
+        panel.classList.remove('active');
+    }
+
     isPlannerOpen = false;
     isViewingSharedPlan = false;
     
-    // ✅ Cleanup toàn bộ
+    // ✅ Cleanup toàn bộ route / drag
     clearRoutes();
     stopAutoScroll();
     disableGlobalDragTracking();
     
-    // ✅ Reset states
+    // ✅ Reset drag state
     draggedElement = null;
     window.draggedElement = null;
     lastTargetElement = null;
     lastDragY = 0;
+
+    // ✅ Reset trạng thái chọn quán cho bữa ăn (nếu đang chờ)
+    waitingForPlaceSelection = null;
+    selectedPlaceForReplacement = null;
     
     // 🔥 ẨN NÚT X KHI ĐÓNG PANEL
     const exitBtn = document.getElementById('exitSharedPlanBtn');
     if (exitBtn) {
         exitBtn.style.display = 'none';
     }
+
+    // 🔥 KHI ĐÓNG FOOD PLANNER → HIỆN LẠI TẤT CẢ MARKER QUÁN BÌNH THƯỜNG
+    try {
+        // Ưu tiên dùng data search đang có (allPlacesData)
+        if (typeof displayPlaces === 'function' &&
+            Array.isArray(window.allPlacesData) &&
+            window.allPlacesData.length > 0) {
+
+            // false = không đổi zoom, chỉ vẽ lại marker
+            displayPlaces(window.allPlacesData, false);
+        } else if (typeof loadMarkersInViewport === 'function' && window.map) {
+            // Fallback: nếu chưa có allPlacesData thì bật lại lazy-load + load marker
+            window.map.on('moveend', loadMarkersInViewport);
+            loadMarkersInViewport();
+        }
+    } catch (e) {
+        console.error('❌ Lỗi khi restore marker sau khi đóng Food Planner:', e);
+    }
 }
+
 
 // ========== GET SELECTED FLAVORS ==========
 function getSelectedFlavors() {
@@ -7094,11 +7184,9 @@ async function checkPendingSuggestions(planId) {
             data.suggestions.filter(s => s.status === 'pending') : [];
         
         if (pendingSuggestions.length > 0) {
-            // Có đề xuất pending → hiện nút
             suggestionsBtn.style.display = 'flex';
             suggestionCount.textContent = pendingSuggestions.length;
         } else {
-            // Không còn pending → ẩn nút
             suggestionsBtn.style.display = 'none';
             suggestionCount.textContent = '0';
         }
@@ -8115,17 +8203,58 @@ async function rejectChange(suggestionId, changeIndex, changeType, changeKey) {
     }
 }
 
-// ========== APPROVE ALL CHANGES - GỬI TẤT CẢ THAY ĐỔI ĐÃ ĐÁNH DẤU ==========
 async function approveAllChanges(suggestionId) {
-    // 🔥 KIỂM TRA CÓ THAY ĐỔI NÀO CHƯA
     const pending = pendingApprovals[suggestionId];
-    if (!pending || pending.approvedChanges.length === 0) {
-        alert('⚠️ Bạn chưa chọn thay đổi nào để chấp nhận!');
-        return;
+    
+    // 🔥 FIX: Nếu không có pending data, lấy TẤT CẢ thay đổi từ suggestion
+    if (!pending || (!pending.approvedChanges.length && !pending.rejectedChanges.length)) {
+        try {
+            // Lấy chi tiết suggestion từ API
+            const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
+            const data = await response.json();
+            
+            if (data.status !== 'success') {
+                alert('❌ ' + data.message);
+                return;
+            }
+            
+            const suggestion = data.suggestion;
+            const changes = analyzeChanges(suggestion.current_data, suggestion.suggested_data);
+            
+            // 🔥 TỰ ĐỘNG CHẤP NHẬN TẤT CẢ thay đổi
+            if (!pendingApprovals[suggestionId]) {
+                pendingApprovals[suggestionId] = {
+                    approvedChanges: [],
+                    rejectedChanges: []
+                };
+            }
+            
+            changes.forEach((change, index) => {
+                pendingApprovals[suggestionId].approvedChanges.push({
+                    changeIndex: index,
+                    changeType: change.type,
+                    changeKey: change.key
+                });
+            });
+            
+            console.log('✅ Đã tự động chấp nhận tất cả thay đổi:', pendingApprovals[suggestionId]);
+            
+        } catch (error) {
+            console.error('Error loading suggestion:', error);
+            alert('⚠️ Không thể tải thông tin đề xuất');
+            return;
+        }
     }
     
-    const approvedCount = pending.approvedChanges.length;
-    const rejectedCount = pending.rejectedChanges.length;
+    // 🔥 TIẾP TỤC LOGIC CŨ
+    const approvedCount = pendingApprovals[suggestionId].approvedChanges.length;
+    const rejectedCount = pendingApprovals[suggestionId].rejectedChanges.length;
+    
+    // 🔥 CHỈ CẢNH BÁO NẾU TẤT CẢ ĐỀU BỊ REJECT
+    if (approvedCount === 0 && rejectedCount > 0) {
+        alert('⚠️ Bạn đã từ chối tất cả thay đổi. Không có gì để chấp nhận!');
+        return;
+    }
     
     const confirmMsg = `
 📊 Tổng kết:
@@ -8138,45 +8267,35 @@ Xác nhận áp dụng các thay đổi đã chọn?
     if (!confirm(confirmMsg)) return;
     
     try {
-        // 🔥 GỬI TỪNG THAY ĐỔI ĐÃ APPROVE
-        let successCount = 0;
+        // 🔥 GỌI API - GỬI TẤT CẢ THAY ĐỔI 1 LẦN
+        const response = await fetch('/api/accounts/food-plan/approve-all-changes/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                suggestion_id: suggestionId,
+                approved_changes: pendingApprovals[suggestionId].approvedChanges
+            })
+        });
         
-        for (const change of pending.approvedChanges) {
-            const response = await fetch(`/api/accounts/food-plan/suggestion-approve-single/`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    suggestion_id: suggestionId,
-                    change_type: change.changeType,
-                    change_key: change.changeKey
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                successCount++;
-            } else {
-                console.error('Lỗi áp dụng thay đổi:', result.message);
-            }
-        }
+        const result = await response.json();
         
-        if (successCount > 0) {
-            alert(`✅ Đã áp dụng ${successCount}/${approvedCount} thay đổi!`);
+        if (result.status === 'success') {
+            alert(`✅ Đã áp dụng ${result.applied_count} thay đổi!`);
             
             // 🔥 XÓA TRẠNG THÁI TẠM
             delete pendingApprovals[suggestionId];
             
-            // Đóng modal và reload
+            // Đóng modal
             closeComparisonModal();
             closeSuggestionsModal();
             
+            // 🔥 RELOAD LẠI PLAN VÀ CHECK SUGGESTIONS
             if (currentPlanId) {
                 await checkPendingSuggestions(currentPlanId);
                 await loadSavedPlans(currentPlanId, true);
             }
         } else {
-            alert('❌ Không thể áp dụng thay đổi nào!');
+            alert('❌ ' + result.message);
         }
         
     } catch (error) {
@@ -8224,6 +8343,11 @@ async function viewMySuggestions(planId) {
             const statusText = sug.status === 'pending' ? 'Chờ duyệt' : 
                              sug.status === 'accepted' ? 'Đã chấp nhận' : 'Đã từ chối';
             
+            // 🔥 SỬA: Dùng hàm formatDateTimeWithTimezone
+            const createdAtFormatted = formatDateTimeWithTimezone(sug.created_at);
+            const reviewedAtFormatted = sug.reviewed_at ? 
+                formatDateTimeWithTimezone(sug.reviewed_at) : null;
+            
             return `
                 <div style="
                     background: white;
@@ -8239,11 +8363,11 @@ async function viewMySuggestions(planId) {
                                 📝 Đề xuất #${suggestions.length - index}
                             </div>
                             <div style="font-size: 13px; color: #666;">
-                                📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
+                                📅 ${createdAtFormatted}
                             </div>
-                            ${sug.reviewed_at ? `
+                            ${reviewedAtFormatted ? `
                                 <div style="font-size: 13px; color: #666; margin-top: 4px;">
-                                    🕐 Xét duyệt: ${new Date(sug.reviewed_at).toLocaleString('vi-VN')}
+                                    🕐 Xét duyệt: ${reviewedAtFormatted}
                                 </div>
                             ` : ''}
                         </div>

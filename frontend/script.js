@@ -169,13 +169,13 @@ if (!document.getElementById('custom-alert-style')) {
 // =========================
 const icons = {
   default: L.icon({
-    iconUrl: "icons/icon.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/icon.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-    iconUrl: "icons/star.png",
+    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
@@ -501,6 +501,47 @@ function displayPlaces(places, shouldZoom = true) {
   }
 // 👉 THÊM DÒNG NÀY
   const isSinglePlaceMode = !isFavoriteMode && places.length === 1;
+    // 🔥 MODE ĐẶC BIỆT: CHỈ CÓ 1 QUÁN → ADD THẲNG MARKER VÀO MAP
+  if (isSinglePlaceMode) {
+    console.log('🎯 [displayPlaces] Single place mode → add marker trực tiếp, không dùng cluster');
+
+    // Xoá mọi marker cũ nhưng vẫn giữ marker GPS (startMarker)
+    clearAllMarkers();
+
+    const p = places[0];
+    const lat = parseFloat(p.lat?.toString().replace(",", "."));
+    const lon = parseFloat(p.lon?.toString().replace(",", "."));
+
+    if (isNaN(lat) || isNaN(lon)) {
+      showWarningToast("Quán này chưa có tọa độ hợp lệ!");
+      return false;
+    }
+
+    // Tạo marker & add thẳng vào map
+    const marker = createMarker(p, lat, lon);
+    markers.push(marker);
+    marker.addTo(map);
+
+    const placeId = p.data_id || p.ten_quan;
+    if (placeId) {
+      visibleMarkers.add(placeId);
+      if (!window.placeMarkersById) window.placeMarkersById = {};
+      window.placeMarkersById[placeId] = marker;
+    }
+
+    // Zoom tới quán
+    if (shouldZoom) {
+      map.setView([lat, lon], 17, { animate: true });
+    }
+
+    // Tự mở sidebar sau khi zoom xong 1 chút
+    setTimeout(() => {
+      marker.fire("click");
+    }, 400);
+
+    window.allMarkers = markers;
+    return true; // ⬅️ RẤT QUAN TRỌNG: KHÔNG CHẠY XUỐNG CODE CLUSTER BÊN DƯỚI NỮA
+  }
 
   // 🔥🔥🔥 THÊM ĐOẠN NÀY 🔥🔥🔥
   // ✅ XÓA SẠCH TẤT CẢ MARKER CŨ TRƯỚC KHI VẼ MỚI
@@ -557,27 +598,31 @@ console.log('⚠️ [displayPlaces] Removed old lazy load listener');
     });
 
     places.forEach((p) => {
-      const lat = parseFloat(p.lat?.toString().replace(",", "."));
-      const lon = parseFloat(p.lon?.toString().replace(",", "."));
-      
-      if (isNaN(lat) || isNaN(lon)) return;
-      
-      const placeId = p.data_id || p.ten_quan;
-      
-      // Tạo marker
-      const marker = createMarker(p, lat, lon);
-      markers.push(marker);
-      visibleMarkers.add(placeId);
+  const lat = parseFloat(p.lat?.toString().replace(",", "."));
+  const lon = parseFloat(p.lon?.toString().replace(",", "."));
+  
+  if (isNaN(lat) || isNaN(lon)) return;
+  
+  const placeId = p.data_id || p.ten_quan;
+  
+  // Tạo marker
+  const marker = createMarker(p, lat, lon);
+  markers.push(marker);
+  visibleMarkers.add(placeId);
 
-      if (isSinglePlaceMode) {
-        // ✅ CASE CHỈ 1 QUÁN: add thẳng vào map, không dùng cluster
-        marker.addTo(map);
-        console.log('✅ [displayPlaces] Single-place mode: marker add trực tiếp vào map');
-      } else {
-        // ✅ Nhiều quán: dùng cluster như cũ
-        markerClusterGroup.addLayer(marker);
-      }
-    });
+  // 🔥 LOGIC MỚI: Nếu favorite mode VÀ chỉ 1 quán → add thẳng vào map
+  if (isFavoriteMode && places.length === 1) {
+    marker.addTo(map);
+    console.log('✅ [FAVORITES] 1 quán yêu thích → marker add trực tiếp vào map');
+    console.log('   📍 Position:', lat, lon);
+    console.log('   🏷️ ID:', placeId);
+  } 
+  // ✅ Trường hợp khác: dùng cluster bình thường
+  else {
+    markerClusterGroup.addLayer(marker);
+    console.log('✅ [NORMAL] Marker add vào cluster');
+  }
+});
 
 
 
@@ -1624,13 +1669,15 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
     }
 
 // ========== 4️⃣ Lọc bán kính ==========
+// 🔥 CHỈ LỌC BÁN KÍNH KHI USER ĐÃ TỰ CHỌN (radio được check)
 if (radius && radius !== "" && radius !== "all") {
   const r = parseFloat(radius);
   
+  // ✅ Kiểm tra bán kính hợp lệ
   if (isNaN(r) || r <= 0) {
-    // Bán kính không hợp lệ → bỏ qua filter này
+    console.warn('⚠️ Bán kính không hợp lệ, bỏ qua filter');
   } else {
-    // ⭐ CHỈ KIỂM TRA TỌA ĐỘ KHI ĐÃ CHỌN BÁN KÍNH HỢP LỆ
+    // ✅ CHỈ BẮT NHẬP GPS KHI ĐÃ CHỌN BÁN KÍNH
     if (
       !window.currentUserCoords ||
       !window.currentUserCoords.lat ||
@@ -1639,12 +1686,13 @@ if (radius && radius !== "" && radius !== "all") {
       showWarningToast(
         "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
       );
-      return false; // ⭐⭐⭐ DỪNG HÀM fetchPlaces(), không filter nữa
+      return false;
     }
 
     const userLat = parseFloat(window.currentUserCoords.lat);
     const userLon = parseFloat(window.currentUserCoords.lon);
 
+    // 🔍 Lọc quán theo bán kính
     filtered = filtered.filter((p) => {
       if (!p.lat || !p.lon) return false;
 
@@ -1655,7 +1703,12 @@ if (radius && radius !== "" && radius !== "all") {
       const d = distance(userLat, userLon, plat, plon);
       return d <= r;
     });
+    
+    console.log(`✅ Đã lọc theo bán kính ${r}km, còn ${filtered.length} quán`);
   }
+} else {
+  // 🔥 QUAN TRỌNG: Nếu KHÔNG CHỌN bán kính → KHÔNG CHECK GPS
+  console.log('ℹ️ Không lọc bán kính, hiển thị tất cả kết quả');
 }
 
     const ok = displayPlaces(filtered, shouldZoom);
@@ -1667,6 +1720,7 @@ if (radius && radius !== "" && radius !== "all") {
   }
 }
 let notFoundCount = 0;
+
 // =============================
 // 🔍 NÚT TÌM KIẾM
 // =============================
@@ -1674,21 +1728,41 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   const gpsInputValue = document.getElementById("gpsInput").value.trim();
   const query = document.getElementById("query").value.trim();
 
-  const selectedFlavors = Array.from(
+  // ✅ XÓA MARKER GPS NẾU USER XÓA INPUT
+  if (!gpsInputValue || gpsInputValue === "") {
+    // Xóa marker GPS khỏi map
+    if (window.startMarker) {
+      map.removeLayer(window.startMarker);
+      window.startMarker = null;
+      console.log('🧹 Đã xóa marker GPS vì input rỗng');
+    }
+    
+    // Reset tọa độ GPS
+    window.currentUserCoords = null;
+    console.log('🧹 Đã reset currentUserCoords');
+
+  }
+
+
+   const selectedFlavors = Array.from(
     document.querySelectorAll("#flavorDropdown input:checked")
   ).map((c) => c.value);
 
   const budget = document.getElementById("budget").value;
-  let radius = document.getElementById("radius").value; // ⬅ LẤY GIÁ TRỊ
 
-  // ✅ ✅ ✅ FIX CHÍNH Ở ĐÂY ✅ ✅ ✅
-  // Nếu user KHÔNG TỰ CHỌN bán kính (radio không được check) → XÓA giá trị
+  // 🔍 LẤY BÁN KÍNH THEO RADIO ĐANG CHECK
   const radiusChecked = document.querySelector('input[name="radius"]:checked');
-  if (!radiusChecked) {
-    radius = ""; // ⬅ XÓA giá trị để KHÔNG LỌC bán kính
-    document.getElementById("radius").value = ""; // ⬅ Reset luôn hidden input
+  let radius = "";
+
+  if (radiusChecked) {
+    radius = radiusChecked.value;                 // ví dụ: "2", "5", "all"
+    document.getElementById("radius").value = radius; // sync lại hidden input
+  } else {
+    document.getElementById("radius").value = ""; // không có radio nào → không lọc
   }
-  // ✅ ✅ ✅ HẾT FIX ✅ ✅ ✅
+
+  console.log("📏 Radius đang dùng:", radius);
+
 
   // 🔁 Mỗi lần tìm kiếm mới thì tắt chế độ "Quán yêu thích"
   isFavoriteMode = false;
@@ -1901,6 +1975,34 @@ budgetRadios.forEach(radio => {
         budgetDropdown.classList.remove('show');
     });
 });
+// =========================
+// 🔁 HÀM RESET BÁN KÍNH (DÙNG CHUNG)
+// =========================
+function resetRadiusFilter() {
+  // 1. Xóa hidden input
+  const radiusInput = document.getElementById('radius');
+  if (radiusInput) {
+    radiusInput.value = '';
+  }
+
+  // 2. Bỏ check toàn bộ radio
+  const radiusRadios = document.querySelectorAll('input[name="radius"]');
+  radiusRadios.forEach(r => {
+    r.checked = false;
+  });
+
+  // 3. Đưa text nút về mặc định
+  const radiusBtn = document.getElementById('radiusBtn');
+  if (radiusBtn) {
+    const radiusText = radiusBtn.querySelector('.selected-flavors');
+    if (radiusText) {
+      radiusText.textContent = 'Bán kính tìm kiếm';
+      radiusText.classList.add('empty');
+    }
+  }
+
+  console.log('✅ Đã reset filter bán kính');
+}
 
 // =========================
 // 📏 RADIUS DROPDOWN
@@ -1950,34 +2052,11 @@ document.addEventListener('click', (e) => {
 // 🧹 RESET BÁN KÍNH KHI PAGE LOAD (QUAN TRỌNG!)
 // =========================
 document.addEventListener("DOMContentLoaded", function () {
-  console.log("🧹 Đang reset bán kính về mặc định...");
-  
-  // ✅ Xóa giá trị hidden input
-  const radiusInput = document.getElementById('radius');
-  if (radiusInput) {
-    radiusInput.value = '';
-    console.log("✅ Đã xóa giá trị #radius");
-  }
-  
-  // ✅ Bỏ check tất cả radio buttons
-  const radiusRadios = document.querySelectorAll('input[name="radius"]');
-  radiusRadios.forEach(r => {
-    r.checked = false;
-  });
-  console.log("✅ Đã uncheck tất cả radio buttons");
-  
-  // ✅ Reset text hiển thị trên nút dropdown
-  const radiusBtn = document.getElementById('radiusBtn');
-  if (radiusBtn) {
-    const radiusText = radiusBtn.querySelector('.selected-flavors');
-    if (radiusText) {
-      radiusText.textContent = 'Bán kính tìm kiếm';
-      radiusText.classList.add('empty');
-    }
-    console.log("✅ Đã reset text nút bán kính");
-  }
-  
-  // ✅ Làm tương tự cho budget (nếu cần)
+  console.log("🧹 Đang reset filter mặc định...");
+
+  resetRadiusFilter();
+
+  // ✅ Reset budget tương tự như cũ
   const budgetInput = document.getElementById('budget');
   if (budgetInput) {
     budgetInput.value = '';
@@ -1999,6 +2078,7 @@ document.addEventListener("DOMContentLoaded", function () {
   
   console.log("✅ Hoàn tất reset filter mặc định!");
 });
+
 // =========================
 // 💡 GỢI Ý TÌM KIẾM (AUTOCOMPLETE) - SỬ DỤNG #suggestions HIỆN CÓ TRONG HTML
 // =========================

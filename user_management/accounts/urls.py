@@ -44,6 +44,7 @@ urlpatterns = [
     
     path('food-plan/leave-shared/<int:plan_id>/', views.leave_shared_plan_api, name='leave_shared_plan'),
     path('food-plan/suggestion-approve-single/', views.suggestion_approve_single, name='suggestion_approve_single'),
+    path('food-plan/approve-all-changes/', views.approve_all_changes_api, name='approve_all_changes'),
 
     # 🔔 NOTIFICATION APIs
     path('notifications/<int:notification_id>/delete/', views.delete_notification_api, name='delete_notification'),
