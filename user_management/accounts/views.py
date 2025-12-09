@@ -951,6 +951,9 @@ def search_user(request):
 @login_required
 @require_http_methods(["GET"])
 def get_current_user(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Chưa đăng nhập'}, status=401)
+    
     try:
         user = request.user
         return JsonResponse({

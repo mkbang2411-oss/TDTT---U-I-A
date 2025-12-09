@@ -461,20 +461,29 @@
             credentials: "include", // ✅ Gửi cookie
           });
 
+          if (response.status === 401) {
+            // User chưa đăng nhập - redirect về login
+            console.log("⚠️ User chưa đăng nhập, redirect về login");
+            window.location.href = '/accounts/login/';
+            return;
+          }
+
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
           }
 
           const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
           CURRENT_USER_ID = data.id;
           console.log("✅ Current User ID:", CURRENT_USER_ID);
         } catch (error) {
           console.error("❌ Không thể lấy user hiện tại:", error);
-          Swal.fire(
-            "Lỗi",
-            "Không thể xác định user. Vui lòng đăng nhập lại.",
-            "error"
-          );
+          // Redirect về login thay vì hiện alert
+          window.location.href = '/accounts/login/';
         } finally {
           isLoadingUser = false;
         }
