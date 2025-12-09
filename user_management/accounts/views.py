@@ -36,11 +36,12 @@ from .utils import (
     create_suggestion_notification
 )
 import time
+import queue
 from django.http import StreamingHttpResponse
-from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from .signals import sse_connections
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -854,6 +855,15 @@ def accept_friend_request(request):
         # Tạo quan hệ bạn bè
         Friendship.objects.create(user1=friend_request.sender, user2=friend_request.receiver)
         
+        # ✅ THÊM ĐOẠN NÀY - Tạo notification cho người gửi lời mời
+        Notification.objects.create(
+            user=friend_request.sender,  # Người nhận thông báo
+            notification_type='friend_accepted',  # 🔥 Type mới
+            title='🎉 Lời mời kết bạn được chấp nhận',
+            message=f'{friend_request.receiver.username} đã chấp nhận lời mời kết bạn của bạn',
+            related_id=friend_request.receiver.id  # ID của người chấp nhận
+        )
+        
         return JsonResponse({
             'success': True,
             'message': 'Đã chấp nhận lời mời kết bạn'
@@ -975,7 +985,6 @@ def get_current_user(request):
 # ===============================
 # 📍 GỢI Ý QUÁN THEO QUẬN CHO ALBUM
 # ===============================
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 
 @login_required
@@ -3375,90 +3384,128 @@ def clear_all_notifications_api(request):
             'message': str(e)
         }, status=500)
     
-# ==========================================================
-# 🔔 SSE - REAL-TIME NOTIFICATION STREAM
-# ==========================================================
-
 @login_required
 def notification_stream(request):
-    """
-    SSE endpoint để push thông báo real-time
-    GET /api/accounts/notifications/stream/
-    """
+    """SSE endpoint để push thông báo real-time"""
+    
+    user_id = request.user.id
+    
     def event_stream():
-        """
-        Generator function để stream events
-        """
+        # ✅ TẠO QUEUE cho user này
+        notification_queue = queue.Queue()
+        sse_connections[user_id] = notification_queue
+        
+        print(f"✅ SSE Connected: {request.user.username} (user_id={user_id})")
+        
+        # ✅ GỬI INITIAL MESSAGE (với padding để force flush)
+        initial_msg = f"data: {json.dumps({'type': 'connected', 'message': 'Connected', 'user': request.user.username})}\n\n"
+        initial_msg += ": " + " " * 2048 + "\n\n"  # 🔥 PADDING để force browser flush
+        yield initial_msg
+        
         last_check = timezone.now()
         
-        # Gửi initial connection message
-        yield f"data: {json.dumps({'type': 'connected', 'message': 'Connected to notification stream'})}\n\n"
-        
-        while True:
-            try:
-                # Check for new notifications mỗi 3 giây
-                time.sleep(3)
-                
-                # Lấy notifications mới từ lần check cuối
-                new_notifications = Notification.objects.filter(
-                    user=request.user,
-                    created_at__gt=last_check,
-                    is_read=False
-                ).order_by('-created_at')
-                
-                if new_notifications.exists():
-                    # Cập nhật last_check
-                    last_check = timezone.now()
+        try:
+            while True:
+                # ✅ 1. CHECK QUEUE (non-blocking, timeout 5s)
+                try:
+                    # 🔥 TĂNG TIMEOUT lên 5s để ổn định hơn
+                    notification_data = notification_queue.get(timeout=5)
                     
-                    # Serialize notifications
-                    notifications_data = []
-                    for notif in new_notifications:
-                        notifications_data.append({
-                            'id': notif.id,
-                            'type': notif.notification_type,
-                            'title': notif.title,
-                            'message': notif.message,
-                            'is_read': notif.is_read,
-                            'created_at': notif.created_at.isoformat(),
-                            'related_id': notif.related_id,
-                            'metadata': notif.metadata
-                        })
+                    print(f"📤 [SSE] Sending real-time notification to {request.user.username}")
                     
-                    # Đếm tổng số unread
+                    # Đếm unread
                     unread_count = Notification.objects.filter(
                         user=request.user,
                         is_read=False
                     ).count()
                     
-                    # Send event
                     event_data = {
                         'type': 'new_notifications',
-                        'notifications': notifications_data,
+                        'notifications': [notification_data],
                         'unread_count': unread_count
                     }
                     
-                    yield f"data: {json.dumps(event_data)}\n\n"
-                
-                # Gửi heartbeat mỗi 30 giây để giữ connection
-                if int(time.time()) % 30 == 0:
-                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+                    # 🔥 FORMAT CHUẨN SSE + PADDING
+                    message = f"data: {json.dumps(event_data)}\n\n"
+                    message += ": " + " " * 2048 + "\n\n"  # Force flush
+                    yield message
                     
-            except GeneratorExit:
-                # Client đã ngắt kết nối
-                break
-            except Exception as e:
-                print(f"❌ Error in notification stream: {e}")
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-                break
+                except queue.Empty:
+                    # 🔥 GỬI HEARTBEAT để giữ connection sống
+                    heartbeat_msg = f": heartbeat {timezone.now().isoformat()}\n\n"
+                    yield heartbeat_msg
+                    
+                    # ✅ 2. FALLBACK: Poll database (mỗi 5s)
+                    new_notifications = Notification.objects.filter(
+                        user=request.user,
+                        created_at__gt=last_check,
+                        is_read=False
+                    ).order_by('-created_at')
+                    
+                    if new_notifications.exists():
+                        last_check = timezone.now()
+                        
+                        notifications_data = []
+                        for notif in new_notifications:
+                            notifications_data.append({
+                                'id': notif.id,
+                                'type': notif.notification_type,
+                                'title': notif.title,
+                                'message': notif.message,
+                                'is_read': notif.is_read,
+                                'created_at': notif.created_at.isoformat(),
+                                'related_id': notif.related_id,
+                                'metadata': notif.metadata
+                            })
+                        
+                        unread_count = Notification.objects.filter(
+                            user=request.user,
+                            is_read=False
+                        ).count()
+                        
+                        event_data = {
+                            'type': 'new_notifications',
+                            'notifications': notifications_data,
+                            'unread_count': unread_count
+                        }
+                        
+                        message = f"data: {json.dumps(event_data)}\n\n"
+                        message += ": " + " " * 2048 + "\n\n"
+                        yield message
+                        
+                        print(f"📤 [POLL] Sent {len(notifications_data)} notifications to {request.user.username}")
+                    
+        except GeneratorExit:
+            # ✅ CLEANUP khi client disconnect
+            if user_id in sse_connections:
+                del sse_connections[user_id]
+            print(f"🔌 Client disconnected: {request.user.username} (user_id={user_id})")
+            
+        except Exception as e:
+            print(f"❌ SSE Error for {request.user.username}: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Cleanup
+            if user_id in sse_connections:
+                del sse_connections[user_id]
+            
+            error_msg = f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield error_msg
     
+    # ✅ TẠO RESPONSE
     response = StreamingHttpResponse(
         event_stream(),
-        content_type='text/event-stream'
+        content_type='text/event-stream; charset=utf-8'
     )
     
-    # Headers quan trọng cho SSE
-    response['Cache-Control'] = 'no-cache'
-    response['X-Accel-Buffering'] = 'no'  # Tắt buffering của nginx
+    # 🔥 QUAN TRỌNG: Headers để KHÔNG buffer
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    response['X-Accel-Buffering'] = 'no'
+    response['Access-Control-Allow-Origin'] = '*'
+    response['Access-Control-Allow-Credentials'] = 'true'
     
     return response
 
