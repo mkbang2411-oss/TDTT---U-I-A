@@ -2771,12 +2771,26 @@ def get_my_suggestions_api(request, plan_id):
         
         suggestions_data = []
         for suggestion in suggestions:
+            # 🔥 FIX TIMEZONE: Format datetime với timezone
+            created_at = suggestion.created_at
+            reviewed_at = suggestion.reviewed_at
+            
+            # Đảm bảo có timezone info
+            if created_at and created_at.tzinfo is None:
+                from django.utils import timezone
+                created_at = timezone.make_aware(created_at)
+            
+            if reviewed_at and reviewed_at.tzinfo is None:
+                from django.utils import timezone
+                reviewed_at = timezone.make_aware(reviewed_at)
+            
             suggestions_data.append({
                 'id': suggestion.id,
                 'message': suggestion.message,
                 'status': suggestion.status,
-                'created_at': suggestion.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'reviewed_at': suggestion.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if suggestion.reviewed_at else None
+                # 🔥 THAY ĐỔI: Trả về ISO format với timezone (giữ nguyên UTC)
+                'created_at': created_at.isoformat() if created_at else None,
+                'reviewed_at': reviewed_at.isoformat() if reviewed_at else None
             })
         
         return JsonResponse({

@@ -3664,6 +3664,40 @@ async function loadSavedPlans(planId, forceReload = false) {
     }
 }
 
+// ========== HELPER: CONVERT UTC TO LOCAL TIMEZONE ==========
+function formatDateTimeWithTimezone(datetimeString) {
+    if (!datetimeString) return 'Không rõ ngày';
+    
+    try {
+        // Parse ISO string
+        let date;
+        
+        // Nếu có 'T' thì đã đúng format ISO
+        if (datetimeString.includes('T')) {
+            date = new Date(datetimeString);
+        } else {
+            // Nếu format 'YYYY-MM-DD HH:MM:SS' thì thêm 'T'
+            const normalized = datetimeString.replace(' ', 'T');
+            date = new Date(normalized);
+        }
+        
+        // 🔥 BỎ PHẦN CỘNG 7 GIỜ - CHỈ FORMAT LẠI
+        // JavaScript Date tự động convert sang timezone local rồi
+        
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hour = String(date.getHours()).padStart(2, '0');
+        const minute = String(date.getMinutes()).padStart(2, '0');
+        const second = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${hour}:${minute}:${second} ${day}/${month}/${year}`;
+        
+    } catch (error) {
+        console.error('❌ Lỗi format datetime:', error);
+        return 'Lỗi định dạng';
+    }
+}
 // ========== DELETE PLAN - Xóa từ Database Django ==========
 async function deleteSavedPlan(planId) {
     if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
@@ -8309,6 +8343,11 @@ async function viewMySuggestions(planId) {
             const statusText = sug.status === 'pending' ? 'Chờ duyệt' : 
                              sug.status === 'accepted' ? 'Đã chấp nhận' : 'Đã từ chối';
             
+            // 🔥 SỬA: Dùng hàm formatDateTimeWithTimezone
+            const createdAtFormatted = formatDateTimeWithTimezone(sug.created_at);
+            const reviewedAtFormatted = sug.reviewed_at ? 
+                formatDateTimeWithTimezone(sug.reviewed_at) : null;
+            
             return `
                 <div style="
                     background: white;
@@ -8324,11 +8363,11 @@ async function viewMySuggestions(planId) {
                                 📝 Đề xuất #${suggestions.length - index}
                             </div>
                             <div style="font-size: 13px; color: #666;">
-                                📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
+                                📅 ${createdAtFormatted}
                             </div>
-                            ${sug.reviewed_at ? `
+                            ${reviewedAtFormatted ? `
                                 <div style="font-size: 13px; color: #666; margin-top: 4px;">
-                                    🕐 Xét duyệt: ${new Date(sug.reviewed_at).toLocaleString('vi-VN')}
+                                    🕐 Xét duyệt: ${reviewedAtFormatted}
                                 </div>
                             ` : ''}
                         </div>
