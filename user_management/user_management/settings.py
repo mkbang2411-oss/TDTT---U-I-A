@@ -253,9 +253,31 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER')
 # Thời gian hết hạn OTP (phút)
 OTP_EXPIRY_MINUTES = 5
 
-# Session timeout cho OTP verification
-SESSION_COOKIE_AGE = 1800  # 30 phút
-# OTP SESSION_TIMEOUT_MINUTES = 30  # Timeout cho session verify OTP
+# ===== SESSION CONFIGURATION =====
+# Session timeout: 30 ngày (2592000 giây)
+SESSION_COOKIE_AGE = 2592000  # 30 days
+
+# Tự động gia hạn session mỗi khi user tương tác
+SESSION_SAVE_EVERY_REQUEST = True
+
+# Session sẽ hết hạn khi đóng browser (nếu True)
+# False = giữ session ngay cả khi đóng browser
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# Tên cookie session
+SESSION_COOKIE_NAME = 'uia_sessionid'
+
+# Cookie có thể truy cập từ JavaScript không (False = an toàn hơn)
+SESSION_COOKIE_HTTPONLY = True
+
+# Đường dẫn cookie áp dụng
+SESSION_COOKIE_PATH = '/'
+
+# Domain cookie (None = domain hiện tại)
+SESSION_COOKIE_DOMAIN = None
+
+# SameSite policy
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Security settings
 SECURE_SSL_REDIRECT = not DEBUG
