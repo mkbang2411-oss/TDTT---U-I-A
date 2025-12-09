@@ -302,7 +302,7 @@ class FoodPlan(models.Model):
     name = models.CharField(max_length=200, default="Lịch trình ăn uống")
     plan_data = models.JSONField()  # Lưu toàn bộ danh sách quán ăn dưới dạng JSON
     created_at = models.DateTimeField(auto_now_add=True)
-
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f"{self.name} - {self.user.username}"
     
@@ -321,7 +321,7 @@ class SharedFoodPlan(models.Model):
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES, default='edit')
     shared_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)  # Có thể revoke share
-    
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         unique_together = ('food_plan', 'shared_with')
         ordering = ['-shared_at']
@@ -355,7 +355,7 @@ class PlanEditSuggestion(models.Model):
     message = models.TextField(blank=True)  # Lời nhắn kèm theo suggestion
     created_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
-    
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         ordering = ['-created_at']
     

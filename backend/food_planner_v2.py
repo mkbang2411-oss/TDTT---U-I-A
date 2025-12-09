@@ -8064,7 +8064,6 @@ function closeComparisonModal() {
     if (modal) modal.remove();
 }
 
-// ========== APPROVE SUGGESTION ==========
 async function approveSuggestion(suggestionId) {
     if (!confirm('✅ Xác nhận chấp nhận đề xuất này?')) return;
     
@@ -8077,7 +8076,12 @@ async function approveSuggestion(suggestionId) {
         const result = await response.json();
         
         if (result.status === 'success') {
-            alert('✅ Đã chấp nhận đề xuất!');
+            // 🔥 HIỂN THỊ THÔNG BÁO VỀ SỐ ĐỀ XUẤT BỊ TỪ CHỐI
+            let alertMsg = '✅ Đã chấp nhận đề xuất!';
+            if (result.rejected_count && result.rejected_count > 0) {
+                alertMsg += `\n\n🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
+            }
+            alert(alertMsg);
             
             // Đóng tất cả modal
             closeComparisonModal();
@@ -8367,8 +8371,12 @@ Xác nhận áp dụng các thay đổi đã chọn?
         
         const result = await response.json();
         
-        if (result.status === 'success') {
-            alert(`✅ Đã áp dụng ${result.applied_count} thay đổi!`);
+          if (result.status === 'success') {
+            let alertMsg = `✅ Đã áp dụng ${result.applied_count} thay đổi!`;
+            if (result.rejected_count && result.rejected_count > 0) {
+                alertMsg += `\n\n🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
+            }
+            alert(alertMsg);
             
             // 🔥 XÓA TRẠNG THÁI TẠM
             delete pendingApprovals[suggestionId];

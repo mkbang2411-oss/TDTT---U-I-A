@@ -2607,6 +2607,8 @@ def approve_suggestion_api(request, suggestion_id):
     """
     Owner chấp nhận suggestion
     POST /api/accounts/food-plan/suggestion-approve/<suggestion_id>/
+    
+    🔥 KHI CHẤP NHẬN 1 ĐỀ XUẤT → TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
     """
     try:
         # Lấy suggestion
@@ -2633,14 +2635,32 @@ def approve_suggestion_api(request, suggestion_id):
         plan.plan_data = suggestion.suggested_data
         plan.save()
         
-        # ✅ CẬP NHẬT STATUS
+        # ✅ CẬP NHẬT STATUS CỦA ĐỀ XUẤT ĐƯỢC CHẤP NHẬN
         suggestion.status = 'accepted'
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
+        other_pending_suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan__food_plan=plan,
+            status='pending'
+        ).exclude(id=suggestion_id)
+        
+        rejected_count = 0
+        for other_sug in other_pending_suggestions:
+            other_sug.status = 'rejected'
+            other_sug.reviewed_at = timezone.now()
+            other_sug.save()
+            rejected_count += 1
+        
+        message = 'Đã chấp nhận đề xuất thành công'
+        if rejected_count > 0:
+            message += f' (Đã tự động từ chối {rejected_count} đề xuất khác)'
+        
         return JsonResponse({
             'status': 'success',
-            'message': 'Đã chấp nhận đề xuất thành công'
+            'message': message,
+            'rejected_count': rejected_count
         })
         
     except PlanEditSuggestion.DoesNotExist:
@@ -2655,7 +2675,6 @@ def approve_suggestion_api(request, suggestion_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
-
 @csrf_exempt
 @require_POST
 @login_required
@@ -3010,12 +3029,31 @@ def approve_all_changes_api(request):
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
+        other_pending_suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan__food_plan=plan,
+            status='pending'
+        ).exclude(id=suggestion_id)
+        
+        rejected_count = 0
+        for other_sug in other_pending_suggestions:
+            other_sug.status = 'rejected'
+            other_sug.reviewed_at = timezone.now()
+            other_sug.save()
+            rejected_count += 1
+        
         print(f"✅ [APPROVE ALL] Updated suggestion {suggestion_id} to 'accepted'")
+        print(f"🔥 Auto-rejected {rejected_count} other pending suggestions")
+        
+        message = f'Đã áp dụng {success_count} thay đổi'
+        if rejected_count > 0:
+            message += f' (Đã tự động từ chối {rejected_count} đề xuất khác)'
         
         return JsonResponse({
             'status': 'success',
-            'message': f'Đã áp dụng {success_count} thay đổi',
-            'applied_count': success_count
+            'message': message,
+            'applied_count': success_count,
+            'rejected_count': rejected_count
         })
         
     except PlanEditSuggestion.DoesNotExist:
