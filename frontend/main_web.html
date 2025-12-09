@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="button.css">
     <link rel="stylesheet" href="weblogin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- 🗺️ Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -283,6 +283,7 @@
    
 
     <!-- 📦 JAVASCRIPT LIBRARIES -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -760,23 +761,12 @@
         if (item.type === 'favorite_viewed') {
             // Hiển thị thông tin người đã xem
             markNotificationAsRead(item.id);
-            Swal.fire({
-                icon: 'info',
-                title: '👀 Ai đó quan tâm đến gu ăn uống của bạn!',
-                html: `
-                    <div style="text-align:center;padding:10px;">
-                        <p style="font-size:16px;margin:10px 0;">
-                            <strong>${item.message}</strong>
-                        </p>
-                        <p style="color:#666;font-size:14px;">
-                            Có vẻ họ đang tìm kiếm ý tưởng cho bữa ăn tiếp theo 😊
-                        </p>
-                    </div>
-                `,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#BC2A12'
-            });
             return; // ⚠️ RETURN SỚM - KHÔNG đóng popup thông báo
+        }
+
+        if (item.type === 'friend_accepted') {
+            markNotificationAsRead(item.id);
+            return; // ⚠️ Chỉ đánh dấu đã đọc, không làm gì thêm
         }
 
         closeOverlay();
@@ -906,103 +896,158 @@
     }
 
     // ================================
-    // 🔔 SSE - REAL-TIME CONNECTION
+    // 📢 SSE - REAL-TIME CONNECTION
     // ================================
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    const RECONNECT_DELAY = 5000; // 5 giây
+
     function connectSSE() {
         // Đóng connection cũ nếu có
         if (eventSource) {
-        eventSource.close();
+            eventSource.close();
         }
 
         console.log('🔌 Connecting to SSE...');
 
-        eventSource = new EventSource('/api/accounts/notifications/stream/', {
-        withCredentials: true
+        // ✅ SỬA: Đảm bảo URL đúng format
+        const sseUrl = '/api/accounts/notifications/stream/';
+        
+        eventSource = new EventSource(sseUrl, {
+            withCredentials: true
         });
 
-        eventSource.onopen = function() {
-        console.log('✅ SSE Connected');
+        eventSource.onopen = function(event) {
+            console.log('✅ SSE Connected');
+            console.log('   ReadyState:', eventSource.readyState); // ✅ THÊM debug
+            console.log('   URL:', eventSource.url);
+            
+            // Reset reconnect counter khi connect thành công
+            reconnectAttempts = 0;
         };
 
         eventSource.onmessage = function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            
-            console.log('📩 SSE Message:', data.type);
+            try {
+                const data = JSON.parse(event.data);
+                
+                console.log('📩 SSE Message:', data.type);
 
-            if (data.type === 'connected') {
-            console.log('✅', data.message);
-            }
-            
-            else if (data.type === 'new_notifications') {
-            console.log('🔔 New notifications:', data.notifications.length);
-            
-            // ✅ THÊM THÔNG BÁO MỚI VÀO ĐẦU DANH SÁCH
-            data.notifications.forEach(function(newNotif) {
-                // Kiểm tra xem đã có chưa
-                const exists = notifications.find(n => n.id === newNotif.id);
-                if (!exists) {
-                notifications.unshift(newNotif);
+                if (data.type === 'connected') {
+                    console.log('✅', data.message);
                 }
-            });
-            
-            renderList();
-            updateBadge();
-            
-            // ✅ HIỂN THỊ TOAST NOTIFICATION
-            showToastNotification(data.notifications[0]);
+                
+                else if (data.type === 'new_notifications') {
+                    console.log('🔔 New notifications:', data.notifications.length);
+                    
+                    // ✅ THÊM THÔNG BÁO MỚI VÀO ĐẦU DANH SÁCH
+                    data.notifications.forEach(function(newNotif) {
+                        const exists = notifications.find(n => n.id === newNotif.id);
+                        if (!exists) {
+                            notifications.unshift(newNotif);
+                        }
+                    });
+                    
+                    renderList();
+                    updateBadge();
+                    
+                    // ✅ HIỂN THỊ TOAST NOTIFICATION
+                    showToastNotification(data.notifications[0]);
+                }
+                
+                else if (data.type === 'heartbeat') {
+                    console.log('💓 Heartbeat at', data.timestamp);
+                }
+                
+                else if (data.type === 'error') {
+                    console.error('❌ SSE Error:', data.message);
+                }
+                
+            } catch (err) {
+                console.error('❌ Error parsing SSE data:', err);
             }
-            
-            else if (data.type === 'heartbeat') {
-            console.log('💓 Heartbeat');
-            }
-            
-            else if (data.type === 'error') {
-            console.error('❌ SSE Error:', data.message);
-            }
-            
-        } catch (err) {
-            console.error('❌ Error parsing SSE data:', err);
-        }
         };
 
         eventSource.onerror = function(error) {
-        console.error('❌ SSE Error:', error);
-        eventSource.close();
-        
-        // ✅ TỰ ĐỘNG RECONNECT SAU 5 GIÂY
-        console.log('🔄 Reconnecting in 5s...');
-        setTimeout(connectSSE, 5000);
+            console.error('❌ SSE Error:', error);
+            console.error('   ReadyState:', eventSource.readyState);
+            console.error('   Status:', error.status || 'unknown');
+            
+            eventSource.close();
+            
+            // ✅ RECONNECT LOGIC với exponential backoff
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                const delay = RECONNECT_DELAY * reconnectAttempts;
+                
+                console.log(`🔄 Reconnecting (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay/1000}s...`);
+                
+                setTimeout(connectSSE, delay);
+            } else {
+                console.error('❌ Max reconnection attempts reached. Please refresh page.');
+                showToast('⚠️ Mất kết nối thông báo. Vui lòng tải lại trang.', 'error');
+            }
         };
     }
 
     // ================================
-    // 🔔 TOAST NOTIFICATION
+    // 📢 TOAST NOTIFICATION
     // ================================
     function showToastNotification(notif) {
         // Kiểm tra quyền thông báo trình duyệt
         if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(notif.title, {
-            body: notif.message,
-            icon: '/static/Picture/UIAaa.png',
-            badge: '/static/Picture/UIAaa.png',
-            tag: 'notification-' + notif.id
-        });
+            new Notification(notif.title, {
+                body: notif.message,
+                icon: '/static/Picture/UIAaa.png',
+                badge: '/static/Picture/UIAaa.png',
+                tag: 'notification-' + notif.id,
+                requireInteraction: false // Tự động đóng sau 5s
+            });
         }
     }
 
     // ================================
-    // 🔔 REQUEST NOTIFICATION PERMISSION
+    // 📢 REQUEST NOTIFICATION PERMISSION
     // ================================
     function requestNotificationPermission() {
         if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().then(function(permission) {
-            if (permission === 'granted') {
-            console.log('✅ Notification permission granted');
-            }
-        });
+            Notification.requestPermission().then(function(permission) {
+                if (permission === 'granted') {
+                    console.log('✅ Notification permission granted');
+                } else {
+                    console.log('ℹ️ Notification permission denied - using toast only');
+                }
+            });
         }
     }
+
+    // ================================
+    // 📢 INIT
+    // ================================
+
+    // Load thông báo ban đầu
+    loadNotifications();
+
+    // Kết nối SSE cho real-time updates
+    connectSSE();
+
+    // Yêu cầu quyền thông báo
+    requestNotificationPermission();
+
+    // Cleanup khi tắt trang
+    window.addEventListener('beforeunload', function() {
+        if (eventSource) {
+            console.log('🔌 Closing SSE connection...');
+            eventSource.close();
+        }
+    });
+
+    // ✅ CHECK CONNECTION STATUS mỗi 30 giây
+    setInterval(function() {
+        if (eventSource && eventSource.readyState !== EventSource.OPEN) {
+            console.warn('⚠️ SSE connection lost. Reconnecting...');
+            connectSSE();
+        }
+    }, 30000); // 30 seconds
 
     // ================================
     // 🔔 MARK AS READ

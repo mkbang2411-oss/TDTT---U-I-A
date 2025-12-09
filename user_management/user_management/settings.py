@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google', # Bật Google
 
     # App
-    'accounts',
+    'accounts.apps.AccountsConfig',
 ]
 SITE_ID = 1
 

@@ -39,6 +39,8 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    environment:  # ✅ THÊM phần này
+    - PYTHONUNBUFFERED=1  # Tắt buffering Python
 
 networks:
   app-network:
