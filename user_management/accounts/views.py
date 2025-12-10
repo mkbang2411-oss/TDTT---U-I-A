@@ -3760,7 +3760,7 @@ def switch_api_key(request):
     """API endpoint để chuyển sang API key tiếp theo"""
     try:
         # Đường dẫn tới config.json
-        config_path = Path(__file__).parent.parent / 'config.json'
+        config_path = settings.BASE_DIR.parent / 'backend' / 'config.json'
         
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
