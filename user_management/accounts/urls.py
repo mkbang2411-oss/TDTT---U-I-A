@@ -54,4 +54,6 @@ urlpatterns = [
     path('notifications/read-all/', views.mark_all_notifications_read_api, name='mark_all_notifications_read'),
     path('notifications/clear-all/', views.clear_all_notifications_api, name='clear_all_notifications'),
     path('friend/<int:user_id>/favorites/view/', views.record_favorite_view, name='record_favorite_view'),
+
+    path('api/reviews/<str:place_id>/<int:review_index>/', views.delete_review_api, name='delete_review'),
 ]

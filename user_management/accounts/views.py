@@ -340,6 +340,100 @@ def reviews_api(request: HttpRequest, place_id: str):
         "success": False, 
         "message": "Method not allowed"
     }, status=405)
+# ==========================================================
+# 🗑️ API XÓA ĐÁNH GIÁ CỦA USER
+# ==========================================================
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+@login_required
+def delete_review_api(request, place_id, review_index):
+    """
+    Xóa đánh giá của user
+    DELETE /api/reviews/<place_id>/<review_index>/
+    
+    Params:
+        - place_id: ID của quán
+        - review_index: Index của review trong mảng user reviews
+    """
+    try:
+        # 1. ĐỌC FILE JSON
+        all_reviews = load_user_reviews()
+        
+        place_data = all_reviews.get(place_id)
+        
+        if not place_data:
+            return JsonResponse({
+                'success': False,
+                'message': 'Không tìm thấy quán'
+            }, status=404)
+        
+        # 2. ĐẢM BẢO CẤU TRÚC DICT
+        if isinstance(place_data, list):
+            place_data = {"google": place_data, "user": []}
+            all_reviews[place_id] = place_data
+        
+        user_reviews = place_data.get('user', [])
+        
+        # 3. KIỂM TRA INDEX HỢP LỆ
+        try:
+            review_index = int(review_index)
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Index không hợp lệ'
+            }, status=400)
+        
+        if review_index < 0 or review_index >= len(user_reviews):
+            return JsonResponse({
+                'success': False,
+                'message': 'Không tìm thấy đánh giá'
+            }, status=404)
+        
+        # 4. KIỂM TRA QUYỀN SỞ HỮU
+        review_to_delete = user_reviews[review_index]
+        
+        # So sánh username (case-insensitive)
+        review_username = review_to_delete.get('ten', '').strip().lower()
+        current_username = request.user.username.strip().lower()
+        
+        print(f"\n🔍 [DELETE REVIEW] Check ownership:")
+        print(f"   Review username: '{review_username}'")
+        print(f"   Current user: '{current_username}'")
+        
+        if review_username != current_username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Bạn chỉ có thể xóa đánh giá của chính mình'
+            }, status=403)
+        
+        # 5. XÓA REVIEW
+        deleted_review = user_reviews.pop(review_index)
+        
+        print(f"✅ [DELETE] Removed review:")
+        print(f"   User: {deleted_review.get('ten')}")
+        print(f"   Comment: {deleted_review.get('comment', '')[:50]}")
+        
+        # 6. LƯU LẠI FILE
+        all_reviews[place_id]['user'] = user_reviews
+        save_user_reviews(all_reviews)
+        
+        print(f"💾 [DELETE] Saved. Remaining reviews: {len(user_reviews)}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã xóa đánh giá',
+            'remaining_count': len(user_reviews)
+        })
+        
+    except Exception as e:
+        print(f"❌ [DELETE ERROR]: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': 'Có lỗi xảy ra khi xóa đánh giá'
+        }, status=500)
 
 # ------------------------LƯU LỊCH SỬ CHATBOT AI--------------------------
 # --- Helper để lấy Avatar ---

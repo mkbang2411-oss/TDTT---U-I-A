@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/accounts/', include('accounts.urls')),
     
     path('api/reviews/<str:place_id>/', account_views.reviews_api, name='reviews_api'),
+    path('api/reviews/<str:place_id>/<int:review_index>/', account_views.delete_review_api,  name='delete_review'),
     path('api/streak/', account_views.streak_handler, name='streak_handler_direct'),
     path('api/check-auth/', account_views.check_auth_status, name='check_auth_status'),
     path('api/save-chat/', account_views.save_chat_message, name='save_chat_message'),

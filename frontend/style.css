@@ -2111,7 +2111,47 @@ body {
     height: 16px;
     stroke: currentColor;
 }
+/* =========================
+   🗑️ NÚT XÓA ĐÁNH GIÁ
+   ========================= */
 
+.delete-review-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-review-btn:hover {
+  background: #ffebee;
+  color: #f44336;
+  transform: scale(1.1);
+}
+
+.delete-review-btn:active {
+  transform: scale(0.95);
+}
+
+/* Review card layout để nút delete nằm đúng vị trí */
+.review-header {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.review-header > div:nth-child(2) {
+  flex: 1;
+}
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,
 button,

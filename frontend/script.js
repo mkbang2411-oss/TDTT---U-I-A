@@ -309,35 +309,59 @@ function renderReviewSummary(googleReviews, userReviews) {
   `;
 }
 
-function renderReviewList(googleReviews, userReviews) {
+// =========================
+// 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS (CÓ NÚT XÓA)
+// =========================
+
+function renderReviewList(googleReviews, userReviews, currentUser) {
   const allReviews = [...userReviews, ...googleReviews]; // User reviews lên trước
 
   return `
     <div class="review-list">
-      <div class="review-list">
       ${
         allReviews.length === 0
           ? "<p>Chưa có đánh giá nào.</p>"
           : allReviews
-              .map(
-                (r) => `
-        <div class="review-card">
+              .map((r, index) => {
+                // 🔍 KIỂM TRA QUYỀN SỞ HỮU
+                const reviewUsername = (r.user || r.ten || "").toLowerCase();
+                const isOwnReview = currentUser && 
+                  currentUser.is_logged_in && 
+                  reviewUsername === currentUser.username.toLowerCase();
+                
+                // 🔍 KIỂM TRA XEM ĐÂY CÓ PHẢI USER REVIEW KHÔNG (để lấy đúng index)
+                const isUserReview = userReviews.includes(r);
+                const actualIndex = isUserReview ? userReviews.indexOf(r) : -1;
+                
+                return `
+        <div class="review-card" data-review-index="${actualIndex}">
           <div class="review-header">
             <img src="${
-              r.avatar || // Avatar đã lưu trong file JSON (ưu tiên 1)
-              "https://cdn-icons-png.flaticon.com/512/847/847969.png" // Avatar mặc định (ưu tiên 2)
+              r.avatar || 
+              "https://cdn-icons-png.flaticon.com/512/847/847969.png"
             }" class="review-avatar">
-            <div>
+            <div style="flex: 1;">
               <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
               <div class="review-stars">${"⭐".repeat(r.rating || 0)}</div>
               <div class="review-time">${
                 formatDate(r.date) || timeAgo(r.relative_time_description)
               }</div>
             </div>
+            ${
+              isOwnReview && isUserReview
+                ? `
+              <button class="delete-review-btn" 
+                      data-review-index="${actualIndex}"
+                      title="Xóa đánh giá">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            `
+                : ""
+            }
           </div>
           <div class="review-text">${r.comment || ""}</div>
-        </div>`
-              )
+        </div>`;
+              })
               .join("")
       }
     </div>
@@ -933,7 +957,7 @@ if (placeId) {
       <div class="review-section">
         ${renderReviewSummary(googleReviews, userReviews)} 
         ${reviewFormHTML}
-        ${renderReviewList(googleReviews, userReviews)}
+        ${renderReviewList(googleReviews, userReviews, currentUser)}  // ✅ THÊM currentUser
       </div>
     `;
 
@@ -1079,18 +1103,14 @@ if (submitBtn) {
         let errorMsg = result.message || "Lỗi khi gửi đánh giá";
         
         // Nếu có gợi ý nội dung tốt hơn
-        if (result.suggested_content) {
-          const useSuggestion = confirm(
-            `${errorMsg}\n\n💡 Bạn có muốn dùng nội dung gợi ý không?`
-          );
-          
-          if (useSuggestion) {
-            document.getElementById("reviewComment").value = result.suggested_content;
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Gửi đánh giá";
-            return;
-          }
-        }
+        if (response.ok && result.success) {
+        alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
+        marker.fire("click");
+      } else {
+        // ❌ Nội dung không hợp lệ
+        let errorMsg = result.message || "Lỗi khi gửi đánh giá";
+        alert(errorMsg);
+      }
         
         alert(errorMsg);
       }
@@ -1103,7 +1123,60 @@ if (submitBtn) {
       submitBtn.textContent = "Gửi đánh giá";
     }
   });
-}
+} // 🗑️ XỬ LÝ XÓA ĐÁNH GIÁ
+  const deleteButtons = sidebarContent.querySelectorAll('.delete-review-btn');
+  
+  deleteButtons.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation(); // Ngăn bubble event
+      
+      const reviewIndex = parseInt(btn.dataset.reviewIndex);
+      
+      // Confirm trước khi xóa
+      if (!confirm('Bạn có chắc muốn xóa đánh giá này?')) {
+        return;
+      }
+      
+      // Hiển thị loading
+      btn.disabled = true;
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      
+      try {
+        const response = await fetch(`/api/reviews/${place_id}/${reviewIndex}/`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // ✅ XÓA THÀNH CÔNG
+          showCustomAlert('Đã xóa đánh giá', 'success');
+          
+          // Reload lại reviews (click lại marker)
+          setTimeout(() => {
+            marker.fire('click');
+          }, 500);
+          
+        } else {
+          // ❌ LỖI
+          showCustomAlert(result.message || 'Không thể xóa đánh giá', 'error');
+          btn.disabled = false;
+          btn.innerHTML = originalHTML;
+        }
+        
+      } catch (error) {
+        console.error('Lỗi khi xóa review:', error);
+        showCustomAlert('Có lỗi xảy ra. Vui lòng thử lại.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+      }
+    });
+  });
 
     // 🚗 NÚT TÌM ĐƯỜNG ĐI
     const tongquanTab = sidebarContent.querySelector("#tab-tongquan");
