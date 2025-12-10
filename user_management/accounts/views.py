@@ -340,6 +340,100 @@ def reviews_api(request: HttpRequest, place_id: str):
         "success": False, 
         "message": "Method not allowed"
     }, status=405)
+# ==========================================================
+# 🗑️ API XÓA ĐÁNH GIÁ CỦA USER
+# ==========================================================
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+@login_required
+def delete_review_api(request, place_id, review_index):
+    """
+    Xóa đánh giá của user
+    DELETE /api/reviews/<place_id>/<review_index>/
+    
+    Params:
+        - place_id: ID của quán
+        - review_index: Index của review trong mảng user reviews
+    """
+    try:
+        # 1. ĐỌC FILE JSON
+        all_reviews = load_user_reviews()
+        
+        place_data = all_reviews.get(place_id)
+        
+        if not place_data:
+            return JsonResponse({
+                'success': False,
+                'message': 'Không tìm thấy quán'
+            }, status=404)
+        
+        # 2. ĐẢM BẢO CẤU TRÚC DICT
+        if isinstance(place_data, list):
+            place_data = {"google": place_data, "user": []}
+            all_reviews[place_id] = place_data
+        
+        user_reviews = place_data.get('user', [])
+        
+        # 3. KIỂM TRA INDEX HỢP LỆ
+        try:
+            review_index = int(review_index)
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Index không hợp lệ'
+            }, status=400)
+        
+        if review_index < 0 or review_index >= len(user_reviews):
+            return JsonResponse({
+                'success': False,
+                'message': 'Không tìm thấy đánh giá'
+            }, status=404)
+        
+        # 4. KIỂM TRA QUYỀN SỞ HỮU
+        review_to_delete = user_reviews[review_index]
+        
+        # So sánh username (case-insensitive)
+        review_username = review_to_delete.get('ten', '').strip().lower()
+        current_username = request.user.username.strip().lower()
+        
+        print(f"\n🔍 [DELETE REVIEW] Check ownership:")
+        print(f"   Review username: '{review_username}'")
+        print(f"   Current user: '{current_username}'")
+        
+        if review_username != current_username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Bạn chỉ có thể xóa đánh giá của chính mình'
+            }, status=403)
+        
+        # 5. XÓA REVIEW
+        deleted_review = user_reviews.pop(review_index)
+        
+        print(f"✅ [DELETE] Removed review:")
+        print(f"   User: {deleted_review.get('ten')}")
+        print(f"   Comment: {deleted_review.get('comment', '')[:50]}")
+        
+        # 6. LƯU LẠI FILE
+        all_reviews[place_id]['user'] = user_reviews
+        save_user_reviews(all_reviews)
+        
+        print(f"💾 [DELETE] Saved. Remaining reviews: {len(user_reviews)}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã xóa đánh giá',
+            'remaining_count': len(user_reviews)
+        })
+        
+    except Exception as e:
+        print(f"❌ [DELETE ERROR]: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': 'Có lỗi xảy ra khi xóa đánh giá'
+        }, status=500)
 
 # ------------------------LƯU LỊCH SỬ CHATBOT AI--------------------------
 # --- Helper để lấy Avatar ---
@@ -970,6 +1064,9 @@ def search_user(request):
 @login_required
 @require_http_methods(["GET"])
 def get_current_user(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Chưa đăng nhập'}, status=401)
+    
     try:
         user = request.user
         return JsonResponse({
@@ -2455,17 +2552,30 @@ def submit_plan_suggestion_api(request, plan_id):
             permission='edit'
         )
         
+        # 🔥 THÊM: Kiểm tra xem đã có suggestion pending chưa
+        existing_pending = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user,
+            status='pending'
+        ).exists()
+        
+        if existing_pending:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn đã có 1 đề xuất đang chờ duyệt. Vui lòng đợi chủ sở hữu xử lý trước khi gửi đề xuất mới.'
+            }, status=400)
+        
         # Lấy dữ liệu gốc
         original_data = shared_plan.food_plan.plan_data
         
-        # 🔥 TẠO SUGGESTION - THÊM pending_changes={}
+        # Tạo suggestion
         suggestion = PlanEditSuggestion.objects.create(
             shared_plan=shared_plan,
             suggested_by=request.user,
             original_data=original_data,
             suggested_data=suggested_data,
             message=message,
-            pending_changes={}  # 🔥 THÊM DÒNG NÀY
+            pending_changes={}
         )
 
         create_suggestion_notification(
@@ -2591,6 +2701,8 @@ def approve_suggestion_api(request, suggestion_id):
     """
     Owner chấp nhận suggestion
     POST /api/accounts/food-plan/suggestion-approve/<suggestion_id>/
+    
+    🔥 KHI CHẤP NHẬN 1 ĐỀ XUẤT → TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
     """
     try:
         # Lấy suggestion
@@ -2617,14 +2729,32 @@ def approve_suggestion_api(request, suggestion_id):
         plan.plan_data = suggestion.suggested_data
         plan.save()
         
-        # ✅ CẬP NHẬT STATUS
+        # ✅ CẬP NHẬT STATUS CỦA ĐỀ XUẤT ĐƯỢC CHẤP NHẬN
         suggestion.status = 'accepted'
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
+        other_pending_suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan__food_plan=plan,
+            status='pending'
+        ).exclude(id=suggestion_id)
+        
+        rejected_count = 0
+        for other_sug in other_pending_suggestions:
+            other_sug.status = 'rejected'
+            other_sug.reviewed_at = timezone.now()
+            other_sug.save()
+            rejected_count += 1
+        
+        message = 'Đã chấp nhận đề xuất thành công'
+        if rejected_count > 0:
+            message += f' (Đã tự động từ chối {rejected_count} đề xuất khác)'
+        
         return JsonResponse({
             'status': 'success',
-            'message': 'Đã chấp nhận đề xuất thành công'
+            'message': message,
+            'rejected_count': rejected_count
         })
         
     except PlanEditSuggestion.DoesNotExist:
@@ -2639,7 +2769,6 @@ def approve_suggestion_api(request, suggestion_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
-
 @csrf_exempt
 @require_POST
 @login_required
@@ -2780,12 +2909,26 @@ def get_my_suggestions_api(request, plan_id):
         
         suggestions_data = []
         for suggestion in suggestions:
+            # 🔥 FIX TIMEZONE: Format datetime với timezone
+            created_at = suggestion.created_at
+            reviewed_at = suggestion.reviewed_at
+            
+            # Đảm bảo có timezone info
+            if created_at and created_at.tzinfo is None:
+                from django.utils import timezone
+                created_at = timezone.make_aware(created_at)
+            
+            if reviewed_at and reviewed_at.tzinfo is None:
+                from django.utils import timezone
+                reviewed_at = timezone.make_aware(reviewed_at)
+            
             suggestions_data.append({
                 'id': suggestion.id,
                 'message': suggestion.message,
                 'status': suggestion.status,
-                'created_at': suggestion.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'reviewed_at': suggestion.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if suggestion.reviewed_at else None
+                # 🔥 THAY ĐỔI: Trả về ISO format với timezone (giữ nguyên UTC)
+                'created_at': created_at.isoformat() if created_at else None,
+                'reviewed_at': reviewed_at.isoformat() if reviewed_at else None
             })
         
         return JsonResponse({
@@ -2980,12 +3123,31 @@ def approve_all_changes_api(request):
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
+        other_pending_suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan__food_plan=plan,
+            status='pending'
+        ).exclude(id=suggestion_id)
+        
+        rejected_count = 0
+        for other_sug in other_pending_suggestions:
+            other_sug.status = 'rejected'
+            other_sug.reviewed_at = timezone.now()
+            other_sug.save()
+            rejected_count += 1
+        
         print(f"✅ [APPROVE ALL] Updated suggestion {suggestion_id} to 'accepted'")
+        print(f"🔥 Auto-rejected {rejected_count} other pending suggestions")
+        
+        message = f'Đã áp dụng {success_count} thay đổi'
+        if rejected_count > 0:
+            message += f' (Đã tự động từ chối {rejected_count} đề xuất khác)'
         
         return JsonResponse({
             'status': 'success',
-            'message': f'Đã áp dụng {success_count} thay đổi',
-            'applied_count': success_count
+            'message': message,
+            'applied_count': success_count,
+            'rejected_count': rejected_count
         })
         
     except PlanEditSuggestion.DoesNotExist:
@@ -2996,6 +3158,45 @@ def approve_all_changes_api(request):
     except Exception as e:
         import traceback
         traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)    
+
+@login_required
+@require_http_methods(["GET"])
+def check_pending_suggestion_api(request, plan_id):
+    """
+    Kiểm tra xem user có suggestion pending cho plan này không
+    GET /api/accounts/food-plan/check-pending/<plan_id>/
+    """
+    try:
+        # Kiểm tra user có được share plan này không
+        shared_plan = SharedFoodPlan.objects.filter(
+            food_plan_id=plan_id,
+            shared_with=request.user,
+            is_active=True
+        ).first()
+        
+        if not shared_plan:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xem lịch trình này'
+            }, status=403)
+        
+        # Kiểm tra pending suggestion
+        has_pending = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user,
+            status='pending'
+        ).exists()
+        
+        return JsonResponse({
+            'status': 'success',
+            'has_pending': has_pending
+        })
+        
+    except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': str(e)

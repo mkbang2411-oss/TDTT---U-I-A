@@ -14,42 +14,71 @@
     
     body { 
       font-family: 'Montserrat', sans-serif; 
-      background: linear-gradient(135deg, #FED57E 0%, #FFBE0A 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
     }
-    
-    .wrap { 
-      max-width: 520px; 
+
+
+        /* Video background container */
+    .video-background {
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100%;
-      background: #fff; 
-      border-radius: 20px; 
-      box-shadow: 0 20px 60px rgba(188, 42, 18, 0.25);
-      overflow: hidden;
-      animation: slideIn 0.5s ease-out;
-    }
-    
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    .header { 
-      background: linear-gradient(135deg, #BC2A12 0%, #E63B21 100%);
-      color: #fff; 
-      padding: 32px 28px;
-      position: relative;
+      height: 100%;
+      z-index: -1;
       overflow: hidden;
     }
+
+    .video-background video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      min-width: 100%;
+      min-height: 100%;
+      width: 100%;
+      height: 100%;
+      transform: translate(-50%, -50%);
+      object-fit: cover;
+    }
+    
+        
+        .wrap { 
+            max-width: 480px; 
+            width: 100%;
+            background: #fff; 
+            border-radius: 24px; 
+            box-shadow: 0 20px 60px rgba(188, 42, 18, 0.25);
+            overflow: hidden;
+            animation: slideIn 0.5s ease-out;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(32px);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header { 
+            background: linear-gradient(135deg, #BC2A12 0%, #E63B21 100%);
+            color: #fff; 
+            padding: 40px 32px;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(32px);
+        }
     
     .header::before {
       content: "";
@@ -190,6 +219,13 @@
   </style>
 </head>
 <body>
+    <!-- Video background - Thêm phần này -->
+  <div class="video-background">
+    <video autoplay muted loop playsinline id="bgVideo">
+      <source src="{% static 'Picture/bg.webm' %}" type="video/webm">
+    </video>
+  </div>
+
   <div class="wrap">
     <div class="header">
       <div class="header-content">

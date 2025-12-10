@@ -3608,10 +3608,15 @@ async function loadSavedPlans(planId, forceReload = false) {
         // 🔥 XỬ LÝ SHARED PLAN
         if (plan.is_shared) {
             isSharedPlan = true;
-            isViewingSharedPlan = true; // 🔥 THÊM DÒNG NÀY
+            isViewingSharedPlan = true;
             sharedPlanOwnerId = plan.owner_id;
             sharedPlanOwnerName = plan.owner_username;
             hasEditPermission = (plan.permission === 'edit');
+            
+            // 🔥 THÊM: Kiểm tra pending suggestion
+            if (hasEditPermission) {
+                checkPendingSuggestion(planId);
+            }
         } else {
             isSharedPlan = false;
             isViewingSharedPlan = false; // 🔥 THÊM DÒNG NÀY
@@ -3664,6 +3669,40 @@ async function loadSavedPlans(planId, forceReload = false) {
     }
 }
 
+// ========== HELPER: CONVERT UTC TO LOCAL TIMEZONE ==========
+function formatDateTimeWithTimezone(datetimeString) {
+    if (!datetimeString) return 'Không rõ ngày';
+    
+    try {
+        // Parse ISO string
+        let date;
+        
+        // Nếu có 'T' thì đã đúng format ISO
+        if (datetimeString.includes('T')) {
+            date = new Date(datetimeString);
+        } else {
+            // Nếu format 'YYYY-MM-DD HH:MM:SS' thì thêm 'T'
+            const normalized = datetimeString.replace(' ', 'T');
+            date = new Date(normalized);
+        }
+        
+        // 🔥 BỎ PHẦN CỘNG 7 GIỜ - CHỈ FORMAT LẠI
+        // JavaScript Date tự động convert sang timezone local rồi
+        
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hour = String(date.getHours()).padStart(2, '0');
+        const minute = String(date.getMinutes()).padStart(2, '0');
+        const second = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${hour}:${minute}:${second} ${day}/${month}/${year}`;
+        
+    } catch (error) {
+        console.error('❌ Lỗi format datetime:', error);
+        return 'Lỗi định dạng';
+    }
+}
 // ========== DELETE PLAN - Xóa từ Database Django ==========
 async function deleteSavedPlan(planId) {
     if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
@@ -4710,6 +4749,7 @@ let sharedPlanOwnerName = ''; // ✅ THÊM DÒNG NÀY
 let isViewingSharedPlan = false; // 🔥 BIẾN MỚI - theo dõi có đang xem shared plan không
 // 🔥 THÊM BIẾN MỚI - LƯU TRẠNG THÁI CÁC THAY ĐỔI TẠM THỜI
 let pendingApprovals = {}; // { suggestionId: { approvedChanges: [], rejectedChanges: [] } }
+let hasPendingSuggestion = false; // 🔥 THÊM: Theo dõi có suggestion pending không
 
 async function sharePlan() {
     if (!currentPlan || !currentPlanId) {
@@ -4876,15 +4916,15 @@ if (filtersWrapper) {
     <div class="action-buttons" id="actionButtons">
   
     
-    ${isSharedPlan ? `
-        ${hasEditPermission ? `
-            <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                </svg>
-                <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
-            </button>
-            <!-- 🔥 NÚT MỚI: XEM ĐỀ XUẤT CỦA TÔI -->
+   ${isSharedPlan ? `
+    ${hasEditPermission ? `
+        <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+            <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
+        </button>
+        
         <button class="action-btn" onclick="viewMySuggestions(${currentPlanId})" 
             style="background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);" 
             title="Xem đề xuất của tôi">
@@ -4893,41 +4933,61 @@ if (filtersWrapper) {
             </svg>
             <span class="btn-label">Đề xuất của tôi</span>
         </button>
-            <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
-                <span class="btn-label">Gửi đề xuất</span>
-            </button>
-        ` : ''}
-    ` : `
-        <!-- 🔥 NÚT MỚI: XEM ĐỀ XUẤT -->
-        <button class="action-btn" onclick="openSuggestionsPanel()" id="suggestionsBtn" title="Xem đề xuất chỉnh sửa" style="display: none; background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
-            </svg>
-            <span class="btn-label">Đề xuất (<span id="suggestionCount">0</span>)</span>
-        </button>
         
-        <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
+        <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất" ${hasPendingSuggestion ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
             </svg>
-            <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
+            <span class="btn-label">${hasPendingSuggestion ? 'Đang chờ duyệt' : 'Gửi đề xuất'}</span>
         </button>
-        <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
-            </svg>
-            <span class="btn-label">Lưu</span>
-        </button>
-        <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
-            </svg>
-            <span class="btn-label">Chia sẻ</span>
-        </button>
-    `}
+        ${hasPendingSuggestion ? `
+            <div style="
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: #FF9800;
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: 700;
+                box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+            ">⏳</div>
+        ` : ''}
+    ` : ''}
+` : `
+    <button class="action-btn" onclick="openSuggestionsPanel()" id="suggestionsBtn" title="Xem đề xuất chỉnh sửa" style="display: none; background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+        </svg>
+        <span class="btn-label">Đề xuất (<span id="suggestionCount">0</span>)</span>
+    </button>
+    
+    <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+        </svg>
+        <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
+    </button>
+    
+    <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+        </svg>
+        <span class="btn-label">Lưu</span>
+    </button>
+    
+    <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
+        </svg>
+        <span class="btn-label">Chia sẻ</span>
+    </button>
+`}
     </div>
 </div>
   <div class="timeline-container"><div class="timeline-line"></div>
@@ -7061,10 +7121,63 @@ function deleteAllMeals() {
     
     alert('✅ Đã xóa tất cả quán!');
 }
-// ========== SUBMIT SUGGESTION ==========
+// ========== CHECK PENDING SUGGESTION ==========
+async function checkPendingSuggestion(planId) {
+    try {
+        const response = await fetch(`/api/accounts/food-plan/check-pending/${planId}/`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            hasPendingSuggestion = data.has_pending;
+            
+            // Cập nhật UI nút "Gửi đề xuất"
+            updateSubmitSuggestionButton();
+        }
+    } catch (error) {
+        console.error('Error checking pending suggestion:', error);
+    }
+}
+
+function updateSubmitSuggestionButton() {
+    const submitBtn = document.querySelector('button[onclick*="submitSuggestion"]');
+    
+    if (!submitBtn) return;
+    
+    if (hasPendingSuggestion) {
+        // Disable button và đổi style
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+        submitBtn.title = 'Bạn đã có 1 đề xuất đang chờ duyệt';
+        
+        // Đổi text
+        const btnLabel = submitBtn.querySelector('.btn-label');
+        if (btnLabel) {
+            btnLabel.textContent = 'Đang chờ duyệt';
+        }
+    } else {
+        // Enable button
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+        submitBtn.title = 'Gửi đề xuất';
+        
+        // Đổi text về ban đầu
+        const btnLabel = submitBtn.querySelector('.btn-label');
+        if (btnLabel) {
+            btnLabel.textContent = 'Gửi đề xuất';
+        }
+    }
+}
 async function submitSuggestion() {
     if (!currentPlan || !currentPlanId) {
         alert('⚠️ Không có thay đổi để gửi');
+        return;
+    }
+    
+    // 🔥 THÊM: Kiểm tra pending
+    if (hasPendingSuggestion) {
+        alert('⚠️ Bạn đã có 1 đề xuất đang chờ duyệt. Vui lòng đợi chủ sở hữu xử lý trước khi gửi đề xuất mới.');
         return;
     }
     
@@ -7120,6 +7233,10 @@ async function submitSuggestion() {
         
         if (result.status === 'success') {
             alert('✅ Đã gửi đề xuất chỉnh sửa! Chờ chủ sở hữu phê duyệt.');
+            
+            // 🔥 THÊM: Đánh dấu đã có pending
+            hasPendingSuggestion = true;
+            updateSubmitSuggestionButton();
             
             // Tắt edit mode
             if (isEditMode) {
@@ -7947,7 +8064,6 @@ function closeComparisonModal() {
     if (modal) modal.remove();
 }
 
-// ========== APPROVE SUGGESTION ==========
 async function approveSuggestion(suggestionId) {
     if (!confirm('✅ Xác nhận chấp nhận đề xuất này?')) return;
     
@@ -7960,7 +8076,12 @@ async function approveSuggestion(suggestionId) {
         const result = await response.json();
         
         if (result.status === 'success') {
-            alert('✅ Đã chấp nhận đề xuất!');
+            // 🔥 HIỂN THỊ THÔNG BÁO VỀ SỐ ĐỀ XUẤT BỊ TỪ CHỐI
+            let alertMsg = '✅ Đã chấp nhận đề xuất!';
+            if (result.rejected_count && result.rejected_count > 0) {
+                alertMsg += `\n\n🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
+            }
+            alert(alertMsg);
             
             // Đóng tất cả modal
             closeComparisonModal();
@@ -8001,6 +8122,11 @@ async function rejectSuggestion(suggestionId) {
             
             if (currentPlanId) {
                 await checkPendingSuggestions(currentPlanId);
+            }
+            // 🔥 THÊM: Reset pending status nếu đang xem shared plan
+            if (isViewingSharedPlan && hasEditPermission) {
+                hasPendingSuggestion = false;
+                updateSubmitSuggestionButton();
             }
         } else {
             alert('❌ ' + result.message);
@@ -8245,8 +8371,12 @@ Xác nhận áp dụng các thay đổi đã chọn?
         
         const result = await response.json();
         
-        if (result.status === 'success') {
-            alert(`✅ Đã áp dụng ${result.applied_count} thay đổi!`);
+          if (result.status === 'success') {
+            let alertMsg = `✅ Đã áp dụng ${result.applied_count} thay đổi!`;
+            if (result.rejected_count && result.rejected_count > 0) {
+                alertMsg += `\n\n🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
+            }
+            alert(alertMsg);
             
             // 🔥 XÓA TRẠNG THÁI TẠM
             delete pendingApprovals[suggestionId];
@@ -8259,6 +8389,11 @@ Xác nhận áp dụng các thay đổi đã chọn?
             if (currentPlanId) {
                 await checkPendingSuggestions(currentPlanId);
                 await loadSavedPlans(currentPlanId, true);
+            }
+            // 🔥 THÊM: Reset pending status nếu đang xem shared plan
+            if (isViewingSharedPlan && hasEditPermission) {
+                hasPendingSuggestion = false;
+                updateSubmitSuggestionButton();
             }
         } else {
             alert('❌ ' + result.message);
@@ -8309,6 +8444,11 @@ async function viewMySuggestions(planId) {
             const statusText = sug.status === 'pending' ? 'Chờ duyệt' : 
                              sug.status === 'accepted' ? 'Đã chấp nhận' : 'Đã từ chối';
             
+            // 🔥 SỬA: Dùng hàm formatDateTimeWithTimezone
+            const createdAtFormatted = formatDateTimeWithTimezone(sug.created_at);
+            const reviewedAtFormatted = sug.reviewed_at ? 
+                formatDateTimeWithTimezone(sug.reviewed_at) : null;
+            
             return `
                 <div style="
                     background: white;
@@ -8324,11 +8464,11 @@ async function viewMySuggestions(planId) {
                                 📝 Đề xuất #${suggestions.length - index}
                             </div>
                             <div style="font-size: 13px; color: #666;">
-                                📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
+                                📅 ${createdAtFormatted}
                             </div>
-                            ${sug.reviewed_at ? `
+                            ${reviewedAtFormatted ? `
                                 <div style="font-size: 13px; color: #666; margin-top: 4px;">
-                                    🕐 Xét duyệt: ${new Date(sug.reviewed_at).toLocaleString('vi-VN')}
+                                    🕐 Xét duyệt: ${reviewedAtFormatted}
                                 </div>
                             ` : ''}
                         </div>

@@ -22,8 +22,7 @@ def check_review_content(comment, rating):
     Returns:
         dict: {
             'is_valid': bool,
-            'reason': str,
-            'suggested_content': str (optional)
+            'reason': str
         }
     """
     
@@ -35,7 +34,6 @@ def check_review_content(comment, rating):
         }
     
     try:
-        # ✅ SỬA MODEL NAME
         model = genai.GenerativeModel('gemini-flash-latest')
         
         prompt = f"""
@@ -50,19 +48,17 @@ Phân tích đánh giá sau và xác định xem nội dung có phù hợp khôn
 
 TIÊU CHÍ KHÔNG PHÙ HỢP:
 1. Chứa từ ngữ thô tục, chửi thề, tục tĩu
-2. Spam (lặp lại nhiều lần cùng nội dung)
-3. Quảng cáo sản phẩm/dịch vụ khác
-4. Nội dung không liên quan đến món ăn/dịch vụ
-5. Phân biệt chủng tộc, tôn giáo, giới tính
-6. Thông tin cá nhân nhạy cảm
-7. Nội dung quá ngắn hoặc vô nghĩa (ví dụ: "abc", "123")
+2. Quảng cáo sản phẩm/dịch vụ khác
+3. Nội dung không liên quan đến món ăn/dịch vụ
+4. Phân biệt chủng tộc, tôn giáo, giới tính
+5. Thông tin cá nhân nhạy cảm
+6. Nội dung quá ngắn hoặc vô nghĩa (ví dụ: "abc", "123")
 
 TRẢ VỀ JSON:
 {{
     "is_valid": true/false,
     "reason": "lý do ngắn gọn nếu không hợp lệ",
-    "severity": "low/medium/high",
-    "suggested_content": "nội dung gợi ý tốt hơn (nếu có)"
+    "severity": "low/medium/high"
 }}
 
 CHỈ TRẢ VỀ JSON, KHÔNG KÈM MARKDOWN.
@@ -83,8 +79,7 @@ CHỈ TRẢ VỀ JSON, KHÔNG KÈM MARKDOWN.
         return {
             'is_valid': result.get('is_valid', True),
             'reason': result.get('reason', ''),
-            'severity': result.get('severity', 'low'),
-            'suggested_content': result.get('suggested_content', '')
+            'severity': result.get('severity', 'low')
         }
         
     except Exception as e:
@@ -104,7 +99,6 @@ def analyze_review_sentiment(comment, rating):
         return {'sentiment': 'neutral'}
     
     try:
-        # ✅ SỬA MODEL NAME
         model = genai.GenerativeModel('gemini-flash-latest')
         
         prompt = f"""
