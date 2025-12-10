@@ -1346,7 +1346,7 @@ body {
 .action-overlay button:nth-child(1) {
     background: #ff6b81;
     color: white;
-    transform: translateX(10px); /* dịch nút Hủy kết bạn qua phải */
+    transform: translateX(6px); /* dịch nút Hủy kết bạn qua phải */
      transform: translateY(-2px); /* dịch nút Hủy kết bạn qua phải */
 }
 .action-overlay button:nth-child(1):hover {
@@ -1356,8 +1356,8 @@ body {
 .action-overlay button:nth-child(2) {
     background: #2f3542;
     color: white;
-     transform: translateX(10px); /* dịch nút Hủy kết bạn qua phải */
-  transform: translateY(-2px); /* dịch nút Hủy kết bạn qua phải */
+    transform: translateX(10px); /* dịch nút Hủy kết bạn qua phải */
+    transform: translateY(-2px); /* dịch nút Hủy kết bạn qua phải */
 }
 .action-overlay button:nth-child(2):hover {
     background: #1e272e;
