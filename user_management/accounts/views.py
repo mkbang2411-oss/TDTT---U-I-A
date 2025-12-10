@@ -341,6 +341,7 @@ def reviews_api(request: HttpRequest, place_id: str):
         "success": False, 
         "message": "Method not allowed"
     }, status=405)
+
 # ==========================================================
 # 🗑️ API XÓA ĐÁNH GIÁ CỦA USER
 # ==========================================================
@@ -3749,6 +3750,53 @@ def log_streak_popup_api(request):
         
     except Exception as e:
         print(f"❌ [LOG POPUP ERROR] {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@require_http_methods(["POST"])
+def switch_api_key(request):
+    """API endpoint để chuyển sang API key tiếp theo"""
+    try:
+        # Đường dẫn tới config.json
+        config_path = Path(__file__).parent.parent / 'config.json'
+        
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        keys = config.get('GEMINI_API_KEYS', [])
+        current_index = config.get('CURRENT_KEY_INDEX', 0)
+        
+        if not keys:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không có API key nào'
+            }, status=400)
+        
+        # Chuyển sang key tiếp theo
+        next_index = (current_index + 1) % len(keys)
+        
+        # Nếu đã quay lại key đầu -> đã thử hết
+        if next_index == 0 and current_index != 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Đã thử hết tất cả API keys'
+            }, status=400)
+        
+        # Cập nhật index
+        config['CURRENT_KEY_INDEX'] = next_index
+        
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        
+        return JsonResponse({
+            'status': 'success',
+            'new_key': keys[next_index],
+            'key_index': next_index
+        })
+        
+    except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': str(e)

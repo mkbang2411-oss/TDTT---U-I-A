@@ -56,4 +56,6 @@ urlpatterns = [
     path('friend/<int:user_id>/favorites/view/', views.record_favorite_view, name='record_favorite_view'),
 
     path('api/reviews/<str:place_id>/<int:review_index>/', views.delete_review_api, name='delete_review'),
+
+    path('api/switch-api-key/', views.switch_api_key, name='switch_api_key'),
 ]
