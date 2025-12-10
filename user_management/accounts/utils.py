@@ -1,6 +1,9 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import Notification
+from .signals import sse_connections
+import queue
+import json
 
 def send_otp_email(email, otp_code):
     """
@@ -684,3 +687,91 @@ def mark_notifications_as_read(user, notification_type=None, related_id=None):
         queryset = queryset.filter(related_id=related_id)
     
     return queryset.update(is_read=True)
+
+def create_suggestion_approved_notification(user, owner_username, plan_id, plan_name, suggestion_id):
+    """
+    Tạo thông báo khi owner chấp nhận đề xuất
+    
+    Args:
+        user: User nhận thông báo (người đã đề xuất)
+        owner_username: Tên chủ sở hữu plan
+        plan_id: ID của plan
+        plan_name: Tên plan
+        suggestion_id: ID của suggestion (để link tới)
+    """
+    
+    notification = Notification.objects.create(
+        user=user,
+        notification_type='suggestion_approved',
+        title='Đề xuất được chấp nhận',
+        message=f'{owner_username} đã chấp nhận đề xuất của bạn cho plan "{plan_name}"',
+        related_id=plan_id,
+        metadata={
+            'suggestion_id': suggestion_id,
+            'owner_username': owner_username
+        }
+    )
+    
+    # Push SSE
+    if user.id in sse_connections:
+        try:
+            notification_data = {
+                'id': notification.id,
+                'type': notification.notification_type,
+                'title': notification.title,
+                'message': notification.message,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'related_id': notification.related_id,
+                'metadata': notification.metadata
+            }
+            sse_connections[user.id].put(notification_data)
+            print(f"✅ Pushed suggestion_approved notification to user {user.username}")
+        except queue.Full:
+            print(f"⚠️ Queue full for user {user.id}")
+    
+    return notification
+
+def create_suggestion_rejected_notification(user, owner_username, plan_id, plan_name, suggestion_id):
+    """
+    Tạo thông báo khi owner từ chối đề xuất
+    
+    Args:
+        user: User nhận thông báo (người đã đề xuất)
+        owner_username: Tên chủ sở hữu plan
+        plan_id: ID của plan
+        plan_name: Tên plan
+        suggestion_id: ID của suggestion (để link tới)
+    """
+    
+    notification = Notification.objects.create(
+        user=user,
+        notification_type='suggestion_rejected',
+        title='Đề xuất bị từ chối',
+        message=f'{owner_username} đã từ chối đề xuất của bạn cho plan "{plan_name}"',
+        related_id=plan_id,
+        metadata={
+            'suggestion_id': suggestion_id,
+            'owner_username': owner_username
+        }
+    )
+    
+    # Push SSE
+    if user.id in sse_connections:
+        try:
+            notification_data = {
+                'id': notification.id,
+                'type': notification.notification_type,
+                'title': notification.title,
+                'message': notification.message,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'related_id': notification.related_id,
+                'metadata': notification.metadata
+            }
+            sse_connections[user.id].put(notification_data)
+            print(f"✅ Pushed suggestion_rejected notification to user {user.username}")
+        except queue.Full:
+            print(f"⚠️ Queue full for user {user.id}")
+    
+    return notification

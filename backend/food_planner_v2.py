@@ -3646,6 +3646,13 @@ async function loadSavedPlans(planId, forceReload = false) {
                 suggestedMichelin = null;
                 displayPlanVertical(currentPlan, false);
 
+                // 🔥 THÊM: Tự động check suggestions sau khi load plan
+                if (!plan.is_shared) {
+                    setTimeout(() => {
+                        checkPendingSuggestions(planId);
+                    }, 500);
+                }
+
                 setTimeout(() => drawRouteOnMap(currentPlan), 500);
                 
                 const savedPlansList = document.getElementById('savedPlansList');

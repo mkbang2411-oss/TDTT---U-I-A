@@ -42,6 +42,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .signals import sse_connections
+from .utils import create_suggestion_approved_notification
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -953,7 +954,7 @@ def accept_friend_request(request):
         Notification.objects.create(
             user=friend_request.sender,  # Người nhận thông báo
             notification_type='friend_accepted',  # 🔥 Type mới
-            title='🎉 Lời mời kết bạn được chấp nhận',
+            title='Lời mời kết bạn được chấp nhận 🎉',
             message=f'{friend_request.receiver.username} đã chấp nhận lời mời kết bạn của bạn',
             related_id=friend_request.receiver.id  # ID của người chấp nhận
         )
@@ -2733,6 +2734,14 @@ def approve_suggestion_api(request, suggestion_id):
         suggestion.status = 'accepted'
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
+
+        create_suggestion_approved_notification(
+            user=suggestion.suggested_by,  # Người nhận thông báo
+            owner_username=request.user.username,  # Chủ sở hữu
+            plan_id=plan.id,
+            plan_name=plan.name,
+            suggestion_id=suggestion.id
+        )
         
         # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
         other_pending_suggestions = PlanEditSuggestion.objects.filter(
@@ -2769,6 +2778,7 @@ def approve_suggestion_api(request, suggestion_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+    
 @csrf_exempt
 @require_POST
 @login_required
@@ -2802,6 +2812,17 @@ def reject_suggestion_api(request, suggestion_id):
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 THÊM: Tạo thông báo cho người đề xuất
+        from .utils import create_suggestion_rejected_notification
+        
+        create_suggestion_rejected_notification(
+            user=suggestion.suggested_by,  # Người nhận thông báo
+            owner_username=request.user.username,  # Chủ sở hữu
+            plan_id=suggestion.shared_plan.food_plan.id,
+            plan_name=suggestion.shared_plan.food_plan.name,
+            suggestion_id=suggestion.id
+        )
+        
         return JsonResponse({
             'status': 'success',
             'message': 'Đã từ chối đề xuất'
@@ -2813,10 +2834,12 @@ def reject_suggestion_api(request, suggestion_id):
             'message': 'Không tìm thấy suggestion'
         }, status=404)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        }, status=500)        
+        }, status=500)
 
 @csrf_exempt
 @require_POST
@@ -3669,7 +3692,7 @@ def record_favorite_view(request, user_id):
         notification = Notification.objects.create(
             user=viewed_user,  # Người nhận thông báo
             notification_type='favorite_viewed',  # 🔴 SỬA CHỖ NÀY
-            title='👀 Có người xem quán yêu thích của bạn',
+            title='Có người xem quán yêu thích của bạn 👀',
             message=f'{viewer.username} đã xem danh sách quán yêu thích của bạn',
             related_id=viewer.id
         )

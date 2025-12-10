@@ -2189,7 +2189,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     'gay gắt', 'gay go', 'gay cấn', 'ngay thẳng', 'ngay thật', 'sắc',
                     
                     // --- Từ chứa "lồn/lon" nhưng không phải tục ---
-                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng',
+                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng', 'vai',
                     'salon', 'lớn', 'nguồn', 'ngày', 'gay go', 'long lanh', 'long trọng', 'long', 'người',
 
                     // Tiếng Trung - chào hỏi
