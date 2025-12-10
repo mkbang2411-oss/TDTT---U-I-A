@@ -5781,6 +5781,24 @@ function addNewMealSlot() {
     waitingForPlaceSelection = newKey;
     displayPlanVertical(currentPlan, isEditMode);
     
+    // 🔥 THÊM ĐOẠN NÀY - HIỆN TẤT CẢ QUÁN KHI TẠO CARD MỚI
+    setTimeout(() => {
+        // Ưu tiên dùng data tìm kiếm hiện tại
+        if (typeof displayPlaces === 'function' &&
+            Array.isArray(window.allPlacesData) &&
+            window.allPlacesData.length > 0) {
+            
+            // false = không đổi zoom, chỉ vẽ lại marker
+            displayPlaces(window.allPlacesData, false);
+            console.log('✅ Đã hiện lại tất cả quán sau khi tạo card mới');
+        } else if (typeof loadMarkersInViewport === 'function' && window.map) {
+            // Fallback: nếu chưa có allPlacesData thì bật lại lazy-load
+            window.map.on('moveend', loadMarkersInViewport);
+            loadMarkersInViewport();
+            console.log('✅ Đã bật lại lazy-load marker sau khi tạo card mới');
+        }
+    }, 100);
+    
     // 🔥 THÊM: Kích hoạt refresh sidebar
     if (typeof window.refreshCurrentSidebar === 'function') {
         setTimeout(() => {
@@ -5795,7 +5813,7 @@ function addNewMealSlot() {
         if (timeline) {
             timeline.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
-    }, 200); // 🔥 Tăng thời gian chờ để sidebar kịp refresh
+    }, 200);
 }
 
 function getLastMealTime() {
