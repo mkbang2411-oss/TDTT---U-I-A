@@ -510,7 +510,7 @@
           document.querySelector(".Menu_Favorite").classList.add("active");
         } else if (pageId === "Friend_Page") {
           document.querySelector(".Menu_Friend").classList.add("active");
-          // ✅ Đảm bảo load xong user ID
+          // ✅ Đảm bảo load xong user ID 
           ensureUserLoaded().then(() => {
             loadFriendRequests();
             loadFriendsList();
@@ -2072,5 +2072,6 @@
     });
 
     </script>
+
   </body>
 </html>
