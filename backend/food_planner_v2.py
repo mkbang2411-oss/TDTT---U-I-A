@@ -8354,10 +8354,51 @@ async function approveAllChanges(suggestionId) {
                 return;
             }
             
-            // Nếu TẤT CẢ đều bị từ chối
+               // 🔥 CASE ĐẶC BIỆT: Nếu TẤT CẢ đều bị từ chối → Gọi API reject toàn bộ suggestion
             if (approvedCount === 0 && rejectedCount === totalChanges) {
-                alert('⚠️ Bạn đã từ chối tất cả thay đổi. Không có gì để chấp nhận!');
-                return;
+                if (!confirm(`⚠️ Bạn đã từ chối TẤT CẢ ${totalChanges} thay đổi.\n\nXác nhận từ chối toàn bộ đề xuất này?`)) {
+                    return;
+                }
+                
+                // Gọi API reject suggestion
+                try {
+                    const response = await fetch(`/api/accounts/food-plan/suggestion-reject/${suggestionId}/`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'}
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        alert('✅ Đã từ chối toàn bộ đề xuất!');
+                        
+                        // Xóa trạng thái tạm
+                        delete pendingApprovals[suggestionId];
+                        
+                        // Đóng modal
+                        closeComparisonModal();
+                        closeSuggestionsModal();
+                        
+                        // Reload
+                        if (currentPlanId) {
+                            await checkPendingSuggestions(currentPlanId);
+                        }
+                        
+                        // Reset pending status nếu đang xem shared plan
+                        if (isViewingSharedPlan && hasEditPermission) {
+                            hasPendingSuggestion = false;
+                            updateSubmitSuggestionButton();
+                        }
+                    } else {
+                        alert('❌ ' + result.message);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error rejecting suggestion:', error);
+                    alert('Không thể từ chối đề xuất');
+                }
+                
+                return; // Dừng hàm, không chạy tiếp phần approve
             }
             
             // Xác nhận cuối cùng
