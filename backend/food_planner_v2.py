@@ -3599,7 +3599,8 @@ async function loadSavedPlans(planId, forceReload = false) {
         displaySavedPlansList(allPlans);
         
         // Nếu có planId, load plan đó
-        if (planId) {
+       // Nếu có planId, load plan đó
+if (planId) {
     const plan = allPlans.find(p => p.id === planId);
     
     if (plan) {
@@ -3613,9 +3614,10 @@ async function loadSavedPlans(planId, forceReload = false) {
             sharedPlanOwnerName = plan.owner_username;
             hasEditPermission = (plan.permission === 'edit');
             
-            // 🔥 THÊM: Kiểm tra pending suggestion
+            // 🔥 FIX: THÊM AWAIT ĐỂ ĐỢI PENDING CHECK HOÀN TẤT
             if (hasEditPermission) {
-                checkPendingSuggestion(planId);
+                await checkPendingSuggestion(planId);
+                console.log('✅ Đã check pending suggestion sau reload:', hasPendingSuggestion);
             }
         } else {
             isSharedPlan = false;
@@ -7142,17 +7144,23 @@ function deleteAllMeals() {
 // ========== CHECK PENDING SUGGESTION ==========
 async function checkPendingSuggestion(planId) {
     try {
+        console.log('🔍 Checking pending suggestion for plan:', planId);
+        
         const response = await fetch(`/api/accounts/food-plan/check-pending/${planId}/`);
         const data = await response.json();
         
+        console.log('📥 Response from API:', data);
+        
         if (data.status === 'success') {
             hasPendingSuggestion = data.has_pending;
+            
+            console.log('✅ hasPendingSuggestion updated to:', hasPendingSuggestion);
             
             // Cập nhật UI nút "Gửi đề xuất"
             updateSubmitSuggestionButton();
         }
     } catch (error) {
-        console.error('Error checking pending suggestion:', error);
+        console.error('❌ Error checking pending suggestion:', error);
     }
 }
 
