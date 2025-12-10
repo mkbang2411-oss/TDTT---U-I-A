@@ -759,17 +759,17 @@
     function handleNotificationClick(item) {
         // 🌟 1. Thông báo ai đó xem quán yêu thích → Hiển thị thông tin người xem
         if (item.type === 'favorite_viewed') {
-            // Hiển thị thông tin người đã xem
             markNotificationAsRead(item.id);
-            return; // ⚠️ RETURN SỚM - KHÔNG đóng popup thông báo
+            return;
         }
 
         if (item.type === 'friend_accepted') {
             markNotificationAsRead(item.id);
-            return; // ⚠️ Chỉ đánh dấu đã đọc, không làm gì thêm
+            return;
         }
 
         closeOverlay();
+        
         // 🌟 2. Thông báo kết bạn → nhảy sang Account
         if (item.type === 'friend_request') {
             try {
@@ -781,6 +781,41 @@
             return;
         }
 
+        // 🔥 THÊM: Xử lý thông báo đề xuất bị từ chối
+        if (item.type === 'suggestion_rejected') {
+            closeOverlay();
+            
+            // Đợi popup đóng hoàn toàn
+            setTimeout(function() {
+                // Mở Food Planner
+                var plannerBtn = document.getElementById('foodPlannerBtn');
+                if (plannerBtn) {
+                    plannerBtn.click();
+                }
+
+                // Load plan
+                if (item.related_id && typeof loadSavedPlans === 'function') {
+                    setTimeout(function () {
+                        try {
+                            loadSavedPlans(item.related_id, true);
+                            
+                            // Reload suggestions để cập nhật UI
+                            setTimeout(function() {
+                                if (typeof checkPendingSuggestions === 'function') {
+                                    checkPendingSuggestions(item.related_id);
+                                }
+                            }, 1500);
+
+                        } catch (e) {
+                            console.error('Lỗi loadSavedPlans', e);
+                        }
+                    }, 350);
+                }
+            }, 100);
+            
+            return; // ✅ Dừng ở đây, không chạy tiếp code bên dưới
+        }
+
         // ✅ CHỜ 300MS ĐỂ POPUP ĐÓNG HOÀN TOÀN TRƯỚC KHI MỞ FOOD PLANNER
         setTimeout(function() {
             // 🌟 3. Mở bubble Food Planner
@@ -789,18 +824,34 @@
                 plannerBtn.click();
             }
 
-            // 🌟 4. Load plan (dùng cho cả suggestion & share plan)
+            // 🌟 4. Load plan (dùng cho cả suggestion & share plan & suggestion_approved)
             if (item.related_id && typeof loadSavedPlans === 'function') {
                 setTimeout(function () {
                     try {
                         loadSavedPlans(item.related_id, true);
 
-                        // ⚠ Chỉ notification "suggestion" mới cần scroll
-                        if (item.type !== 'suggestion') {
+                        // 🔥 THÊM: Nếu là suggestion_approved, reload suggestions để xóa badge
+                        if (item.type === 'suggestion_approved') {
+                            setTimeout(function() {
+                                // Reload lại phần suggestions của plan này
+                                if (typeof checkPendingSuggestions === 'function') {
+                                    checkPendingSuggestions(item.related_id);
+                                }
+                                
+                                // 🔥 FORCE RELOAD lại UI để xóa badge
+                                const suggestionBadge = document.querySelector(`.plan-item[data-plan-id="${item.related_id}"] .suggestion-badge`);
+                                if (suggestionBadge) {
+                                    suggestionBadge.remove();
+                                }
+                            }, 1500); // Đợi plan load xong
+                        }
+
+                        // ⚠ CHỈ notification "suggestion" mới cần scroll
+                        if (item.type !== 'suggestion' && item.type !== 'suggestion_approved') {
                             return; // share plan & loại khác: dừng ở đây, KHÔNG scroll
                         }
 
-                        // 🌟 4. Scroll tới planResult (chỉ cho suggestion)
+                        // 🌟 5. Scroll tới planResult (chỉ cho suggestion và suggestion_approved)
                         setTimeout(function () {
                             const planResult = document.getElementById('planResult');
                             const savedPlansSection = document.getElementById('savedPlansSection');
@@ -815,7 +866,6 @@
                             // 🔍 TÌM PARENT CONTAINER CÓ SCROLL (bubble content)
                             let scrollContainer = savedPlansSection.parentElement;
                             
-                            // Tìm element có overflow: auto hoặc scroll
                             while (scrollContainer && scrollContainer !== document.body) {
                                 const style = window.getComputedStyle(scrollContainer);
                                 const overflow = style.overflow + style.overflowY;
@@ -830,18 +880,14 @@
                             
                             if (!scrollContainer || scrollContainer === document.body) {
                                 console.warn('⚠️ Không tìm thấy scroll container phù hợp');
-                                // Fallback: scroll toàn trang
                                 planResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 return;
                             }
                             
                             const planResultTop = planResult.offsetTop;
                             const containerHeight = scrollContainer.clientHeight;
-
-                            // Đưa planResult lên gần đầu container, cách khoảng 80px
                             let targetScroll = planResultTop - 130;
 
-                            // Không cho scroll quá giới hạn
                             const maxScroll = scrollContainer.scrollHeight - containerHeight;
                             if (targetScroll < 0) targetScroll = 0;
                             if (targetScroll > maxScroll) targetScroll = maxScroll;
@@ -868,7 +914,7 @@
                     }
                 }, 350);
             }
-        }, 100); // ✅ CHỜ 300MS TRƯỚC KHI MỞ FOOD PLANNER
+        }, 100);
     }
 
     // ================================

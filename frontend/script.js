@@ -957,7 +957,7 @@ if (placeId) {
       <div class="review-section">
         ${renderReviewSummary(googleReviews, userReviews)} 
         ${reviewFormHTML}
-        ${renderReviewList(googleReviews, userReviews, currentUser)}  // ✅ THÊM currentUser
+        ${renderReviewList(googleReviews, userReviews, currentUser)}  
       </div>
     `;
 

@@ -42,6 +42,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .signals import sse_connections
+from .utils import create_suggestion_approved_notification
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -340,6 +341,7 @@ def reviews_api(request: HttpRequest, place_id: str):
         "success": False, 
         "message": "Method not allowed"
     }, status=405)
+
 # ==========================================================
 # 🗑️ API XÓA ĐÁNH GIÁ CỦA USER
 # ==========================================================
@@ -1043,7 +1045,7 @@ def accept_friend_request(request):
         Notification.objects.create(
             user=friend_request.sender,  # Người nhận thông báo
             notification_type='friend_accepted',  # 🔥 Type mới
-            title='🎉 Lời mời kết bạn được chấp nhận',
+            title='Lời mời kết bạn được chấp nhận 🎉',
             message=f'{friend_request.receiver.username} đã chấp nhận lời mời kết bạn của bạn',
             related_id=friend_request.receiver.id  # ID của người chấp nhận
         )
@@ -2823,6 +2825,14 @@ def approve_suggestion_api(request, suggestion_id):
         suggestion.status = 'accepted'
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
+
+        create_suggestion_approved_notification(
+            user=suggestion.suggested_by,  # Người nhận thông báo
+            owner_username=request.user.username,  # Chủ sở hữu
+            plan_id=plan.id,
+            plan_name=plan.name,
+            suggestion_id=suggestion.id
+        )
         
         # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
         other_pending_suggestions = PlanEditSuggestion.objects.filter(
@@ -2859,6 +2869,7 @@ def approve_suggestion_api(request, suggestion_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+    
 @csrf_exempt
 @require_POST
 @login_required
@@ -2892,6 +2903,17 @@ def reject_suggestion_api(request, suggestion_id):
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 THÊM: Tạo thông báo cho người đề xuất
+        from .utils import create_suggestion_rejected_notification
+        
+        create_suggestion_rejected_notification(
+            user=suggestion.suggested_by,  # Người nhận thông báo
+            owner_username=request.user.username,  # Chủ sở hữu
+            plan_id=suggestion.shared_plan.food_plan.id,
+            plan_name=suggestion.shared_plan.food_plan.name,
+            suggestion_id=suggestion.id
+        )
+        
         return JsonResponse({
             'status': 'success',
             'message': 'Đã từ chối đề xuất'
@@ -2903,10 +2925,12 @@ def reject_suggestion_api(request, suggestion_id):
             'message': 'Không tìm thấy suggestion'
         }, status=404)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        }, status=500)        
+        }, status=500)
 
 @csrf_exempt
 @require_POST
@@ -3331,10 +3355,9 @@ def get_user_preferences(request):
 def save_user_preference(request):
     try:
         data = json.loads(request.body)
-        pref_type = data.get('type')
+        pref_type = data.get('type')  # like/dislike/allergy/medicalcondition
         item = data.get('item', '').strip()
         
-        # ✅ THÊM LOG ĐỂ DEBUG
         print(f"[SAVE PREF] User: {request.user.username}")
         print(f"[SAVE PREF] Type: {pref_type}")
         print(f"[SAVE PREF] Item: {item}")
@@ -3345,31 +3368,44 @@ def save_user_preference(request):
                 'message': 'Thiếu thông tin type hoặc item'
             }, status=400)
         
-        # Tạo hoặc bỏ qua nếu đã tồn tại
+        # ✅ BƯỚC 1: XÓA TẤT CẢ CONFLICT CŨ (trừ type hiện tại)
+        conflict_types = ['like', 'dislike', 'allergy', 'medicalcondition']
+        conflict_types.remove(pref_type)  # Loại bỏ type đang thêm
+        
+        deleted_count = 0
+        for conflict_type in conflict_types:
+            deleted, _ = UserPreference.objects.filter(
+                user=request.user,
+                preference_type=conflict_type,
+                item=item
+            ).delete()
+            
+            if deleted > 0:
+                print(f"[CONFLICT] Deleted {deleted} '{conflict_type}' for item: {item}")
+                deleted_count += deleted
+        
+        # ✅ BƯỚC 2: TẠO HOẶC BỎ QUA NẾU ĐÃ TỒN TẠI
         preference, created = UserPreference.objects.get_or_create(
             user=request.user,
             preference_type=pref_type,
             item=item
         )
         
-        # ✅ THÊM LOG
         print(f"[SAVE PREF] Created: {created}")
         
-        if created:
-            return JsonResponse({
-                'status': 'success',
-                'message': f'Đã lưu: {item}',
-                'is_new': True
-            })
-        else:
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Đã tồn tại',
-                'is_new': False
-            })
+        message = f'Đã lưu: {item}'
+        if deleted_count > 0:
+            message += f' (đã xóa {deleted_count} preference cũ xung đột)'
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message,
+            'is_new': created,
+            'conflicts_removed': deleted_count
+        })
             
     except Exception as e:
-        print(f"[SAVE PREF ERROR] {e}")  # ✅ THÊM LOG LỖI
+        print(f"[SAVE PREF ERROR] {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({
@@ -3424,7 +3460,7 @@ def delete_user_preference(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
-    
+
 # ==========================================================
 # 🔔 NOTIFICATION APIs
 # ==========================================================
@@ -3747,7 +3783,7 @@ def record_favorite_view(request, user_id):
         notification = Notification.objects.create(
             user=viewed_user,  # Người nhận thông báo
             notification_type='favorite_viewed',  # 🔴 SỬA CHỖ NÀY
-            title='👀 Có người xem quán yêu thích của bạn',
+            title='Có người xem quán yêu thích của bạn 👀',
             message=f'{viewer.username} đã xem danh sách quán yêu thích của bạn',
             related_id=viewer.id
         )
@@ -3804,6 +3840,53 @@ def log_streak_popup_api(request):
         
     except Exception as e:
         print(f"❌ [LOG POPUP ERROR] {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@require_http_methods(["POST"])
+def switch_api_key(request):
+    """API endpoint để chuyển sang API key tiếp theo"""
+    try:
+        # Đường dẫn tới config.json
+        config_path = settings.BASE_DIR.parent / 'backend' / 'config.json'
+        
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        keys = config.get('GEMINI_API_KEYS', [])
+        current_index = config.get('CURRENT_KEY_INDEX', 0)
+        
+        if not keys:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không có API key nào'
+            }, status=400)
+        
+        # Chuyển sang key tiếp theo
+        next_index = (current_index + 1) % len(keys)
+        
+        # Nếu đã quay lại key đầu -> đã thử hết
+        if next_index == 0 and current_index != 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Đã thử hết tất cả API keys'
+            }, status=400)
+        
+        # Cập nhật index
+        config['CURRENT_KEY_INDEX'] = next_index
+        
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        
+        return JsonResponse({
+            'status': 'success',
+            'new_key': keys[next_index],
+            'key_index': next_index
+        })
+        
+    except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': str(e)

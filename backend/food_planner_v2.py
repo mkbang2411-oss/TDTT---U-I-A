@@ -3599,7 +3599,8 @@ async function loadSavedPlans(planId, forceReload = false) {
         displaySavedPlansList(allPlans);
         
         // Nếu có planId, load plan đó
-        if (planId) {
+       // Nếu có planId, load plan đó
+if (planId) {
     const plan = allPlans.find(p => p.id === planId);
     
     if (plan) {
@@ -3613,9 +3614,10 @@ async function loadSavedPlans(planId, forceReload = false) {
             sharedPlanOwnerName = plan.owner_username;
             hasEditPermission = (plan.permission === 'edit');
             
-            // 🔥 THÊM: Kiểm tra pending suggestion
+            // 🔥 FIX: THÊM AWAIT ĐỂ ĐỢI PENDING CHECK HOÀN TẤT
             if (hasEditPermission) {
-                checkPendingSuggestion(planId);
+                await checkPendingSuggestion(planId);
+                console.log('✅ Đã check pending suggestion sau reload:', hasPendingSuggestion);
             }
         } else {
             isSharedPlan = false;
@@ -3645,6 +3647,13 @@ async function loadSavedPlans(planId, forceReload = false) {
                 suggestedFoodStreet = null;
                 suggestedMichelin = null;
                 displayPlanVertical(currentPlan, false);
+
+                // 🔥 THÊM: Tự động check suggestions sau khi load plan
+                if (!plan.is_shared) {
+                    setTimeout(() => {
+                        checkPendingSuggestions(planId);
+                    }, 500);
+                }
 
                 setTimeout(() => drawRouteOnMap(currentPlan), 500);
                 
@@ -5781,6 +5790,24 @@ function addNewMealSlot() {
     waitingForPlaceSelection = newKey;
     displayPlanVertical(currentPlan, isEditMode);
     
+    // 🔥 THÊM ĐOẠN NÀY - HIỆN TẤT CẢ QUÁN KHI TẠO CARD MỚI
+    setTimeout(() => {
+        // Ưu tiên dùng data tìm kiếm hiện tại
+        if (typeof displayPlaces === 'function' &&
+            Array.isArray(window.allPlacesData) &&
+            window.allPlacesData.length > 0) {
+            
+            // false = không đổi zoom, chỉ vẽ lại marker
+            displayPlaces(window.allPlacesData, false);
+            console.log('✅ Đã hiện lại tất cả quán sau khi tạo card mới');
+        } else if (typeof loadMarkersInViewport === 'function' && window.map) {
+            // Fallback: nếu chưa có allPlacesData thì bật lại lazy-load
+            window.map.on('moveend', loadMarkersInViewport);
+            loadMarkersInViewport();
+            console.log('✅ Đã bật lại lazy-load marker sau khi tạo card mới');
+        }
+    }, 100);
+    
     // 🔥 THÊM: Kích hoạt refresh sidebar
     if (typeof window.refreshCurrentSidebar === 'function') {
         setTimeout(() => {
@@ -5795,7 +5822,7 @@ function addNewMealSlot() {
         if (timeline) {
             timeline.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
-    }, 200); // 🔥 Tăng thời gian chờ để sidebar kịp refresh
+    }, 200);
 }
 
 function getLastMealTime() {
@@ -7124,17 +7151,23 @@ function deleteAllMeals() {
 // ========== CHECK PENDING SUGGESTION ==========
 async function checkPendingSuggestion(planId) {
     try {
+        console.log('🔍 Checking pending suggestion for plan:', planId);
+        
         const response = await fetch(`/api/accounts/food-plan/check-pending/${planId}/`);
         const data = await response.json();
         
+        console.log('📥 Response from API:', data);
+        
         if (data.status === 'success') {
             hasPendingSuggestion = data.has_pending;
+            
+            console.log('✅ hasPendingSuggestion updated to:', hasPendingSuggestion);
             
             // Cập nhật UI nút "Gửi đề xuất"
             updateSubmitSuggestionButton();
         }
     } catch (error) {
-        console.error('Error checking pending suggestion:', error);
+        console.error('❌ Error checking pending suggestion:', error);
     }
 }
 
@@ -7560,7 +7593,7 @@ async function viewSuggestionComparison(suggestionId) {
                                 font-size: 15px;
                                 font-weight: 700;
                                 cursor: pointer;
-                            ">✅ Chấp nhận tất cả thay đổi</button>
+                            ">✅ Lưu thay đổi</button>
                             
                             <button onclick="rejectSuggestion(${suggestionId})" style="
                                 flex: 1;
@@ -8298,22 +8331,28 @@ async function rejectChange(suggestionId, changeIndex, changeType, changeKey) {
 async function approveAllChanges(suggestionId) {
     const pending = pendingApprovals[suggestionId];
     
-    // 🔥 FIX: Nếu không có pending data, lấy TẤT CẢ thay đổi từ suggestion
-    if (!pending || (!pending.approvedChanges.length && !pending.rejectedChanges.length)) {
-        try {
-            // Lấy chi tiết suggestion từ API
-            const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
-            const data = await response.json();
-            
-            if (data.status !== 'success') {
-                alert('❌ ' + data.message);
+    // 🔥 BƯỚC 1: Lấy tổng số thay đổi từ suggestion
+    let totalChanges = 0;
+    try {
+        const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            alert('❌ ' + data.message);
+            return;
+        }
+        
+        const suggestion = data.suggestion;
+        const changes = analyzeChanges(suggestion.current_data, suggestion.suggested_data);
+        totalChanges = changes.length;
+        
+        // 🔥 CASE 1: Không đánh dấu gì cả → Chấp nhận TẤT CẢ
+        if (!pending || (!pending.approvedChanges.length && !pending.rejectedChanges.length)) {
+            if (!confirm(`Bạn chưa xử lý bất kỳ thay đổi nào.\n\n✅ Xác nhận chấp nhận TẤT CẢ ${totalChanges} thay đổi?`)) {
                 return;
             }
             
-            const suggestion = data.suggestion;
-            const changes = analyzeChanges(suggestion.current_data, suggestion.suggested_data);
-            
-            // 🔥 TỰ ĐỘNG CHẤP NHẬN TẤT CẢ thay đổi
+            // Tự động chấp nhận tất cả
             if (!pendingApprovals[suggestionId]) {
                 pendingApprovals[suggestionId] = {
                     approvedChanges: [],
@@ -8330,36 +8369,88 @@ async function approveAllChanges(suggestionId) {
             });
             
             console.log('✅ Đã tự động chấp nhận tất cả thay đổi:', pendingApprovals[suggestionId]);
-            
-        } catch (error) {
-            console.error('Error loading suggestion:', error);
-            alert('⚠️ Không thể tải thông tin đề xuất');
-            return;
         }
-    }
-    
-    // 🔥 TIẾP TỤC LOGIC CŨ
-    const approvedCount = pendingApprovals[suggestionId].approvedChanges.length;
-    const rejectedCount = pendingApprovals[suggestionId].rejectedChanges.length;
-    
-    // 🔥 CHỈ CẢNH BÁO NẾU TẤT CẢ ĐỀU BỊ REJECT
-    if (approvedCount === 0 && rejectedCount > 0) {
-        alert('⚠️ Bạn đã từ chối tất cả thay đổi. Không có gì để chấp nhận!');
+        // 🔥 CASE 2: Đã đánh dấu một vài cái → KIỂM TRA có xử lý hết chưa
+        else {
+            const approvedCount = pending.approvedChanges.length;
+            const rejectedCount = pending.rejectedChanges.length;
+            const processedCount = approvedCount + rejectedCount;
+            
+            // Nếu chưa xử lý hết → BẮT BUỘC phải xử lý hết
+            if (processedCount < totalChanges) {
+                const remainingCount = totalChanges - processedCount;
+                alert(`⚠️ Bạn còn ${remainingCount} thay đổi chưa xử lý!\n\n` +
+                      `📊 Tổng: ${totalChanges} thay đổi\n` +
+                      `✅ Đã chấp nhận: ${approvedCount}\n` +
+                      `❌ Đã từ chối: ${rejectedCount}\n\n` +
+                      `Vui lòng xử lý HẾT các thay đổi còn lại trước khi lưu.`);
+                return;
+            }
+            
+               // 🔥 CASE ĐẶC BIỆT: Nếu TẤT CẢ đều bị từ chối → Gọi API reject toàn bộ suggestion
+            if (approvedCount === 0 && rejectedCount === totalChanges) {
+                if (!confirm(`⚠️ Bạn đã từ chối TẤT CẢ ${totalChanges} thay đổi.\n\nXác nhận từ chối toàn bộ đề xuất này?`)) {
+                    return;
+                }
+                
+                // Gọi API reject suggestion
+                try {
+                    const response = await fetch(`/api/accounts/food-plan/suggestion-reject/${suggestionId}/`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'}
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        alert('✅ Đã từ chối toàn bộ đề xuất!');
+                        
+                        // Xóa trạng thái tạm
+                        delete pendingApprovals[suggestionId];
+                        
+                        // Đóng modal
+                        closeComparisonModal();
+                        closeSuggestionsModal();
+                        
+                        // Reload
+                        if (currentPlanId) {
+                            await checkPendingSuggestions(currentPlanId);
+                        }
+                        
+                        // Reset pending status nếu đang xem shared plan
+                        if (isViewingSharedPlan && hasEditPermission) {
+                            hasPendingSuggestion = false;
+                            updateSubmitSuggestionButton();
+                        }
+                    } else {
+                        alert('❌ ' + result.message);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error rejecting suggestion:', error);
+                    alert('Không thể từ chối đề xuất');
+                }
+                
+                return; // Dừng hàm, không chạy tiếp phần approve
+            }
+            
+            // Xác nhận cuối cùng
+            const confirmMsg = `📊 Tổng kết:\n✅ Chấp nhận: ${approvedCount} thay đổi\n❌ Từ chối: ${rejectedCount} thay đổi\n\nXác nhận áp dụng các thay đổi đã chọn?`;
+            
+            if (!confirm(confirmMsg)) return;
+        }
+        
+    } catch (error) {
+        console.error('Error loading suggestion:', error);
+        alert('⚠️ Không thể tải thông tin đề xuất');
         return;
     }
     
-    const confirmMsg = `
-📊 Tổng kết:
-✅ Chấp nhận: ${approvedCount} thay đổi
-❌ Từ chối: ${rejectedCount} thay đổi
-
-Xác nhận áp dụng các thay đổi đã chọn?
-    `.trim();
-    
-    if (!confirm(confirmMsg)) return;
+    // 🔥 PHẦN CODE GỬI API VẪN GIỮ NGUYÊN
+    const approvedCount = pendingApprovals[suggestionId].approvedChanges.length;
+    const rejectedCount = pendingApprovals[suggestionId].rejectedChanges.length;
     
     try {
-        // 🔥 GỌI API - GỬI TẤT CẢ THAY ĐỔI 1 LẦN
         const response = await fetch('/api/accounts/food-plan/approve-all-changes/', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -8371,26 +8462,22 @@ Xác nhận áp dụng các thay đổi đã chọn?
         
         const result = await response.json();
         
-          if (result.status === 'success') {
+        if (result.status === 'success') {
             let alertMsg = `✅ Đã áp dụng ${result.applied_count} thay đổi!`;
             if (result.rejected_count && result.rejected_count > 0) {
                 alertMsg += `\n\n🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
             }
             alert(alertMsg);
             
-            // 🔥 XÓA TRẠNG THÁI TẠM
             delete pendingApprovals[suggestionId];
             
-            // Đóng modal
             closeComparisonModal();
             closeSuggestionsModal();
             
-            // 🔥 RELOAD LẠI PLAN VÀ CHECK SUGGESTIONS
             if (currentPlanId) {
                 await checkPendingSuggestions(currentPlanId);
                 await loadSavedPlans(currentPlanId, true);
             }
-            // 🔥 THÊM: Reset pending status nếu đang xem shared plan
             if (isViewingSharedPlan && hasEditPermission) {
                 hasPendingSuggestion = false;
                 updateSubmitSuggestionButton();
@@ -8404,6 +8491,7 @@ Xác nhận áp dụng các thay đổi đã chọn?
         alert('Không thể áp dụng thay đổi');
     }
 }
+
 // ========== VIEW MY SUGGESTIONS ==========
 async function viewMySuggestions(planId) {
     // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI → KHÔNG MỞ THÊM
