@@ -3040,10 +3040,9 @@ def get_user_preferences(request):
 def save_user_preference(request):
     try:
         data = json.loads(request.body)
-        pref_type = data.get('type')
+        pref_type = data.get('type')  # like/dislike/allergy/medicalcondition
         item = data.get('item', '').strip()
         
-        # ✅ THÊM LOG ĐỂ DEBUG
         print(f"[SAVE PREF] User: {request.user.username}")
         print(f"[SAVE PREF] Type: {pref_type}")
         print(f"[SAVE PREF] Item: {item}")
@@ -3054,31 +3053,44 @@ def save_user_preference(request):
                 'message': 'Thiếu thông tin type hoặc item'
             }, status=400)
         
-        # Tạo hoặc bỏ qua nếu đã tồn tại
+        # ✅ BƯỚC 1: XÓA TẤT CẢ CONFLICT CŨ (trừ type hiện tại)
+        conflict_types = ['like', 'dislike', 'allergy', 'medicalcondition']
+        conflict_types.remove(pref_type)  # Loại bỏ type đang thêm
+        
+        deleted_count = 0
+        for conflict_type in conflict_types:
+            deleted, _ = UserPreference.objects.filter(
+                user=request.user,
+                preference_type=conflict_type,
+                item=item
+            ).delete()
+            
+            if deleted > 0:
+                print(f"[CONFLICT] Deleted {deleted} '{conflict_type}' for item: {item}")
+                deleted_count += deleted
+        
+        # ✅ BƯỚC 2: TẠO HOẶC BỎ QUA NẾU ĐÃ TỒN TẠI
         preference, created = UserPreference.objects.get_or_create(
             user=request.user,
             preference_type=pref_type,
             item=item
         )
         
-        # ✅ THÊM LOG
         print(f"[SAVE PREF] Created: {created}")
         
-        if created:
-            return JsonResponse({
-                'status': 'success',
-                'message': f'Đã lưu: {item}',
-                'is_new': True
-            })
-        else:
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Đã tồn tại',
-                'is_new': False
-            })
+        message = f'Đã lưu: {item}'
+        if deleted_count > 0:
+            message += f' (đã xóa {deleted_count} preference cũ xung đột)'
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message,
+            'is_new': created,
+            'conflicts_removed': deleted_count
+        })
             
     except Exception as e:
-        print(f"[SAVE PREF ERROR] {e}")  # ✅ THÊM LOG LỖI
+        print(f"[SAVE PREF ERROR] {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({
@@ -3133,7 +3145,7 @@ def delete_user_preference(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
-    
+
 # ==========================================================
 # 🔔 NOTIFICATION APIs
 # ==========================================================
