@@ -1131,7 +1131,7 @@ def get_friend_requests(request, user_id):
 
 @require_http_methods(["GET"])
 def search_user(request):
-    """Tìm kiếm user theo email"""
+    """Tìm kiếm user theo email - KHÔNG HIỂN THỊ CHÍNH MÌNH"""
     try:
         query = request.GET.get('q', '')
         
@@ -1140,6 +1140,10 @@ def search_user(request):
         
         # Tìm theo email
         users = User.objects.filter(email__icontains=query)[:10]
+        
+        # ✅ LỌC BỎ CHÍNH MÌNH (nếu đã đăng nhập)
+        if request.user.is_authenticated:
+            users = users.exclude(id=request.user.id)
         
         users_data = [
             {
