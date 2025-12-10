@@ -3535,6 +3535,7 @@ async function loadSavedPlans(planId, forceReload = false) {
             waitingForPlaceSelection = null;
             window.currentPlanName = null;
             window.loadedFromSavedPlan = false;
+            window.originalSharedPlanData = null; // 🔥 MỚI: Xóa original data khi đóng plan
 
             // Xóa route + clear khu vực lịch trình
             clearRoutes();
@@ -3613,6 +3614,9 @@ if (planId) {
             sharedPlanOwnerId = plan.owner_id;
             sharedPlanOwnerName = plan.owner_username;
             hasEditPermission = (plan.permission === 'edit');
+
+            // 🔥 MỚI: LƯU BẢN SAO ORIGINAL PLAN
+    window.originalSharedPlanData = null; // Reset trước
             
             // 🔥 FIX: THÊM AWAIT ĐỂ ĐỢI PENDING CHECK HOÀN TẤT
             if (hasEditPermission) {
@@ -3628,17 +3632,23 @@ if (planId) {
         }
                 
                 // 🔥 CHUYỂN ĐỔI TỪ plan_data
-                const planData = plan.plan_data;
-                if (Array.isArray(planData)) {
-                    const orderList = [];
-                    planData.forEach(item => {
-                        currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
-                        orderList.push(item.key);
-                    });
-                    currentPlan._order = orderList;
-                } else {
-                    Object.assign(currentPlan, planData);
-                }
+            const planData = plan.plan_data;
+            if (Array.isArray(planData)) {
+                const orderList = [];
+                planData.forEach(item => {
+                    currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
+                    orderList.push(item.key);
+                });
+                currentPlan._order = orderList;
+            } else {
+                Object.assign(currentPlan, planData);
+            }
+
+            // 🔥 MỚI: LƯU BẢN SAO ORIGINAL (SAU KHI PARSE)
+            if (plan.is_shared && hasEditPermission) {
+                window.originalSharedPlanData = JSON.parse(JSON.stringify(currentPlan));
+                console.log('💾 Đã lưu original shared plan data');
+}
 
                 currentPlanId = planId;
                 window.currentPlanName = plan.name;
@@ -3972,7 +3982,7 @@ function closeFoodPlanner() {
 
     isPlannerOpen = false;
     isViewingSharedPlan = false;
-    
+    window.originalSharedPlanData = null; // 🔥 MỚI: Xóa original data
     // ✅ Cleanup toàn bộ route / drag
     clearRoutes();
     stopAutoScroll();
@@ -4756,9 +4766,74 @@ let sharedPlanOwnerId = null;
 let hasEditPermission = false;
 let sharedPlanOwnerName = ''; // ✅ THÊM DÒNG NÀY
 let isViewingSharedPlan = false; // 🔥 BIẾN MỚI - theo dõi có đang xem shared plan không
+window.originalSharedPlanData = null; // 🔥 MỚI: Lưu bản gốc của shared plan
 // 🔥 THÊM BIẾN MỚI - LƯU TRẠNG THÁI CÁC THAY ĐỔI TẠM THỜI
 let pendingApprovals = {}; // { suggestionId: { approvedChanges: [], rejectedChanges: [] } }
 let hasPendingSuggestion = false; // 🔥 THÊM: Theo dõi có suggestion pending không
+
+// ========== SO SÁNH 2 PLAN DATA ==========
+function comparePlanData(plan1, plan2) {
+    // Bỏ qua _order khi so sánh
+    const keys1 = Object.keys(plan1).filter(k => k !== '_order').sort();
+    const keys2 = Object.keys(plan2).filter(k => k !== '_order').sort();
+    
+    // Kiểm tra số lượng keys
+    if (keys1.length !== keys2.length) {
+        console.log('🔍 [COMPARE] Khác số lượng keys:', keys1.length, 'vs', keys2.length);
+        return false;
+    }
+    
+    // Kiểm tra xem keys có giống nhau không
+    if (JSON.stringify(keys1) !== JSON.stringify(keys2)) {
+        console.log('🔍 [COMPARE] Khác danh sách keys');
+        return false;
+    }
+    
+    // So sánh từng key
+    for (const key of keys1) {
+        const meal1 = plan1[key];
+        const meal2 = plan2[key];
+        
+        // So sánh time
+        if (meal1.time !== meal2.time) {
+            console.log(`🔍 [COMPARE] Key ${key} - Khác time:`, meal1.time, 'vs', meal2.time);
+            return false;
+        }
+        
+        // So sánh title
+        if (meal1.title !== meal2.title) {
+            console.log(`🔍 [COMPARE] Key ${key} - Khác title:`, meal1.title, 'vs', meal2.title);
+            return false;
+        }
+        
+        // So sánh icon
+        if (meal1.icon !== meal2.icon) {
+            console.log(`🔍 [COMPARE] Key ${key} - Khác icon:`, meal1.icon, 'vs', meal2.icon);
+            return false;
+        }
+        
+        // So sánh place
+        const place1 = meal1.place;
+        const place2 = meal2.place;
+        
+        // Nếu 1 cái có place, 1 cái không có
+        if ((place1 && !place2) || (!place1 && place2)) {
+            console.log(`🔍 [COMPARE] Key ${key} - Khác place existence`);
+            return false;
+        }
+        
+        // Nếu cả 2 đều có place, so sánh data_id
+        if (place1 && place2) {
+            if (place1.data_id !== place2.data_id) {
+                console.log(`🔍 [COMPARE] Key ${key} - Khác place:`, place1.data_id, 'vs', place2.data_id);
+                return false;
+            }
+        }
+    }
+    
+    console.log('✅ [COMPARE] Plan giống nhau hoàn toàn');
+    return true;
+}
 
 async function sharePlan() {
     if (!currentPlan || !currentPlanId) {
@@ -7212,6 +7287,41 @@ async function submitSuggestion() {
     if (hasPendingSuggestion) {
         alert('⚠️ Bạn đã có 1 đề xuất đang chờ duyệt. Vui lòng đợi chủ sở hữu xử lý trước khi gửi đề xuất mới.');
         return;
+    }
+    
+    // 🔥 MỚI: KIỂM TRA CÓ THAY ĐỔI THỰC SỰ KHÔNG
+    if (window.originalSharedPlanData) {
+        // Lưu dữ liệu từ input trước khi so sánh
+        const mealItems = document.querySelectorAll('.meal-item');
+        mealItems.forEach(item => {
+            const mealKey = item.dataset.mealKey;
+            if (mealKey && currentPlan[mealKey]) {
+                // Lưu title
+                const titleInput = item.querySelector('input[onchange*="updateMealTitle"]');
+                if (titleInput && titleInput.value) {
+                    currentPlan[mealKey].title = titleInput.value;
+                }
+                
+                // Lưu time
+                const hourInput = item.querySelector('.time-input-hour');
+                const minuteInput = item.querySelector('.time-input-minute');
+                if (hourInput && minuteInput) {
+                    const hour = hourInput.value.padStart(2, '0');
+                    const minute = minuteInput.value.padStart(2, '0');
+                    currentPlan[mealKey].time = `${hour}:${minute}`;
+                }
+            }
+        });
+        
+        // So sánh với bản gốc
+        const hasChanges = !comparePlanData(currentPlan, window.originalSharedPlanData);
+        
+        if (!hasChanges) {
+            alert('⚠️ Bạn chưa thực hiện thay đổi nào so với lịch trình gốc!');
+            return;
+        }
+        
+        console.log('✅ Phát hiện có thay đổi, cho phép gửi đề xuất');
     }
     
     const message = prompt('Nhập lời nhắn kèm theo đề xuất (tùy chọn):');
