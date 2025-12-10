@@ -670,10 +670,50 @@ def update_avatar(request):
         if 'avatar' in request.FILES:
             image_file = request.FILES['avatar']
             
+            # ✅ 1. KIỂM TRA ĐỊNH DẠNG FILE (chỉ cho phép JPG và PNG)
+            ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png']
+            ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png']
+            
+            file_name = image_file.name.lower()
+            file_extension = file_name.split('.')[-1] if '.' in file_name else ''
+            
+            if file_extension not in ALLOWED_EXTENSIONS:
+                messages.error(request, f'Chỉ chấp nhận file JPG hoặc PNG. Định dạng "{file_extension}" không được hỗ trợ.')
+                return render(request, 'change_avatar.html')
+            
+            if image_file.content_type not in ALLOWED_CONTENT_TYPES:
+                messages.error(request, 'Định dạng file không hợp lệ. Chỉ chấp nhận JPG hoặc PNG.')
+                return render(request, 'change_avatar.html')
+            
+            # ✅ 2. KIỂM TRA DUNG LƯỢNG (max 10MB)
+            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+            if image_file.size > MAX_FILE_SIZE:
+                size_mb = image_file.size / (1024 * 1024)
+                messages.error(request, f'File quá lớn ({size_mb:.1f}MB). Dung lượng tối đa là 10MB.')
+                return render(request, 'change_avatar.html')
+            
             # Lấy hoặc tạo profile nếu chưa có
             profile, created = UserProfile.objects.get_or_create(user=request.user)
             
-            # Gán ảnh mới (Django tự xử lý việc lưu file và đặt tên)
+            # ✅ 3. XÓA AVATAR CŨ (nếu có và KHÔNG PHẢI ảnh default)
+            # Danh sách các file default KHÔNG được xóa
+            DEFAULT_AVATARS = ['avatar.png', 'default_avatar.png', 'default.png']
+            
+            if profile.avatar and profile.avatar.name:
+                try:
+                    old_avatar_name = os.path.basename(profile.avatar.name)
+                    # Chỉ xóa nếu KHÔNG PHẢI ảnh default
+                    if old_avatar_name not in DEFAULT_AVATARS:
+                        old_avatar_path = profile.avatar.path
+                        if os.path.exists(old_avatar_path):
+                            os.remove(old_avatar_path)
+                            print(f"🗑️ Đã xóa avatar cũ: {old_avatar_path}")
+                    else:
+                        print(f"📌 Giữ lại ảnh default: {old_avatar_name}")
+                except Exception as e:
+                    print(f"⚠️ Không thể xóa avatar cũ: {e}")
+            
+            # ✅ 4. LƯU AVATAR MỚI
             profile.avatar = image_file
             profile.save()
             
@@ -718,12 +758,41 @@ def upload_avatar_api(request):
         
         image_file = request.FILES['avatar']
         
+        # ✅ 1. KIỂM TRA ĐỊNH DẠNG FILE (chỉ cho phép JPG và PNG)
+        ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png']
+        ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png']
+        
+        file_name = image_file.name.lower()
+        file_extension = file_name.split('.')[-1] if '.' in file_name else ''
+        
+        if file_extension not in ALLOWED_EXTENSIONS:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ Chỉ chấp nhận file JPG hoặc PNG. Định dạng "{file_extension}" không được hỗ trợ.'
+            }, status=400)
+        
+        if image_file.content_type not in ALLOWED_CONTENT_TYPES:
+            return JsonResponse({
+                'status': 'error',
+                'message': '❌ Định dạng file không hợp lệ. Chỉ chấp nhận JPG hoặc PNG.'
+            }, status=400)
+        
+        # ✅ 2. KIỂM TRA DUNG LƯỢNG FILE (max 10MB)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        if image_file.size > MAX_FILE_SIZE:
+            size_mb = image_file.size / (1024 * 1024)
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ File quá lớn ({size_mb:.1f}MB). Dung lượng tối đa là 10MB.'
+            }, status=400)
+        
         # 🔍 KIỂM TRA NSFW BẰNG NUDENET
         print(f"\n{'='*60}")
         print(f"🔍 [AVATAR MODERATION]")
         print(f"   User: {request.user.username}")
         print(f"   File: {image_file.name}")
         print(f"   Size: {image_file.size/1024:.1f} KB")
+        print(f"   Type: {image_file.content_type}")
         
         # ✅ DÙNG NUDENET
         check_result = check_nsfw_image_local(image_file)
@@ -738,11 +807,32 @@ def upload_avatar_api(request):
                 'details': check_result.get('details', {})
             }, status=400)
         
-        # ✅ ẢNH AN TOÀN → LƯU
+        # ✅ 3. XÓA AVATAR CŨ TRƯỚC KHI LƯU MỚI (KHÔNG XÓA ẢNH DEFAULT)
         image_file.seek(0)
         profile, created = UserProfile.objects.get_or_create(user=request.user)
+        
+        # Danh sách các file default KHÔNG được xóa
+        DEFAULT_AVATARS = ['avatar.png', 'default_avatar.png', 'default.png']
+        
+        if profile.avatar and profile.avatar.name:
+            try:
+                old_avatar_name = os.path.basename(profile.avatar.name)
+                # Chỉ xóa nếu KHÔNG PHẢI ảnh default
+                if old_avatar_name not in DEFAULT_AVATARS:
+                    old_avatar_path = profile.avatar.path
+                    if os.path.exists(old_avatar_path):
+                        os.remove(old_avatar_path)
+                        print(f"🗑️ Đã xóa avatar cũ: {old_avatar_path}")
+                else:
+                    print(f"📌 Giữ lại ảnh default: {old_avatar_name}")
+            except Exception as e:
+                print(f"⚠️ Không thể xóa avatar cũ: {e}")
+        
+        # ✅ 4. LƯU AVATAR MỚI
         profile.avatar = image_file
         profile.save()
+        
+        print(f"✅ Đã lưu avatar mới cho {request.user.username}")
         
         return JsonResponse({
             'status': 'success',
