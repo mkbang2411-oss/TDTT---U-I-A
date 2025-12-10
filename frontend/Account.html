@@ -13,7 +13,7 @@
       <source src="Picture/bg1.mp4" type="video/mp4">
     </video>
     <div class="background-left">
-      <img src="Picture/background2.png" class ="bg" alt="UIA Logo"/>
+      <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/background2.png" class ="bg" alt="UIA Logo"/>
       <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/UIAaa.png" class="logo" alt="UIA Logo"/>
       <a href="/">
         <img
@@ -41,7 +41,7 @@
     </div>
 
     <div class="background-right">
-      <img src="Picture/background3.png" class ="bga"/>
+      <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/background3.png" class ="bga"/>
     </div>
 
     <div class="main-content">
@@ -49,7 +49,7 @@
       <div id="Account_Page" class="page active">
         <div class="avatar">
           <div class="avatar-wrapper">
-            <img src="Picture/avatar.png" class="avt" id="user-avatar-img"/>
+            <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/avatar.png" class="avt" id="user-avatar-img"/>
             <div
               class="camera-btn"
               onclick="document.getElementById('avatar-upload-input').click()"
@@ -177,12 +177,6 @@
                 </div>
 
                 <div class="password-modal-body">
-                  <div
-                    id="password-error-message"
-                    class="validation-message error"
-                    style="display: none; margin-bottom: 20px"
-                  ></div>
-
                   <form id="change-password-form">
                     <div class="form-group-pass">
                       <label for="inp-old-pass">Mật khẩu hiện tại</label>
@@ -232,6 +226,12 @@
                         </button>
                       </div>
                     </div>
+
+                    <div
+                      id="password-error-message"
+                      class="validation-message error"
+                      style="display: none; margin-bottom: 20px"
+                    ></div>
 
                     <div class="form-group-pass">
                       <label for="inp-new-pass">Mật khẩu mới</label>
@@ -461,20 +461,29 @@
             credentials: "include", // ✅ Gửi cookie
           });
 
+          if (response.status === 401) {
+            // User chưa đăng nhập - redirect về login
+            console.log("⚠️ User chưa đăng nhập, redirect về login");
+            window.location.href = '/accounts/login/';
+            return;
+          }
+
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
           }
 
           const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
           CURRENT_USER_ID = data.id;
           console.log("✅ Current User ID:", CURRENT_USER_ID);
         } catch (error) {
           console.error("❌ Không thể lấy user hiện tại:", error);
-          Swal.fire(
-            "Lỗi",
-            "Không thể xác định user. Vui lòng đăng nhập lại.",
-            "error"
-          );
+          // Redirect về login thay vì hiện alert
+          window.location.href = '/accounts/login/';
         } finally {
           isLoadingUser = false;
         }
@@ -553,6 +562,24 @@
         }
       }
 
+    // 🔔 AUT0 MỞ "Bạn Bè" + TAB "Lời mời Kết bạn" NẾU ĐƯỢC GỌI TỪ THÔNG BÁO
+    (function () {
+      try {
+        const shouldOpenFriendRequests = localStorage.getItem("openFriendRequestsTab");
+        if (shouldOpenFriendRequests === "1") {
+          // Xài xong rồi thì xóa flag
+          localStorage.removeItem("openFriendRequestsTab");
+
+          // Mở trang Bạn Bè
+          showPage("Friend_Page");
+          // Mở luôn tab Lời mời
+          switchTab("requests");
+        }
+      } catch (e) {
+        console.warn("Không đọc được openFriendRequestsTab từ localStorage:", e);
+      }
+    })();
+
       // TÌM KIẾM USER
       async function searchUsers() {
         const query = document.getElementById("search-input").value.trim();
@@ -594,45 +621,73 @@
       }
 
       // GỬI LỜI MỜI KẾT BẠN
-      async function sendFriendRequest(receiverId) {
-        // ✅ Đảm bảo đã load user ID
-        await ensureUserLoaded();
+      async function sendFriendRequest(receiverId, buttonElement) {
+  // ✅ Đảm bảo đã load user ID
+  await ensureUserLoaded();
 
-        if (!CURRENT_USER_ID) {
-          Swal.fire(
-            "Lỗi",
-            "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.",
-            "error"
-          );
-          return;
-        }
+  if (!CURRENT_USER_ID) {
+    Swal.fire(
+      "Lỗi",
+      "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.",
+      "error"
+    );
+    return;
+  }
 
-        console.log(
-          `📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`
-        );
+  console.log(
+    `📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`
+  );
 
-        try {
-          const response = await fetch(`${API_URL}/friend-request/send/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include", // ✅ Thêm
-            body: JSON.stringify({
-              sender_id: CURRENT_USER_ID,
-              receiver_id: receiverId,
-            }),
-          });
+  // ✅ DISABLE BUTTON NGAY LẬP TỨC
+  if (buttonElement) {
+    buttonElement.disabled = true;
+    buttonElement.textContent = "⏳ Đang gửi...";
+  }
 
-          const data = await response.json();
-          if (data.success) {
-            Swal.fire("Thành công", "Đã gửi lời mời kết bạn", "success");
-          } else {
-            Swal.fire("Lỗi", data.error, "error");
-          }
-        } catch (error) {
-          console.error("Lỗi gửi lời mời:", error);
-          Swal.fire("Lỗi", "Không thể gửi lời mời", "error");
-        }
+  try {
+    const response = await fetch(`${API_URL}/friend-request/send/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        sender_id: CURRENT_USER_ID,
+        receiver_id: receiverId,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      // ✅ THÀNH CÔNG → ĐỔI NÚT THÀNH "ĐÃ GỬI LỜI MỜI"
+      if (buttonElement) {
+        buttonElement.textContent = "✓ Đã gửi lời mời";
+        buttonElement.style.backgroundColor = "#6c757d"; // Màu xám
+        buttonElement.style.cursor = "not-allowed";
+        buttonElement.disabled = true;
       }
+      
+      Swal.fire("Thành công", "Đã gửi lời mời kết bạn", "success");
+    } else {
+      // ❌ THẤT BẠI → KHÔI PHỤC NÚT
+      if (buttonElement) {
+        buttonElement.disabled = false;
+        buttonElement.textContent = "➕ Kết bạn";
+      }
+      Swal.fire("Lỗi", data.error, "error");
+    }
+  } catch (error) {
+    console.error("Lỗi gửi lời mời:", error);
+    
+    // ❌ LỖI → KHÔI PHỤC NÚT
+    if (buttonElement) {
+      buttonElement.disabled = false;
+      buttonElement.textContent = "➕ Kết bạn";
+    }
+    
+    Swal.fire("Lỗi", "Không thể gửi lời mời", "error");
+  }
+}
+
 
       // TẢI DANH SÁCH BẠN BÈ
       async function loadFriendsList() {
@@ -676,14 +731,13 @@
         }
       }
 
-      // XEM QUÁN YÊU THÍCH CỦA BẠN BÈ
-      // ✅ XEM QUÁN YÊU THÍCH CỦA BẠN BÈ - HIỂN THỊ TRÊN BẢN ĐỒ
+      // XEM QUÁN YÊU THÍCH CỦA BẠN BÈ - HIỂN THỊ TRÊN BẢN ĐỒ
       async function viewFriendFavorites(friendId, friendName) {
         try {
-          console.log(
-            "📤 Đang gọi API:",
-            `${API_URL}/friend/${friendId}/favorites/`
-          );
+          console.log("📤 [VIEW FAVORITES] Starting...");
+          console.log("📤 [VIEW FAVORITES] Friend ID:", friendId);
+          console.log("📤 [VIEW FAVORITES] Friend Name:", friendName);
+          console.log("📤 [VIEW FAVORITES] API URL:", `${API_URL}/friend/${friendId}/favorites/`);
 
           const response = await fetch(
             `${API_URL}/friend/${friendId}/favorites/`,
@@ -692,16 +746,67 @@
             }
           );
 
-          console.log("📥 Response status:", response.status);
+          console.log("📥 [VIEW FAVORITES] Response status:", response.status);
           const data = await response.json();
-          console.log("📦 Data nhận được:", data);
+          console.log("📦 [VIEW FAVORITES] Data:", data);
 
           if (data.status === "success") {
+            console.log("✅ [VIEW FAVORITES] Status is success");
+            
             if (data.favorites && data.favorites.length > 0) {
-              console.log("✅ Có", data.favorites.length, "quán yêu thích");
-              console.log("📍 Dữ liệu quán:", data.favorites);
+              console.log("✅ [VIEW FAVORITES] Has favorites:", data.favorites.length);
+              
+              // ✅✅✅ GHI NHẬN LƯỢT XEM - CRITICAL SECTION ✅✅✅
+              console.log("🔥 [RECORD VIEW] ===== STARTING RECORD VIEW =====");
+              
+              try {
+                // 1️⃣ Kiểm tra getCookie
+                const csrfToken = getCookie('csrftoken');
+                console.log("🔑 [RECORD VIEW] CSRF Token:", csrfToken ? "✅ Found" : "❌ Not found");
+                console.log("🔑 [RECORD VIEW] CSRF Token value:", csrfToken);
+                
+                // 2️⃣ Chuẩn bị URL
+                const viewUrl = `${API_URL}/friend/${friendId}/favorites/view/`;
+                console.log("🌐 [RECORD VIEW] View URL:", viewUrl);
+                
+                // 3️⃣ Chuẩn bị headers
+                const headers = {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken || ''
+                };
+                console.log("📋 [RECORD VIEW] Headers:", headers);
+                
+                // 4️⃣ Gọi API
+                console.log("📡 [RECORD VIEW] Calling API...");
+                const viewResponse = await fetch(viewUrl, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: headers
+                });
+
+                console.log("📊 [RECORD VIEW] Response status:", viewResponse.status);
+                console.log("📊 [RECORD VIEW] Response ok:", viewResponse.ok);
+                
+                // 5️⃣ Đọc response
+                const viewData = await viewResponse.json();
+                console.log("📦 [RECORD VIEW] Response data:", viewData);
+                
+                if (viewResponse.ok) {
+                  console.log("✅ [RECORD VIEW] SUCCESS!");
+                } else {
+                  console.error("❌ [RECORD VIEW] FAILED - Status:", viewResponse.status);
+                  console.error("❌ [RECORD VIEW] Error data:", viewData);
+                }
+                
+              } catch (viewError) {
+                console.error("💥 [RECORD VIEW] EXCEPTION:", viewError);
+                console.error("💥 [RECORD VIEW] Error stack:", viewError.stack);
+              }
+              
+              console.log("🔥 [RECORD VIEW] ===== FINISHED RECORD VIEW =====");
 
               // Lưu vào localStorage
+              console.log("💾 [VIEW FAVORITES] Saving to localStorage...");
               localStorage.setItem(
                 "friendFavorites",
                 JSON.stringify({
@@ -709,13 +814,13 @@
                   places: data.favorites,
                 })
               );
-
-              console.log("💾 Đã lưu vào localStorage");
+              console.log("💾 [VIEW FAVORITES] Saved successfully");
 
               // Chuyển sang trang map
+              console.log("🔄 [VIEW FAVORITES] Redirecting to map...");
               window.location.href = "/?view=friend-favorites";
             } else {
-              console.warn("⚠️ Không có quán yêu thích");
+              console.warn("⚠️ [VIEW FAVORITES] No favorites found");
               Swal.fire(
                 "Thông báo",
                 `${friendName} chưa có quán yêu thích nào`,
@@ -723,11 +828,13 @@
               );
             }
           } else {
-            console.error("❌ Lỗi API:", data.error);
+            console.error("❌ [VIEW FAVORITES] Status not success:", data.status);
+            console.error("❌ [VIEW FAVORITES] Error:", data.error);
             Swal.fire("Lỗi", data.error, "error");
           }
         } catch (error) {
-          console.error("❌ Lỗi:", error);
+          console.error("💥 [VIEW FAVORITES] EXCEPTION:", error);
+          console.error("💥 [VIEW FAVORITES] Error stack:", error.stack);
           Swal.fire("Lỗi", "Không thể tải danh sách yêu thích", "error");
         }
       }
@@ -1474,34 +1581,39 @@
     }
 
     function renderSearchPage() {
-      const resultsDiv = document.getElementById("search-results");
-      
-      if (allSearchResults.length === 0) {
-        resultsDiv.innerHTML = '<p class="no-data">Không tìm thấy người dùng nào</p>';
-        return;
-      }
+  const resultsDiv = document.getElementById("search-results");
+  
+  if (allSearchResults.length === 0) {
+    resultsDiv.innerHTML = '<p class="no-data">Không tìm thấy người dùng nào</p>';
+    return;
+  }
 
-      const startIndex = (currentSearchPage - 1) * FRIENDS_PER_PAGE;
-      const endIndex = startIndex + FRIENDS_PER_PAGE;
-      const currentItems = allSearchResults.slice(startIndex, endIndex);
+  const startIndex = (currentSearchPage - 1) * FRIENDS_PER_PAGE;
+  const endIndex = startIndex + FRIENDS_PER_PAGE;
+  const currentItems = allSearchResults.slice(startIndex, endIndex);
 
-      resultsDiv.innerHTML = currentItems
-        .map(
-          (user) => `
-          <div class="friend-card">
-            <div class="friend-info">
-              <div class="friend-avatar">👤</div>
-              <div>
-                <div class="friend-name">${user.username}</div>
-                <div class="friend-email">${user.email}</div>
-              </div>
-            </div>
-            <button class="btn-add" onclick="sendFriendRequest(${user.id})">➕ Kết bạn</button>
+  resultsDiv.innerHTML = currentItems
+    .map(
+      (user) => `
+      <div class="friend-card">
+        <div class="friend-info">
+          <div class="friend-avatar">👤</div>
+          <div>
+            <div class="friend-name">${user.username}</div>
+            <div class="friend-email">${user.email}</div>
           </div>
-        `
-        )
-        .join("");
-    }
+        </div>
+        <button 
+          class="btn-add" 
+          onclick="sendFriendRequest(${user.id}, this)">
+          ➕ Kết bạn
+        </button>
+      </div>
+    `
+    )
+    .join("");
+}
+
 
     function renderSearchPagination() {
       const totalPages = Math.ceil(allSearchResults.length / FRIENDS_PER_PAGE);
@@ -1935,6 +2047,28 @@
                 el.classList.remove("show");
             });
         }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      const openFriendRequests = params.get('openFriendRequests');
+
+      // Ví dụ: bạn đã có sẵn mấy hàm kiểu:
+      //   - switchToFriendsTab()
+      //   - showFriendRequestsSection()
+      // Chỉ cần gọi lại ở đây.
+
+      if (tab === 'friends') {
+        if (typeof switchToFriendsTab === 'function') {
+          switchToFriendsTab();
+        }
+
+        if (openFriendRequests === '1' &&
+            typeof showFriendRequestsSection === 'function') {
+          showFriendRequestsSection(); // scroll tới / active block "Lời mời kết bạn"
+        }
+      }
     });
 
     </script>

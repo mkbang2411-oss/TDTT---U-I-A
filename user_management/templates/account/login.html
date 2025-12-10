@@ -411,12 +411,25 @@
                 {% endfor %}
             {% endif %}
             
-            <form method="POST" action="{% url 'account_login' %}">
+            <form method="POST" action="{% url 'account_login' %}" id="login-form">
                 {% csrf_token %}
 
+                <!-- Thông báo lỗi tổng quát -->
+                <div id="login-error-message" class="validation-message" style="display: none; margin-bottom: 20px;"></div>
+                
                 {% if form.non_field_errors %}
-                    <div class="django-error">
-                        {{ form.non_field_errors.as_text }}
+                    <div class="validation-message error" style="display: block; margin-bottom: 20px;">
+                        {% for error in form.non_field_errors %}
+                            {% if 'password' in error|lower or 'mật khẩu' in error|lower %}
+                                ❌ Mật khẩu sai
+                            {% elif 'not correct' in error|lower or 'incorrect' in error|lower or 'are not correct' in error|lower %}
+                                ❌ Mật khẩu sai
+                            {% elif 'email' in error|lower and 'not' in error|lower %}
+                                ❌ Không tìm thấy người dùng với email này
+                            {% else %}
+                                ❌ {{ error }}
+                            {% endif %}
+                        {% endfor %}
                     </div>
                 {% endif %}
 
@@ -425,18 +438,13 @@
                     <input 
                         type="email" 
                         id="{{ form.login.id_for_label }}" 
-                        name="login" 
+                        name="login"
+                        value="{{ form.login.value|default:'' }}"
                         placeholder="example@email.com" 
                         required
                         aria-label="Địa chỉ email"
                         aria-required="true"
                     >
-                    <div id="email-validation" class="validation-message"></div>
-                    {% if form.login.errors %}
-                        <div class="django-error" style="margin-top: 8px; margin-bottom: 0;">
-                            {{ form.login.errors.as_text }}
-                        </div>
-                    {% endif %}
                 </div>
 
                 <div class="form-group">
@@ -462,15 +470,9 @@
                             </svg>
                         </button>
                     </div>
-                    <div id="password-validation" class="validation-message"></div>
-                    {% if form.password.errors %}
-                        <div class="django-error" style="margin-top: 8px; margin-bottom: 0;">
-                            {{ form.password.errors.as_text }}
-                        </div>
-                    {% endif %}
                 </div>
 
-                <button type="submit" class="btn-submit">Đăng nhập ngay</button>
+                <button type="submit" class="btn-submit" id="login-btn">Đăng nhập ngay</button>
             </form>
             
             <div style="text-align: center; margin: 16px 0;">
@@ -523,65 +525,59 @@
             element.className = 'validation-message';
         }
         
+        function showError(message) {
+            const errorDiv = document.getElementById('login-error-message');
+            errorDiv.textContent = message;
+            errorDiv.className = 'validation-message error';
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            const errorDiv = document.getElementById('login-error-message');
+            errorDiv.style.display = 'none';
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('login-form');
             const emailField = document.getElementById('{{ form.login.id_for_label }}');
             const passwordField = document.getElementById('{{ form.password.id_for_label }}');
+            const loginBtn = document.getElementById('login-btn');
             
-            // Biến để track xem user đã tương tác chưa
-            let emailTouched = false;
-            let passwordTouched = false;
-            
-            // Email validation
-            if (emailField) {
-                // Đánh dấu là đã tương tác khi focus vào field
-                emailField.addEventListener('focus', function() {
-                    emailTouched = true;
-                });
-                
-                emailField.addEventListener('input', function() {
-                    if (!emailTouched) return; // Chỉ validate khi đã tương tác
-                    
-                    const email = this.value.trim();
-                    
-                    if (email === '') {
-                        hideValidation('email-validation');
-                    } else if (!validateEmail(email)) {
-                        showValidation('email-validation', '❌ Email không hợp lệ. Vui lòng nhập đúng định dạng (vd: example@email.com)', 'error');
-                    } else {
-                        showValidation('email-validation', '✓ Email hợp lệ', 'success');
+            // Kiểm tra nếu có lỗi Django và xử lý
+            {% if form.non_field_errors %}
+                {% for error in form.non_field_errors %}
+                    const errorText = "{{ error|escapejs }}";
+                    // Nếu là lỗi mật khẩu, xóa mật khẩu và focus
+                    if (errorText.toLowerCase().includes('password') || 
+                        errorText.toLowerCase().includes('mật khẩu') ||
+                        errorText.toLowerCase().includes('credentials')) {
+                        if (passwordField) {
+                            passwordField.value = '';
+                            passwordField.focus();
+                        }
                     }
-                });
-                
-                emailField.addEventListener('blur', function() {
-                    // Ẩn validation khi blur ra ngoài
-                    hideValidation('email-validation');
-                });
-            }
+                {% endfor %}
+            {% endif %}
             
-            // Password validation
-            if (passwordField) {
-                // Đánh dấu là đã tương tác khi focus vào field
-                passwordField.addEventListener('focus', function() {
-                    passwordTouched = true;
-                });
-                
-                passwordField.addEventListener('input', function() {
-                    if (!passwordTouched) return; // Chỉ validate khi đã tương tác
+            // Xử lý submit form
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    hideError();
                     
-                    const password = this.value;
+                    const email = emailField.value.trim();
                     
-                    if (password === '') {
-                        hideValidation('password-validation');
-                    } else if (password.length < 8) {
-                        showValidation('password-validation', '❌ Mật khẩu phải có ít nhất 8 ký tự', 'error');
-                    } else {
-                        showValidation('password-validation', '✓ Độ dài mật khẩu hợp lệ', 'success');
+                    // Chỉ kiểm tra email hợp lệ
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(email)) {
+                        e.preventDefault();
+                        showError('❌ Email không đúng định dạng. Vui lòng nhập đúng định dạng (vd: example@email.com)');
+                        return false;
                     }
-                });
-                
-                passwordField.addEventListener('blur', function() {
-                    // Ẩn validation khi blur ra ngoài
-                    hideValidation('password-validation');
+                    
+                    // Nếu email hợp lệ, cho phép form submit bình thường
+                    // Django sẽ xử lý việc kiểm tra user tồn tại và mật khẩu
+                    loginBtn.disabled = true;
+                    loginBtn.textContent = 'Đang đăng nhập...';
                 });
             }
         });

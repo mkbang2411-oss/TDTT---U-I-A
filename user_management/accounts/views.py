@@ -20,14 +20,28 @@ from .utils import send_otp_email, send_welcome_email, send_password_reset_otp_e
 from .models import PasswordResetOTP
 from .models import FriendRequest, Friendship
 from datetime import date, timedelta
+from .nudenet_detector import check_nsfw_image_local
 import requests 
 from .gemini_utils import check_review_content
 from .models import UserPreference
 from .models import (
     FoodPlan, 
-    SharedFoodPlan,  # ← Thêm dòng này
-    PlanEditSuggestion  # ← Thêm dòng này
+    SharedFoodPlan,
+    PlanEditSuggestion
 )
+from .models import Notification
+from .utils import (
+    create_friend_request_notification,
+    create_shared_plan_notification,
+    create_suggestion_notification
+)
+import time
+import queue
+from django.http import StreamingHttpResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .signals import sse_connections
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -601,22 +615,48 @@ def get_user_info(request):
 def upload_avatar_api(request):
     if request.method == 'POST' and request.FILES.get('avatar'):
         if not request.user.is_authenticated:
-             return JsonResponse({'status': 'error', 'message': 'Chưa đăng nhập'}, status=401)
-
-        # Tìm hoặc tạo profile
-        profile, created = UserProfile.objects.get_or_create(user=request.user)
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Chưa đăng nhập'
+            }, status=401)
         
-        # Lưu ảnh mới
-        profile.avatar = request.FILES['avatar']
+        image_file = request.FILES['avatar']
+        
+        # 🔍 KIỂM TRA NSFW BẰNG NUDENET
+        print(f"\n{'='*60}")
+        print(f"🔍 [AVATAR MODERATION]")
+        print(f"   User: {request.user.username}")
+        print(f"   File: {image_file.name}")
+        print(f"   Size: {image_file.size/1024:.1f} KB")
+        
+        # ✅ DÙNG NUDENET
+        check_result = check_nsfw_image_local(image_file)
+        
+        print(f"   Result: is_safe={check_result['is_safe']}, reason={check_result['reason']}")
+        print(f"{'='*60}\n")
+        
+        if not check_result['is_safe']:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ {check_result["reason"]}',
+                'details': check_result.get('details', {})
+            }, status=400)
+        
+        # ✅ ẢNH AN TOÀN → LƯU
+        image_file.seek(0)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        profile.avatar = image_file
         profile.save()
         
-        # ✅ TRẢ VỀ URL TƯƠNG ĐỐI (không hardcode domain)
         return JsonResponse({
-            'status': 'success', 
-            'new_avatar_url': profile.avatar.url  # Chỉ trả về /media/avatars/xxx.png
+            'status': 'success',
+            'new_avatar_url': profile.avatar.url
         })
     
-    return JsonResponse({'status': 'error', 'message': 'Lỗi upload'}, status=400)
+    return JsonResponse({
+        'status': 'error', 
+        'message': 'Lỗi upload'
+    }, status=400)
 
 @csrf_exempt
 def change_password_api(request):
@@ -770,12 +810,25 @@ def send_friend_request(request):
            Friendship.objects.filter(user1=receiver, user2=sender).exists():
             return JsonResponse({'error': 'Đã là bạn bè rồi'}, status=400)
         
-        # Kiểm tra đã gửi lời mời chưa
-        if FriendRequest.objects.filter(sender=sender, receiver=receiver, status='pending').exists():
-            return JsonResponse({'error': 'Đã gửi lời mời rồi'}, status=400)
+        # ✅ FIX: Kiểm tra và xử lý lời mời cũ
+        existing_request = FriendRequest.objects.filter(
+            sender=sender, 
+            receiver=receiver
+        ).first()
         
-        # Tạo lời mời kết bạn
+        if existing_request:
+            if existing_request.status == 'pending':
+                # Nếu đang pending → báo lỗi
+                return JsonResponse({'error': 'Đã gửi lời mời rồi'}, status=400)
+            else:
+                # Nếu đã rejected/accepted → XÓA và tạo mới
+                existing_request.delete()
+        
+        # Tạo lời mời kết bạn MỚI
         friend_request = FriendRequest.objects.create(sender=sender, receiver=receiver)
+        
+        # ✅ TẠO THÔNG BÁO
+        create_friend_request_notification(receiver, sender, friend_request.id)
         
         return JsonResponse({
             'success': True,
@@ -784,7 +837,6 @@ def send_friend_request(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -802,6 +854,15 @@ def accept_friend_request(request):
         
         # Tạo quan hệ bạn bè
         Friendship.objects.create(user1=friend_request.sender, user2=friend_request.receiver)
+        
+        # ✅ THÊM ĐOẠN NÀY - Tạo notification cho người gửi lời mời
+        Notification.objects.create(
+            user=friend_request.sender,  # Người nhận thông báo
+            notification_type='friend_accepted',  # 🔥 Type mới
+            title='🎉 Lời mời kết bạn được chấp nhận',
+            message=f'{friend_request.receiver.username} đã chấp nhận lời mời kết bạn của bạn',
+            related_id=friend_request.receiver.id  # ID của người chấp nhận
+        )
         
         return JsonResponse({
             'success': True,
@@ -909,6 +970,9 @@ def search_user(request):
 @login_required
 @require_http_methods(["GET"])
 def get_current_user(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Chưa đăng nhập'}, status=401)
+    
     try:
         user = request.user
         return JsonResponse({
@@ -921,7 +985,6 @@ def get_current_user(request):
 # ===============================
 # 📍 GỢI Ý QUÁN THEO QUẬN CHO ALBUM
 # ===============================
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 
 @login_required
@@ -1145,12 +1208,33 @@ def streak_handler(request):
                     profile.save()
                     print("   ❄️ STREAK FROZEN")
             
+            # ✅ KIỂM TRA ĐÃ HIỆN POPUP FROZEN HÔM NAY CHƯA
+            from .models import StreakPopupLog
+            
+            # 🔥 SỬA: Kiểm tra CẢ frozen VÀ milestone popup
+            has_shown_frozen_today = StreakPopupLog.objects.filter(
+                user=user,
+                popup_type='frozen',
+                shown_at__date=today
+            ).exists()
+            
+            has_shown_milestone_today = StreakPopupLog.objects.filter(
+                user=user,
+                popup_type='milestone',
+                shown_at__date=today
+            ).exists()
+            
+            print(f"   Has shown frozen popup today: {has_shown_frozen_today}")
+            print(f"   Has shown milestone popup today: {has_shown_milestone_today}")
+            
             return JsonResponse({
                 'status': 'success',
                 'streak': profile.current_streak,
                 'longest_streak': profile.longest_streak,
                 'is_frozen': profile.streak_frozen,
-                'last_update': profile.last_streak_date.isoformat() if profile.last_streak_date else None
+                'last_update': profile.last_streak_date.isoformat() if profile.last_streak_date else None,
+                'has_shown_frozen_popup': has_shown_frozen_today,  # ✅ Trả về cho frontend
+                'has_shown_milestone_popup': has_shown_milestone_today  # ✅ THÊM field mới
             })
             
         except Exception as e:
@@ -1242,7 +1326,7 @@ def streak_handler(request):
 @require_http_methods(["POST"])
 @login_required
 def unfriend(request):
-    """Hủy kết bạn"""
+    """Hủy kết bạn - XÓA CẢ FRIENDSHIP VÀ FRIEND REQUEST"""
     try:
         data = json.loads(request.body)
         friend_id = data.get('friend_id')
@@ -1253,7 +1337,7 @@ def unfriend(request):
         user = request.user
         friend = get_object_or_404(User, id=friend_id)
         
-        # Tìm và xóa quan hệ bạn bè (có thể user1 hoặc user2)
+        # ✅ 1. Tìm và xóa quan hệ bạn bè
         friendship = Friendship.objects.filter(
             user1=user, user2=friend
         ).first() or Friendship.objects.filter(
@@ -1265,14 +1349,28 @@ def unfriend(request):
         
         friendship.delete()
         
+        # ✅ 2. XÓA TẤT CẢ FRIEND REQUEST (cả 2 chiều)
+        FriendRequest.objects.filter(
+            sender=user, receiver=friend
+        ).delete()
+        
+        FriendRequest.objects.filter(
+            sender=friend, receiver=user
+        ).delete()
+        
+        print(f"✅ [UNFRIEND] {user.username} <-> {friend.username}")
+        print(f"   - Deleted Friendship")
+        print(f"   - Deleted all FriendRequests")
+        
         return JsonResponse({
             'success': True,
             'message': 'Đã hủy kết bạn'
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # ==========================================================
 # 👥 API XEM QUÁN YÊU THÍCH CỦA BẠN BÈ
@@ -2228,6 +2326,7 @@ def share_food_plan_api(request, plan_id):
                 
                 if created:
                     shared_count += 1
+                    create_shared_plan_notification(friend, request.user, plan.id, plan.name)
                 else:
                     # Nếu đã share rồi thì cập nhật permission
                     share.permission = permission
@@ -2340,9 +2439,9 @@ def get_shared_plans_api(request):
 def submit_plan_suggestion_api(request, plan_id):
     """
     Bạn bè submit suggestion cho plan
-    POST /api/food-plan/suggest/<plan_id>/
+    POST /api/accounts/food-plan/suggest/<plan_id>/
     Body: {
-        "suggested_data": {...},  // Plan sau khi edit
+        "suggested_data": {...},
         "message": "Tôi đã thêm quán X vào lịch trình"
     }
     """
@@ -2359,6 +2458,19 @@ def submit_plan_suggestion_api(request, plan_id):
             permission='edit'
         )
         
+        # 🔥 THÊM: Kiểm tra xem đã có suggestion pending chưa
+        existing_pending = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user,
+            status='pending'
+        ).exists()
+        
+        if existing_pending:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn đã có 1 đề xuất đang chờ duyệt. Vui lòng đợi chủ sở hữu xử lý trước khi gửi đề xuất mới.'
+            }, status=400)
+        
         # Lấy dữ liệu gốc
         original_data = shared_plan.food_plan.plan_data
         
@@ -2368,7 +2480,15 @@ def submit_plan_suggestion_api(request, plan_id):
             suggested_by=request.user,
             original_data=original_data,
             suggested_data=suggested_data,
-            message=message
+            message=message,
+            pending_changes={}
+        )
+
+        create_suggestion_notification(
+            shared_plan.owner,
+            request.user,
+            plan_id,
+            shared_plan.food_plan.name
         )
         
         return JsonResponse({
@@ -2383,6 +2503,8 @@ def submit_plan_suggestion_api(request, plan_id):
             'message': 'Bạn không có quyền chỉnh sửa lịch trình này'
         }, status=403)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
@@ -2485,6 +2607,8 @@ def approve_suggestion_api(request, suggestion_id):
     """
     Owner chấp nhận suggestion
     POST /api/accounts/food-plan/suggestion-approve/<suggestion_id>/
+    
+    🔥 KHI CHẤP NHẬN 1 ĐỀ XUẤT → TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
     """
     try:
         # Lấy suggestion
@@ -2511,14 +2635,32 @@ def approve_suggestion_api(request, suggestion_id):
         plan.plan_data = suggestion.suggested_data
         plan.save()
         
-        # ✅ CẬP NHẬT STATUS
+        # ✅ CẬP NHẬT STATUS CỦA ĐỀ XUẤT ĐƯỢC CHẤP NHẬN
         suggestion.status = 'accepted'
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
+        other_pending_suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan__food_plan=plan,
+            status='pending'
+        ).exclude(id=suggestion_id)
+        
+        rejected_count = 0
+        for other_sug in other_pending_suggestions:
+            other_sug.status = 'rejected'
+            other_sug.reviewed_at = timezone.now()
+            other_sug.save()
+            rejected_count += 1
+        
+        message = 'Đã chấp nhận đề xuất thành công'
+        if rejected_count > 0:
+            message += f' (Đã tự động từ chối {rejected_count} đề xuất khác)'
+        
         return JsonResponse({
             'status': 'success',
-            'message': 'Đã chấp nhận đề xuất thành công'
+            'message': message,
+            'rejected_count': rejected_count
         })
         
     except PlanEditSuggestion.DoesNotExist:
@@ -2533,7 +2675,6 @@ def approve_suggestion_api(request, suggestion_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
-
 @csrf_exempt
 @require_POST
 @login_required
@@ -2674,12 +2815,26 @@ def get_my_suggestions_api(request, plan_id):
         
         suggestions_data = []
         for suggestion in suggestions:
+            # 🔥 FIX TIMEZONE: Format datetime với timezone
+            created_at = suggestion.created_at
+            reviewed_at = suggestion.reviewed_at
+            
+            # Đảm bảo có timezone info
+            if created_at and created_at.tzinfo is None:
+                from django.utils import timezone
+                created_at = timezone.make_aware(created_at)
+            
+            if reviewed_at and reviewed_at.tzinfo is None:
+                from django.utils import timezone
+                reviewed_at = timezone.make_aware(reviewed_at)
+            
             suggestions_data.append({
                 'id': suggestion.id,
                 'message': suggestion.message,
                 'status': suggestion.status,
-                'created_at': suggestion.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'reviewed_at': suggestion.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if suggestion.reviewed_at else None
+                # 🔥 THAY ĐỔI: Trả về ISO format với timezone (giữ nguyên UTC)
+                'created_at': created_at.isoformat() if created_at else None,
+                'reviewed_at': reviewed_at.isoformat() if reviewed_at else None
             })
         
         return JsonResponse({
@@ -2801,6 +2956,157 @@ def suggestion_approve_single(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+@csrf_exempt
+@require_POST
+@login_required
+def approve_all_changes_api(request):
+    """
+    Chấp nhận tất cả thay đổi đã đánh dấu
+    POST /api/accounts/food-plan/approve-all-changes/
+    """
+    try:
+        data = json.loads(request.body)
+        suggestion_id = data.get('suggestion_id')
+        approved_changes = data.get('approved_changes', [])
+        
+        # Lấy suggestion
+        suggestion = PlanEditSuggestion.objects.select_related(
+            'shared_plan__food_plan'
+        ).get(id=suggestion_id)
+        
+        # Kiểm tra quyền
+        if suggestion.shared_plan.food_plan.user != request.user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền duyệt suggestion này'
+            }, status=403)
+        
+        # Kiểm tra status
+        if suggestion.status != 'pending':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Suggestion đã được xử lý ({suggestion.status})'
+            }, status=400)
+        
+        # Áp dụng các thay đổi
+        plan = suggestion.shared_plan.food_plan
+        current_data = list(plan.plan_data)
+        suggested_data = suggestion.suggested_data
+        
+        success_count = 0
+        
+        for change in approved_changes:
+            change_type = change['changeType']
+            change_key = change['changeKey']
+            
+            if change_type == 'added':
+                new_item = next((item for item in suggested_data if item['key'] == change_key), None)
+                if new_item and not any(item['key'] == change_key for item in current_data):
+                    current_data.append(new_item)
+                    success_count += 1
+                    
+            elif change_type == 'removed':
+                original_length = len(current_data)
+                current_data = [item for item in current_data if item['key'] != change_key]
+                if len(current_data) < original_length:
+                    success_count += 1
+                    
+            elif change_type == 'modified':
+                new_item = next((item for item in suggested_data if item['key'] == change_key), None)
+                if new_item:
+                    for i, item in enumerate(current_data):
+                        if item['key'] == change_key:
+                            current_data[i] = new_item
+                            success_count += 1
+                            break
+        
+        # ✅ LƯU PLAN
+        plan.plan_data = current_data
+        plan.save()
+        
+        # 🔥 QUAN TRỌNG: CẬP NHẬT STATUS SUGGESTION
+        suggestion.status = 'accepted'
+        suggestion.reviewed_at = timezone.now()
+        suggestion.save()
+        
+        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
+        other_pending_suggestions = PlanEditSuggestion.objects.filter(
+            shared_plan__food_plan=plan,
+            status='pending'
+        ).exclude(id=suggestion_id)
+        
+        rejected_count = 0
+        for other_sug in other_pending_suggestions:
+            other_sug.status = 'rejected'
+            other_sug.reviewed_at = timezone.now()
+            other_sug.save()
+            rejected_count += 1
+        
+        print(f"✅ [APPROVE ALL] Updated suggestion {suggestion_id} to 'accepted'")
+        print(f"🔥 Auto-rejected {rejected_count} other pending suggestions")
+        
+        message = f'Đã áp dụng {success_count} thay đổi'
+        if rejected_count > 0:
+            message += f' (Đã tự động từ chối {rejected_count} đề xuất khác)'
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message,
+            'applied_count': success_count,
+            'rejected_count': rejected_count
+        })
+        
+    except PlanEditSuggestion.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy suggestion'
+        }, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)    
+
+@login_required
+@require_http_methods(["GET"])
+def check_pending_suggestion_api(request, plan_id):
+    """
+    Kiểm tra xem user có suggestion pending cho plan này không
+    GET /api/accounts/food-plan/check-pending/<plan_id>/
+    """
+    try:
+        # Kiểm tra user có được share plan này không
+        shared_plan = SharedFoodPlan.objects.filter(
+            food_plan_id=plan_id,
+            shared_with=request.user,
+            is_active=True
+        ).first()
+        
+        if not shared_plan:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xem lịch trình này'
+            }, status=403)
+        
+        # Kiểm tra pending suggestion
+        has_pending = PlanEditSuggestion.objects.filter(
+            shared_plan=shared_plan,
+            suggested_by=request.user,
+            status='pending'
+        ).exists()
+        
+        return JsonResponse({
+            'status': 'success',
+            'has_pending': has_pending
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)    
 # ==========================================================
 # 🍽️ USER PREFERENCES APIs
 # ==========================================================
@@ -2930,6 +3236,390 @@ def delete_user_preference(request):
             }, status=404)
             
     except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+# ==========================================================
+# 🔔 NOTIFICATION APIs
+# ==========================================================
+
+@login_required
+@require_http_methods(["GET"])
+def get_notifications_api(request):
+    """
+    Lấy danh sách thông báo của user
+    GET /api/accounts/notifications/
+    Query params:
+        - unread_only=true: chỉ lấy thông báo chưa đọc
+        - limit=20: giới hạn số lượng
+    """
+    try:
+        unread_only = request.GET.get('unread_only', 'false').lower() == 'true'
+        limit = int(request.GET.get('limit', 50))
+        
+        # Query notifications
+        notifications = Notification.objects.filter(user=request.user)
+        
+        if unread_only:
+            notifications = notifications.filter(is_read=False)
+        
+        notifications = notifications[:limit]
+        
+        # Serialize data
+        notifications_data = []
+        for notif in notifications:
+            notifications_data.append({
+                'id': notif.id,
+                'type': notif.notification_type,
+                'title': notif.title,
+                'message': notif.message,
+                'is_read': notif.is_read,
+                'created_at': notif.created_at.isoformat(),
+                'read_at': notif.read_at.isoformat() if notif.read_at else None,
+                'related_id': notif.related_id,
+                'metadata': notif.metadata
+            })
+        
+        # Đếm số thông báo chưa đọc
+        unread_count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).count()
+        
+        return JsonResponse({
+            'status': 'success',
+            'notifications': notifications_data,
+            'unread_count': unread_count
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def mark_notification_read_api(request, notification_id):
+    """
+    Đánh dấu 1 thông báo đã đọc
+    POST /api/accounts/notifications/<id>/read/
+    """
+    try:
+        notification = Notification.objects.get(
+            id=notification_id,
+            user=request.user
+        )
+        
+        notification.mark_as_read()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã đánh dấu đã đọc'
+        })
+        
+    except Notification.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông báo'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def mark_all_notifications_read_api(request):
+    """
+    Đánh dấu TẤT CẢ thông báo đã đọc
+    POST /api/accounts/notifications/read-all/
+    """
+    try:
+        updated_count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).update(is_read=True, read_at=timezone.now())
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Đã đánh dấu {updated_count} thông báo',
+            'count': updated_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def delete_notification_api(request, notification_id):
+    """
+    Xóa 1 thông báo
+    POST /api/accounts/notifications/<id>/delete/
+    """
+    try:
+        notification = Notification.objects.get(
+            id=notification_id,
+            user=request.user
+        )
+        
+        notification.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã xóa thông báo'
+        })
+        
+    except Notification.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy thông báo'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def clear_all_notifications_api(request):
+    """
+    Xóa TẤT CẢ thông báo đã đọc
+    POST /api/accounts/notifications/clear-all/
+    """
+    try:
+        deleted_count, _ = Notification.objects.filter(
+            user=request.user,
+            is_read=True
+        ).delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Đã xóa {deleted_count} thông báo',
+            'count': deleted_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@login_required
+def notification_stream(request):
+    """SSE endpoint để push thông báo real-time"""
+    
+    user_id = request.user.id
+    
+    def event_stream():
+        # ✅ TẠO QUEUE cho user này
+        notification_queue = queue.Queue()
+        sse_connections[user_id] = notification_queue
+        
+        print(f"✅ SSE Connected: {request.user.username} (user_id={user_id})")
+        
+        # ✅ GỬI INITIAL MESSAGE (với padding để force flush)
+        initial_msg = f"data: {json.dumps({'type': 'connected', 'message': 'Connected', 'user': request.user.username})}\n\n"
+        initial_msg += ": " + " " * 2048 + "\n\n"  # 🔥 PADDING để force browser flush
+        yield initial_msg
+        
+        last_check = timezone.now()
+        
+        try:
+            while True:
+                # ✅ 1. CHECK QUEUE (non-blocking, timeout 5s)
+                try:
+                    # 🔥 TĂNG TIMEOUT lên 5s để ổn định hơn
+                    notification_data = notification_queue.get(timeout=5)
+                    
+                    print(f"📤 [SSE] Sending real-time notification to {request.user.username}")
+                    
+                    # Đếm unread
+                    unread_count = Notification.objects.filter(
+                        user=request.user,
+                        is_read=False
+                    ).count()
+                    
+                    event_data = {
+                        'type': 'new_notifications',
+                        'notifications': [notification_data],
+                        'unread_count': unread_count
+                    }
+                    
+                    # 🔥 FORMAT CHUẨN SSE + PADDING
+                    message = f"data: {json.dumps(event_data)}\n\n"
+                    message += ": " + " " * 2048 + "\n\n"  # Force flush
+                    yield message
+                    
+                except queue.Empty:
+                    # 🔥 GỬI HEARTBEAT để giữ connection sống
+                    heartbeat_msg = f": heartbeat {timezone.now().isoformat()}\n\n"
+                    yield heartbeat_msg
+                    
+                    # ✅ 2. FALLBACK: Poll database (mỗi 5s)
+                    new_notifications = Notification.objects.filter(
+                        user=request.user,
+                        created_at__gt=last_check,
+                        is_read=False
+                    ).order_by('-created_at')
+                    
+                    if new_notifications.exists():
+                        last_check = timezone.now()
+                        
+                        notifications_data = []
+                        for notif in new_notifications:
+                            notifications_data.append({
+                                'id': notif.id,
+                                'type': notif.notification_type,
+                                'title': notif.title,
+                                'message': notif.message,
+                                'is_read': notif.is_read,
+                                'created_at': notif.created_at.isoformat(),
+                                'related_id': notif.related_id,
+                                'metadata': notif.metadata
+                            })
+                        
+                        unread_count = Notification.objects.filter(
+                            user=request.user,
+                            is_read=False
+                        ).count()
+                        
+                        event_data = {
+                            'type': 'new_notifications',
+                            'notifications': notifications_data,
+                            'unread_count': unread_count
+                        }
+                        
+                        message = f"data: {json.dumps(event_data)}\n\n"
+                        message += ": " + " " * 2048 + "\n\n"
+                        yield message
+                        
+                        print(f"📤 [POLL] Sent {len(notifications_data)} notifications to {request.user.username}")
+                    
+        except GeneratorExit:
+            # ✅ CLEANUP khi client disconnect
+            if user_id in sse_connections:
+                del sse_connections[user_id]
+            print(f"🔌 Client disconnected: {request.user.username} (user_id={user_id})")
+            
+        except Exception as e:
+            print(f"❌ SSE Error for {request.user.username}: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Cleanup
+            if user_id in sse_connections:
+                del sse_connections[user_id]
+            
+            error_msg = f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield error_msg
+    
+    # ✅ TẠO RESPONSE
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream; charset=utf-8'
+    )
+    
+    # 🔥 QUAN TRỌNG: Headers để KHÔNG buffer
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    response['X-Accel-Buffering'] = 'no'
+    response['Access-Control-Allow-Origin'] = '*'
+    response['Access-Control-Allow-Credentials'] = 'true'
+    
+    return response
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def record_favorite_view(request, user_id):
+    try:
+        viewed_user = User.objects.get(id=user_id)
+        viewer = request.user
+
+        if viewer.id == viewed_user.id:
+            return Response({
+                'status': 'ignored',
+                'message': 'Không tạo thông báo cho chính mình'
+            })
+
+        notification = Notification.objects.create(
+            user=viewed_user,  # Người nhận thông báo
+            notification_type='favorite_viewed',  # 🔴 SỬA CHỖ NÀY
+            title='👀 Có người xem quán yêu thích của bạn',
+            message=f'{viewer.username} đã xem danh sách quán yêu thích của bạn',
+            related_id=viewer.id
+        )
+
+        return Response({
+            'status': 'success',
+            'message': 'Đã ghi nhận lượt xem',
+            'notification_id': notification.id
+        })
+
+    except User.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'message': 'Không tìm thấy user'
+        }, status=404)
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@csrf_exempt
+@require_POST
+@login_required
+def log_streak_popup_api(request):
+    """
+    Log rằng popup đã được hiện
+    POST /api/accounts/streak/log-popup/
+    Body: {
+        "popup_type": "frozen",  // frozen/milestone
+        "streak_value": 0
+    }
+    """
+    try:
+        from .models import StreakPopupLog
+        
+        data = json.loads(request.body)
+        popup_type = data.get('popup_type', 'frozen')
+        streak_value = data.get('streak_value', 0)
+        
+        # Tạo log
+        StreakPopupLog.objects.create(
+            user=request.user,
+            popup_type=popup_type,
+            streak_value=streak_value
+        )
+        
+        print(f"✅ [LOG POPUP] User: {request.user.username}, Type: {popup_type}")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã log popup'
+        })
+        
+    except Exception as e:
+        print(f"❌ [LOG POPUP ERROR] {e}")
         return JsonResponse({
             'status': 'error',
             'message': str(e)

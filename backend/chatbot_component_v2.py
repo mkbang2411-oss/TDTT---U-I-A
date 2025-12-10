@@ -247,9 +247,9 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             }}
 
             .speech-bubble.fire-mode::after {{
-                border-top-color: white; /* Giữ màu nền trắng */
+                border-top-color: #FFE5D9 !important;  /* Cam nhạt giống background */
                 filter: drop-shadow(0 3px 3px rgba(0,0,0,0.08)) 
-                        drop-shadow(0 0 0 2px #FF6B35); /* Thêm viền đỏ cam */
+                        drop-shadow(0 0 0 2px #FF6B35);
             }}
 
             @keyframes fireGlow {{
@@ -567,6 +567,18 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 border-top: 9px solid white;
                 filter: drop-shadow(0 3px 3px rgba(0,0,0,0.08));
                 pointer-events: none;
+            }}
+
+            .speech-bubble.fire-mode::after {{
+                border-top-color: white; /* Giữ màu nền trắng */
+                filter: drop-shadow(0 3px 3px rgba(0,0,0,0.08)) 
+                        drop-shadow(0 0 0 2px #FF6B35); /* Thêm viền đỏ cam */
+            }}
+
+            .speech-bubble.frozen-mode::after {{
+                border-top-color: #BBDEFB !important;  /* Xanh nhạt giống background */
+                filter: drop-shadow(0 3px 3px rgba(0,0,0,0.08)) 
+                        drop-shadow(0 0 0 2px #42A5F5);
             }}
             
             .chatbot-button {{
@@ -1758,7 +1770,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     'địt', 'đụ', 'đjt', 'djt', 'đmm', 'dm', 'đm', 'dmm', 'đcm', 'dcm', 'clgt',
                     'vcl', 'vl', 'vãi', 'vãi lồn', 'vãi loz', 'vãi lon', 'vailon', 'vailoz',
                     'cl', 'clm', 'clo', 'cln', 'clmm', 'cldm', 'cmm', 'cmn', 'ccmm', 'đéo', 'đếch',
-                    'đek', 'dek', 'đekm', 'dmj', 'dmz', 'vlz', 'vkl', 'vch', 'vđ', 'vđm', 'vđmm',
+                    'đek', 'dek', 'đekm', 'dmj', 'dmz', 'vlz', 'vkl', 'vch', 'vđ', 'vđm', 'vđmm', 'địu má', 'đậu má',
 
                     // --- nhóm xúc phạm, nhục mạ ---
                     'ngu', 'ngu học', 'óc chó', 'não phẳng', 'não cá vàng', 'khùng', 'ngáo', 'điên',
@@ -3237,10 +3249,13 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             // ===== STREAK SYSTEM =====
             let currentStreak = 0;
             let isStreakFrozen = false;
+            let isUserLoggedIn = false; 
+            let hasShownFrozenPopup = false; 
+            let hasShownMilestonePopup = false;
 
             // Lấy thông tin streak khi mở chatbot
             async function loadStreakData() {{
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 console.log('🔵 [LOAD STREAK] Bắt đầu tải streak data...');
                 
                 try {{
@@ -3250,7 +3265,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     }});
                     
                     console.log('📡 [LOAD STREAK] Response status:', response.status);
-                    console.log('📡 [LOAD STREAK] Response ok:', response.ok);
                     
                     if (response.ok) {{
                         const data = await response.json();
@@ -3259,38 +3273,75 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         if (data.status === 'success') {{
                             currentStreak = data.streak;
                             isStreakFrozen = data.is_frozen;
+                            isUserLoggedIn = true;
+                            hasShownFrozenPopup = data.has_shown_frozen_popup;  // 🆕 ĐỌC TỪ SERVER
+                            hasShownMilestonePopup = data.has_shown_milestone_popup;
                             
                             console.log('✅ [LOAD STREAK] Current streak:', currentStreak);
-                            console.log('✅ [LOAD STREAK] Longest streak:', data.longest_streak);
                             console.log('✅ [LOAD STREAK] Is frozen:', isStreakFrozen);
-                            console.log('✅ [LOAD STREAK] Last update:', data.last_update);
+                            console.log('✅ [LOAD STREAK] Has shown popup:', hasShownFrozenPopup);  // 🆕 LOG
                             
                             updateStreakUI();
-
-                            // 🎯 CẬP NHẬT BUBBLE TEXT DỰA TRÊN STREAK
                             updateBubbleTextBasedOnStreak();
 
-                            // Nếu bị đóng băng, hiển thị popup
-                            if (isStreakFrozen && currentStreak === 0) {{
-                                setTimeout(() => {{
-                                    showStreakNotification('freeze', 0); // ✅ DÙNG POPUP
+                            // 🆕 LOGIC MỚI: Chỉ hiện popup nếu SERVER cho phép
+                            if (isStreakFrozen && currentStreak === 0 && !hasShownFrozenPopup) {{
+                                setTimeout(async () => {{
+                                    showStreakNotification('freeze', 0);
+                                    
+                                    // 🆕 GỌI API LOG POPUP ĐÃ HIỆN
+                                    await logStreakPopup('frozen', 0);
+                                    hasShownFrozenPopup = true;
                                 }}, 1500);
                             }}
-
                         }}
-
                     }} else {{
                         console.error('❌ [LOAD STREAK] Response không OK');
+                        isUserLoggedIn = false;
                     }}
                 }} catch (error) {{
                     console.error('❌ [LOAD STREAK] Lỗi:', error);
+                    isUserLoggedIn = false;
                 }}
                 
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }}
+
+            async function logStreakPopup(popupType, streakValue) {{
+                try {{
+                    console.log(`💾 [LOG POPUP] Logging ${{popupType}} popup...`);
+                    
+                    const response = await fetch(`${{API_BASE_URL}}/accounts/streak/log-popup/`, {{
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            popup_type: popupType,
+                            streak_value: streakValue
+                        }})
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        console.log('✅ [LOG POPUP] Đã log popup:', data);
+                    }} else {{
+                        console.error('❌ [LOG POPUP] Lỗi:', response.status);
+                    }}
+                }} catch (error) {{
+                    console.error('❌ [LOG POPUP] Exception:', error);
+                }}
             }}
 
             // ===== HÀM CHỌN BUBBLE MESSAGE DỰA TRÊN STREAK =====
             function getStreakBasedBubbleMessage() {{
+            
+                if (!isUserLoggedIn) {{
+                    // Nếu chưa đăng nhập → trả về tease message thông thường
+                    return teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
+                }}
+
                 let messagePool;
                 
                 if (isStreakFrozen) {{
@@ -3322,7 +3373,15 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 const bubbleText = document.getElementById('bubbleText');
                 const speechBubble = document.getElementById('speechBubble');
                 if (!bubbleText || !speechBubble) return;
-                
+
+                if (!isUserLoggedIn) {{
+                    // Chưa đăng nhập → dùng tease message
+                    const message = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
+                    bubbleText.textContent = message; // Dùng textContent cho tease message
+                    speechBubble.classList.remove('fire-mode', 'frozen-mode', 'high-streak');
+                    return; // 👈 QUAN TRỌNG: DỪNG LẠI Ở ĐÂY
+                }}
+
                 const message = getStreakBasedBubbleMessage();
                 bubbleText.innerHTML = message; // ← Đổi từ textContent sang innerHTML để hỗ trợ emoji
                 
@@ -3410,11 +3469,15 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             
                             updateBubbleTextBasedOnStreak();
                             
-                            // Kiểm tra milestone
-                            if (data.milestone) {{
+                            // ✅ Kiểm tra milestone VÀ chưa show popup hôm nay
+                            if (data.milestone && !hasShownMilestonePopup) {{
                                 console.log(`🎉 [INCREMENT] MILESTONE ĐẠT ĐƯỢC: ${{data.milestone}} ngày!`);
-                                setTimeout(() => {{
+                                setTimeout(async () => {{
                                     showMilestonePopup(data.milestone);
+                                    
+                                    // ✅ LOG popup milestone
+                                    await logStreakPopup('milestone', data.milestone);
+                                    hasShownMilestonePopup = true;
                                 }}, 2500);
                             }}
                             
@@ -3788,28 +3851,14 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 chatHistorySidebar.classList.toggle('open');
             }}
 
-            async function initializeApp() {{
-                console.log("🚀 Đang khởi động ứng dụng...");
-                
-                // 1. Tải danh sách chat từ Server về (Cập nhật vào biến conversationList)
-                await fetchConversationList();
-
-                // 2. Kiểm tra danh sách vừa tải về
-                console.log("✨ Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)");
-                switchToNewChat();
-            }}
-
-            // Gọi hàm khởi tạo ngay lập tức
-            initializeApp();
-
             function updateBubbleText() {{
-                // Random chọn giữa teaseMessages hoặc streakBubbleMessages
-                const useStreakMessage = Math.random() < 0.4; // 40% chance dùng streak message
+                // ✅ CHỈ DÙNG STREAK MESSAGE KHI USER ĐÃ ĐĂNG NHẬP
+                const useStreakMessage = isUserLoggedIn && (Math.random() < 0.4); // 40% chance nếu đã login
                 
                 if (useStreakMessage && currentStreak !== undefined) {{
                     // Dùng streak-based message
                     const message = getStreakBasedBubbleMessage();
-                    bubbleText.innerHTML = message; // Dùng innerHTML để hiển thị emoji
+                    bubbleText.innerHTML = message;
                     
                     // Thêm class đặc biệt dựa trên trạng thái streak
                     speechBubble.classList.remove('fire-mode', 'frozen-mode');
@@ -3822,7 +3871,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         speechBubble.classList.add('fire-mode');
                     }}
                 }} else {{
-                    // Dùng tease message thông thường
+                    // Dùng tease message thông thường (cho user chưa đăng nhập)
                     bubbleText.textContent = teaseMessages[Math.floor(Math.random() * teaseMessages.length)];
                     
                     // Bỏ các class đặc biệt

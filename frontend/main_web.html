@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="button.css">
     <link rel="stylesheet" href="weblogin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- 🗺️ Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -24,38 +24,20 @@
 
 </head>
 
-<style>
-    .toast {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #333;
-        color: #fff;
-        padding: 12px 18px;
-        border-radius: 10px;
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.3s ease;
-        z-index: 9999;
-        font-size: 15px;
-    }
-    .toast.show {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    .toast.success {
-        background: #4caf50;
-    }
-    .toast.error {
-        background: #e53935;
-    }
-    
+<style>  
     /* Ẩn/hiện phần tử theo trạng thái */
     .guest-only,
     .user-only { display: none; }
 
     body.logged-in .guest-only { display: none; }
     body.logged-in .user-only { display: flex !important; } /* ĐỔI: block → flex */
+
+    /* 🔥 TẮT KHUNG ĐEN KHI CLICK VÀO ĐƯỜNG ĐI TRÊN MAP */
+    #map .leaflet-interactive:focus,
+    #map .leaflet-interactive:focus-visible {
+        outline: none !important;
+        outline-offset: 0;
+    }
 </style>
 
 
@@ -63,6 +45,40 @@
 <body>
     <!-- 🔔 Toast Notification -->
     <div id="toast" class="toast"></div>
+
+    <!-- 🔔 Popup thông báo Food Planner -->
+    <div id="notificationOverlay" class="notification-overlay">
+        <div class="notification-modal">
+            <div class="notification-modal-header">
+                <div class="notification-modal-title">
+                    <span class="notification-modal-icon">🔔</span>
+                    Thông báo
+                </div>
+                <button id="notificationCloseBtn" class="notification-close-btn" title="Đóng">
+                    &times;
+                </button>
+            </div>
+
+            <div id="notificationList" class="notification-list">
+                <!-- JS sẽ render danh sách thông báo ở đây -->
+            </div>
+
+            <div class="notification-modal-footer">
+                <button id="markAllAsReadBtn" class="notification-footer-btn">
+                    ✔ Đánh dấu tất cả đã đọc
+                </button>
+
+                <button id="deleteAllNotificationsBtn" class="notification-delete-all-btn" title="Xóa tất cả thông báo">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Xóa tất cả
+                </button>
+
+            </div>
+        </div>
+    </div>
 
     <header class="banner">
         <div class="background">
@@ -267,6 +283,7 @@
    
 
     <!-- 📦 JAVASCRIPT LIBRARIES -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -453,33 +470,647 @@
     <script src="minigame.js"></script>
 
     <script>
-    // Test nút thông báo
+    (function () {
     const notificationBtn = document.getElementById('notificationBtn');
-    const notificationBadge = notificationBtn.querySelector('.notification-badge');
+    const overlay = document.getElementById('notificationOverlay');
+    const notificationBadge = notificationBtn ? notificationBtn.querySelector('.notification-badge') : null;
+    const closeBtn = document.getElementById('notificationCloseBtn');
+    const listEl = document.getElementById('notificationList');
+    const markAllBtn = document.getElementById('markAllAsReadBtn');
 
-    // Giả lập có 5 thông báo mới
-    function showNotification(count) {
-        if (count > 0) {
-            notificationBtn.classList.add('has-notification');
-            notificationBadge.textContent = count;
-            notificationBadge.style.display = 'block';
-        } else {
-            notificationBtn.classList.remove('has-notification');
-            notificationBadge.style.display = 'none';
+    if (!notificationBtn || !overlay) {
+        return;
+    }
+
+    let notifications = [];
+    let eventSource = null;
+
+    async function deleteNotification(notificationId) {
+        try {
+
+            const itemEl = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
+            if (itemEl) {
+                itemEl.classList.add('deleting');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 400));
+
+            const res = await fetch(`/api/accounts/notifications/${notificationId}/delete/`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            if (res.ok) {
+                // Xóa khỏi mảng local
+                notifications = notifications.filter(n => n.id != notificationId);
+                
+                // Re-render
+                renderList();
+                updateBadge();
+                
+            }
+        } catch (err) {
+            console.error('Lỗi khi xóa notification', err);
+            showToast('Lỗi khi xóa thông báo', 'error');
         }
     }
 
-    // Khi click nút thông báo
+    function updateBadge() {
+        if (!notificationBadge) return;
+        const unread = notifications.filter(n => !n.is_read).length;
+        if (unread > 0) {
+        notificationBtn.classList.add('has-notification');
+        notificationBadge.textContent = unread > 9 ? '9+' : String(unread);
+        notificationBadge.style.display = 'block';
+        } else {
+        notificationBtn.classList.remove('has-notification');
+        notificationBadge.style.display = 'none';
+        }
+    }
+
+    function formatTimeVi(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+        });
+    }
+
+    function closeAllOtherPopups(notificationType) {
+        console.log('🔴 Đóng tất cả popup khác...', 'Notification type:', notificationType);
+        
+        const isFoodPlannerNotification =
+            notificationType === 'suggestion' || notificationType === 'share_plan';
+
+        // 🔹 CHỈ đóng Food Planner nếu KHÔNG phải notification của Food Planner
+        if (!isFoodPlannerNotification) {
+            const foodPlannerPanel = document.getElementById('foodPlannerPanel');
+            const plannerBtn = document.getElementById('foodPlannerBtn');
+
+            if (foodPlannerPanel && plannerBtn) {
+                // Chỉ click để đóng nếu hiện tại đang mở
+                const isOpen =
+                    foodPlannerPanel.classList.contains('active') ||
+                    foodPlannerPanel.classList.contains('show');
+
+                if (isOpen) {
+                    // dùng đúng logic toggle của Food Planner
+                    plannerBtn.click();
+                    console.log('✅ Đã đóng Food Planner qua nút bấm');
+                }
+            }
+        }
+                
+        // 2️⃣ ĐÓNG CHATBOT
+        const chatWindow = document.getElementById('chatWindow');
+        const chatbotBtn = document.getElementById('chatbotBtn');
+        const speechBubble = document.getElementById('speechBubble');
+        
+        if (chatWindow) {
+            chatWindow.style.display = 'none';
+            chatWindow.classList.remove('open');
+        }
+        if (chatbotBtn) {
+            chatbotBtn.style.display = 'block';
+            chatbotBtn.classList.remove('hidden');
+        }
+        if (speechBubble) {
+            speechBubble.style.display = 'block';
+            speechBubble.classList.remove('hidden');
+        }
+        console.log('✅ Đã đóng Chatbot');
+        
+        // 3️⃣ ĐÓNG MINI GAME
+        const miniGameOverlay = document.getElementById('miniGameOverlay');
+        if (miniGameOverlay) {
+            miniGameOverlay.classList.add('hidden');
+            miniGameOverlay.classList.remove('show');
+            console.log('✅ Đã đóng Mini Game');
+        }
+        
+        // 4️⃣ ĐÓNG MUSIC PLAYER
+        const musicPlayerOverlay = document.getElementById('musicPlayerOverlay');
+        if (musicPlayerOverlay) {
+            musicPlayerOverlay.classList.remove('show');
+            console.log('✅ Đã đóng Music Player');
+        }
+        
+        // 5️⃣ ĐÓNG SIDEBAR (thông tin chi tiết quán)
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.classList.remove('show');
+            console.log('✅ Đã đóng Sidebar');
+        }
+    }
+
+    function renderList() {
+        if (!listEl) return;
+
+        if (!notifications.length) {
+        listEl.innerHTML =
+            '<div class="notification-empty">' +
+            '<div class="notification-empty-icon">🧡</div>' +
+            '<div class="notification-empty-text">Hiện tại bạn chưa có thông báo nào.</div>' +
+            '</div>';
+        return;
+        }
+
+        const itemsHtml = notifications
+            .slice()
+            .sort(function (a, b) {
+                return new Date(b.created_at) - new Date(a.created_at);
+            })
+            .map(function (n) {
+                return (
+                    '<div class="notification-item ' + (n.is_read ? 'read' : '') + '" data-id="' + n.id + '">' +
+                        '<div class="notification-item-title">' + n.title + '</div>' +
+                        '<div class="notification-item-message">' + n.message + '</div>' +
+                        (n.created_at ? 
+                            '<div class="notification-item-meta">' +
+                                formatTimeVi(n.created_at) +
+                                '<div class="notification-item-meta-right">' +
+                                    '<span class="notification-status-badge">' +
+                                        (n.is_read ? 'Đã đọc' : 'Mới') +
+                                    '</span>' +
+                                    '<button class="notification-item-delete" data-id="' + n.id + '" title="Xóa thông báo">' +
+                                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                                            '<polyline points="3 6 5 6 21 6"/>' +
+                                            '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+                                        '</svg>' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>'
+                        : '') +
+                    '</div>'
+                );
+            })
+            .join('');
+
+        listEl.innerHTML = itemsHtml;
+
+        const itemEls = listEl.querySelectorAll('.notification-item');
+        itemEls.forEach(function (el) {
+            el.addEventListener('click', function () {
+                const id = el.getAttribute('data-id');
+                const item = notifications.find(function (n) { return n.id == id; });
+                if (!item) return;
+                
+                closeAllOtherPopups(item.type);
+                handleNotificationClick(item);
+                markNotificationAsRead(item.id);
+            });
+        });
+
+        const deleteButtons = listEl.querySelectorAll('.notification-item-delete');
+        deleteButtons.forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation(); // Ngăn trigger click vào notification-item
+                
+                const id = btn.getAttribute('data-id');
+                
+                // Xác nhận xóa
+                if (confirm('Bạn có chắc muốn xóa thông báo này?')) {
+                    deleteNotification(id);
+                }
+            });
+        });
+    }
+
+    function openOverlay() {
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        // ✨ THÊM ANIMATION CHỈ KHI MỞ POPUP
+        setTimeout(function() {
+            const newItems = listEl.querySelectorAll('.notification-item:not(.read)');
+            newItems.forEach(function(item, index) {
+                item.classList.add('new-item'); // Thêm class để ẩn ban đầu
+                setTimeout(function() {
+                    item.classList.remove('new-item');
+                    item.classList.add('slide-in');
+                }, index * 1000); // Delay 100ms giữa mỗi item
+            });
+        }, 50);
+
+    }
+
+    function closeOverlay() {
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
     notificationBtn.addEventListener('click', () => {
-        alert('Danh sách thông báo (sẽ làm sau)');
-        // Xóa thông báo sau khi xem
-        showNotification(0);
+        // ✅ ĐÓNG TẤT CẢ POPUP KHÁC TRƯỚC KHI MỞ THÔNG BÁO
+        closeAllOtherPopups(null);
+        openOverlay();
     });
 
-    // Giả lập có 3 thông báo mới khi load trang
-    setTimeout(() => {
-        showNotification(3);
-    }, 2000);
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeOverlay);
+    }
+
+    overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) {
+        closeOverlay();
+        }
+    });
+
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function () {
+        markAllNotificationsAsRead();
+        });
+    }
+
+    // ========== XÓA TẤT CẢ THÔNG BÁO ==========
+    const deleteAllBtn = document.getElementById('deleteAllNotificationsBtn');
+
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener('click', async function () {
+            // ✅ XÁC NHẬN TRƯỚC KHI XÓA
+            if (!confirm('⚠️ Bạn có chắc muốn xóa TẤT CẢ thông báo?\n\nHành động này không thể hoàn tác!')) {
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/accounts/notifications/clear-all/', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // ✅ XÓA TOÀN BỘ DANH SÁCH LOCAL
+                    notifications = [];
+                    renderList();
+                    updateBadge();
+                }
+            } catch (err) {
+                console.error('❌ Lỗi xóa tất cả notifications:', err);
+                showToast('❌ Lỗi kết nối', 'error');
+            }
+        });
+    }
+
+    function handleNotificationClick(item) {
+        // 🌟 1. Thông báo ai đó xem quán yêu thích → Hiển thị thông tin người xem
+        if (item.type === 'favorite_viewed') {
+            // Hiển thị thông tin người đã xem
+            markNotificationAsRead(item.id);
+            return; // ⚠️ RETURN SỚM - KHÔNG đóng popup thông báo
+        }
+
+        if (item.type === 'friend_accepted') {
+            markNotificationAsRead(item.id);
+            return; // ⚠️ Chỉ đánh dấu đã đọc, không làm gì thêm
+        }
+
+        closeOverlay();
+        // 🌟 2. Thông báo kết bạn → nhảy sang Account
+        if (item.type === 'friend_request') {
+            try {
+                localStorage.setItem('openFriendRequestsTab', '1');
+            } catch (e) {
+                console.warn('Không lưu được flag', e);
+            }
+            window.location.href = 'Account.html';
+            return;
+        }
+
+        // ✅ CHỜ 300MS ĐỂ POPUP ĐÓNG HOÀN TOÀN TRƯỚC KHI MỞ FOOD PLANNER
+        setTimeout(function() {
+            // 🌟 3. Mở bubble Food Planner
+            var plannerBtn = document.getElementById('foodPlannerBtn');
+            if (plannerBtn) {
+                plannerBtn.click();
+            }
+
+            // 🌟 4. Load plan (dùng cho cả suggestion & share plan)
+            if (item.related_id && typeof loadSavedPlans === 'function') {
+                setTimeout(function () {
+                    try {
+                        loadSavedPlans(item.related_id, true);
+
+                        // ⚠ Chỉ notification "suggestion" mới cần scroll
+                        if (item.type !== 'suggestion') {
+                            return; // share plan & loại khác: dừng ở đây, KHÔNG scroll
+                        }
+
+                        // 🌟 4. Scroll tới planResult (chỉ cho suggestion)
+                        setTimeout(function () {
+                            const planResult = document.getElementById('planResult');
+                            const savedPlansSection = document.getElementById('savedPlansSection');
+                            
+                            if (!planResult || !savedPlansSection) {
+                                console.error('❌ Không tìm thấy element');
+                                return;
+                            }
+                            
+                            console.log('✅ Tìm thấy planResult và savedPlansSection');
+                            
+                            // 🔍 TÌM PARENT CONTAINER CÓ SCROLL (bubble content)
+                            let scrollContainer = savedPlansSection.parentElement;
+                            
+                            // Tìm element có overflow: auto hoặc scroll
+                            while (scrollContainer && scrollContainer !== document.body) {
+                                const style = window.getComputedStyle(scrollContainer);
+                                const overflow = style.overflow + style.overflowY;
+                                
+                                if (overflow.includes('auto') || overflow.includes('scroll')) {
+                                    console.log('✅ Tìm thấy scroll container:', scrollContainer.className || scrollContainer.id);
+                                    break;
+                                }
+                                
+                                scrollContainer = scrollContainer.parentElement;
+                            }
+                            
+                            if (!scrollContainer || scrollContainer === document.body) {
+                                console.warn('⚠️ Không tìm thấy scroll container phù hợp');
+                                // Fallback: scroll toàn trang
+                                planResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                return;
+                            }
+                            
+                            const planResultTop = planResult.offsetTop;
+                            const containerHeight = scrollContainer.clientHeight;
+
+                            // Đưa planResult lên gần đầu container, cách khoảng 80px
+                            let targetScroll = planResultTop - 130;
+
+                            // Không cho scroll quá giới hạn
+                            const maxScroll = scrollContainer.scrollHeight - containerHeight;
+                            if (targetScroll < 0) targetScroll = 0;
+                            if (targetScroll > maxScroll) targetScroll = maxScroll;
+
+                            console.log('🔍 Scroll tới', targetScroll);
+
+                            scrollContainer.scrollTo({
+                                top: targetScroll,
+                                behavior: 'smooth'
+                            });
+
+                            // Thêm hiệu ứng highlight
+                            planResult.style.transition = 'all 0.3s ease';
+                            planResult.style.backgroundColor = 'rgba(255, 165, 0, 0.15)';
+                            
+                            setTimeout(function () {
+                                planResult.style.backgroundColor = '';
+                            }, 2000);
+                            
+                        }, 1000); // chờ UI render xong trước khi scroll
+
+                    } catch (e) {
+                        console.error('Lỗi loadSavedPlans', e);
+                    }
+                }, 350);
+            }
+        }, 100); // ✅ CHỜ 300MS TRƯỚC KHI MỞ FOOD PLANNER
+    }
+
+    // ================================
+    // 🔔 LOAD INITIAL NOTIFICATIONS
+    // ================================
+    async function loadNotifications() {
+        try {
+        const res = await fetch('/api/accounts/notifications/', {
+            credentials: 'include'
+        });
+        
+        if (!res.ok) {
+            console.warn('Không lấy được thông báo:', res.status);
+            return;
+        }
+
+        const data = await res.json();
+        notifications = data.notifications || [];
+        
+        renderList();
+        updateBadge();
+        } catch (err) {
+        console.error('Lỗi load notifications', err);
+        }
+    }
+
+    // ================================
+    // 📢 SSE - REAL-TIME CONNECTION
+    // ================================
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    const RECONNECT_DELAY = 5000; // 5 giây
+
+    function connectSSE() {
+        // Đóng connection cũ nếu có
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        console.log('🔌 Connecting to SSE...');
+
+        // ✅ SỬA: Đảm bảo URL đúng format
+        const sseUrl = '/api/accounts/notifications/stream/';
+        
+        eventSource = new EventSource(sseUrl, {
+            withCredentials: true
+        });
+
+        eventSource.onopen = function(event) {
+            console.log('✅ SSE Connected');
+            console.log('   ReadyState:', eventSource.readyState); // ✅ THÊM debug
+            console.log('   URL:', eventSource.url);
+            
+            // Reset reconnect counter khi connect thành công
+            reconnectAttempts = 0;
+        };
+
+        eventSource.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                
+                console.log('📩 SSE Message:', data.type);
+
+                if (data.type === 'connected') {
+                    console.log('✅', data.message);
+                }
+                
+                else if (data.type === 'new_notifications') {
+                    console.log('🔔 New notifications:', data.notifications.length);
+                    
+                    // ✅ THÊM THÔNG BÁO MỚI VÀO ĐẦU DANH SÁCH
+                    data.notifications.forEach(function(newNotif) {
+                        const exists = notifications.find(n => n.id === newNotif.id);
+                        if (!exists) {
+                            notifications.unshift(newNotif);
+                        }
+                    });
+                    
+                    renderList();
+                    updateBadge();
+                    
+                    // ✅ HIỂN THỊ TOAST NOTIFICATION
+                    showToastNotification(data.notifications[0]);
+                }
+                
+                else if (data.type === 'heartbeat') {
+                    console.log('💓 Heartbeat at', data.timestamp);
+                }
+                
+                else if (data.type === 'error') {
+                    console.error('❌ SSE Error:', data.message);
+                }
+                
+            } catch (err) {
+                console.error('❌ Error parsing SSE data:', err);
+            }
+        };
+
+        eventSource.onerror = function(error) {
+            console.error('❌ SSE Error:', error);
+            console.error('   ReadyState:', eventSource.readyState);
+            console.error('   Status:', error.status || 'unknown');
+            
+            eventSource.close();
+            
+            // ✅ RECONNECT LOGIC với exponential backoff
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                const delay = RECONNECT_DELAY * reconnectAttempts;
+                
+                console.log(`🔄 Reconnecting (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay/1000}s...`);
+                
+                setTimeout(connectSSE, delay);
+            } else {
+                console.error('❌ Max reconnection attempts reached. Please refresh page.');
+                showToast('⚠️ Mất kết nối thông báo. Vui lòng tải lại trang.', 'error');
+            }
+        };
+    }
+
+    // ================================
+    // 📢 TOAST NOTIFICATION
+    // ================================
+    function showToastNotification(notif) {
+        // Kiểm tra quyền thông báo trình duyệt
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(notif.title, {
+                body: notif.message,
+                icon: '/static/Picture/UIAaa.png',
+                badge: '/static/Picture/UIAaa.png',
+                tag: 'notification-' + notif.id,
+                requireInteraction: false // Tự động đóng sau 5s
+            });
+        }
+    }
+
+    // ================================
+    // 📢 REQUEST NOTIFICATION PERMISSION
+    // ================================
+    function requestNotificationPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().then(function(permission) {
+                if (permission === 'granted') {
+                    console.log('✅ Notification permission granted');
+                } else {
+                    console.log('ℹ️ Notification permission denied - using toast only');
+                }
+            });
+        }
+    }
+
+    // ================================
+    // 📢 INIT
+    // ================================
+
+    // Load thông báo ban đầu
+    loadNotifications();
+
+    // Kết nối SSE cho real-time updates
+    connectSSE();
+
+    // Yêu cầu quyền thông báo
+    requestNotificationPermission();
+
+    // Cleanup khi tắt trang
+    window.addEventListener('beforeunload', function() {
+        if (eventSource) {
+            console.log('🔌 Closing SSE connection...');
+            eventSource.close();
+        }
+    });
+
+    // ✅ CHECK CONNECTION STATUS mỗi 30 giây
+    setInterval(function() {
+        if (eventSource && eventSource.readyState !== EventSource.OPEN) {
+            console.warn('⚠️ SSE connection lost. Reconnecting...');
+            connectSSE();
+        }
+    }, 30000); // 30 seconds
+
+    // ================================
+    // 🔔 MARK AS READ
+    // ================================
+    async function markNotificationAsRead(notificationId) {
+        try {
+        const res = await fetch(`/api/accounts/notifications/${notificationId}/read/`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (res.ok) {
+            const notif = notifications.find(n => n.id == notificationId);
+            if (notif) {
+            notif.is_read = true;
+            }
+            
+            renderList();
+            updateBadge();
+        }
+        } catch (err) {
+        console.error('Lỗi mark as read', err);
+        }
+    }
+
+    async function markAllNotificationsAsRead() {
+        try {
+        const res = await fetch('/api/accounts/notifications/read-all/', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (res.ok) {
+            notifications.forEach(n => n.is_read = true);
+            renderList();
+            updateBadge();
+        }
+        } catch (err) {
+        console.error('Lỗi mark all as read', err);
+        }
+    }
+
+    // ================================
+    // 🔔 INIT
+    // ================================
+    
+    // Load thông báo ban đầu
+    loadNotifications();
+    
+    // Kết nối SSE cho real-time updates
+    connectSSE();
+    
+    // Yêu cầu quyền thông báo
+    requestNotificationPermission();
+    
+    // Cleanup khi tắt trang
+    window.addEventListener('beforeunload', function() {
+        if (eventSource) {
+        eventSource.close();
+        }
+    });
+    
+    })();
     </script>
 
 </body>
