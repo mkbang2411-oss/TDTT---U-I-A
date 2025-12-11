@@ -3284,6 +3284,7 @@ let dragDirection = 0;
 let lastTargetElement = null;
 window.currentPlanName = null;
 window.loadedFromSavedPlan = false;
+let cachedPendingSuggestionsCount = 0; // Lưu số lượng suggestions pending
 
 // Themes data
 const themes = {
@@ -4070,7 +4071,7 @@ function toggleEditMode() {
         if (isEditMode) {
             editBtn.classList.add('active');
             editBtn.title = 'Thoát chỉnh sửa';
-            clearRoutes(); // Xóa đường khi vào edit mode
+            clearRoutes();
         } else {
             editBtn.classList.remove('active');
             editBtn.title = 'Chỉnh sửa';
@@ -4095,6 +4096,19 @@ function toggleEditMode() {
     
     if (currentPlan) {
         displayPlanVertical(currentPlan, isEditMode);
+    }
+    
+    // 🔥 HIỂN THỊ NÚT NGAY LẬP TỨC KHI THOÁT EDIT MODE
+    if (!isEditMode && !isSharedPlan && currentPlanId) {
+        // Hiển thị nút ngay từ cache
+        setTimeout(() => {
+            showSuggestionsButtonImmediately();
+        }, 100); // 100ms để đợi DOM render xong
+        
+        // Sau đó fetch lại để cập nhật chính xác
+        setTimeout(() => {
+            checkPendingSuggestions(currentPlanId);
+        }, 300);
     }
 }
 // ========== OPEN/CLOSE PLANNER ==========
@@ -5022,6 +5036,11 @@ function comparePlanData(plan1, plan2) {
 }
 
 async function sharePlan() {
+ // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
+    if (document.getElementById('shareModal')) {
+        console.log('⚠️ Modal chia sẻ đã mở rồi');
+        return;
+    }
     if (!currentPlan || !currentPlanId) {
         alert('⚠️ Chưa có lịch trình để chia sẻ');
         return;
@@ -7600,6 +7619,9 @@ async function checkPendingSuggestions(planId) {
         const pendingSuggestions = data.suggestions ? 
             data.suggestions.filter(s => s.status === 'pending') : [];
         
+        // 🔥 LƯU VÀO CACHE
+        cachedPendingSuggestionsCount = pendingSuggestions.length;
+        
         if (pendingSuggestions.length > 0) {
             suggestionsBtn.style.display = 'flex';
             suggestionCount.textContent = pendingSuggestions.length;
@@ -7612,9 +7634,27 @@ async function checkPendingSuggestions(planId) {
         console.error('Error checking suggestions:', error);
     }
 }
+// 🔥 HÀM MỚI - HIỂN THỊ NÚT ĐỀ XUẤT NGAY LẬP TỨC
+function showSuggestionsButtonImmediately() {
+    const suggestionsBtn = document.getElementById('suggestionsBtn');
+    const suggestionCount = document.getElementById('suggestionCount');
+    
+    if (!suggestionsBtn || !suggestionCount) return;
+    
+    if (cachedPendingSuggestionsCount > 0) {
+        suggestionsBtn.style.display = 'flex';
+        suggestionCount.textContent = cachedPendingSuggestionsCount;
+    }
+}
 
 // ========== OPEN SUGGESTIONS PANEL ==========
 async function openSuggestionsPanel() {
+    // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI → KHÔNG MỞ THÊM
+    if (document.getElementById('suggestionsModal')) {
+        console.log('⚠️ Modal đã mở rồi, không mở thêm');
+        return;
+    }
+    
     if (!currentPlanId) {
         alert('⚠️ Không có lịch trình đang mở');
         return;
@@ -7803,6 +7843,11 @@ function closeSuggestionsModal() {
 
 // ========== VIEW SUGGESTION COMPARISON ==========
 async function viewSuggestionComparison(suggestionId) {
+ // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
+    if (document.getElementById('comparisonModal')) {
+        console.log('⚠️ Modal so sánh đã mở rồi');
+        return;
+    }
     try {
         const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
         const data = await response.json();
