@@ -79,7 +79,7 @@
           <input
             type="file"
             id="avatar-upload-input"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
             style="display: none"
             onchange="handleFileSelect()"
           />
@@ -1322,12 +1322,46 @@
           .catch((err) => alert("Lỗi kết nối server."));
       }
 
-      // 2. Khi người dùng chọn file -> Hiện Modal Preview
+      // 2. Khi người dùng chọn file -> Kiểm tra và Hiện Modal Preview
       function handleFileSelect() {
         const fileInput = document.getElementById("avatar-upload-input");
 
         if (fileInput.files && fileInput.files[0]) {
-          selectedFile = fileInput.files[0];
+          const file = fileInput.files[0];
+          
+          // ✅ 1. KIỂM TRA ĐỊNH DẠNG FILE
+          const allowedTypes = ['image/jpeg', 'image/png'];
+          const allowedExtensions = ['jpg', 'jpeg', 'png'];
+          const fileName = file.name.toLowerCase();
+          const fileExtension = fileName.split('.').pop();
+          
+          if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension)) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Định dạng không hỗ trợ',
+              html: `Chỉ chấp nhận file <b>JPG</b> hoặc <b>PNG</b>.<br>Bạn đã chọn file: <b>${fileExtension.toUpperCase()}</b>`,
+              confirmButtonColor: '#BC2A12'
+            });
+            fileInput.value = ''; // Reset input
+            return;
+          }
+          
+          // ✅ 2. KIỂM TRA DUNG LƯỢNG (max 10MB)
+          const maxSize = 10 * 1024 * 1024; // 10MB
+          if (file.size > maxSize) {
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+            Swal.fire({
+              icon: 'error',
+              title: 'File quá lớn',
+              html: `Dung lượng tối đa là <b>10MB</b>.<br>File của bạn: <b>${sizeMB}MB</b>`,
+              confirmButtonColor: '#BC2A12'
+            });
+            fileInput.value = ''; // Reset input
+            return;
+          }
+          
+          // ✅ File hợp lệ -> Hiện modal preview
+          selectedFile = file;
           const objectUrl = URL.createObjectURL(selectedFile);
           previewImg.src = objectUrl;
           modal.style.display = "flex";

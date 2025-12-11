@@ -42,6 +42,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .signals import sse_connections
+from .utils import create_suggestion_approved_notification
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -341,6 +342,101 @@ def reviews_api(request: HttpRequest, place_id: str):
         "message": "Method not allowed"
     }, status=405)
 
+# ==========================================================
+# 🗑️ API XÓA ĐÁNH GIÁ CỦA USER
+# ==========================================================
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+@login_required
+def delete_review_api(request, place_id, review_index):
+    """
+    Xóa đánh giá của user
+    DELETE /api/reviews/<place_id>/<review_index>/
+    
+    Params:
+        - place_id: ID của quán
+        - review_index: Index của review trong mảng user reviews
+    """
+    try:
+        # 1. ĐỌC FILE JSON
+        all_reviews = load_user_reviews()
+        
+        place_data = all_reviews.get(place_id)
+        
+        if not place_data:
+            return JsonResponse({
+                'success': False,
+                'message': 'Không tìm thấy quán'
+            }, status=404)
+        
+        # 2. ĐẢM BẢO CẤU TRÚC DICT
+        if isinstance(place_data, list):
+            place_data = {"google": place_data, "user": []}
+            all_reviews[place_id] = place_data
+        
+        user_reviews = place_data.get('user', [])
+        
+        # 3. KIỂM TRA INDEX HỢP LỆ
+        try:
+            review_index = int(review_index)
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Index không hợp lệ'
+            }, status=400)
+        
+        if review_index < 0 or review_index >= len(user_reviews):
+            return JsonResponse({
+                'success': False,
+                'message': 'Không tìm thấy đánh giá'
+            }, status=404)
+        
+        # 4. KIỂM TRA QUYỀN SỞ HỮU
+        review_to_delete = user_reviews[review_index]
+        
+        # So sánh username (case-insensitive)
+        review_username = review_to_delete.get('ten', '').strip().lower()
+        current_username = request.user.username.strip().lower()
+        
+        print(f"\n🔍 [DELETE REVIEW] Check ownership:")
+        print(f"   Review username: '{review_username}'")
+        print(f"   Current user: '{current_username}'")
+        
+        if review_username != current_username:
+            return JsonResponse({
+                'success': False,
+                'message': 'Bạn chỉ có thể xóa đánh giá của chính mình'
+            }, status=403)
+        
+        # 5. XÓA REVIEW
+        deleted_review = user_reviews.pop(review_index)
+        
+        print(f"✅ [DELETE] Removed review:")
+        print(f"   User: {deleted_review.get('ten')}")
+        print(f"   Comment: {deleted_review.get('comment', '')[:50]}")
+        
+        # 6. LƯU LẠI FILE
+        all_reviews[place_id]['user'] = user_reviews
+        save_user_reviews(all_reviews)
+        
+        print(f"💾 [DELETE] Saved. Remaining reviews: {len(user_reviews)}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã xóa đánh giá',
+            'remaining_count': len(user_reviews)
+        })
+        
+    except Exception as e:
+        print(f"❌ [DELETE ERROR]: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': 'Có lỗi xảy ra khi xóa đánh giá'
+        }, status=500)
+
 # ------------------------LƯU LỊCH SỬ CHATBOT AI--------------------------
 # --- Helper để lấy Avatar ---
 def get_user_avatar(user):
@@ -574,10 +670,50 @@ def update_avatar(request):
         if 'avatar' in request.FILES:
             image_file = request.FILES['avatar']
             
+            # ✅ 1. KIỂM TRA ĐỊNH DẠNG FILE (chỉ cho phép JPG và PNG)
+            ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png']
+            ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png']
+            
+            file_name = image_file.name.lower()
+            file_extension = file_name.split('.')[-1] if '.' in file_name else ''
+            
+            if file_extension not in ALLOWED_EXTENSIONS:
+                messages.error(request, f'Chỉ chấp nhận file JPG hoặc PNG. Định dạng "{file_extension}" không được hỗ trợ.')
+                return render(request, 'change_avatar.html')
+            
+            if image_file.content_type not in ALLOWED_CONTENT_TYPES:
+                messages.error(request, 'Định dạng file không hợp lệ. Chỉ chấp nhận JPG hoặc PNG.')
+                return render(request, 'change_avatar.html')
+            
+            # ✅ 2. KIỂM TRA DUNG LƯỢNG (max 10MB)
+            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+            if image_file.size > MAX_FILE_SIZE:
+                size_mb = image_file.size / (1024 * 1024)
+                messages.error(request, f'File quá lớn ({size_mb:.1f}MB). Dung lượng tối đa là 10MB.')
+                return render(request, 'change_avatar.html')
+            
             # Lấy hoặc tạo profile nếu chưa có
             profile, created = UserProfile.objects.get_or_create(user=request.user)
             
-            # Gán ảnh mới (Django tự xử lý việc lưu file và đặt tên)
+            # ✅ 3. XÓA AVATAR CŨ (nếu có và KHÔNG PHẢI ảnh default)
+            # Danh sách các file default KHÔNG được xóa
+            DEFAULT_AVATARS = ['avatar.png', 'default_avatar.png', 'default.png']
+            
+            if profile.avatar and profile.avatar.name:
+                try:
+                    old_avatar_name = os.path.basename(profile.avatar.name)
+                    # Chỉ xóa nếu KHÔNG PHẢI ảnh default
+                    if old_avatar_name not in DEFAULT_AVATARS:
+                        old_avatar_path = profile.avatar.path
+                        if os.path.exists(old_avatar_path):
+                            os.remove(old_avatar_path)
+                            print(f"🗑️ Đã xóa avatar cũ: {old_avatar_path}")
+                    else:
+                        print(f"📌 Giữ lại ảnh default: {old_avatar_name}")
+                except Exception as e:
+                    print(f"⚠️ Không thể xóa avatar cũ: {e}")
+            
+            # ✅ 4. LƯU AVATAR MỚI
             profile.avatar = image_file
             profile.save()
             
@@ -622,12 +758,41 @@ def upload_avatar_api(request):
         
         image_file = request.FILES['avatar']
         
+        # ✅ 1. KIỂM TRA ĐỊNH DẠNG FILE (chỉ cho phép JPG và PNG)
+        ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png']
+        ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png']
+        
+        file_name = image_file.name.lower()
+        file_extension = file_name.split('.')[-1] if '.' in file_name else ''
+        
+        if file_extension not in ALLOWED_EXTENSIONS:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ Chỉ chấp nhận file JPG hoặc PNG. Định dạng "{file_extension}" không được hỗ trợ.'
+            }, status=400)
+        
+        if image_file.content_type not in ALLOWED_CONTENT_TYPES:
+            return JsonResponse({
+                'status': 'error',
+                'message': '❌ Định dạng file không hợp lệ. Chỉ chấp nhận JPG hoặc PNG.'
+            }, status=400)
+        
+        # ✅ 2. KIỂM TRA DUNG LƯỢNG FILE (max 10MB)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        if image_file.size > MAX_FILE_SIZE:
+            size_mb = image_file.size / (1024 * 1024)
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ File quá lớn ({size_mb:.1f}MB). Dung lượng tối đa là 10MB.'
+            }, status=400)
+        
         # 🔍 KIỂM TRA NSFW BẰNG NUDENET
         print(f"\n{'='*60}")
         print(f"🔍 [AVATAR MODERATION]")
         print(f"   User: {request.user.username}")
         print(f"   File: {image_file.name}")
         print(f"   Size: {image_file.size/1024:.1f} KB")
+        print(f"   Type: {image_file.content_type}")
         
         # ✅ DÙNG NUDENET
         check_result = check_nsfw_image_local(image_file)
@@ -642,11 +807,32 @@ def upload_avatar_api(request):
                 'details': check_result.get('details', {})
             }, status=400)
         
-        # ✅ ẢNH AN TOÀN → LƯU
+        # ✅ 3. XÓA AVATAR CŨ TRƯỚC KHI LƯU MỚI (KHÔNG XÓA ẢNH DEFAULT)
         image_file.seek(0)
         profile, created = UserProfile.objects.get_or_create(user=request.user)
+        
+        # Danh sách các file default KHÔNG được xóa
+        DEFAULT_AVATARS = ['avatar.png', 'default_avatar.png', 'default.png']
+        
+        if profile.avatar and profile.avatar.name:
+            try:
+                old_avatar_name = os.path.basename(profile.avatar.name)
+                # Chỉ xóa nếu KHÔNG PHẢI ảnh default
+                if old_avatar_name not in DEFAULT_AVATARS:
+                    old_avatar_path = profile.avatar.path
+                    if os.path.exists(old_avatar_path):
+                        os.remove(old_avatar_path)
+                        print(f"🗑️ Đã xóa avatar cũ: {old_avatar_path}")
+                else:
+                    print(f"📌 Giữ lại ảnh default: {old_avatar_name}")
+            except Exception as e:
+                print(f"⚠️ Không thể xóa avatar cũ: {e}")
+        
+        # ✅ 4. LƯU AVATAR MỚI
         profile.avatar = image_file
         profile.save()
+        
+        print(f"✅ Đã lưu avatar mới cho {request.user.username}")
         
         return JsonResponse({
             'status': 'success',
@@ -859,7 +1045,7 @@ def accept_friend_request(request):
         Notification.objects.create(
             user=friend_request.sender,  # Người nhận thông báo
             notification_type='friend_accepted',  # 🔥 Type mới
-            title='🎉 Lời mời kết bạn được chấp nhận',
+            title='Lời mời kết bạn được chấp nhận 🎉',
             message=f'{friend_request.receiver.username} đã chấp nhận lời mời kết bạn của bạn',
             related_id=friend_request.receiver.id  # ID của người chấp nhận
         )
@@ -945,7 +1131,7 @@ def get_friend_requests(request, user_id):
 
 @require_http_methods(["GET"])
 def search_user(request):
-    """Tìm kiếm user theo email"""
+    """Tìm kiếm user theo email - KHÔNG HIỂN THỊ CHÍNH MÌNH"""
     try:
         query = request.GET.get('q', '')
         
@@ -954,6 +1140,10 @@ def search_user(request):
         
         # Tìm theo email
         users = User.objects.filter(email__icontains=query)[:10]
+        
+        # ✅ LỌC BỎ CHÍNH MÌNH (nếu đã đăng nhập)
+        if request.user.is_authenticated:
+            users = users.exclude(id=request.user.id)
         
         users_data = [
             {
@@ -2639,6 +2829,14 @@ def approve_suggestion_api(request, suggestion_id):
         suggestion.status = 'accepted'
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
+
+        create_suggestion_approved_notification(
+            user=suggestion.suggested_by,  # Người nhận thông báo
+            owner_username=request.user.username,  # Chủ sở hữu
+            plan_id=plan.id,
+            plan_name=plan.name,
+            suggestion_id=suggestion.id
+        )
         
         # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
         other_pending_suggestions = PlanEditSuggestion.objects.filter(
@@ -2675,6 +2873,7 @@ def approve_suggestion_api(request, suggestion_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+    
 @csrf_exempt
 @require_POST
 @login_required
@@ -2708,6 +2907,17 @@ def reject_suggestion_api(request, suggestion_id):
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
+        # 🔥 THÊM: Tạo thông báo cho người đề xuất
+        from .utils import create_suggestion_rejected_notification
+        
+        create_suggestion_rejected_notification(
+            user=suggestion.suggested_by,  # Người nhận thông báo
+            owner_username=request.user.username,  # Chủ sở hữu
+            plan_id=suggestion.shared_plan.food_plan.id,
+            plan_name=suggestion.shared_plan.food_plan.name,
+            suggestion_id=suggestion.id
+        )
+        
         return JsonResponse({
             'status': 'success',
             'message': 'Đã từ chối đề xuất'
@@ -2719,10 +2929,12 @@ def reject_suggestion_api(request, suggestion_id):
             'message': 'Không tìm thấy suggestion'
         }, status=404)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        }, status=500)        
+        }, status=500)
 
 @csrf_exempt
 @require_POST
@@ -3147,10 +3359,9 @@ def get_user_preferences(request):
 def save_user_preference(request):
     try:
         data = json.loads(request.body)
-        pref_type = data.get('type')
+        pref_type = data.get('type')  # like/dislike/allergy/medicalcondition
         item = data.get('item', '').strip()
         
-        # ✅ THÊM LOG ĐỂ DEBUG
         print(f"[SAVE PREF] User: {request.user.username}")
         print(f"[SAVE PREF] Type: {pref_type}")
         print(f"[SAVE PREF] Item: {item}")
@@ -3161,31 +3372,44 @@ def save_user_preference(request):
                 'message': 'Thiếu thông tin type hoặc item'
             }, status=400)
         
-        # Tạo hoặc bỏ qua nếu đã tồn tại
+        # ✅ BƯỚC 1: XÓA TẤT CẢ CONFLICT CŨ (trừ type hiện tại)
+        conflict_types = ['like', 'dislike', 'allergy', 'medicalcondition']
+        conflict_types.remove(pref_type)  # Loại bỏ type đang thêm
+        
+        deleted_count = 0
+        for conflict_type in conflict_types:
+            deleted, _ = UserPreference.objects.filter(
+                user=request.user,
+                preference_type=conflict_type,
+                item=item
+            ).delete()
+            
+            if deleted > 0:
+                print(f"[CONFLICT] Deleted {deleted} '{conflict_type}' for item: {item}")
+                deleted_count += deleted
+        
+        # ✅ BƯỚC 2: TẠO HOẶC BỎ QUA NẾU ĐÃ TỒN TẠI
         preference, created = UserPreference.objects.get_or_create(
             user=request.user,
             preference_type=pref_type,
             item=item
         )
         
-        # ✅ THÊM LOG
         print(f"[SAVE PREF] Created: {created}")
         
-        if created:
-            return JsonResponse({
-                'status': 'success',
-                'message': f'Đã lưu: {item}',
-                'is_new': True
-            })
-        else:
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Đã tồn tại',
-                'is_new': False
-            })
+        message = f'Đã lưu: {item}'
+        if deleted_count > 0:
+            message += f' (đã xóa {deleted_count} preference cũ xung đột)'
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message,
+            'is_new': created,
+            'conflicts_removed': deleted_count
+        })
             
     except Exception as e:
-        print(f"[SAVE PREF ERROR] {e}")  # ✅ THÊM LOG LỖI
+        print(f"[SAVE PREF ERROR] {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({
@@ -3240,7 +3464,7 @@ def delete_user_preference(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
-    
+
 # ==========================================================
 # 🔔 NOTIFICATION APIs
 # ==========================================================
@@ -3563,7 +3787,7 @@ def record_favorite_view(request, user_id):
         notification = Notification.objects.create(
             user=viewed_user,  # Người nhận thông báo
             notification_type='favorite_viewed',  # 🔴 SỬA CHỖ NÀY
-            title='👀 Có người xem quán yêu thích của bạn',
+            title='Có người xem quán yêu thích của bạn 👀',
             message=f'{viewer.username} đã xem danh sách quán yêu thích của bạn',
             related_id=viewer.id
         )
@@ -3620,6 +3844,53 @@ def log_streak_popup_api(request):
         
     except Exception as e:
         print(f"❌ [LOG POPUP ERROR] {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+@require_http_methods(["POST"])
+def switch_api_key(request):
+    """API endpoint để chuyển sang API key tiếp theo"""
+    try:
+        # Đường dẫn tới config.json
+        config_path = settings.BASE_DIR.parent / 'backend' / 'config.json'
+        
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        keys = config.get('GEMINI_API_KEYS', [])
+        current_index = config.get('CURRENT_KEY_INDEX', 0)
+        
+        if not keys:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không có API key nào'
+            }, status=400)
+        
+        # Chuyển sang key tiếp theo
+        next_index = (current_index + 1) % len(keys)
+        
+        # Nếu đã quay lại key đầu -> đã thử hết
+        if next_index == 0 and current_index != 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Đã thử hết tất cả API keys'
+            }, status=400)
+        
+        # Cập nhật index
+        config['CURRENT_KEY_INDEX'] = next_index
+        
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        
+        return JsonResponse({
+            'status': 'success',
+            'new_key': keys[next_index],
+            'key_index': next_index
+        })
+        
+    except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': str(e)

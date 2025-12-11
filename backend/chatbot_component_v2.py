@@ -1,6 +1,8 @@
 import streamlit.components.v1 as components
 import pandas as pd
 import json
+import os
+from pathlib import Path
 
 def extract_menu_from_csv(csv_path: str = "Data_with_flavor.csv"):
     """Trích xuất món ăn THÔNG MINH - Giữ dấu tiếng Việt"""
@@ -195,6 +197,75 @@ def extract_menu_from_csv(csv_path: str = "Data_with_flavor.csv"):
     except Exception as e:
         print(f"Lỗi đọc CSV: {e}")
         return {'dishes': [], 'flavors': [], 'total_restaurants': 0}
+
+def get_current_api_key():
+    """Lấy API key hiện tại từ config"""
+    try:
+        config_path = Path(__file__).parent / 'config.json'
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        keys = config.get('GEMINI_API_KEYS', [])
+        index = config.get('CURRENT_KEY_INDEX', 0)
+        
+        if not keys:
+            return None
+        
+        # Đảm bảo index không vượt quá số lượng key
+        if index >= len(keys):
+            index = 0
+            update_key_index(0)
+        
+        return keys[index]
+    except Exception as e:
+        print(f"❌ Lỗi đọc API key: {e}")
+        return None
+
+def update_key_index(new_index):
+    """Cập nhật index của key hiện tại trong config"""
+    try:
+        config_path = Path(__file__).parent / 'config.json'
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        config['CURRENT_KEY_INDEX'] = new_index
+        
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        
+        print(f"✅ Đã chuyển sang API key thứ {new_index + 1}")
+        return True
+    except Exception as e:
+        print(f"❌ Lỗi cập nhật key index: {e}")
+        return False
+
+def switch_to_next_key():
+    """Chuyển sang API key tiếp theo"""
+    try:
+        config_path = Path(__file__).parent / 'config.json'
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        keys = config.get('GEMINI_API_KEYS', [])
+        current_index = config.get('CURRENT_KEY_INDEX', 0)
+        
+        if not keys:
+            print("❌ Không có API key nào trong config")
+            return None
+        
+        # Chuyển sang key tiếp theo (vòng lặp)
+        next_index = (current_index + 1) % len(keys)
+        
+        # Nếu đã quay lại key đầu tiên -> đã thử hết
+        if next_index == 0 and current_index != 0:
+            print("⚠️ Đã thử hết tất cả API keys")
+            return None
+        
+        update_key_index(next_index)
+        return keys[next_index]
+    except Exception as e:
+        print(f"❌ Lỗi chuyển key: {e}")
+        return None
 
 def get_chatbot_html(gemini_api_key, menu_data=None):
     # Trích xuất menu nếu chưa có
@@ -1754,7 +1825,38 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
         </div>
         
         <script>
-            const GEMINI_API_KEY = '{gemini_api_key}';
+            let GEMINI_API_KEY = '{gemini_api_key}';
+            let consecutiveFailures = 0;  // Đếm số lần fail liên tiếp
+
+            // Hàm gọi API backend để đổi key
+            async function switchAPIKey() {{
+                try {{
+                    console.log('🔄 Đang yêu cầu đổi API key...');
+                    
+                    const response = await fetch(`${{API_BASE_URL}}/switch-api-key/`, {{
+                        method: 'POST',
+                        credentials: 'include'
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.status === 'success' && data.new_key) {{
+                            GEMINI_API_KEY = data.new_key;
+                            consecutiveFailures = 0;
+                            console.log('✅ Đã chuyển sang API key mới');
+                            return true;
+                        }}
+                    }}
+                    
+                    console.error('❌ Không thể đổi API key');
+                    return false;
+                }} catch (error) {{
+                    console.error('❌ Lỗi khi đổi API key:', error);
+                    return false;
+                }}
+            }}
+
+            const MAX_CONSECUTIVE_FAILURES = 3;  // Tối đa 3 lần fail thì đổi key
 
             const API_BASE_URL = '/api';
             // ===== THÊM ĐOẠN NÀY =====
@@ -2189,7 +2291,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     'gay gắt', 'gay go', 'gay cấn', 'ngay thẳng', 'ngay thật', 'sắc',
                     
                     // --- Từ chứa "lồn/lon" nhưng không phải tục ---
-                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng',
+                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng', 'vai',
                     'salon', 'lớn', 'nguồn', 'ngày', 'gay go', 'long lanh', 'long trọng', 'long', 'người',
 
                     // Tiếng Trung - chào hỏi
@@ -5181,9 +5283,32 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             signal: abortController.signal // ← THÊM DÒNG NÀY
                         }});
 
-                        if (!res.ok) {{
+                        if (!!res.ok) {{
                             const errorText = await res.text();
                             console.error(`❌ API Error (Lần ${{retryCount + 1}}):`, errorText);
+                            
+                            consecutiveFailures++;  // ✅ THÊM: Tăng đếm fail
+                            console.log(`⚠️ Consecutive failures: ${{consecutiveFailures}}/${{MAX_CONSECUTIVE_FAILURES}}`);
+                            
+                            // ✅ THÊM: Nếu fail 3 lần liên tiếp -> đổi key
+                            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {{
+                                console.log('🔄 Đã fail 3 lần liên tiếp, thử đổi API key...');
+                                const switched = await switchAPIKey();
+                                
+                                if (switched) {{
+                                    console.log('✅ Đã đổi key, thử lại ngay...');
+                                    retryCount = 0;  // Reset retry count
+                                    continue;  // Thử lại với key mới
+                                }} else {{
+                                    console.error('❌ Không thể đổi key, hết API key khả dụng');
+                                    addMessage('bot', `Xin lỗi bạn! 😢\nHệ thống đang quá tải, bạn vui lòng thử lại sau 5-10 phút nhé!`);
+                                    sendBtn.disabled = false;
+                                    isGenerating = false;
+                                    stopCountdown();
+                                    updateSendButtonState('idle');
+                                    return;
+                                }}
+                            }}
                             
                             retryCount++;
                             if (retryCount < MAX_RETRIES) {{
@@ -5191,8 +5316,11 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                                 continue;
                             }} else {{
-                                addMessage('bot', `Ới! Có lỗi xảy ra rồi bạn ơi 😢\nMình đang gặp chút vấn đề kỹ thuật, bạn thử lại sau nhé!`);
+                                addMessage('bot', `Ối! Có lỗi xảy ra rồi bạn ơi 😢\nMình đang gặp chút vấn đề kỹ thuật, bạn thử lại sau nhé!`);
                                 sendBtn.disabled = false;
+                                isGenerating = false;
+                                stopCountdown();
+                                updateSendButtonState('idle');
                                 return;
                             }}
                         }}
@@ -5201,7 +5329,9 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         let botReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
                         if (botReply) {{
-                            
+                        
+                            consecutiveFailures = 0; 
+
                             // ✅ THÊM DÒNG NÀY: BẮT TÍN HIỆU & XÓA MARKER
                             botReply = await detectAndRemovePreferences(botReply);
 
@@ -5566,16 +5696,19 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
     return chatbot_html
 
 
-def render_food_chatbot(gemini_api_key):
+def render_food_chatbot():
     """
     Render chatbot gợi ý món ăn sử dụng Gemini API (Cho Streamlit)
-    
-    Args:
-        gemini_api_key (str): API key của Gemini AI
     """
+    
+    # ✅ Lấy API key hiện tại từ config
+    gemini_api_key = get_current_api_key()
+    
+    if not gemini_api_key:
+        components.html("<h3>❌ Không tìm thấy API key trong config.json</h3>", height=200)
+        return
     
     menu_data = extract_menu_from_csv()
     chatbot_html = get_chatbot_html(gemini_api_key, menu_data)
     
-    # Sử dụng components.html với height phù hợp
     components.html(chatbot_html, height=700, scrolling=False)

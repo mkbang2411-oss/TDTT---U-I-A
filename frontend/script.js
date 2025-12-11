@@ -309,35 +309,59 @@ function renderReviewSummary(googleReviews, userReviews) {
   `;
 }
 
-function renderReviewList(googleReviews, userReviews) {
+// =========================
+// 💬 HIỂN THỊ REVIEW GIỐNG GOOGLE MAPS (CÓ NÚT XÓA)
+// =========================
+
+function renderReviewList(googleReviews, userReviews, currentUser) {
   const allReviews = [...userReviews, ...googleReviews]; // User reviews lên trước
 
   return `
     <div class="review-list">
-      <div class="review-list">
       ${
         allReviews.length === 0
           ? "<p data-translate='no_reviews'>Chưa có đánh giá nào.</p>"
           : allReviews
-              .map(
-                (r) => `
-        <div class="review-card">
+              .map((r, index) => {
+                // 🔍 KIỂM TRA QUYỀN SỞ HỮU
+                const reviewUsername = (r.user || r.ten || "").toLowerCase();
+                const isOwnReview = currentUser && 
+                  currentUser.is_logged_in && 
+                  reviewUsername === currentUser.username.toLowerCase();
+                
+                // 🔍 KIỂM TRA XEM ĐÂY CÓ PHẢI USER REVIEW KHÔNG (để lấy đúng index)
+                const isUserReview = userReviews.includes(r);
+                const actualIndex = isUserReview ? userReviews.indexOf(r) : -1;
+                
+                return `
+        <div class="review-card" data-review-index="${actualIndex}">
           <div class="review-header">
             <img src="${
-              r.avatar || // Avatar đã lưu trong file JSON (ưu tiên 1)
-              "https://cdn-icons-png.flaticon.com/512/847/847969.png" // Avatar mặc định (ưu tiên 2)
+              r.avatar || 
+              "https://cdn-icons-png.flaticon.com/512/847/847969.png"
             }" class="review-avatar">
-            <div>
+            <div style="flex: 1;">
               <div class="review-author">${r.user || r.ten || "Ẩn danh"}</div>
               <div class="review-stars">${"⭐".repeat(r.rating || 0)}</div>
               <div class="review-time">${
                 formatDate(r.date) || timeAgo(r.relative_time_description)
               }</div>
             </div>
+            ${
+              isOwnReview && isUserReview
+                ? `
+              <button class="delete-review-btn" 
+                      data-review-index="${actualIndex}"
+                      title="Xóa đánh giá">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            `
+                : ""
+            }
           </div>
           <div class="review-text">${r.comment || ""}</div>
-        </div>`
-              )
+        </div>`;
+              })
               .join("")
       }
     </div>
@@ -423,7 +447,7 @@ function openChatboxAutomatically() {
 
   if (!chatWindow || !chatbotBtn) {
     console.error("❌ Không tìm thấy chatbox elements!");
-    alert("🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!");
+    showCustomAlert("🤖 Bạn có thể thử hỏi chatbot UIAboss để tìm món ăn phù hợp hơn nhé!");
     return;
   }
 
@@ -496,7 +520,7 @@ function displayPlaces(places, shouldZoom = true) {
   visibleMarkers.clear();
 
   if (!places || places.length === 0) {
-    alert("Không tìm thấy quán nào!");
+    showCustomAlert("Không tìm thấy quán nào!");
     return false;
   }
 // 👉 THÊM DÒNG NÀY
@@ -513,7 +537,7 @@ function displayPlaces(places, shouldZoom = true) {
     const lon = parseFloat(p.lon?.toString().replace(",", "."));
 
     if (isNaN(lat) || isNaN(lon)) {
-      showWarningToast("Quán này chưa có tọa độ hợp lệ!");
+      showCustomAlert("Quán này chưa có tọa độ hợp lệ!");
       return false;
     }
 
@@ -1008,7 +1032,7 @@ if (placeId) {
       <div class="review-section">
         ${renderReviewSummary(googleReviews, userReviews)} 
         ${reviewFormHTML}
-        ${renderReviewList(googleReviews, userReviews)}
+        ${renderReviewList(googleReviews, userReviews, currentUser)}  
       </div>
     `;
 
@@ -1069,7 +1093,7 @@ if (placeId) {
         });
 
         if (response.status === 403 || response.status === 401) {
-          alert("Vui lòng đăng nhập để lưu quán!");
+          showCustomAlert("Vui lòng đăng nhập để lưu quán!");
           window.location.href = "/accounts/login/";
           return;
         }
@@ -1081,17 +1105,17 @@ if (placeId) {
           favoriteBtn.querySelector("i").classList.remove("fa-regular");
           favoriteBtn.querySelector("i").classList.add("fa-solid");
           favoriteBtn.querySelector("i").style.color = "red";
-          alert("❤️ Đã thêm vào yêu thích!");
+          showCustomAlert("❤️ Đã thêm vào yêu thích!");
         } else if (data.status === "removed") {
           favoriteBtn.classList.remove("active");
           favoriteBtn.querySelector("i").classList.remove("fa-solid");
           favoriteBtn.querySelector("i").classList.add("fa-regular");
           favoriteBtn.querySelector("i").style.color = "";
-          alert("💔 Đã xóa khỏi yêu thích!");
+          showCustomAlert("💔 Đã xóa khỏi yêu thích!");
         }
       } catch (error) {
         console.error("Lỗi:", error);
-        alert("Có lỗi xảy ra, vui lòng thử lại.");
+        showCustomAlert("Có lỗi xảy ra, vui lòng thử lại.");
       }
     });
 
@@ -1144,7 +1168,7 @@ if (submitBtn) {
     };
 
     if (!review.comment || review.rating === 0) {
-      alert("Vui lòng nhập nội dung và chọn số sao!");
+      showCustomAlert("Vui lòng nhập nội dung và chọn số sao!");
       return;
     }
 
@@ -1166,38 +1190,87 @@ if (submitBtn) {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        alert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
+        showCustomAlert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
         marker.fire("click");
       } else {
         // ❌ Nội dung không hợp lệ
         let errorMsg = result.message || "Lỗi khi gửi đánh giá";
         
         // Nếu có gợi ý nội dung tốt hơn
-        if (result.suggested_content) {
-          const useSuggestion = confirm(
-            `${errorMsg}\n\n💡 Bạn có muốn dùng nội dung gợi ý không?`
-          );
-          
-          if (useSuggestion) {
-            document.getElementById("reviewComment").value = result.suggested_content;
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Gửi đánh giá";
-            return;
-          }
-        }
+        if (response.ok && result.success) {
+        showCustomAlert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
+        marker.fire("click");
+      } else {
+        // ❌ Nội dung không hợp lệ
+        let errorMsg = result.message || "Lỗi khi gửi đánh giá";
+        alert(errorMsg);
+      }
         
         alert(errorMsg);
       }
     } catch (err) {
       console.error("Lỗi fetch API:", err);
-      alert("Lỗi kết nối. Không thể gửi đánh giá.");
+      showCustomAlert("Lỗi kết nối. Không thể gửi đánh giá.");
     } finally {
       // ✅ Reset button
       submitBtn.disabled = false;
       submitBtn.textContent = "Gửi đánh giá";
     }
   });
-}
+} // 🗑️ XỬ LÝ XÓA ĐÁNH GIÁ
+  const deleteButtons = sidebarContent.querySelectorAll('.delete-review-btn');
+  
+  deleteButtons.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation(); // Ngăn bubble event
+      
+      const reviewIndex = parseInt(btn.dataset.reviewIndex);
+      
+      // Confirm trước khi xóa
+      if (!confirm('Bạn có chắc muốn xóa đánh giá này?')) {
+        return;
+      }
+      
+      // Hiển thị loading
+      btn.disabled = true;
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      
+      try {
+        const response = await fetch(`/api/reviews/${place_id}/${reviewIndex}/`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // ✅ XÓA THÀNH CÔNG
+          showCustomAlert('Đã xóa đánh giá', 'success');
+          
+          // Reload lại reviews (click lại marker)
+          setTimeout(() => {
+            marker.fire('click');
+          }, 500);
+          
+        } else {
+          // ❌ LỖI
+          showCustomAlert(result.message || 'Không thể xóa đánh giá', 'error');
+          btn.disabled = false;
+          btn.innerHTML = originalHTML;
+        }
+        
+      } catch (error) {
+        console.error('Lỗi khi xóa review:', error);
+        showCustomAlert('Có lỗi xảy ra. Vui lòng thử lại.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+      }
+    });
+  });
 
     // 🚗 NÚT TÌM ĐƯỜNG ĐI
     const tongquanTab = sidebarContent.querySelector("#tab-tongquan");
@@ -1254,7 +1327,7 @@ if (submitBtn) {
 
       // Kiểm tra vị trí xuất phát
       if (!inputValue && !window.currentUserCoords) {
-        alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+        showCustomAlert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
         return;
       }
 
@@ -1277,7 +1350,7 @@ if (submitBtn) {
         userLat = window.currentUserCoords.lat;
         userLon = window.currentUserCoords.lon;
       } else {
-        alert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
+        showCustomAlert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
         return;
       }
 
@@ -1345,9 +1418,9 @@ if (submitBtn) {
           const success = window.foodPlannerState.selectPlace(placeData);
           if (success) {
             sidebar.classList.remove("show");
-            alert("Đã chọn quán: " + placeData.ten_quan);
+            showCustomAlert("Đã chọn quán: " + placeData.ten_quan);
           } else {
-            alert("Không thể chọn quán. Vui lòng thử lại!");
+            showCustomAlert("Không thể chọn quán. Vui lòng thử lại!");
           }
         }
       });
@@ -1437,7 +1510,7 @@ async function showFavoritePlaces() {
     console.log('🍕 [SHOW FAVORITES] Step 2: Response status:', res.status);
 
     if (res.status === 401 || res.status === 403) {
-      alert("Vui lòng đăng nhập để xem danh sách quán yêu thích!");
+      showCustomAlert("Vui lòng đăng nhập để xem danh sách quán yêu thích!");
       return false;
     }
 
@@ -1449,7 +1522,7 @@ async function showFavoritePlaces() {
     console.log('   📦 Data:', favorites);
 
     if (!favorites.length) {
-      showWarningToast("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
+      showCustomAlert("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
       return false;
     }
 
@@ -1497,7 +1570,7 @@ async function showFavoritePlaces() {
     return true;
   } catch (err) {
     console.error("❌ [FAVORITES ERROR]:", err);
-    showWarningToast("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
+    showCustomAlert("Không thể tải danh sách quán yêu thích. Vui lòng thử lại sau.");
     return false;
   }
 }
@@ -1815,7 +1888,7 @@ if (radius && radius !== "" && radius !== "all") {
       !window.currentUserCoords.lat ||
       !window.currentUserCoords.lon
     ) {
-      showWarningToast(
+      showCustomAlert(
         "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
       );
       return false;
@@ -1847,7 +1920,7 @@ if (radius && radius !== "" && radius !== "all") {
     return ok;
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
-    showWarningToast("Không thể tải dữ liệu từ server!");
+    showCustomAlert("Không thể tải dữ liệu từ server!");
     return false;
   }
 }
@@ -2273,7 +2346,7 @@ input.addEventListener("input", () => {
   const lon = parseFloat(p.lon?.toString().replace(",", "."));
 
   if (isNaN(lat) || isNaN(lon)) {
-    alert("⚠️ Quán này không có tọa độ!");
+    showCustomAlert("⚠️ Quán này không có tọa độ!");
     return;
   }
 
@@ -2432,12 +2505,12 @@ async function geocodeAddress(address) {
       };
     }
 
-    showWarningToast("❌ Không tìm thấy địa điểm này!");
+    showCustomAlert("❌ Không tìm thấy địa điểm này!");
     return null;
     
   } catch (err) {
     console.error("Lỗi khi geocode:", err);
-    showWarningToast("❌ Lỗi khi tìm địa điểm: " + err.message);
+    showCustomAlert("❌ Lỗi khi tìm địa điểm: " + err.message);
     return null;
   }
 }
@@ -2447,7 +2520,7 @@ async function geocodeAddress(address) {
 // =========================
 document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
   if (!navigator.geolocation) {
-    showWarningToast("Trình duyệt không hỗ trợ định vị GPS!");
+    showCustomAlert("Trình duyệt không hỗ trợ định vị GPS!");
     return;
   }
 
@@ -2482,7 +2555,7 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
       map.setView([userLat, userLon], 16);
     },
     (err) => {
-      showWarningToast("Không thể lấy vị trí của bạn: " + err.message);
+      showCustomAlert("Không thể lấy vị trí của bạn: " + err.message);
     }
   );
 });
@@ -2712,7 +2785,7 @@ window.addEventListener('DOMContentLoaded', () => {
             
             // ✅ Kiểm tra dữ liệu có hợp lệ không
             if (!places || places.length === 0) {
-                showWarningToast(`${friendName} chưa có quán yêu thích nào`);
+                showCustomAlert(`${friendName} chưa có quán yêu thích nào`);
                 localStorage.removeItem('friendFavorites');
                 return;
             }
