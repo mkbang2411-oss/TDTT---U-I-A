@@ -57,5 +57,6 @@ urlpatterns = [
 
     path('api/reviews/<str:place_id>/<int:review_index>/', views.delete_review_api, name='delete_review'),
 
-    path('api/switch-api-key/', views.switch_api_key, name='switch_api_key'),
+    path('get-current-api-key/', views.get_current_api_key, name='get_current_api_key'),
+    path('switch-api-key/', views.switch_api_key, name='switch_api_key'),
 ]

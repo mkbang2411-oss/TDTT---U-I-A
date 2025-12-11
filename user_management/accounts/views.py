@@ -43,6 +43,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .signals import sse_connections
 from .utils import create_suggestion_approved_notification
+import fcntl 
+from pathlib import Path
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -3848,49 +3850,170 @@ def log_streak_popup_api(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+# ============================================
+# 🔑 API KEY MANAGEMENT - FIXED VERSION
+# ============================================
+
+@csrf_exempt
+def get_current_api_key(request):
+    """API endpoint để lấy API key hiện tại - LUÔN ĐỌC FILE MỚI NHẤT"""
     
-@require_http_methods(["POST"])
-def switch_api_key(request):
-    """API endpoint để chuyển sang API key tiếp theo"""
+    if request.method != 'GET':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Only GET method allowed'
+        }, status=405)
+    
     try:
-        # Đường dẫn tới config.json
-        config_path = settings.BASE_DIR.parent / 'backend' / 'config.json'
+        print("\n" + "="*60)
+        print("🔑 [GET KEY] API được gọi")
+        print("="*60)
         
+        config_path = Path('/backend/config.json')
+        
+        print(f"📂 Config path: {config_path}")
+        print(f"📂 File exists: {config_path.exists()}")
+        
+        if not config_path.exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Config file not found at {config_path}'
+            }, status=404)
+        
+        # ✅ LUÔN ĐỌC FILE MỚI NHẤT
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         
         keys = config.get('GEMINI_API_KEYS', [])
         current_index = config.get('CURRENT_KEY_INDEX', 0)
         
+        print(f"📊 Tổng số keys: {len(keys)}")
+        print(f"🔢 Current index: {current_index}")
+        
         if not keys:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Không có API key nào'
+                'message': 'Không có API key nào trong config'
             }, status=400)
         
-        # Chuyển sang key tiếp theo
-        next_index = (current_index + 1) % len(keys)
+        # ✅ VALIDATE INDEX - NẾU SAI THÌ RESET VỀ 0
+        if current_index >= len(keys):
+            print(f"⚠️ Index {current_index} vượt quá số key {len(keys)} - Reset về 0")
+            current_index = 0
+            config['CURRENT_KEY_INDEX'] = 0
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
         
-        # Nếu đã quay lại key đầu -> đã thử hết
-        if next_index == 0 and current_index != 0:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Đã thử hết tất cả API keys'
-            }, status=400)
+        current_key = keys[current_index]
         
-        # Cập nhật index
-        config['CURRENT_KEY_INDEX'] = next_index
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
+        print(f"✅ Trả về key index {current_index}")
+        print(f"🔑 Key: {current_key[:20]}...")
+        print("="*60 + "\n")
         
         return JsonResponse({
             'status': 'success',
-            'new_key': keys[next_index],
-            'key_index': next_index
+            'api_key': current_key,
+            'key_index': current_index,
+            'total_keys': len(keys)
         })
         
     except Exception as e:
+        print(f"💥 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def switch_api_key(request):
+    """API endpoint để chuyển sang API key tiếp theo - VỚI FILE LOCK"""
+    
+    if request.method not in ['GET', 'POST']:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Method {request.method} not allowed'
+        }, status=405)
+    
+    try:
+        print("\n" + "="*60)
+        print("🔄 [SWITCH KEY] API được gọi")
+        print(f"🔢 Method: {request.method}")
+        print("="*60)
+        
+        config_path = Path('/backend/config.json')
+        
+        print(f"📂 Config path: {config_path}")
+        
+        if not config_path.exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Config file not found at {config_path}'
+            }, status=404)
+        
+        # 🔒 DÙNG FILE LOCK ĐỂ TRÁNH RACE CONDITION
+        with open(config_path, 'r+', encoding='utf-8') as f:
+            try:
+                # Lock file (chỉ 1 process được ghi tại 1 thời điểm)
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                
+                # Đọc config
+                config = json.load(f)
+                keys = config.get('GEMINI_API_KEYS', [])
+                current_index = config.get('CURRENT_KEY_INDEX', 0)
+                
+                print(f"📊 Tổng số keys: {len(keys)}")
+                print(f"🔢 Current index: {current_index}")
+                
+                if not keys:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Không có API key nào'
+                    }, status=400)
+                
+                # Nếu chỉ có 1 key → không thể đổi
+                if len(keys) == 1:
+                    print("⚠️ CHỈ CÓ 1 KEY - KHÔNG THỂ ĐỔI")
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Chỉ có 1 API key, không thể chuyển đổi'
+                    }, status=400)
+                
+                # Chuyển sang key tiếp theo
+                next_index = (current_index + 1) % len(keys)
+                
+                print(f"🔄 Chuyển từ index {current_index} → {next_index}")
+                
+                # Cập nhật index
+                config['CURRENT_KEY_INDEX'] = next_index
+                
+                # Ghi lại file (từ đầu)
+                f.seek(0)
+                json.dump(config, f, indent=2, ensure_ascii=False)
+                f.truncate()
+                
+                print(f"✅ ĐÃ CẬP NHẬT INDEX: {current_index} → {next_index}")
+                print(f"🔑 Key mới: {keys[next_index][:20]}...")
+                print("="*60 + "\n")
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'new_key': keys[next_index],
+                    'current_index': next_index,
+                    'total_keys': len(keys)
+                })
+                
+            finally:
+                # Unlock file (quan trọng!)
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        
+    except Exception as e:
+        print(f"💥 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
