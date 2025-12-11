@@ -6096,20 +6096,24 @@ function drawRouteOnMap(plan) {
     
     async function drawSingleRoute(startPoint, endPoint, index) {
         try {
-            const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?overview=full&geometries=geojson`;
+            // 🔥 MAPBOX URL
+            const MAPBOX_TOKEN = 'pk.eyJ1IjoidHRraGFuZzI0MTEiLCJhIjoiY21qMWVpeGJnMDZqejNlcHdkYnQybHdhbCJ9.V0_GUI2CBTtEhkrnajG3Ug'; // Token demo, bạn nên lấy token riêng tại mapbox.com
             
-            // 🔥 THÊM: Truyền signal vào fetch
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startPoint.lon},${startPoint.lat};${endPoint.lon},${endPoint.lat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+            
             const response = await fetch(url, { signal });
-
             const data = await response.json();
             
-            if (data.code === 'Ok' && data.routes && data.routes[0]) {
+            // 🔥 MapBox format: data.routes[0].geometry.coordinates
+            if (data.routes && data.routes[0] && data.routes[0].geometry) {
                 const route = data.routes[0];
+                
+                // MapBox trả: coordinates = [[lon, lat], [lon, lat]]
                 const coords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
                 
                 const color = getRouteColor(index, totalRoutes);
                 
-                // 🔥 KIỂM TRA TRÙNG VÀ TÍNH OFFSET (pixels nhỏ)
+                // 🔥 KIỂM TRA TRÙNG VÀ TÍNH OFFSET
                 let offsetPixels = 0;
                 
                 for (let i = 0; i < drawnSegments.length; i++) {
@@ -6118,7 +6122,6 @@ function drawRouteOnMap(plan) {
                             checkRouteOverlap(coords, seg.coords)
                         ).length;
                         
-                        // 🔥 Offset 3 pixels mỗi đường (luân phiên trái/phải)
                         offsetPixels = (overlapCount % 2 === 0) ? 8 : -8;
                         console.log(`⚠️ Đường ${index} trùng ${overlapCount} đường, offset = ${offsetPixels}px`);
                         break;
@@ -6127,7 +6130,7 @@ function drawRouteOnMap(plan) {
                 
                 drawnSegments.push({ coords: coords, index: index });
                 
-                // 🔥 Vẽ VIỀN TRẮNG
+                // VẼ VIỀN TRẮNG
                 const outlinePolyline = L.polyline(coords, {
                     color: '#FFFFFF',
                     weight: routeWeight + 3,
@@ -6137,7 +6140,7 @@ function drawRouteOnMap(plan) {
                 
                 routeLayers.push(outlinePolyline);
                 
-                // 🔥 VẼ ĐƯỜNG MÀU CHÍNH
+                // VẼ ĐƯỜNG MÀU CHÍNH
                 const mainPolyline = L.polyline(coords, {
                     color: color,
                     weight: routeWeight,
@@ -6146,7 +6149,7 @@ function drawRouteOnMap(plan) {
                     dashArray: null
                 }).addTo(map);
                 
-                // ✅ ÁP DỤNG OFFSET SAU KHI ADD VÀO MAP (cho cả 2 layer)
+                // ÁP DỤNG OFFSET
                 if (offsetPixels !== 0) {
                     if (typeof outlinePolyline.setOffset === 'function') {
                         outlinePolyline.setOffset(offsetPixels);
@@ -6228,7 +6231,10 @@ function drawRouteOnMap(plan) {
                 }
                 
             } else {
+                // 🔥 LOG ĐỂ DEBUG
+                console.log('❌ MapBox response:', data);
                 console.log('Không tìm thấy route, dùng đường thẳng');
+                
                 const color = getRouteColor(index, totalRoutes);
                 
                 const outlineLine = L.polyline(
@@ -6245,13 +6251,12 @@ function drawRouteOnMap(plan) {
             }
             
         } catch (error) {
-            // 🔥 BỎ QUA NẾU REQUEST BỊ HỦY
             if (error.name === 'AbortError') {
                 console.log(`⚠️ Request vẽ đường ${index} đã bị hủy`);
                 return;
             }
         
-            console.error('Lỗi vẽ route:', error);
+            console.error('❌ Lỗi vẽ route:', error);
             const color = getRouteColor(index, totalRoutes);
             
             const outlineLine = L.polyline(

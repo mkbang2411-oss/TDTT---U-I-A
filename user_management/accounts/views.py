@@ -43,8 +43,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .signals import sse_connections
 from .utils import create_suggestion_approved_notification
-import fcntl 
+import platform
 from pathlib import Path
+if platform.system() == 'Windows':
+    import msvcrt
+else:
+    import fcntl
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -1133,32 +1137,36 @@ def get_friend_requests(request, user_id):
 
 @require_http_methods(["GET"])
 def search_user(request):
-    """Tìm kiếm user theo email - KHÔNG HIỂN THỊ CHÍNH MÌNH"""
+    query = request.GET.get('q', '').strip()
+
+    if not query:
+        return JsonResponse({'error': 'Cần nhập email để tìm kiếm'}, status=400)
+
     try:
-        query = request.GET.get('q', '')
-        
-        if not query:
-            return JsonResponse({'error': 'Cần nhập email để tìm kiếm'}, status=400)
-        
-        # Tìm theo email
-        users = User.objects.filter(email__icontains=query)[:10]
-        
-        # ✅ LỌC BỎ CHÍNH MÌNH (nếu đã đăng nhập)
+        # B1: Query cơ bản
+        users = User.objects.filter(email__icontains=query)
+
+        # B2: Không hiển thị chính mình
         if request.user.is_authenticated:
             users = users.exclude(id=request.user.id)
-        
-        users_data = [
-            {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email
-            }
-            for user in users
-        ]
-        
+
+        # B3: Slice sau khi filter
+        users = users[:10]
+
+        # B4: Chuẩn bị dữ liệu trả về
+        users_data = [{
+            'id': u.id,
+            'username': u.username,
+            'email': u.email
+        } for u in users]
+
         return JsonResponse({'users': users_data})
+
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        import traceback
+        print("❌ [SEARCH_USER ERROR] query:", repr(query))
+        traceback.print_exc()
+        return JsonResponse({'error': 'Có lỗi server khi tìm kiếm người dùng'}, status=500)
 @login_required
 @require_http_methods(["GET"])
 def get_current_user(request):
@@ -3957,8 +3965,13 @@ def switch_api_key(request):
         # 🔒 DÙNG FILE LOCK ĐỂ TRÁNH RACE CONDITION
         with open(config_path, 'r+', encoding='utf-8') as f:
             try:
-                # Lock file (chỉ 1 process được ghi tại 1 thời điểm)
-                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                # Lock file (cross-platform)
+                if platform.system() == 'Windows':
+                    # Windows: lock 1 byte đầu file
+                    msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+                else:
+                    # Unix/Linux
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 
                 # Đọc config
                 config = json.load(f)
@@ -4007,8 +4020,15 @@ def switch_api_key(request):
                 })
                 
             finally:
-                # Unlock file (quan trọng!)
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                # Unlock file (cross-platform)
+                if platform.system() == 'Windows':
+                    try:
+                        f.seek(0)
+                        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                    except:
+                        pass  # Nếu lỗi unlock thì bỏ qua
+                else:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         
     except Exception as e:
         print(f"💥 EXCEPTION: {e}")
