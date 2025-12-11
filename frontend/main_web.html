@@ -1217,6 +1217,8 @@
     
     // Yêu cầu quyền thông báo
     requestNotificationPermission();
+
+    window.renderList = renderList;
     
     // Cleanup khi tắt trang
     window.addEventListener('beforeunload', function() {
