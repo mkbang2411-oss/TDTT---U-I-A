@@ -40,12 +40,10 @@ urlpatterns = [
     path('food-plan/check-pending/<int:plan_id>/', views.check_pending_suggestion_api, name='check_pending_suggestion'),
     
     # 🔥 THÊM DÒNG NÀY - API xem đề xuất của bản thân
-    path('food-plan/my-suggestions/<int:plan_id>/', views.get_my_suggestions_api, name='get_my_suggestions'),
-    
+    path('food-plan/my-suggestions/<int:plan_id>/', views.get_my_suggestions_api, name='get_my_suggestions'),    
     path('food-plan/leave-shared/<int:plan_id>/', views.leave_shared_plan_api, name='leave_shared_plan'),
     path('food-plan/suggestion-approve-single/', views.suggestion_approve_single, name='suggestion_approve_single'),
     path('food-plan/approve-all-changes/', views.approve_all_changes_api, name='approve_all_changes'),
-
     # 🔔 NOTIFICATION APIs
     path('notifications/<int:notification_id>/delete/', views.delete_notification_api, name='delete_notification'),
     path('notifications/', views.get_notifications_api, name='get_notifications'),

@@ -1380,8 +1380,8 @@ def get_music_player_html() -> str:
         // Tự động phát bài GIAO HƯỞNG TÂN THỜI nếu chưa có bài nào đang chạy
         if (currentIndex === -1 && playlistMode === "auto") {
             let targetIndex = MUSIC_TRACKS.findIndex(function(track) {
-                return track.title.includes("GIAO HƯỞNG TÂN THỜI") ||
-                    track.file.includes("GIAO HƯỞNG TÂN THỜI");
+                return track.title.includes("Other Christmas playlist (but no speed up) - menu de noel") ||
+                    track.file.includes("GOther Christmas playlist (but no speed up) - menu de noel");
             });
             
             if (targetIndex === -1) {

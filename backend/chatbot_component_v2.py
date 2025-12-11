@@ -5204,10 +5204,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             Respond naturally, caringly and helpfully in the SAME LANGUAGE the user used.`;
 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${{GEMINI_API_KEY}}`;
-
-                console.log('📡 API URL:', apiUrl.replace(GEMINI_API_KEY, '***HIDDEN***'));
-
                 // ✅ THÊM CƠ CHẾ RETRY - PHẦN MỚI BẮT ĐẦU TỪ ĐÂY
                 const MAX_RETRIES = 3;
                 const RETRY_DELAY = 3000;
@@ -5226,6 +5222,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     }}
 
                     try {{
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${{GEMINI_API_KEY}}`;
+                        
+                        console.log(`🔄 Thử gọi API lần ${{retryCount + 1}}/${{MAX_RETRIES}}...`);
+                        console.log('🔑 Key index đang dùng:', window.CURRENT_KEY_INDEX || 0);
+                        console.log('📡 API URL:', apiUrl.replace(GEMINI_API_KEY, '***HIDDEN***'));
+
                         console.log(`🔄 Thử gọi API lần ${{retryCount + 1}}/${{MAX_RETRIES}}...`);
 
                         // 🆕 CHECK: Nếu đã cancel → dừng ngay
@@ -5320,6 +5322,34 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                 
                                 if (switched) {{
                                     console.log('💚 ĐÃ ĐỔI KEY THÀNH CÔNG! Reset retry và thử lại...');
+                                    
+                                    // 🔥 CRITICAL: LẤY LẠI KEY MỚI TỪ BACKEND
+                                    try {{
+                                        const keyResponse = await fetch('/api/get-current-api-key/');
+                                        const keyData = await keyResponse.json();
+                                        
+                                        if (keyData.status === 'success' && keyData.api_key) {{
+                                            const oldIndex = window.CURRENT_KEY_INDEX || 0;
+                                            GEMINI_API_KEY = keyData.api_key;
+                                            window.CURRENT_KEY_INDEX = keyData.current_index;
+
+                                            console.log('🔄 CẬP NHẬT KEY:');
+                                            console.log('   📤 Key cũ index:', oldIndex);
+                                            console.log('   📥 Key mới index:', window.CURRENT_KEY_INDEX);
+                                        }} else {{
+                                            console.error('❌ Backend không trả về key mới:', keyData);
+                                            throw new Error('Cannot get new API key');
+                                        }}
+                                    }} catch (fetchError) {{
+                                        console.error('💥 Lỗi khi fetch key mới:', fetchError);
+                                        addMessage('bot', 'Xin lỗi! Không thể đổi API key. Vui lòng thử lại sau!');
+                                        sendBtn.disabled = false;
+                                        isGenerating = false;
+                                        stopCountdown();
+                                        updateSendButtonState('idle');
+                                        return;
+                                    }}
+                                    
                                     retryCount = 0;
                                     consecutiveFailures = 0;
                                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -5480,7 +5510,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         headers: {{
                             'Content-Type': 'application/json',
                         }}
-                        // ❌ BỎ CSRF Token đi, vì đã có @csrf_exempt
                     }});
 
                     console.log('📊 Backend response status:', response.status);
@@ -5495,14 +5524,23 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     
                     if (data.status === 'success') {{
                         const oldIndex = window.CURRENT_KEY_INDEX || 0;
+
                         GEMINI_API_KEY = data.new_key;
-                        window.CURRENT_KEY_INDEX = data.current_index; // Backend trả về index mới
+                        window.CURRENT_KEY_INDEX = data.current_index;
 
                         console.log('✅✅✅ ĐÃ CẬP NHẬT KEY MỚI ✅✅✅');
                         console.log('   🔑 Key cũ index:', oldIndex);
                         console.log('   🔑 Key mới index:', window.CURRENT_KEY_INDEX);
                         
-                        return true;
+                        // ✅ VERIFY: Kiểm tra xem key đã đổi chưa
+                        if (GEMINI_API_KEY === data.new_key) {{
+                            console.log('✅ VERIFY: Key đã được cập nhật thành công');
+                            return true;
+                        }} else {{
+                            console.error('❌ VERIFY FAILED: Key không khớp!');
+                            return false;
+                        }}
+                        
                     }} else {{
                         console.error('❌ Backend trả về error:', data.message);
                         return false;

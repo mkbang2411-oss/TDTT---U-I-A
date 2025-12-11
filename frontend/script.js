@@ -1431,9 +1431,19 @@ if (submitBtn) {
     }
 
     // 🚗 HÀM VẼ ĐƯỜNG ĐI
+    // 🔥 THÊM TRƯỚC HÀM drawRoute (ở đầu file hoặc trước khi dùng)
+    const MAPBOX_TOKEN = 'pk.eyJ1IjoidHRraGFuZzI0MTEiLCJhIjoiY21qMWVpeGJnMDZqejNlcHdkYnQybHdhbCJ9.V0_GUI2CBTtEhkrnajG3Ug' // Token demo
+
+    // 🔥 THAY HÀM drawRoute CŨ BẰNG CODE NÀY:
     function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
       routeControl = L.Routing.control({
         waypoints: [L.latLng(userLat, userLon), L.latLng(destLat, destLon)],
+        
+        // 🔥🔥🔥 THÊM DÒNG NÀY ĐỂ DÙNG MAPBOX 🔥🔥🔥
+        router: L.Routing.mapbox(MAPBOX_TOKEN, {
+          profile: 'mapbox/driving' // hoặc 'mapbox/walking', 'mapbox/cycling'
+        }),
+        
         lineOptions: {
           styles: [
             { color: "white", weight: 5, opacity: 1 },
@@ -1479,14 +1489,7 @@ if (submitBtn) {
           infoEl.className = "route-info";
           tongquanTab.appendChild(infoEl);
         }
-        infoEl.innerHTML = `
-          <span data-translate="distance_label"></span>: ${distanceKm} km<br>
-          <span data-translate="duration_label"></span>: ${durationMin} phút
-        `;
-              // ✅ Áp dụng ngôn ngữ sau khi render
-      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
-        window.LanguageToggle.applyTranslations();
-      }
+        infoEl.innerHTML = `🛣️ Quãng đường: ${distanceKm} km<br>⏱️ Thời gian: ${durationMin} phút`;
       });
     }
   });
