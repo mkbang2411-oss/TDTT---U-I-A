@@ -123,12 +123,12 @@ function showCustomAlert(message, type = 'info') {
     <div style="display: flex; align-items: start; gap: 15px;">
       <div style="font-size: 32px;">${icon}</div>
       <div style="flex: 1;">
-        <h3 style="margin: 0 0 10px 0; color: ${iconColor}; font-size: 20px; font-weight: 600;">Thông báo</h3>
+        <h3 data-translate="notification_title" style="margin: 0 0 10px 0; color: ${iconColor}; font-size: 20px; font-weight: 600;">Thông báo</h3>
         <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
       </div>
       <button id="closeAlertBtn" style="background: none; border: none; font-size: 24px; color: #999; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;">×</button>
     </div>
-    <button id="okAlertBtn" style="margin-top: 20px; width: 100%; padding: 12px; background: linear-gradient(135deg, ${iconColor} 0%, ${iconColor}dd 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s;">OK</button>
+    <button id="okAlertBtn" data-translate="ok_button" style="margin-top: 20px; width: 100%; padding: 12px; background: linear-gradient(135deg, ${iconColor} 0%, ${iconColor}dd 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s;">OK</button>
   `;
 
   overlay.appendChild(popup);
@@ -284,7 +284,7 @@ function renderReviewSummary(googleReviews, userReviews) {
         <div class="review-stars">${"⭐".repeat(
           Math.round(avgRating) || 0
         )}</div>
-        <div class="review-total">${allReviews.length} đánh giá</div>
+        <div class="review-total" data-translate="reviews_count">${allReviews.length} đánh giá</div>
       </div>
 
       <div class="review-bars">
@@ -320,7 +320,7 @@ function renderReviewList(googleReviews, userReviews, currentUser) {
     <div class="review-list">
       ${
         allReviews.length === 0
-          ? "<p>Chưa có đánh giá nào.</p>"
+          ? "<p data-translate='no_reviews'>Chưa có đánh giá nào.</p>"
           : allReviews
               .map((r, index) => {
                 // 🔍 KIỂM TRA QUYỀN SỞ HỮU
@@ -828,15 +828,65 @@ if (placeId) {
 
   // 🟢 TOOLTIP khi rê chuột vào marker
   const tooltipHTML = `
-    <div style="text-align:center;min-width:180px;">
-      <strong>${p.ten_quan || "Không tên"}</strong><br>
-      ${p.hinh_anh 
-        ? `<img src="${p.hinh_anh}" style="width:100px;height:70px;object-fit:cover;border-radius:6px;margin-top:4px;">` 
-        : ""}
-      <div style="font-size:13px;margin-top:4px;">
-        <i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}<br>
-        <i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}
+    <div class="tooltip-inner" style="
+        text-align:center;
+        min-width:180px;
+        padding:12px;
+        border-radius:14px;
+
+        /* GLASS + GRADIENT CAM KHÔNG VIỀN TRẮNG */
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.96) 0%,
+          rgba(255, 249, 250, 0.84) 100%
+        );
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+
+        box-shadow: 0 4px 12px rgba(167, 147, 139, 0.5);
+        font-family: 'Montserrat', sans-serif;
+      ">
+
+        <strong style="
+          display:block;
+          font-size:14px;
+          margin-bottom:4px;
+          color: #ff3c00ff; /* đỏ hơi cam đậm */
+          font-weight:888; /* đậm nhất */
+          text-shadow:0 2px 6px rgba(255, 255, 255, 0.3);
+        ">
+        ${p.ten_quan || "Không tên"}
+      </strong>
+
+      ${
+        p.hinh_anh
+        ? `<img src="${p.hinh_anh}"
+            style="
+              width:100px;
+              height:70px;
+              object-fit:cover;
+              border-radius:6px;
+              margin-top:4px;
+              box-shadow:0 3px 8px rgba(0,0,0,0.2);
+              transition: transform .25s ease;
+            "
+            onmouseover="this.style.transform='scale(1.04)'"
+            onmouseout="this.style.transform='scale(1)'"
+          >`
+        : ""
+      }
+
+      <div style="
+        font-size:13px;
+        margin-top:4px;
+        line-height:1.5;
+        color:#ff6f00ff; /* ép chữ trắng hoàn toàn */
+        text-shadow:0 1px 3px rgba(255, 255, 255, 0.2);
+      ">
+        <i class="fa-regular fa-clock" style="color:#ff6f00ff;"></i> ${p.gio_mo_cua || "Không rõ"}<br>
+        <i class="fa-solid fa-coins" style="color:#ff6f00ff;"></i> ${p.gia_trung_binh || "Không có"}
       </div>
+
     </div>
   `;
 
@@ -898,12 +948,36 @@ if (placeId) {
         ? `<p style="color:#ff6600;font-weight:bold;">🔥 Đây là khu ẩm thực sầm uất, có nhiều món ăn và hoạt động về đêm.</p>`
         : ""}
 
-      <p><i class="fa-solid fa-location-dot"></i> ${p.dia_chi || "Không rõ"}</p>
-      <p><i class="fa-solid fa-phone"></i> ${p.so_dien_thoai || "Không có"}</p>
-      <p><i class="fa-solid fa-star"></i> ${p.rating || "Chưa có"}</p>
-      <p><i class="fa-regular fa-clock"></i> ${p.gio_mo_cua || "Không rõ"}</p>
-      <p><i class="fa-solid fa-coins"></i> ${p.gia_trung_binh || "Không có"}</p>
-      <p><i class="fa-solid fa-utensils"></i> ${p.khau_vi || "Không xác định"}</p>
+      <p>
+        <i class="fa-solid fa-location-dot"></i>
+        <span>${p.dia_chi || '<span data-translate="none_data_ro"></span>'}</span>
+      </p>
+
+      <p>
+        <i class="fa-solid fa-phone"></i>
+        <span>${p.so_dien_thoai || '<span data-translate="none_data_co"></span>'}</span>
+      </p>
+
+      <p>
+        <i class="fa-solid fa-star"></i>
+        <span>${p.rating || '<span data-translate="none_data_cc"></span>'}</span>
+      </p>
+
+      <p>
+        <i class="fa-regular fa-clock"></i>
+        <span>${p.gio_mo_cua || '<span data-translate="none_data_ro"></span>'}</span>
+      </p>
+
+      <p>
+        <i class="fa-solid fa-coins"></i>
+        <span>${p.gia_trung_binh || '<span data-translate="none_data_co"></span>'}</span>
+      </p>
+
+      <p>
+        <i class="fa-solid fa-utensils"></i>
+        <span>${p.khau_vi || '<span data-translate="none_data"></span>'}</span>
+      </p>
+
 
       <!-- 🔖 Nút lưu quán (ẩn) -->
       <div style="margin-top:10px;display:flex;justify-content:center;">
@@ -920,15 +994,16 @@ if (placeId) {
         ? p.thuc_don.split(/[;,]+/).map(img => 
             `<img src="${img.trim()}" class="menu-img" alt="Thực đơn">`
           ).join("")
-        : "<p>Không có hình thực đơn.</p>"}
+        : "<p><span data-translate='none_menu'></span></p>"}
     `;
+
 
     // 📝 TAB ĐÁNH GIÁ - Form nhập review
     let reviewFormHTML = "";
     if (currentUser && currentUser.is_logged_in) {
       reviewFormHTML = `
         <div class="review-form logged-in">
-          <h3 class="form-title">📝 Thêm đánh giá của bạn</h3>
+          <h3 class="form-title" data-translate="add_review_title">📝 Thêm đánh giá của bạn</h3>
           <div class="form-header">
             <img src="${currentUser.avatar}" class="user-avatar-form" alt="Avatar">
             <span class="user-name">${currentUser.username}</span>
@@ -940,15 +1015,15 @@ if (placeId) {
             <span class="star" data-value="4">★</span>
             <span class="star" data-value="5">★</span>
           </div>
-          <textarea id="reviewComment" placeholder="Cảm nhận của bạn..."></textarea>
-          <button id="submitReview">Gửi đánh giá</button>
+          <textarea id="reviewComment" data-translate-placeholder="review_placeholder" placeholder="Cảm nhận của bạn..."></textarea>
+          <button id="submitReview" data-translate="submit_review" >Gửi đánh giá</button>
         </div>
       `;
     } else {
       reviewFormHTML = `
         <div class="review-form">
-          <h3>📝 Thêm đánh giá của bạn</h3>
-          <p>Vui lòng <a href="/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
+          <h3 data-translate="add_review_title">📝 Thêm đánh giá của bạn</h3>
+          <p data-translate="login_to_review">Vui lòng <a href="/accounts/login/" target="_blank">đăng nhập</a> để gửi đánh giá.</p>
         </div>
       `;
     }
@@ -964,9 +1039,9 @@ if (placeId) {
     // 📝 NỘI DUNG SIDEBAR HOÀN CHỈNH
     const contentHTML = `
       <div class="tab-bar">
-        <button class="tab-btn active" data-tab="tongquan">Tổng quan</button>
-        <button class="tab-btn" data-tab="thucdon">Thực đơn</button>
-        <button class="tab-btn" data-tab="danhgia">Đánh giá</button>
+        <button class="tab-btn active" data-tab="tongquan" data-translate="overview_tab">Tổng quan</button>
+        <button class="tab-btn" data-tab="thucdon" data-translate="menu_tab">Thực đơn</button>
+        <button class="tab-btn" data-tab="danhgia" data-translate="reviews_tab">Đánh giá</button>
       </div>
 
       <div id="tab-tongquan" class="tab-content active">${tongquanHTML}</div>
@@ -976,7 +1051,26 @@ if (placeId) {
 
     sidebarContent.innerHTML = contentHTML;
     sidebar.classList.add("show");
-    document.getElementById('sidebar-title').textContent = "Thông tin chi tiết";
+
+        // ✅ THÊM DÒNG NÀY
+    if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+      window.LanguageToggle.applyTranslations();
+    }
+    // Khai báo bảng dịch
+    const translations = {
+        vi: {
+            sidebar_title: "Thông tin chi tiết",
+        },
+        en: {
+            sidebar_title: "Details",
+        }
+    };
+
+    // Hàm đổi ngôn ngữ
+    function setLanguage(lang) {
+        document.getElementById('sidebar-title').textContent =
+            translations[lang].sidebar_title;
+    }
 
     // ❤️ XỬ LÝ NÚT YÊU THÍCH
     const favoriteBtn = document.getElementById("favoriteBtn");
@@ -1187,12 +1281,20 @@ if (submitBtn) {
 
     if (isCurrentPlaceRouted) {
       // ✅ Đang chỉ đường đến quán này → Hiển thị nút "Tắt chỉ đường"
-      routeBtn.textContent = "📍 Tắt chỉ đường";
+      routeBtn.innerHTML = '<span data-translate="turn_off_route">🚫 Tắt chỉ đường</span>';
       routeBtn.style.background = "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)";
+      // ✅ Áp dụng ngôn ngữ sau khi render
+      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
+      }
     } else {
       // ✅ Chưa chỉ đường hoặc đang chỉ đường quán khác → Hiển thị "Tìm đường đi"
-      routeBtn.textContent = "🔍 Tìm đường đi";
+      routeBtn.innerHTML = '<span data-translate="find_route">🚗 Tìm đường đi</span>';
       routeBtn.style.background = "";
+      // ✅ Áp dụng ngôn ngữ sau khi render
+      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
+      }
     }
 
     routeBtn.className = "route-btn";
@@ -1212,8 +1314,12 @@ if (submitBtn) {
         if (infoEl) infoEl.remove();
 
         // Đổi lại nút
-        routeBtn.textContent = "🔍 Tìm đường đi";
+        routeBtn.innerHTML = '<span data-translate="find_route">🚗 Tìm đường đi</span>';
         routeBtn.style.background = "";
+        // ✅ THÊM DÒNG NÀY
+        if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+          window.LanguageToggle.applyTranslations();
+        }
         return;
       }
 
@@ -1223,6 +1329,11 @@ if (submitBtn) {
       if (!inputValue && !window.currentUserCoords) {
         showCustomAlert("⚠️ Vui lòng nhập địa điểm hoặc bật định vị GPS trước khi tìm đường!");
         return;
+      }
+
+            // ✅ Áp dụng ngôn ngữ sau khi render
+      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
       }
 
       let userLat, userLon;
@@ -1254,9 +1365,19 @@ if (submitBtn) {
       currentPlaceId = place_id;
 
       // ✅ Đổi nút thành "Tắt chỉ đường"
-      routeBtn.textContent = "📍 Tắt chỉ đường";
+      routeBtn.innerHTML = '<span data-translate="turn_off_route">🚫 Tắt chỉ đường</span>';
       routeBtn.style.background = "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)";
+      // ✅ Áp dụng ngôn ngữ sau khi render
+      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
+      }
     });
+
+          // ✅ Áp dụng ngôn ngữ sau khi render
+      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
+      }
+
 
     sidebar.classList.remove("hidden");
 
@@ -1303,12 +1424,26 @@ if (submitBtn) {
           }
         }
       });
+            // ✅ Áp dụng ngôn ngữ sau khi render
+      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
+      }
     }
 
     // 🚗 HÀM VẼ ĐƯỜNG ĐI
+    // 🔥 THÊM TRƯỚC HÀM drawRoute (ở đầu file hoặc trước khi dùng)
+    const MAPBOX_TOKEN = 'pk.eyJ1IjoidHRraGFuZzI0MTEiLCJhIjoiY21qMWVpeGJnMDZqejNlcHdkYnQybHdhbCJ9.V0_GUI2CBTtEhkrnajG3Ug' // Token demo
+
+    // 🔥 THAY HÀM drawRoute CŨ BẰNG CODE NÀY:
     function drawRoute(userLat, userLon, destLat, destLon, tongquanTab) {
       routeControl = L.Routing.control({
         waypoints: [L.latLng(userLat, userLon), L.latLng(destLat, destLon)],
+        
+        // 🔥🔥🔥 THÊM DÒNG NÀY ĐỂ DÙNG MAPBOX 🔥🔥🔥
+        router: L.Routing.mapbox(MAPBOX_TOKEN, {
+          profile: 'mapbox/driving' // hoặc 'mapbox/walking', 'mapbox/cycling'
+        }),
+        
         lineOptions: {
           styles: [
             { color: "white", weight: 5, opacity: 1 },
@@ -1872,7 +2007,6 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
       }),
     })
       .addTo(map)
-      .bindPopup(`📍 ${gpsInputValue}`)
       .openPopup();
 
     window.currentUserCoords = { lat: coords.lat, lon: coords.lon };
@@ -2419,7 +2553,6 @@ document.getElementById("gpsLocateBtn").addEventListener("click", async () => {
         }),
       })
         .addTo(map)
-        .bindPopup("📍 Bạn đang ở đây (tọa độ thật)")
         .openPopup();
 
       map.setView([userLat, userLon], 16);
