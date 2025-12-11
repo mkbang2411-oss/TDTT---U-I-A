@@ -43,8 +43,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .signals import sse_connections
 from .utils import create_suggestion_approved_notification
-import fcntl 
+import platform
 from pathlib import Path
+if platform.system() == 'Windows':
+    import msvcrt
+else:
+    import fcntl
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
 def social_account_already_exists(request):
@@ -3957,8 +3961,13 @@ def switch_api_key(request):
         # 🔒 DÙNG FILE LOCK ĐỂ TRÁNH RACE CONDITION
         with open(config_path, 'r+', encoding='utf-8') as f:
             try:
-                # Lock file (chỉ 1 process được ghi tại 1 thời điểm)
-                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                # Lock file (cross-platform)
+                if platform.system() == 'Windows':
+                    # Windows: lock 1 byte đầu file
+                    msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+                else:
+                    # Unix/Linux
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 
                 # Đọc config
                 config = json.load(f)
@@ -4007,8 +4016,15 @@ def switch_api_key(request):
                 })
                 
             finally:
-                # Unlock file (quan trọng!)
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                # Unlock file (cross-platform)
+                if platform.system() == 'Windows':
+                    try:
+                        f.seek(0)
+                        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                    except:
+                        pass  # Nếu lỗi unlock thì bỏ qua
+                else:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         
     except Exception as e:
         print(f"💥 EXCEPTION: {e}")
