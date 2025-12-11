@@ -52,9 +52,9 @@
             <div class="notification-modal-header">
                 <div class="notification-modal-title">
                     <span class="notification-modal-icon">🔔</span>
-                    Thông báo
+                    <span data-translate="notification_title">Thông báo</span>
                 </div>
-                <button id="notificationCloseBtn" class="notification-close-btn" title="Đóng">
+                <button id="notificationCloseBtn" class="notification-close-btn" title="Đóng" data-translate-title="close">
                     &times;
                 </button>
             </div>
@@ -64,16 +64,16 @@
             </div>
 
             <div class="notification-modal-footer">
-                <button id="markAllAsReadBtn" class="notification-footer-btn">
+                <button id="markAllAsReadBtn" class="notification-footer-btn" data-translate="mark_all_read">
                     ✔ Đánh dấu tất cả đã đọc
                 </button>
 
-                <button id="deleteAllNotificationsBtn" class="notification-delete-all-btn" title="Xóa tất cả thông báo">
+                <button id="deleteAllNotificationsBtn" class="notification-delete-all-btn" title="Xóa tất cả thông báo" data-translate-title="delete_all_notifications">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"/>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                     </svg>
-                    Xóa tất cả
+                    <span data-translate="delete_all">Xóa tất cả</span>
                 </button>
 
             </div>
@@ -88,12 +88,12 @@
             <!-- Nút Account - CHỈ HIỆN KHI ĐÃ ĐĂNG NHẬP -->
             <div class="user-only">
                 <!-- Nút Yêu thích (Icon trái tim - nằm bên TRÁI) -->
-                <button id="favoriteModeBtnHeader" class="favorite-heart-btn" title="Quán yêu thích">
+                <button id="favoriteModeBtnHeader" class="favorite-heart-btn" title="Quán yêu thích" data-translate-title="favorite_restaurants">
                     <i class="fa-solid fa-heart"></i>
                 </button>
 
                 <!-- ⭐ NÚT THÔNG BÁO (MỚI THÊM) -->
-                <button id="notificationBtn" class="notification-btn" title="Thông báo">
+                <button id="notificationBtn" class="notification-btn" title="Thông báo" data-translate-title="notifications">
                     <i class="fa-solid fa-bell"></i>
                     <!-- Badge số thông báo chưa đọc -->
                     <span class="notification-badge" style="display: none;">0</span>
@@ -101,15 +101,15 @@
                 
                 <!-- Nút Tài khoản (nằm bên PHẢI) -->
                 <a href="Account.html" class="account-button">
-                    <span class="account-text">Tài khoản</span>
+                    <span class="account-text" data-translate="account">Tài khoản</span>
                     <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/user.png" alt="Account" class="account-img">
                 </a>
             </div>
 
             <!-- Nút Sign Up/Sign In - CHỈ HIỆN KHI CHƯA ĐĂNG NHẬP -->
             <div class="guest-only">
-                <a href="/accounts/signup/" class="button-SignUp">Đăng Ký</a>
-                <a href="/accounts/login/" class="button-SignIn">Đăng Nhập</a>
+                <a href="/accounts/signup/" class="button-SignUp" data-translate="sign_up">Đăng Ký</a>
+                <a href="/accounts/login/" class="button-SignIn" data-translate="sign_in">Đăng Nhập</a>
             </div>
         </div>
     </header>
@@ -117,16 +117,16 @@
     <div id="controls">
         <!-- 🧭 THANH NHẬP ĐỊA ĐIỂM -->
         <div class="gps-box">
-            <button id="gpsLocateBtn" class="gps-btn" title="Dùng GPS">
+            <button id="gpsLocateBtn" class="gps-btn" title="Dùng GPS" data-translate-title="use_gps">
                 <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/GPS.png" alt="GPS" class="gps-icon">
             </button>
-            <input id="gpsInput" type="text" placeholder="Địa điểm của bạn..." autocomplete="off" />
+            <input id="gpsInput" type="text" placeholder="Địa điểm của bạn..." autocomplete="off" data-translate-placeholder="your_location" />
         </div>
 
         <!-- 🔍 THANH TÌM QUÁN ĂN -->
         <div class="search-row">
             <div class="search-box">
-                <input id="query" type="text" placeholder="Tìm quán ăn..." autocomplete="off" />
+                <input id="query" type="text" placeholder="Tìm món ăn..." autocomplete="off" data-translate-placeholder="search_restaurant"/>
                 <div id="suggestions" class="suggestions"></div>
             </div>
         </div>
@@ -134,37 +134,37 @@
         <!-- Multi-select khẩu vị -->
         <div class="flavor-selector" id="flavorSelector">
             <div class="flavor-selector-btn" id="flavorBtn">
-                <span class="selected-flavors empty">Khẩu vị</span>
+                <span class="selected-flavors empty" data-translate="flavor">Khẩu vị</span>
                 <span class="arrow">▼</span>
             </div>
             <div class="flavor-dropdown" id="flavorDropdown">
                 <div class="flavor-option">
                     <input type="checkbox" value="cay" id="flavor-cay">
-                    <label for="flavor-cay">Cay</label>
+                    <label for="flavor-cay" data-translate="flavor_spicy">Cay</label>
                 </div>
                 <div class="flavor-option">
                     <input type="checkbox" value="man" id="flavor-man">
-                    <label for="flavor-man">Mặn</label>
+                    <label for="flavor-man" data-translate="flavor_salty">Mặn</label>
                 </div>
                 <div class="flavor-option">
                     <input type="checkbox" value="ngot" id="flavor-ngot">
-                    <label for="flavor-ngot">Ngọt</label>
+                    <label for="flavor-ngot" data-translate="flavor_sweet">Ngọt</label>
                 </div>
                 <div class="flavor-option">
                     <input type="checkbox" value="chua" id="flavor-chua">
-                    <label for="flavor-chua">Chua</label>
+                    <label for="flavor-chua" data-translate="flavor_sour">Chua</label>
                 </div>
                 <div class="flavor-option">
                     <input type="checkbox" value="dang" id="flavor-dang">
-                    <label for="flavor-dang">Đắng</label>
+                    <label for="flavor-dang" data-translate="flavor_bitter">Đắng</label>
                 </div>
                 <div class="flavor-option">
                     <input type="checkbox" value="tanh" id="flavor-tanh">
-                    <label for="flavor-tanh">Tanh</label>
+                    <label for="flavor-tanh" data-translate="flavor_fishy">Tanh</label>
                 </div>
                 <div class="flavor-option">
                     <input type="checkbox" value="thanh" id="flavor-thanh">
-                    <label for="flavor-thanh">Thanh</label>
+                    <label for="flavor-thanh" data-translate="flavor_plain">Thanh</label>
                 </div>
             </div>
         </div>
@@ -172,29 +172,29 @@
         <!-- 💰 NGÂN SÁCH -->
         <div class="budget-selector flavor-selector" id="budgetSelector">
             <div class="flavor-selector-btn" id="budgetBtn">
-                <span class="selected-flavors empty">Ngân sách mặc định</span>
+                <span class="selected-flavors empty" data-translate="budget_default">Ngân sách mặc định</span>
                 <span class="arrow">▼</span>
             </div>
             <div class="flavor-dropdown" id="budgetDropdown">
                 <div class="flavor-option">
                     <input type="radio" name="budget" value="" id="budget-default" checked>
-                    <label for="budget-default">Ngân sách mặc định</label>
+                    <label for="budget-default" data-translate="budget_default">Ngân sách mặc định</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="budget" value="1-100000" id="budget-1">
-                    <label for="budget-1">1 – 100.000 ₫</label>
+                    <label for="budget-1" data-translate="budget_1">1 – 100.000 ₫</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="budget" value="100000-200000" id="budget-2">
-                    <label for="budget-2">100.000 – 200.000 ₫</label>
+                    <label for="budget-2" data-translate="budget_2">100.000 – 200.000 ₫</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="budget" value="200000-300000" id="budget-3">
-                    <label for="budget-3">200.000 – 300.000 ₫</label>
+                    <label for="budget-3" data-translate="budget_3">200.000 – 300.000 ₫</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="budget" value="300000-9999999" id="budget-4">
-                    <label for="budget-4">300.000 ₫ trở lên</label>
+                    <label for="budget-4" data-translate="budget_4">300.000 ₫ trở lên</label>
                 </div>
             </div>
             <!-- ✅ HIDDEN INPUT ĐỂ SCRIPT.JS ĐỌC ĐƯỢC -->
@@ -204,48 +204,48 @@
         <!-- 📏 BÁN KÍNH -->
         <div class="radius-selector flavor-selector" id="radiusSelector">
             <div class="flavor-selector-btn" id="radiusBtn">
-                <span class="selected-flavors empty">Bán kính tìm kiếm</span>
+                <span class="selected-flavors empty" data-translate="radius_default">Bán kính tìm kiếm</span>
                 <span class="arrow">▼</span>
             </div>
             <div class="flavor-dropdown" id="radiusDropdown">
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="" id="radius-default" checked>
-                    <label for="radius-default">Bán kính mặc định</label>
+                    <label for="radius-default" data-translate="radius_default">Bán kính mặc định</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="0.5" id="radius-05">
-                    <label for="radius-05">500 m</label>
+                    <label for="radius-05" data-translate="radius_05">500 m</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="1" id="radius-1">
-                    <label for="radius-1">1 km</label>
+                    <label for="radius-1" data-translate="radius_1">1 km</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="2" id="radius-2">
-                    <label for="radius-2">2 km</label>
+                    <label for="radius-2" data-translate="radius_2">2 km</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="3" id="radius-3">
-                    <label for="radius-3">3 km</label>
+                    <label for="radius-3" data-translate="radius_3">3 km</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="5" id="radius-5">
-                    <label for="radius-5">5 km</label>
+                    <label for="radius-5" data-translate="radius_5">5 km</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="10" id="radius-10">
-                    <label for="radius-10">10 km</label>
+                    <label for="radius-10" data-translate="radius_10">10 km</label>
                 </div>
                 <div class="flavor-option">
                     <input type="radio" name="radius" value="20" id="radius-20">
-                    <label for="radius-20">20 km</label>
+                    <label for="radius-20" data-translate="radius_20">20 km</label>
                 </div>
             </div>
             <!-- ✅ HIDDEN INPUT ĐỂ SCRIPT.JS ĐỌC ĐƯỢC -->
             <input type="hidden" id="radius" value="">
         </div>
 
-        <button id="btnSearch">
+        <button id="btnSearch" title="Tìm kiếm" data-translate-title="search">
             <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/find.png" style="width: 24px; height: 24px;">
         </button>
     </div>
@@ -253,7 +253,7 @@
     <div id="sidebar" class="hidden">
         <!-- ✅ HEADER CỐ ĐỊNH (luôn có) -->
         <div class="sidebar-header">
-            <h2 id="sidebar-title">Thông tin chi tiết</h2>
+            <h2 id="sidebar-title" data-translate="detail_info">Thông tin chi tiết</h2>
             <button id="closeSidebar">×</button>
         </div>
         
@@ -266,7 +266,7 @@
         <div id="map"></div>
     </div>
     <!-- 🧩 Nút Mini Game -->
-    <button id="miniGameBtn" class="map-floating-btn mini-game-btn">
+    <button id="miniGameBtn" class="map-floating-btn mini-game-btn" title="Mini Game" data-translate-title="mini_game">
         🧩
     </button>
     
@@ -349,10 +349,10 @@
         <div class="mini-game-wrapper">
             <!-- Header -->
             <div class="mini-game-header">
-                <button id="miniGameCloseBtn" class="mini-game-home-btn" title="Thoát mini game">
+                <button id="miniGameCloseBtn" class="mini-game-home-btn" title="Thoát mini game" data-translate-title="exit_game">
                     ⌂
                 </button>
-                <h2 class="mini-game-title">
+                <h2 class="mini-game-title" data-translate="game_title">
                     Ghép Hình Vui Nhộn (Jigsaw Puzzle)
                 </h2>
             </div>
@@ -363,10 +363,10 @@
         <div class="map-selector">
             <!-- 🆕 TAB SWITCHER -->
             <div class="tab-switcher">
-                <button class="tab-btn active" data-tab="maps">
+                <button class="tab-btn active" data-tab="maps" data-translate="select_map">
                     🎮 Chọn Map
                 </button>
-                <button class="tab-btn" data-tab="achievements">
+                <button class="tab-btn" data-tab="achievements" data-translate="achievements">
                     🏆 Thành Tựu
                 </button>
             </div>
@@ -375,15 +375,15 @@
                     <div class="tab-content active" id="tab-maps">
                         <button class="map-option active" data-map="banh_mi">
                             <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/banh_mi.png" alt="Bánh Mì">
-                            <span>Bánh Mì</span>
+                            <span data-translate="map_banh_mi">Bánh Mì</span>
                         </button>
                         <button class="map-option" data-map="com_tam">
                             <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/com_tam.png" alt="Cơm Tấm">
-                            <span>Cơm Tấm</span>
+                            <span data-translate="map_com_tam">Cơm Tấm</span>
                         </button>
                         <button class="map-option" data-map="bun_bo_hue">
                             <img src="https://res.cloudinary.com/dbmq2hme4/image/upload/Picture/bun_bo_hue.png" alt="Bún Bò Huế">
-                            <span>Bún Bò Huế</span>
+                            <span data-translate="map_bun_bo_hue">Bún Bò Huế</span>
                         </button>
                     </div>
 
@@ -391,7 +391,7 @@
                     <div class="tab-content" id="tab-achievements">
                         <div class="achievements-container">
                             <!-- JavaScript sẽ render nội dung vào đây -->
-                            <p class="loading-achievements">Đang tải thành tựu...</p>
+                            <p class="loading-achievements" data-translate="loading_achievements">Đang tải thành tựu...</p>
                         </div>
                     </div>
                 </div>
@@ -400,9 +400,13 @@
                 <div class="game-container">
                     <!-- ✅ GAME HEADER (Timer, Moves, Shuffle) -->
                     <div class="game-header">
-                        <div class="timer">⏱️ Thời gian: <span>0:00</span></div>
-                        <div class="moves">🔄 Số bước: <span>0</span></div>
-                        <button class="btn-shuffle">🔀 Xáo lại</button>
+                        <div class="timer">
+                            <span data-translate="time">⏱️ Thời gian:</span> 
+                            <span>0:00</span></div>
+                        <div class="moves">
+                            <span data-translate="moves">🔄 Số bước:
+                            <span>0</span></div>
+                        <button class="btn-shuffle" data-translate="shuffle">🔀 Xáo lại</button>
                         <!-- Nút Reset sẽ được thêm động tại đây -->
                     </div>
 
@@ -511,6 +515,10 @@
             }
         } catch (err) {
             console.error('Lỗi khi xóa notification', err);
+             // ✅ THÊM DỊCH
+            const errorMsg = window.LanguageToggle ? 
+                window.LanguageToggle.getTranslation('delete_notification_error') : 
+                'Lỗi khi xóa thông báo';
             showToast('Lỗi khi xóa thông báo', 'error');
         }
     }
@@ -614,8 +622,27 @@
         listEl.innerHTML =
             '<div class="notification-empty">' +
             '<div class="notification-empty-icon">🧡</div>' +
-            '<div class="notification-empty-text">Hiện tại bạn chưa có thông báo nào.</div>' +
+            '<div class="notification-empty-text" data-translate="notification_empty_message">Hiện tại bạn chưa có thông báo nào.</div>' +
             '</div>';
+
+            // ✅ QUAN TRỌNG: Apply translation ngay sau khi render
+        setTimeout(function() {
+        if (window.LanguageToggle) {
+            const emptyText = listEl.querySelector('[data-translate="notification_empty_message"]');
+            if (emptyText) {
+                const lang = window.LanguageToggle.getCurrentLanguage();
+                const translations = {
+                    vi: 'Hiện tại bạn chưa có thông báo nào.',
+                    en: 'You don\'t have any notifications yet.'
+                };
+                emptyText.textContent = window.LanguageToggle.getTranslation('notification_empty_message') || translations[lang];
+            }
+        }
+        }, 100); // Chờ 100ms để LanguageToggle khởi tạo xong
+
+    if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
+      }
         return;
         }
 
@@ -625,32 +652,42 @@
                 return new Date(b.created_at) - new Date(a.created_at);
             })
             .map(function (n) {
+                    // ✅ LẤY TRANSLATION TRƯỚC KHI RENDER
+                const statusKey = n.is_read ? 'notification_read_status' : 'notification_new_status';
+                const statusText = window.LanguageToggle ? 
+                    window.LanguageToggle.getTranslation(statusKey) : 
+                    (n.is_read ? 'Đã đọc' : 'Mới');
+                    
                 return (
-                    '<div class="notification-item ' + (n.is_read ? 'read' : '') + '" data-id="' + n.id + '">' +
-                        '<div class="notification-item-title">' + n.title + '</div>' +
-                        '<div class="notification-item-message">' + n.message + '</div>' +
-                        (n.created_at ? 
-                            '<div class="notification-item-meta">' +
-                                formatTimeVi(n.created_at) +
-                                '<div class="notification-item-meta-right">' +
-                                    '<span class="notification-status-badge">' +
-                                        (n.is_read ? 'Đã đọc' : 'Mới') +
-                                    '</span>' +
-                                    '<button class="notification-item-delete" data-id="' + n.id + '" title="Xóa thông báo">' +
-                                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-                                            '<polyline points="3 6 5 6 21 6"/>' +
-                                            '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
-                                        '</svg>' +
-                                    '</button>' +
-                                '</div>' +
-                            '</div>'
-                        : '') +
-                    '</div>'
-                );
+                '<div class="notification-item ' + (n.is_read ? 'read' : '') + '" data-id="' + n.id + '">' +
+                    '<div class="notification-item-title">' + n.title + '</div>' +
+                    '<div class="notification-item-message">' + n.message + '</div>' +
+                    (n.created_at ? 
+                        '<div class="notification-item-meta">' +
+                            formatTimeVi(n.created_at) +
+                            '<div class="notification-item-meta-right">' +
+                                '<span class="notification-status-badge">' +
+                                    statusText +
+                                '</span>' +
+                                '<button class="notification-item-delete" data-id="' + n.id + '" title="Xóa thông báo">' +
+                                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                                        '<polyline points="3 6 5 6 21 6"/>' +
+                                        '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+                                    '</svg>' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>'
+                    : '') +
+                '</div>'
+            );
             })
             .join('');
 
         listEl.innerHTML = itemsHtml;
+        
+        if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+        window.LanguageToggle.applyTranslations();
+           }
 
         const itemEls = listEl.querySelectorAll('.notification-item');
         itemEls.forEach(function (el) {
@@ -673,7 +710,7 @@
                 const id = btn.getAttribute('data-id');
                 
                 // Xác nhận xóa
-                if (confirm('Bạn có chắc muốn xóa thông báo này?')) {
+                if (confirm(window.LanguageToggle.getTranslation('delete_notification_confirm'))) {
                     deleteNotification(id);
                 }
             });
@@ -731,7 +768,7 @@
     if (deleteAllBtn) {
         deleteAllBtn.addEventListener('click', async function () {
             // ✅ XÁC NHẬN TRƯỚC KHI XÓA
-            if (!confirm('⚠️ Bạn có chắc muốn xóa TẤT CẢ thông báo?\n\nHành động này không thể hoàn tác!')) {
+            if (!confirm(window.LanguageToggle.getTranslation('delete_all_confirm'))) {
                 return;
             }
             
@@ -806,7 +843,10 @@
                             const savedPlansSection = document.getElementById('savedPlansSection');
                             
                             if (!planResult || !savedPlansSection) {
-                                console.error('❌ Không tìm thấy element');
+                               const errorMsg = window.LanguageToggle ? 
+                                    window.LanguageToggle.getTranslation('element_not_found') : 
+                                    '❌ Không tìm thấy element';
+                                console.error(errorMsg);
                                 return;
                             }
                             
@@ -829,9 +869,11 @@
                             }
                             
                             if (!scrollContainer || scrollContainer === document.body) {
-                                console.warn('⚠️ Không tìm thấy scroll container phù hợp');
-                                // Fallback: scroll toàn trang
-                                planResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                const warnMsg = window.LanguageToggle ? 
+                                        window.LanguageToggle.getTranslation('scroll_container_not_found') : 
+                                        '⚠️ Không tìm thấy scroll container phù hợp';
+                                    console.warn(warnMsg);
+                                    planResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 return;
                             }
                             
@@ -864,7 +906,10 @@
                         }, 1000); // chờ UI render xong trước khi scroll
 
                     } catch (e) {
-                        console.error('Lỗi loadSavedPlans', e);
+                        const errorMsg = window.LanguageToggle ? 
+                            window.LanguageToggle.getTranslation('load_saved_plans_error') : 
+                            'Lỗi loadSavedPlans';
+                        console.error(errorMsg, e);
                     }
                 }, 350);
             }
@@ -881,6 +926,11 @@
         });
         
         if (!res.ok) {
+           // ✅ THÊM DỊCH
+            const errorMsg = window.LanguageToggle ? 
+                window.LanguageToggle.getTranslation('notification_load_error') : 
+                'Không lấy được thông báo';
+            console.warn(errorMsg, res.status);
             console.warn('Không lấy được thông báo:', res.status);
             return;
         }
@@ -891,7 +941,11 @@
         renderList();
         updateBadge();
         } catch (err) {
-        console.error('Lỗi load notifications', err);
+        // ✅ THÊM DỊCH
+        const errorMsg = window.LanguageToggle ? 
+            window.LanguageToggle.getTranslation('notification_load_error') : 
+            'Lỗi load notifications';
+        console.error(errorMsg, err);
         }
     }
 
@@ -918,11 +972,12 @@
         });
 
         eventSource.onopen = function(event) {
-            console.log('✅ SSE Connected');
             console.log('   ReadyState:', eventSource.readyState); // ✅ THÊM debug
             console.log('   URL:', eventSource.url);
-            
-            // Reset reconnect counter khi connect thành công
+            const msg = window.LanguageToggle ? 
+                    window.LanguageToggle.getTranslation('sse_connected') : 
+                    '✅ SSE Connected';
+            console.log(msg);
             reconnectAttempts = 0;
         };
 
@@ -983,8 +1038,15 @@
                 
                 setTimeout(connectSSE, delay);
             } else {
-                console.error('❌ Max reconnection attempts reached. Please refresh page.');
-                showToast('⚠️ Mất kết nối thông báo. Vui lòng tải lại trang.', 'error');
+                const errorMsg = window.LanguageToggle ? 
+                    window.LanguageToggle.getTranslation('sse_max_attempts') : 
+                    '❌ Max reconnection attempts reached. Please refresh page.';
+                console.error(errorMsg);
+                
+                const toastMsg = window.LanguageToggle ? 
+                    window.LanguageToggle.getTranslation('connection_lost_message') : 
+                    '⚠️ Mất kết nối thông báo. Vui lòng tải lại trang.';
+                showToast(toastMsg, 'error');
             }
         };
     }
@@ -1069,7 +1131,10 @@
             updateBadge();
         }
         } catch (err) {
-        console.error('Lỗi mark as read', err);
+            const errorMsg = window.LanguageToggle ? 
+            window.LanguageToggle.getTranslation('mark_as_read_error') : 
+             'Lỗi mark as read';
+            console.error(errorMsg, err);
         }
     }
 
@@ -1086,7 +1151,10 @@
             updateBadge();
         }
         } catch (err) {
-        console.error('Lỗi mark all as read', err);
+            const errorMsg = window.LanguageToggle ? 
+            window.LanguageToggle.getTranslation('mark_all_read_error') : 
+            'Lỗi mark all as read';
+            console.error(errorMsg, err);
         }
     }
 
@@ -1111,6 +1179,52 @@
     });
     
     })();
+        // Lấy ngôn ngữ hiện tại
+    const currentLang = window.LanguageToggle.getCurrentLanguage();
+    console.log(currentLang); // 'vi' hoặc 'en'
+
+    // Đổi ngôn ngữ bằng code
+    window.LanguageToggle.setLanguage('en');
+
+    // Lấy bản dịch của một key
+    const greeting = window.LanguageToggle.getTranslation('greeting');
+
+    // ✅ THÊM EVENT LISTENER ĐỂ RE-RENDER KHI ĐỔI NGÔN NGỮ
+    window.addEventListener('languageChanged', (e) => {
+        console.log('🌐 Notification: Language changed to:', e.detail.language);
+        // Re-render lại notification list với ngôn ngữ mới
+        renderList();
+        
+        // ✅ Update các button text khác nếu có
+        const markAllBtn = document.getElementById('markAllAsReadBtn');
+        if (markAllBtn && window.LanguageToggle) {
+            const btnText = markAllBtn.querySelector('[data-translate]');
+            if (btnText) {
+                const key = btnText.getAttribute('data-translate');
+                btnText.textContent = window.LanguageToggle.getTranslation(key);
+            }
+        }
+    });
+    // Làm gì đó khi đổi ngôn ngữ (reload data, update UI, etc.)
+    </script>
+
+    <script>
+    function syncToggleWithLanguage() {
+        const lang = localStorage.getItem("user_language") || "vi";
+
+        // Đợi cho tới khi LanguageToggle script load xong
+        function wait() {
+            if (window.LanguageToggle) {
+                window.LanguageToggle.setLanguage(lang);
+            } else {
+                setTimeout(wait, 30);
+            }
+        }
+        wait();
+    }
+
+    // Khi quay lại main_web, script này chạy lại
+    syncToggleWithLanguage();
     </script>
 
 </body>

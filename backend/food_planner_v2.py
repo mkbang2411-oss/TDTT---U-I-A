@@ -3001,7 +3001,7 @@ def get_food_planner_html():
 <div class="food-planner-panel" id="foodPlannerPanel">
     <div class="panel-header">
     <h2 style="font-size: 22px;">
-        <span style="font-size: 26px;">📋</span> Lịch trình bữa ăn
+        <span style="font-size: 26px;" data-translate="food_planning_title">📋 Lên kế hoạch ăn uống</span>
     </h2>
 </div>
         

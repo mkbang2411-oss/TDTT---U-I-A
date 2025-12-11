@@ -5,6 +5,7 @@ from datetime import datetime
 import os, json
 from food_planner_v2 import generate_food_plan, get_food_planner_html
 from music_player_component import get_music_player_html
+from language_toggle_component import get_language_toggle_html 
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/")
 
@@ -30,6 +31,64 @@ REVIEWS_FILE = os.path.join(BASE_DIR, "reviews.json")
 
 WEB_FILE = os.path.join(BASE_DIR,"../frontend/main_web.html")
 INDEX_FILE = os.path.join(BASE_DIR, "../frontend/index.html")
+ACCOUNT_FILE = os.path.join(BASE_DIR, "../frontend/Account.html")  # ✅ THÊM
+
+LANGUAGES_FILE = os.path.join(BASE_DIR, "languages.json") 
+
+# ============================
+# 🌐 API: SERVE FILE NGÔN NGỮ
+# ============================
+@app.route("/languages.json")
+def get_languages():
+    """
+    API để serve file languages.json
+    Nếu không có file, trả về bản dịch mặc định
+    """
+    if os.path.exists(LANGUAGES_FILE):
+        try:
+            with open(LANGUAGES_FILE, "r", encoding="utf-8") as f:
+                return jsonify(json.load(f))
+        except Exception as e:
+            print(f"❌ Lỗi đọc languages.json: {e}")
+            return jsonify(get_default_translations())
+    else:
+        print("⚠️ Không tìm thấy languages.json, sử dụng bản dịch mặc định")
+        return jsonify(get_default_translations())
+
+def get_default_translations():
+    """Bản dịch mặc định nếu không có file languages.json"""
+    return {
+        "vi": {
+            "title": "Khám Phá Ẩm Thực Sài Gòn",
+            "greeting": "Xin chào! Chào mừng bạn đến với hệ thống tìm kiếm quán ăn",
+            "instruction": "Chọn ngôn ngữ ở góc trên bên phải",
+            "search_placeholder": "Tìm kiếm quán ăn...",
+            "location": "Vị trí",
+            "rating": "Đánh giá",
+            "price": "Giá",
+            "opening_hours": "Giờ mở cửa",
+            "reviews": "Nhận xét",
+            "description": "Mô tả",
+            "close": "Đóng",
+            "submit": "Gửi",
+            "cancel": "Hủy"
+        },
+        "en": {
+            "title": "Explore Saigon Cuisine",
+            "greeting": "Hello! Welcome to our restaurant search system",
+            "instruction": "Select language at top right corner",
+            "search_placeholder": "Search restaurants...",
+            "location": "Location",
+            "rating": "Rating",
+            "price": "Price",
+            "opening_hours": "Opening Hours",
+            "reviews": "Reviews",
+            "description": "Description",
+            "close": "Close",
+            "submit": "Submit",
+            "cancel": "Cancel"
+        }
+    }
 
 # ============================
 # 🍴 API: LẤY DANH SÁCH QUÁN
@@ -142,23 +201,50 @@ def serve_index():
     food_planner_html = get_food_planner_html()
 
     music_player_html = get_music_player_html()
+
+    language_toggle_html = get_language_toggle_html()
     
     # Inject vào div#insert-chatbot-and-map thay vì </body>
     insert_point = '<div id="insert-chatbot-and-map">'
     if insert_point in html_content:
         html_content = html_content.replace(
             insert_point,
-            f'{insert_point}\n{chatbot_html}\n{food_planner_html}\n{music_player_html}'
+            f'{insert_point}\n{chatbot_html}\n{food_planner_html}\n{music_player_html}\n{language_toggle_html}'
         )
     else:
         # Fallback: inject trước </body> nếu không tìm thấy
-        html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}\n{music_player_html}</body>")
+        html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}\n{music_player_html}\n{language_toggle_html}</body>")
     
     return html_content
 
 @app.route("/account")
+@app.route("/Account.html")
 def serve_account():
-    return send_from_directory("../frontend", "Account.html")
+    """Serve trang account với language toggle"""
+    try:
+        with open("../frontend/Account.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        if not os.path.exists(ACCOUNT_FILE):
+            print(f"❌ Không tìm thấy Account.html tại: {ACCOUNT_FILE}")
+            return "Account page not found", 404
+        
+        # Thêm language toggle vào trang account
+        language_toggle_html = get_language_toggle_html()
+        # Tìm vị trí inject tốt nhất (sau <body> tag)
+        if '<body>' in html_content:
+            html_content = html_content.replace(
+                '<body>',
+                f'<body>\n{language_toggle_html}\n',
+                1  # Chỉ replace lần đầu tiên
+            )
+        else:
+            # Fallback: inject trước </body>
+            html_content = html_content.replace("</body>", f"{language_toggle_html}</body>")
+        
+        print("✅ Language toggle injected vào Account.html")
+        return html_content
+    except FileNotFoundError:
+        return "Account page not found", 404
 
 @app.route("/<path:path>")
 def serve_static_files(path):
@@ -174,4 +260,22 @@ if __name__ == "__main__":
     print(f"🤖 Chatbot đã được tích hợp!")
     print(f"🍽️ Food Planner đã được tích hợp!")
     print(f"🎵 Music player đã được tích hợp!")
+    print(f"📄 Languages File: {'✅ Found' if os.path.exists(LANGUAGES_FILE) else '⚠️ Not Found (using defaults)'}")
+    print("=" * 60)
+    print("🎉 COMPONENTS LOADED:")
+    print("   ✅ Chatbot Component")
+    print("   ✅ Food Planner Component")
+    print("   ✅ Music Player Component")
+    print("   ✅ Language Toggle Component")
+    print("=" * 60)
+    print("🌐 API ENDPOINTS:")
+    print("   • GET  /                    → Main page")
+    print("   • GET  /account             → Account page")
+    print("   • GET  /api/places          → Get restaurant list")
+    print("   • GET  /api/reviews/<id>    → Get reviews")
+    print("   • GET  /api/food-plan       → Generate food plan")
+    print("   • GET  /languages.json      → Get translations")
+    print("=" * 60)
+    print("🔥 Server running at: http://localhost:5000")
+    print("=" * 60)
     app.run(host='0.0.0.0', port=5000, debug=False)  # ← Tắt debug
