@@ -1150,3 +1150,33 @@
     font-size: 14px;
   }
 }
+
+/* ✅ FIX: Popup zoom ảnh luôn nổi trên Sidebar + Food Planner */
+#imageModal.image-modal{
+  position: fixed !important;
+  inset: 0;
+  display: none;              /* JS sẽ set flex khi mở */
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.85);
+  z-index: 99999999999999 !important; /* cao hơn sidebar/foodplan */
+}
+
+#imageModal #modalImg{
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+#imageModal #closeModal{
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  font-size: 44px;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  z-index: 99999999999999;
+  user-select: none;
+}
