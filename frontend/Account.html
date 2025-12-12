@@ -655,24 +655,18 @@
       }
 
       // GỬI LỜI MỜI KẾT BẠN
-      async function sendFriendRequest(receiverId, buttonElement) {
-  // ✅ Đảm bảo đã load user ID
+     // GỬI LỜI MỜI KẾT BẠN
+async function sendFriendRequest(receiverId, buttonElement) {
   await ensureUserLoaded();
 
   if (!CURRENT_USER_ID) {
-    Swal.fire(
-      "Lỗi",
-      "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.",
-      "error"
-    );
+    Swal.fire("Lỗi", "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.", "error");
     return;
   }
 
-  console.log(
-    `📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`
-  );
+  console.log(`📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`);
 
-  // ✅ DISABLE BUTTON NGAY LẬP TỨC
+  // DISABLE BUTTON NGAY
   if (buttonElement) {
     buttonElement.disabled = true;
     buttonElement.textContent = "⏳ Đang gửi...";
@@ -681,7 +675,10 @@
   try {
     const response = await fetch(`${API_URL}/friend-request/send/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
       credentials: "include",
       body: JSON.stringify({
         sender_id: CURRENT_USER_ID,
@@ -690,16 +687,18 @@
     });
 
     const data = await response.json();
-    
+
     if (data.success) {
-      // ✅ THÀNH CÔNG → ĐỔI NÚT THÀNH "ĐÃ GỬI LỜI MỜI"
+      // ✅ THÀNH CÔNG → ĐỔI NÚT THÀNH "THU HỒI LỜI MỜI"
       if (buttonElement) {
-        buttonElement.textContent = "✓ Đã gửi lời mời";
+        buttonElement.textContent = "🔄 Thu hồi lời mời";
         buttonElement.style.backgroundColor = "#6c757d"; // Màu xám
-        buttonElement.style.cursor = "not-allowed";
-        buttonElement.disabled = true;
+        buttonElement.style.cursor = "pointer";
+        buttonElement.disabled = false;
+        // ✅ QUAN TRỌNG: Đổi onclick sang cancelFriendRequest
+        buttonElement.onclick = function() { cancelFriendRequest(receiverId, this); };
       }
-      
+
       Swal.fire("Thành công", "Đã gửi lời mời kết bạn", "success");
     } else {
       // ❌ THẤT BẠI → KHÔI PHỤC NÚT
@@ -711,14 +710,77 @@
     }
   } catch (error) {
     console.error("Lỗi gửi lời mời:", error);
-    
-    // ❌ LỖI → KHÔI PHỤC NÚT
+
     if (buttonElement) {
       buttonElement.disabled = false;
       buttonElement.textContent = "➕ Kết bạn";
     }
-    
+
     Swal.fire("Lỗi", "Không thể gửi lời mời", "error");
+  }
+}
+// 🔥 THÊM HÀM MỚI - THU HỒI LỜI MỜI KẾT BẠN
+async function cancelFriendRequest(receiverId, buttonElement) {
+  // Đảm bảo đã load user ID
+  await ensureUserLoaded();
+
+  if (!CURRENT_USER_ID) {
+    Swal.fire("Lỗi", "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.", "error");
+    return;
+  }
+
+  console.log(`🔄 Thu hồi lời mời: receiver=${receiverId}`);
+
+  // Disable button ngay lập tức
+  if (buttonElement) {
+    buttonElement.disabled = true;
+    buttonElement.textContent = "⏳ Đang xử lý...";
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/friend-request/cancel/`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        receiver_id: receiverId
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.status === "success") {
+      // ✅ THÀNH CÔNG → ĐỔI NÚT VỀ "KẾT BẠN"
+      if (buttonElement) {
+        buttonElement.textContent = "➕ Kết bạn";
+        buttonElement.style.backgroundColor = ""; // Reset màu
+        buttonElement.style.cursor = "pointer";
+        buttonElement.disabled = false;
+        buttonElement.onclick = function() { sendFriendRequest(receiverId, this); };
+      }
+
+      Swal.fire("Thành công", "Đã thu hồi lời mời kết bạn", "success");
+    } else {
+      // ❌ THẤT BẠI → KHÔI PHỤC NÚT
+      if (buttonElement) {
+        buttonElement.disabled = false;
+        buttonElement.textContent = "🔄 Thu hồi lời mời";
+      }
+      Swal.fire("Lỗi", data.message || "Không thể thu hồi lời mời", "error");
+    }
+  } catch (error) {
+    console.error("Lỗi thu hồi lời mời:", error);
+
+    // ❌ LỖI → KHÔI PHỤC NÚT
+    if (buttonElement) {
+      buttonElement.disabled = false;
+      buttonElement.textContent = "🔄 Thu hồi lời mời";
+    }
+
+    Swal.fire("Lỗi", "Không thể thu hồi lời mời", "error");
   }
 }
 
@@ -1683,28 +1745,18 @@
       }
     }
 
-    function renderSearchPage() {
+   async function renderSearchPage() {
   const resultsDiv = document.getElementById("search-results");
   
   if (allSearchResults.length === 0) {
-
     resultsDiv.innerHTML = `
-             <div style="
-              position: fixed;
-              top: 44vh;
-              left: 13vw;
-              text-align:center;
-              color: #777;
-              width: 100%;
-              z-index: 10;
-            ">
-             <p class="no-data" data-translate="no_users_found">Không tìm thấy người dùng nào</p>
-            </div>`;
-
-          // ✅ Áp dụng ngôn ngữ sau khi render
-      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
-        window.LanguageToggle.applyTranslations();
-      }
+      <div style="position: fixed; top: 44vh; left: 13vw; text-align:center; color: #777; width: 100%; z-index: 10;">
+        <p class="no-data" data-translate="no_users_found">Không tìm thấy người dùng nào</p>
+      </div>`;
+    
+    if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+      window.LanguageToggle.applyTranslations();
+    }
     return;
   }
 
@@ -1712,32 +1764,79 @@
   const endIndex = startIndex + FRIENDS_PER_PAGE;
   const currentItems = allSearchResults.slice(startIndex, endIndex);
 
-  resultsDiv.innerHTML = currentItems
-    .map(
-      (user) => `
-      <div class="friend-card">
-        <div class="friend-info">
-          <div class="friend-avatar">👤</div>
-          <div>
-            <div class="friend-name">${user.username}</div>
-            <div class="friend-email">${user.email}</div>
+  // ✅ BƯỚC 2.1: Kiểm tra trạng thái từng user
+  const itemsWithStatus = await Promise.all(
+    currentItems.map(async (user) => {
+      try {
+        const response = await fetch(`${API_URL}/friend-status/${user.id}/`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        return { ...user, friendStatus: data.status };
+      } catch (error) {
+        console.error(`Lỗi check status user ${user.id}:`, error);
+        return { ...user, friendStatus: 'not_friend' };
+      }
+    })
+  );
+
+  // ✅ BƯỚC 2.2: Render với nút phù hợp
+  resultsDiv.innerHTML = itemsWithStatus
+    .map((user) => {
+      let buttonHTML = '';
+      
+      if (user.friendStatus === 'friend') {
+        // Đã là bạn
+        buttonHTML = `
+          <button class="btn-add" disabled style="background: #28a745; cursor: not-allowed;">
+            ✓ Đã là bạn
+          </button>`;
+      } else if (user.friendStatus === 'pending_sent') {
+        // Đã gửi lời mời → Hiện nút Thu hồi
+        buttonHTML = `
+          <button 
+            class="btn-add" 
+            style="background: #6c757d;"
+            onclick="cancelFriendRequest(${user.id}, this)">
+            🔄 Thu hồi lời mời
+          </button>`;
+      } else if (user.friendStatus === 'pending_received') {
+        // Người này đã gửi cho mình → Hiện nút Chấp nhận
+        buttonHTML = `
+          <button 
+            class="btn-accept" 
+            onclick="acceptRequestFromSearch(${user.id})">
+            ✓ Chấp nhận
+          </button>`;
+      } else {
+        // Chưa có quan hệ → Hiện nút Kết bạn
+        buttonHTML = `
+          <button 
+            class="btn-add" 
+            data-translate="add_friend_btn"
+            onclick="sendFriendRequest(${user.id}, this)">
+            ➕ Kết bạn
+          </button>`;
+      }
+
+      return `
+        <div class="friend-card">
+          <div class="friend-info">
+            <div class="friend-avatar">👤</div>
+            <div>
+              <div class="friend-name">${user.username}</div>
+              <div class="friend-email">${user.email}</div>
+            </div>
           </div>
+          ${buttonHTML}
         </div>
-        <button 
-          class="btn-add" 
-          data-translate="add_friend_btn"
-          onclick="sendFriendRequest(${user.id}, this)">
-          ➕ Kết bạn
-        </button>
-      </div>
-    `
-    )
+      `;
+    })
     .join("");
       
-      // ✅ Áp dụng ngôn ngữ sau khi render
-      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
-        window.LanguageToggle.applyTranslations();
-      }
+  if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+    window.LanguageToggle.applyTranslations();
+  }
 }
 
 
@@ -2257,6 +2356,31 @@
 
         applyLangWhenReady();
     });
+    // ✅ Chấp nhận lời mời từ màn hình tìm kiếm
+async function acceptRequestFromSearch(senderId) {
+  try {
+    // Tìm request_id từ danh sách lời mời đã load
+    const response = await fetch(`${API_URL}/friend-requests/${CURRENT_USER_ID}/`);
+    const data = await response.json();
+    
+    const request = data.requests.find(r => r.sender_id === senderId);
+    
+    if (!request) {
+      Swal.fire("Lỗi", "Không tìm thấy lời mời", "error");
+      return;
+    }
+    
+    // ✅ GỌI LẠI HÀM CŨ
+    await acceptRequest(request.id);
+    
+    // Reload search results để cập nhật trạng thái button
+    await searchUsers();
+    
+  } catch (error) {
+    console.error("Lỗi:", error);
+    Swal.fire("Lỗi", "Không thể chấp nhận", "error");
+  }
+}
     </script>
 
   </body>
