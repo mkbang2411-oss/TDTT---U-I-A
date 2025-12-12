@@ -3241,6 +3241,8 @@ input.time-input[type="number"] {
     100% { transform: scale(1); opacity: 1; }
 }
 
+#suggestionCount { display: none !important; }
+
 </style>
 
 <!-- Food Planner Button -->
@@ -5326,24 +5328,20 @@ if (filtersWrapper) {
         ` : ''}
     ` : ''}
 ` : `
-    <div class="suggestions-wrapper" style="display:none;">
+    <div class="suggestions-wrapper" style="display: none;">  <!-- ✅ THÊM style ẨN MẶC ĐỊNH -->
         <button class="action-btn"
                 onclick="openSuggestionsPanel()"
                 id="suggestionsBtn"
                 title="Xem đề xuất chỉnh sửa"
-                style="display: none;">
+                style="width: 40px; height: 40px;">  <!-- ✅ BỎ display: none, chỉ giữ kích thước -->
 
-            <!-- Icon -->
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
             </svg>
 
-            <!-- GIỮ LẠI để JS hoạt động -->
-            <span id="suggestionCount" style="display:none;">0</span>
-
+            <span id="suggestionCount">0</span>
         </button>
 
-        <!-- CHẤM XANH → tách ra ngoài -->
         <span class="notif-dot" id="suggestionDot"></span>
     </div>
     
@@ -7698,11 +7696,12 @@ async function checkPendingSuggestions(planId) {
         const response = await fetch(`/api/accounts/food-plan/suggestions/${planId}/`);
         const data = await response.json();
         
+        const wrapper = document.querySelector('.suggestions-wrapper');  // ✅ LẤY WRAPPER
         const suggestionsBtn = document.getElementById('suggestionsBtn');
         const suggestionCount = document.getElementById('suggestionCount');
         const dot = document.getElementById("suggestionDot");
         
-        if (!suggestionsBtn || !suggestionCount || !dot) return;
+        if (!wrapper || !suggestionsBtn || !suggestionCount || !dot) return;  // ✅ KIỂM TRA WRAPPER
         
         // 🔥 LỌC CHỈ LẤY PENDING
         const pendingSuggestions = data.suggestions ? 
@@ -7712,13 +7711,11 @@ async function checkPendingSuggestions(planId) {
         cachedPendingSuggestionsCount = pendingSuggestions.length;
         
         if (pendingSuggestions.length > 0) {
-            if (wrapper) wrapper.style.display = 'flex';   // <--- THÊM NÈ
-            suggestionsBtn.style.display = 'flex';
+            wrapper.style.display = 'flex';   // ✅ HIỆN WRAPPER
             dot.style.display = 'block';
             suggestionCount.textContent = pendingSuggestions.length;
         } else {
-            if (wrapper) wrapper.style.display = 'none';   // <--- VÀ DÒNG NÀY
-            suggestionsBtn.style.display = 'none';
+            wrapper.style.display = 'none';   // ✅ ẨN WRAPPER
             dot.style.display = 'none';
             suggestionCount.textContent = '0';
         }
@@ -7727,15 +7724,17 @@ async function checkPendingSuggestions(planId) {
         console.error('Error checking suggestions:', error);
     }
 }
+
 // 🔥 HÀM MỚI - HIỂN THỊ NÚT ĐỀ XUẤT NGAY LẬP TỨC
 function showSuggestionsButtonImmediately() {
+    const wrapper = document.querySelector('.suggestions-wrapper');  // ✅ THÊM
     const suggestionsBtn = document.getElementById('suggestionsBtn');
     const suggestionCount = document.getElementById('suggestionCount');
     
-    if (!suggestionsBtn || !suggestionCount) return;
+    if (!wrapper || !suggestionsBtn || !suggestionCount) return;  // ✅ KIỂM TRA WRAPPER
     
     if (cachedPendingSuggestionsCount > 0) {
-        suggestionsBtn.style.display = 'flex';
+        wrapper.style.display = 'flex';  // ✅ HIỆN WRAPPER TRƯỚC
         suggestionCount.textContent = cachedPendingSuggestionsCount;
     }
 }
