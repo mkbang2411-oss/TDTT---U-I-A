@@ -1825,37 +1825,9 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
         </div>
         
         <script>
-            let GEMINI_API_KEY = '{gemini_api_key}';
+            let GEMINI_API_KEY = null;
+            window.CURRENT_KEY_INDEX = 0; 
             let consecutiveFailures = 0;  // Đếm số lần fail liên tiếp
-
-            // Hàm gọi API backend để đổi key
-            async function switchAPIKey() {{
-                try {{
-                    console.log('🔄 Đang yêu cầu đổi API key...');
-                    
-                    const response = await fetch(`${{API_BASE_URL}}/switch-api-key/`, {{
-                        method: 'POST',
-                        credentials: 'include'
-                    }});
-                    
-                    if (response.ok) {{
-                        const data = await response.json();
-                        if (data.status === 'success' && data.new_key) {{
-                            GEMINI_API_KEY = data.new_key;
-                            consecutiveFailures = 0;
-                            console.log('✅ Đã chuyển sang API key mới');
-                            return true;
-                        }}
-                    }}
-                    
-                    console.error('❌ Không thể đổi API key');
-                    return false;
-                }} catch (error) {{
-                    console.error('❌ Lỗi khi đổi API key:', error);
-                    return false;
-                }}
-            }}
-
             const MAX_CONSECUTIVE_FAILURES = 3;  // Tối đa 3 lần fail thì đổi key
 
             const API_BASE_URL = '/api';
@@ -2291,7 +2263,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     'gay gắt', 'gay go', 'gay cấn', 'ngay thẳng', 'ngay thật', 'sắc',
                     
                     // --- Từ chứa "lồn/lon" nhưng không phải tục ---
-                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng', 'vai',
+                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng', 'vai', 'cuối',
                     'salon', 'lớn', 'nguồn', 'ngày', 'gay go', 'long lanh', 'long trọng', 'long', 'người',
 
                     // Tiếng Trung - chào hỏi
@@ -2539,22 +2511,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 }} catch (error) {{
                     console.error(`❌ [SAVE PREFERENCE] Exception:`, error);
                 }}
-            }}
-
-            // ✅ THÊM HÀM LẤY CSRF TOKEN NẾU CHƯA CÓ:
-            function getCookie(name) {{
-                let cookieValue = null;
-                if (document.cookie && document.cookie !== '') {{
-                    const cookies = document.cookie.split(';');
-                    for (let i = 0; i < cookies.length; i++) {{
-                        const cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {{
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }}
-                    }}
-                }}
-                return cookieValue;
             }}
 
             // ===== HÀM HELPER: TRÍCH XUẤT TÊN MÓN CHÍNH XÁC =====
@@ -4575,11 +4531,20 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 
                 console.log('✅ Đã hiển thị tin nhắn chào mặc định');
             }}
-
+            
             async function callGeminiAPI(userMessage) {{
                 console.log('🔥 Bắt đầu gọi Gemini API...');
                 console.log('📝 User message:', userMessage);
 
+                // 🔥 FIX 1: KIỂM TRA API KEY TRƯỚC KHI GỌI
+                if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {{
+                    console.error('❌ API KEY KHÔNG HỢP LỆ!');
+                    console.error('   - GEMINI_API_KEY:', GEMINI_API_KEY);
+                    addMessage('bot', 'Ối! Có lỗi cấu hình API key rồi bạn ơi 😢\nVui lòng liên hệ admin để khắc phục!');
+                    sendBtn.disabled = false;
+                    return;
+                }}
+                
                 isGenerating = true;
 
                 // 🔍 KIỂM TRA NẾU LÀ SEARCH CORRECTION MODE
@@ -5239,14 +5204,13 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             Respond naturally, caringly and helpfully in the SAME LANGUAGE the user used.`;
 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${{GEMINI_API_KEY}}`;
-
                 // ✅ THÊM CƠ CHẾ RETRY - PHẦN MỚI BẮT ĐẦU TỪ ĐÂY
                 const MAX_RETRIES = 3;
-                const RETRY_DELAY = 2000;
+                const RETRY_DELAY = 3000;
                 const TIMEOUT_MS = 30000;
 
                 let retryCount = 0;
+                let switchCount = 0;
                 const startTime = Date.now();
 
                 while (retryCount < MAX_RETRIES) {{
@@ -5258,6 +5222,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     }}
 
                     try {{
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${{GEMINI_API_KEY}}`;
+                        
+                        console.log(`🔄 Thử gọi API lần ${{retryCount + 1}}/${{MAX_RETRIES}}...`);
+                        console.log('🔑 Key index đang dùng:', window.CURRENT_KEY_INDEX || 0);
+                        console.log('📡 API URL:', apiUrl.replace(GEMINI_API_KEY, '***HIDDEN***'));
+
                         console.log(`🔄 Thử gọi API lần ${{retryCount + 1}}/${{MAX_RETRIES}}...`);
 
                         // 🆕 CHECK: Nếu đã cancel → dừng ngay
@@ -5272,6 +5242,14 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         // 🆕 Tạo AbortController mới cho request này
                         abortController = new AbortController();
 
+                        // 🔥 FIX 3: LOG REQUEST BODY
+                        const requestBody = {{
+                            contents: [[{{
+                                parts: [[{{ text: prompt }}]]
+                            }}]]
+                        }};
+                        console.log('📤 Request body size:', JSON.stringify(requestBody).length, 'characters');
+
                         const res = await fetch(apiUrl, {{
                             method: 'POST',
                             headers: {{ 'Content-Type': 'application/json' }},
@@ -5283,24 +5261,101 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             signal: abortController.signal // ← THÊM DÒNG NÀY
                         }});
 
-                        if (!!res.ok) {{
+                        if (!res.ok) {{
                             const errorText = await res.text();
-                            console.error(`❌ API Error (Lần ${{retryCount + 1}}):`, errorText);
                             
-                            consecutiveFailures++;  // ✅ THÊM: Tăng đếm fail
-                            console.log(`⚠️ Consecutive failures: ${{consecutiveFailures}}/${{MAX_CONSECUTIVE_FAILURES}}`);
+                            console.log('\n❌❌❌ API CALL FAILED ❌❌❌');
+                            console.log('📊 Status:', res.status, res.statusText);
+                            console.log('📄 Error response:', errorText);
+                            console.log('🔑 Đang dùng API Key index:', window.CURRENT_KEY_INDEX || 0);
                             
-                            // ✅ THÊM: Nếu fail 3 lần liên tiếp -> đổi key
-                            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {{
-                                console.log('🔄 Đã fail 3 lần liên tiếp, thử đổi API key...');
+                            // 🔥 FIX 4: PHÂN TÍCH LỖI 403
+                            if (res.status === 403) {{
+                                let errorData;
+                                try {{
+                                    errorData = JSON.parse(errorText);
+                                }} catch (e) {{
+                                    console.error('❌ Không parse được error JSON');
+                                }}
+                                
+                                console.log('🔍 Chi tiết lỗi 403:');
+                                console.log('   - Message:', errorData?.error?.message);
+                                console.log('   - Details:', errorData?.error?.details);
+                                
+                                // Nếu là lỗi "unregistered callers" → key sai hoặc chưa kích hoạt
+                                if (errorData?.error?.message?.includes('unregistered callers')) {{
+                                    console.error('💥 LỖI: API Key không hợp lệ hoặc chưa được kích hoạt!');
+                                    console.error('   → Kiểm tra lại key tại: https://aistudio.google.com/apikey');
+                                    
+                                    // Nếu retry lần 1 → thử lại (có thể do network)
+                                    if (retryCount === 0) {{
+                                        console.log('⏳ Thử lại 1 lần nữa...');
+                                        retryCount++;
+                                        await new Promise(resolve => setTimeout(resolve, 2000));
+                                        continue;
+                                    }} else {{
+                                        // Nếu vẫn lỗi → dừng hẳn
+                                        addMessage('bot', `Xin lỗi bạn! 😢\nAPI key không hợp lệ. Vui lòng liên hệ admin để kiểm tra lại!`);
+                                        sendBtn.disabled = false;
+                                        isGenerating = false;
+                                        stopCountdown();
+                                        updateSendButtonState('idle');
+                                        return;
+                                    }}
+                                }}
+                            }}
+
+                            consecutiveFailures++;
+                            retryCount++;
+                            
+                            // 🔥 KIỂM TRA ĐIỀU KIỆN SWITCH
+                            console.log('🤔 Có đổi key không?', retryCount >= MAX_RETRIES ? 'CÓ' : 'CHƯA');
+                            
+                            if (retryCount >= MAX_RETRIES) {{
+                                console.log('\n🔄🔄🔄 BẮT ĐẦU ĐỔI KEY 🔄🔄🔄');
+                                console.log('🔑 Đang dùng key index:', window.CURRENT_KEY_INDEX || 0);
+                                
                                 const switched = await switchAPIKey();
                                 
+                                console.log('✅ Kết quả switch:', switched);
+                                console.log('🔑 Key mới index:', window.CURRENT_KEY_INDEX || 0);
+                                
                                 if (switched) {{
-                                    console.log('✅ Đã đổi key, thử lại ngay...');
-                                    retryCount = 0;  // Reset retry count
-                                    continue;  // Thử lại với key mới
+                                    console.log('💚 ĐÃ ĐỔI KEY THÀNH CÔNG! Reset retry và thử lại...');
+                                    
+                                    // 🔥 CRITICAL: LẤY LẠI KEY MỚI TỪ BACKEND
+                                    try {{
+                                        const keyResponse = await fetch('/api/get-current-api-key/');
+                                        const keyData = await keyResponse.json();
+                                        
+                                        if (keyData.status === 'success' && keyData.api_key) {{
+                                            const oldIndex = window.CURRENT_KEY_INDEX || 0;
+                                            GEMINI_API_KEY = keyData.api_key;
+                                            window.CURRENT_KEY_INDEX = keyData.current_index;
+
+                                            console.log('🔄 CẬP NHẬT KEY:');
+                                            console.log('   📤 Key cũ index:', oldIndex);
+                                            console.log('   📥 Key mới index:', window.CURRENT_KEY_INDEX);
+                                        }} else {{
+                                            console.error('❌ Backend không trả về key mới:', keyData);
+                                            throw new Error('Cannot get new API key');
+                                        }}
+                                    }} catch (fetchError) {{
+                                        console.error('💥 Lỗi khi fetch key mới:', fetchError);
+                                        addMessage('bot', 'Xin lỗi! Không thể đổi API key. Vui lòng thử lại sau!');
+                                        sendBtn.disabled = false;
+                                        isGenerating = false;
+                                        stopCountdown();
+                                        updateSendButtonState('idle');
+                                        return;
+                                    }}
+                                    
+                                    retryCount = 0;
+                                    consecutiveFailures = 0;
+                                    await new Promise(resolve => setTimeout(resolve, 1000));
+                                    continue;
                                 }} else {{
-                                    console.error('❌ Không thể đổi key, hết API key khả dụng');
+                                    console.error('💔 KHÔNG THỂ ĐỔI KEY - ĐÃ HẾT KEY HOẶC LỖI');
                                     addMessage('bot', `Xin lỗi bạn! 😢\nHệ thống đang quá tải, bạn vui lòng thử lại sau 5-10 phút nhé!`);
                                     sendBtn.disabled = false;
                                     isGenerating = false;
@@ -5310,22 +5365,19 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                 }}
                             }}
                             
-                            retryCount++;
+                            // Nếu chưa đến lần 3 → retry
+                            console.log('⏳ Chưa đến lần 3, tiếp tục retry...');
                             if (retryCount < MAX_RETRIES) {{
-                                console.log(`⏳ Đợi ${{RETRY_DELAY}}ms trước khi thử lại...`);
                                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                                 continue;
-                            }} else {{
-                                addMessage('bot', `Ối! Có lỗi xảy ra rồi bạn ơi 😢\nMình đang gặp chút vấn đề kỹ thuật, bạn thử lại sau nhé!`);
-                                sendBtn.disabled = false;
-                                isGenerating = false;
-                                stopCountdown();
-                                updateSendButtonState('idle');
-                                return;
                             }}
                         }}
 
                         const data = await res.json();
+
+                        console.log('✅ API call thành công!');
+                        console.log('📊 Response data keys:', Object.keys(data));
+
                         let botReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
                         if (botReply) {{
@@ -5444,6 +5496,81 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     }}
                 }}
             }}
+
+            // ============================================
+            // 🔄 HÀM ĐỔI API KEY KHI GẶP LỖI 403
+            // ============================================
+            async function switchAPIKey() {{
+                try {{
+                    console.log('\n🔄🔄🔄 switchAPIKey() CALLED 🔄🔄🔄');
+                    console.log('📡 Đang gọi backend API: /api/switch-api-key/');
+                    
+                    const response = await fetch('/api/switch-api-key/', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }}
+                    }});
+
+                    console.log('📊 Backend response status:', response.status);
+                    
+                    if (!response.ok) {{
+                        console.error('❌ Backend trả về lỗi:', response.status);
+                        return false;
+                    }}
+                    
+                    const data = await response.json();
+                    console.log('📦 Backend response data:', data);
+                    
+                    if (data.status === 'success') {{
+                        const oldIndex = window.CURRENT_KEY_INDEX || 0;
+
+                        GEMINI_API_KEY = data.new_key;
+                        window.CURRENT_KEY_INDEX = data.current_index;
+
+                        console.log('✅✅✅ ĐÃ CẬP NHẬT KEY MỚI ✅✅✅');
+                        console.log('   🔑 Key cũ index:', oldIndex);
+                        console.log('   🔑 Key mới index:', window.CURRENT_KEY_INDEX);
+                        
+                        // ✅ VERIFY: Kiểm tra xem key đã đổi chưa
+                        if (GEMINI_API_KEY === data.new_key) {{
+                            console.log('✅ VERIFY: Key đã được cập nhật thành công');
+                            return true;
+                        }} else {{
+                            console.error('❌ VERIFY FAILED: Key không khớp!');
+                            return false;
+                        }}
+                        
+                    }} else {{
+                        console.error('❌ Backend trả về error:', data.message);
+                        return false;
+                    }}
+                    
+                }} catch (error) {{
+                    console.error('💥💥💥 EXCEPTION trong switchAPIKey() 💥💥💥');
+                    console.error('   Error:', error);
+                    return false;
+                }}
+            }}
+
+            // ============================================
+            // 🍪 HÀM LẤY CSRF TOKEN (CHO DJANGO)
+            // ============================================
+            function getCookie(name) {{
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {{
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {{
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {{
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }}
+                    }}
+                }}
+                return cookieValue;
+            }}
+
             console.log('✅ Chatbot initialization complete');
 
             // ====== EMOJI PICKER FUNCTIONALITY ======
@@ -5565,13 +5692,66 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 }}
             }});
 
+            // Hàm load API key từ backend
+            async function loadAPIKey() {{
+                try {{
+                    console.log('🔑 [INIT] Đang load API key từ backend...');
+                    
+                    const response = await fetch('/api/get-current-api-key/', {{
+                        method: 'GET',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }}
+                    }});
+
+                    if (!response.ok) {{
+                        throw new Error(`HTTP ${{response.status}}`);
+                    }}
+
+                    const data = await response.json();
+                    
+                    if (data.status === 'success' && data.api_key) {{
+                        GEMINI_API_KEY = data.api_key;
+                        window.CURRENT_KEY_INDEX = data.key_index || 0;
+                        
+                        console.log('✅ [INIT] API Key loaded successfully');
+                        console.log('📍 Key Index:', window.CURRENT_KEY_INDEX);
+                        return true;
+                    }} else {{
+                        console.error('❌ [INIT] Backend không trả về API key');
+                        return false;
+                    }}
+                    
+                }} catch (error) {{
+                    console.error('💥 [INIT] Lỗi khi load API key:', error);
+                    return false;
+                }}
+            }}
+
             // ========================================
             // 🚀 KHỞI TẠO ỨNG DỤNG KHI TRANG LOAD
             // ========================================
             async function initializeApp() {{ 
                 console.log("🚀 Đang khởi động ứng dụng...");
                 
-                // 1. 🔥 Load streak data trước (nếu user đã login)
+                // 🔥 THÊM: Load API key TRƯỚC KHI LÀM GÌ KHÁC
+                const keyLoaded = await loadAPIKey();
+                if (!keyLoaded) {{
+                    console.error('❌ Không thể load API key - Chatbot sẽ không hoạt động');
+                    // Hiển thị thông báo cho user
+                    const chatMessages = document.getElementById('chatMessages');
+                    if (chatMessages) {{
+                        chatMessages.innerHTML = `
+                            <div style="padding: 20px; text-align: center; color: #dc2626;">
+                                <h3>⚠️ Lỗi khởi động</h3>
+                                <p>Không thể load API key. Vui lòng liên hệ admin!</p>
+                            </div>
+                        `;
+                    }}
+                    return; // Dừng khởi động
+                }}
+                
+                // 1. Load streak data
                 try {{
                     await loadStreakData();
                     console.log('✅ Streak data loaded successfully');
@@ -5579,19 +5759,23 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     console.log('⚠️ Could not load streak (user not logged in?):', error);
                 }}
                 
-                // 2. ✅ THÊM DÒNG NÀY: Load conversation list TRƯỚC
+                // 2. Load conversation list
                 console.log("📋 Loading conversation list...");
                 await fetchConversationList();
                 
-                // 3. Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)
-                console.log("✨ Luôn khởi tạo phiên Chat Mới (chờ tin nhắn đầu tiên để lưu)");
+                // 3. Khởi tạo phiên Chat Mới
+                console.log("✨ Luôn khởi tạo phiên Chat Mới");
                 switchToNewChat();
                 
                 console.log("✅ App initialization complete");
             }}
 
-            // Gọi hàm khởi tạo ngay lập tức
-            initializeApp();
+            // Gọi hàm khởi tạo khi DOM ready
+            if (document.readyState === 'loading') {{
+                document.addEventListener('DOMContentLoaded', initializeApp);
+            }} else {{
+                initializeApp();
+            }}
 
             console.log('✅ Chatbot initialization complete');
 

@@ -21,8 +21,8 @@ CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 #      - Tính từ 1, không tính dòng header
 #      - Để None nếu muốn từ đầu / đến cuối
 # ======================================================
-START_ROW = 1825      # ví dụ: 2
-END_ROW   = 1826      # ví dụ: 20
+START_ROW = 901      # ví dụ: 2
+END_ROW   = 2548      # ví dụ: 20
 
 # ======================================================
 # 🔹 2. Bảng từ khóa khẩu vị
@@ -34,14 +34,14 @@ rules = {
         "ớt", "huế", "spicy", "chili"
     ],
     "mặn": [
-        "bánh canh", "bánh mì", "cơm tấm", "bò kho",
-        "trứng muối", "mặn", "phở", "sườn", "bún", "lẩu",
+        "bánh canh", "bánh mì", "cơm tấm", "bò kho","sủi cảo","há cảo","dimsum","bánh xèo","gà rán",
+        "trứng muối", "mặn", "phở", "sườn", "bún", "lẩu","hủ tiếu",
         "fish sauce", "soy sauce","cháy tỏi","chay toi","rang muối","rang muoi"
     ],
     "ngọt": [
-        "bánh ngọt", "trà sữa", "sữa chua", "sữa tươi",
+        "bánh ngọt", "trà sữa", "sữa chua", "sữa tươi","sủi cảo","há cảo","dimsum","gà rán",
         "bánh flan", "ngọt", "bánh", "cake", "chè", "kem",
-        "matcha", "kẹo", "bakery", "caramel", "sweet",
+        "matcha", "kẹo", "bakery", "caramel", "sweet","bánh xèo",
         "chocolate", "crème brûlée", "creme brulee"
     ],
     "chua": [
@@ -50,14 +50,14 @@ rules = {
         "lime", "passion fruit"
     ],
     "đắng": [
-        "ca cao", "socola", "coffe", "coffee", "đắng",
+        "ca cao", "socola", "coffe", "coffee", "đắng","gà ác",
         "trà", "matcha", "cacao"
     ],
     "tanh": [
         "sushi", "sashimi",
     ],
     "thanh": [
-        "thanh mát", "thanh mat", "nước dừa", "nuoc dua",
+        "thanh mát", "thanh mat", "nước dừa", "nuoc dua","gà ác","chay",
         "coconut water", "detox","rau",
         "salad", "rau trộn", "rau tron",
         "gỏi rau", "goi rau",

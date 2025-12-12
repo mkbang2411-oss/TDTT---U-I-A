@@ -299,3 +299,6 @@ CACHES = {
         'LOCATION': 'unique-snowflake',
     }
 }
+
+# Cho phép request từ mọi origin (chỉ dùng khi development)
+CORS_ALLOW_ALL_ORIGINS = True

@@ -65,6 +65,8 @@ urlpatterns = [
     path('api/password-reset/send-otp/', account_views.send_password_reset_otp_api, name='send_password_reset_otp'),
     path('api/password-reset/verify-otp/', account_views.verify_password_reset_otp_api, name='verify_password_reset_otp'),
     path('api/password-reset/reset/', account_views.reset_password_api, name='reset_password'),
+
+    path('api/', include('accounts.urls')), 
 ]
 
 if settings.DEBUG:
