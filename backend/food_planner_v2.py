@@ -2253,6 +2253,7 @@ input.time-input[type="number"] {
     border-radius: 16px 0 0 16px;
     opacity: 0;
     transition: opacity 0.3s ease;
+    display: none;
 }
 
 .meal-card-vertical:hover {
@@ -2723,7 +2724,7 @@ input.time-input[type="number"] {
     font-size: 14px;
     font-weight: 600;
     outline: none;
-    width: 100px;
+    width: 60px;
     text-align: center;
 }
 
@@ -2766,6 +2767,18 @@ input.time-input[type="number"] {
     font-weight: 700;
     position: relative;
     overflow: hidden;
+}
+
+/* mini bubble chỉ dùng trong meal card */
+.meal-actions .action-btn.mini{
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+}
+
+.meal-actions .action-btn.mini .btn-icon{
+  font-size: 18px;
+  line-height: 1;
 }
 
 .action-btn::before {
@@ -3193,6 +3206,31 @@ input.time-input[type="number"] {
     }
 }
 
+/* ========== CUSTOM SCROLLBAR CHO SAVED PLANS LIST ========== */
+.saved-plans-list.open {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(255, 107, 53, 0.6) transparent;
+}
+
+.saved-plans-list.open::-webkit-scrollbar {
+    width: 6px; /* muốn mảnh hơn nữa thì chỉnh 4px */
+}
+
+.saved-plans-list.open::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.saved-plans-list.open::-webkit-scrollbar-thumb {
+    background: rgba(255, 107, 53, 0.3);
+    border-radius: 3px;
+    transition: background 0.3s ease;
+}
+
+.saved-plans-list.open::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 107, 53, 0.6);
+}
+
+
 /* ===== Nút đề xuất: ép buộc tròn 100% ===== */
 /* ========== FIX NÚT ĐỀ XUẤT TRÒN Y NHƯ NÚT EDIT ========== */
 #suggestionsBtn {
@@ -3223,7 +3261,7 @@ input.time-input[type="number"] {
 .suggestions-wrapper .notif-dot {
     position: absolute;
     bottom: 0px;   /* Kéo sát vào mép dưới */
-    right: 0px;    /* Kéo sát vào mép phải */
+    right: 1px;    /* Kéo sát vào mép phải */
     width: 10px;
     height: 10px;
     background: #00c853;
@@ -3242,6 +3280,54 @@ input.time-input[type="number"] {
 }
 
 #suggestionCount { display: none !important; }
+
+.action-btn.icon-only{
+  width: 40px;           /* chỉnh bằng size nút edit của bạn */
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.action-btn.icon-only.mini{
+  width: 34px;
+  height: 34px;
+}
+
+.action-btn.icon-only.mini svg{
+  width: 18px;
+  height: 18px;
+}
+
+.action-btn.icon-only.mini .btn-icon{
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* spinner rotate */
+.btn-spin{
+  animation: btnSpin 1s linear infinite;
+}
+@keyframes btnSpin { to { transform: rotate(360deg); } }
+
+.action-btn.icon-only svg{
+  width: 20px;
+  height: 20px;
+}
+
+/* Ẩn nhưng vẫn tồn tại (screen-reader vẫn đọc được) */
+.sr-only{
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 
 </style>
 
@@ -3312,7 +3398,6 @@ input.time-input[type="number"] {
                 <div class="saved-plans-section" id="savedPlansSection" style="display: block;">
                     <div class="saved-plans-header" onclick="toggleSavedPlans()">
                         <div class="filter-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #FF6B35;">
-                            <span style="font-size: 20px; margin-right: 8px;">📋</span>
                             Lịch trình đã lưu
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; transition: transform 0.3s ease; color: #FF6B35;" id="savedPlansArrow">
@@ -3352,6 +3437,16 @@ let lastTargetElement = null;
 window.currentPlanName = null;
 window.loadedFromSavedPlan = false;
 let cachedPendingSuggestionsCount = 0; // Lưu số lượng suggestions pending
+
+const ICON_PENCIL = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+</svg>`;
+
+const ICON_SPINNER = `
+<svg class="btn-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+  <path d="M12 4a8 8 0 1 0 8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
 
 // Themes data
 const themes = {
@@ -3854,91 +3949,91 @@ async function loadSavedPlans(planId, forceReload = false) {
         displaySavedPlansList(allPlans);
         
         // Nếu có planId, load plan đó
-       // Nếu có planId, load plan đó
-if (planId) {
-    const plan = allPlans.find(p => p.id === planId);
-    
-    if (plan) {
-        currentPlan = {};
-        
-        // 🔥 XỬ LÝ SHARED PLAN
-        if (plan.is_shared) {
-            isSharedPlan = true;
-            isViewingSharedPlan = true;
-            sharedPlanOwnerId = plan.owner_id;
-            sharedPlanOwnerName = plan.owner_username;
-            hasEditPermission = (plan.permission === 'edit');
-
-            // 🔥 MỚI: LƯU BẢN SAO ORIGINAL PLAN
-    window.originalSharedPlanData = null; // Reset trước
+        if (planId) {
+            const plan = allPlans.find(p => p.id === planId);
             
-            // 🔥 FIX: THÊM AWAIT ĐỂ ĐỢI PENDING CHECK HOÀN TẤT
-            if (hasEditPermission) {
-                await checkPendingSuggestions(planId);
-                console.log('✅ Đã check pending suggestion sau reload:', hasPendingSuggestion);
-            }
-        } else {
-            isSharedPlan = false;
-            isViewingSharedPlan = false; // 🔥 THÊM DÒNG NÀY
-            sharedPlanOwnerId = null;
-            sharedPlanOwnerName = '';
-            hasEditPermission = false;
-        }
+            if (plan) {
+                currentPlan = {};
                 
-                // 🔥 CHUYỂN ĐỔI TỪ plan_data
-            const planData = plan.plan_data;
-            if (Array.isArray(planData)) {
-                const orderList = [];
-                planData.forEach(item => {
-                    currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
-                    orderList.push(item.key);
-                });
-                currentPlan._order = orderList;
-            } else {
-                Object.assign(currentPlan, planData);
-            }
+                // 🔥 XỬ LÝ SHARED PLAN
+                if (plan.is_shared) {
+                    isSharedPlan = true;
+                    isViewingSharedPlan = true;
+                    sharedPlanOwnerId = plan.owner_id;
+                    sharedPlanOwnerName = plan.owner_username;
+                    hasEditPermission = (plan.permission === 'edit');
 
-            // 🔥 MỚI: LƯU BẢN SAO ORIGINAL (SAU KHI PARSE)
-            if (plan.is_shared && hasEditPermission) {
-                window.originalSharedPlanData = JSON.parse(JSON.stringify(currentPlan));
-                console.log('💾 Đã lưu original shared plan data');
-}
+                    // 🔥 MỚI: LƯU BẢN SAO ORIGINAL PLAN
+                    window.originalSharedPlanData = null; // Reset trước
+                    
+                    // 🔥 FIX: THÊM AWAIT ĐỂ ĐỢI PENDING CHECK HOÀN TẤT
+                    if (hasEditPermission) {
+                        await checkPendingSuggestions(planId);
+                        console.log('✅ Đã check pending suggestion sau reload:', hasPendingSuggestion);
+                    }
+                } else {
+                    isSharedPlan = false;
+                    isViewingSharedPlan = false; // 🔥 THÊM DÒNG NÀY
+                    sharedPlanOwnerId = null;
+                    sharedPlanOwnerName = '';
+                    hasEditPermission = false;
+                }
+                        
+                        // 🔥 CHUYỂN ĐỔI TỪ plan_data
+                    const planData = plan.plan_data;
+                    if (Array.isArray(planData)) {
+                        const orderList = [];
+                        planData.forEach(item => {
+                            currentPlan[item.key] = JSON.parse(JSON.stringify(item.data));
+                            orderList.push(item.key);
+                        });
+                        currentPlan._order = orderList;
+                    } else {
+                        Object.assign(currentPlan, planData);
+                    }
 
-                currentPlanId = planId;
-                window.currentPlanName = plan.name;
-                window.loadedFromSavedPlan = true;
-                isEditMode = false;
-                suggestedFoodStreet = null;
-                suggestedMichelin = null;
-                displayPlanVertical(currentPlan, false);
+                    // 🔥 MỚI: LƯU BẢN SAO ORIGINAL (SAU KHI PARSE)
+                    if (plan.is_shared && hasEditPermission) {
+                        window.originalSharedPlanData = JSON.parse(JSON.stringify(currentPlan));
+                        console.log('💾 Đã lưu original shared plan data');
+                    }
 
-                // 🔥 THÊM: Tự động check suggestions sau khi load plan
-                if (!plan.is_shared) {
-                    setTimeout(() => {
+                        currentPlanId = planId;
+                        window.currentPlanName = plan.name;
+                        window.loadedFromSavedPlan = true;
+                        isEditMode = false;
+                        suggestedFoodStreet = null;
+                        suggestedMichelin = null;
+                        displayPlanVertical(currentPlan, false);
+
+                        if (!plan.is_shared) {
+                            // 🔥 AWAIT để đợi API hoàn thành TRƯỚC KHI render
+                            await checkPendingSuggestions(planId);
+                        } else if (hasEditPermission) {
+                            // 🔥 AWAIT cho shared plan có quyền edit
+                            await checkPendingSuggestions(planId);
+                        }
+
+                        setTimeout(() => drawRouteOnMap(currentPlan), 500);
+                        
+                        const savedPlansList = document.getElementById('savedPlansList');
+                        const savedPlansArrow = document.getElementById('savedPlansArrow');
+                        
+                        if (savedPlansList && savedPlansArrow) {
+                            savedPlansList.classList.remove('open');
+                            savedPlansArrow.style.transform = 'rotate(0deg)';
+                        }
+                        
+                        if (section) {
+                            section.style.display = 'block';
+                        }
                         checkPendingSuggestions(planId);
-                    }, 500);
+                    }
                 }
-
-                setTimeout(() => drawRouteOnMap(currentPlan), 500);
-                
-                const savedPlansList = document.getElementById('savedPlansList');
-                const savedPlansArrow = document.getElementById('savedPlansArrow');
-                
-                if (savedPlansList && savedPlansArrow) {
-                    savedPlansList.classList.remove('open');
-                    savedPlansArrow.style.transform = 'rotate(0deg)';
-                }
-                
-                if (section) {
-                    section.style.display = 'block';
-                }
-                checkPendingSuggestions(planId);
-            }
+            } catch (error) {
+                console.error('Error loading plans:', error);
         }
-    } catch (error) {
-        console.error('Error loading plans:', error);
     }
-}
 
 // ========== HELPER: CONVERT UTC TO LOCAL TIMEZONE ==========
 function formatDateTimeWithTimezone(datetimeString) {
@@ -5123,6 +5218,19 @@ async function sharePlan() {
         alert('⚠️ Chưa có lịch trình để chia sẻ');
         return;
     }
+
+    // ✅ Đóng tạm Food Planner khi mở popup chia sẻ (KHÔNG reset data)
+    const panel = document.getElementById('foodPlannerPanel');
+    if (panel) {
+    panel.dataset.prevActiveShare = panel.classList.contains('active') ? '1' : '0';
+    panel.classList.remove('active');
+    }
+    window._prevIsPlannerOpenShare = isPlannerOpen;
+    isPlannerOpen = false;
+
+    // ✅ Khóa scroll nền
+    document.body.dataset.prevOverflowShare = document.body.style.overflow || '';
+    document.body.style.overflow = 'hidden';
     
     try {
         // Lấy danh sách bạn bè
@@ -5143,21 +5251,251 @@ async function sharePlan() {
         `).join('');
         
         const modalHTML = `
-            <div id="shareModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; align-items: center; justify-content: center;">
-                <div style="background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%;">
-                    <h3 style="margin-top: 0;">📤 Chia sẻ lịch trình</h3>
-                    <p style="color: #666; font-size: 14px;">Chọn bạn bè bạn muốn chia sẻ:</p>
-                    
-                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin: 15px 0;">
-                        ${friendsList}
+            <div id="shareModal" style="
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(4px);
+                z-index: 2147483647;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="
+                    background: rgba(255, 255, 255, 0.96);
+                    backdrop-filter: blur(26px) saturate(180%);
+                    -webkit-backdrop-filter: blur(26px) saturate(180%);
+                    border-radius: 28px;
+                    max-width: 450px;
+                    width: 100%;
+                    border: 1px solid #FFE5D9;
+                    box-shadow: 0 10px 35px rgba(148, 85, 45, 0.25), 0 24px 60px rgba(203, 92, 37, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+                    overflow: hidden;
+                    font-family: 'Montserrat', sans-serif;
+                    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                ">
+                    <!-- Header -->
+                    <div style="
+                        position: relative;
+                        padding: 18px 24px 14px;
+                        background: linear-gradient(135deg, rgba(255, 107, 53, 0.14) 0%, rgba(255, 142, 83, 0.10) 100%);
+                        border-bottom: 1px solid #FFE5D9;
+                    ">
+                        <div style="
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            height: 1px;
+                            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+                        "></div>
+                        
+                        <h3 style="
+                            margin: 0;
+                            font-weight: 700;
+                            font-size: 18px;
+                            letter-spacing: -0.02em;
+                            background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+                            -webkit-background-clip: text;
+                            -webkit-text-fill-color: transparent;
+                            background-clip: text;
+                        ">
+                            Chia sẻ lịch trình
+                        </h3>
                     </div>
                     
-                    <div style="display: flex; gap: 10px; margin-top: 20px;">
-                        <button onclick="confirmShare()" style="flex: 1; padding: 12px; background: #FF6B35; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Chia sẻ</button>
-                        <button onclick="closeShareModal()" style="flex: 1; padding: 12px; background: #ccc; color: #333; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Hủy</button>
+                    <!-- Body -->
+                    <div style="padding: 20px 24px;">
+                        <p style="
+                            color: #555555;
+                            font-size: 13px;
+                            margin: 0 0 15px 0;
+                            line-height: 1.5;
+                            font-weight: 500;
+                        ">Chọn bạn bè bạn muốn chia sẻ:</p>
+                        
+                        <!-- Friends List -->
+                        <div style="
+                            max-height: 300px;
+                            overflow-y: auto;
+                            overflow-x: hidden;
+                            background: #FFF5F0;
+                            border: 1px solid #FFE5D9;
+                            border-radius: 12px;
+                            padding: 12px;
+                            margin: 15px 0;
+                        ">
+                            <style>
+                                #shareModal .friends-scroll::-webkit-scrollbar {
+                                    width: 6px;
+                                }
+                                #shareModal .friends-scroll::-webkit-scrollbar-track {
+                                    background: #FFE5D9;
+                                    border-radius: 10px;
+                                    margin: 8px 0;
+                                }
+                                #shareModal .friends-scroll::-webkit-scrollbar-thumb {
+                                    background: linear-gradient(135deg, #FFB084, #FF8E53);
+                                    border-radius: 10px;
+                                    border: 2px solid transparent;
+                                    background-clip: padding-box;
+                                }
+                                
+                                /* Custom Checkbox Style */
+                                #shareModal input[type="checkbox"] {
+                                    appearance: none;
+                                    -webkit-appearance: none;
+                                    width: 20px;
+                                    height: 20px;
+                                    border: 2px solid #FFB084;
+                                    border-radius: 6px;
+                                    cursor: pointer;
+                                    position: relative;
+                                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                                    background: white;
+                                }
+                                
+                                #shareModal input[type="checkbox"]:hover {
+                                    border-color: #FF8E53;
+                                    box-shadow: 0 0 8px rgba(255, 142, 83, 0.3);
+                                    transform: scale(1.05);
+                                }
+                                
+                                #shareModal input[type="checkbox"]:checked {
+                                    background: white;
+                                    border-color: #FF8E53;
+                                }
+                                
+                                #shareModal input[type="checkbox"]:checked::after {
+                                    content: '';
+                                    position: absolute;
+                                    left: 5px;
+                                    top: 2px;
+                                    width: 6px;
+                                    height: 10px;
+                                    border: solid #FF8E53;
+                                    border-width: 0 2.5px 2.5px 0;
+                                    transform: rotate(45deg);
+                                }
+                                
+                                /* Friend Item Style */
+                                #shareModal .friend-item {
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 12px;
+                                    margin-bottom: 8px;
+                                    background: white;
+                                    border: 1px solid #FFE5D9;
+                                    border-radius: 12px;
+                                    cursor: pointer;
+                                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                                }
+                                
+                                #shareModal .friend-item:hover {
+                                    background: #FFF9F5;
+                                    border-color: #FFB084;
+                                    transform: translateX(4px);
+                                    box-shadow: 0 4px 12px rgba(255, 142, 83, 0.2);
+                                }
+                                
+                                #shareModal .friend-item label {
+                                    cursor: pointer;
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                    color: #FF8E53;
+                                    flex: 1;
+                                    user-select: none;
+                                }
+                            </style>
+                            <div class="friends-scroll">
+                                ${friendsList}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style="
+                        padding: 12px 16px;
+                        border-top: 1px solid #FFE5D9;
+                        background: linear-gradient(135deg, #FFF5F0 0%, #FFE5D9 100%);
+                        display: flex;
+                        gap: 10px;
+                        position: relative;
+                    ">
+                        <div style="
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            height: 1px;
+                            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+                        "></div>
+                        
+                        <button onclick="confirmShare()" style="
+                            flex: 1;
+                            border: none;
+                            padding: 12px 20px;
+                            border-radius: 25px;
+                            background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+                            color: #ffffff;
+                            font-size: 14px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            box-shadow: 0 4px 16px rgba(255, 126, 75, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+                            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                            font-family: 'Montserrat', sans-serif;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                        " onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 8px 24px rgba(255, 126, 75, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.35)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 16px rgba(255, 126, 75, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35)';">
+                            Chia sẻ
+                        </button>
+                        
+                        <button onclick="closeShareModal()" style="
+                            flex: 1;
+                            border: 2px solid #FFB084;
+                            padding: 12px 20px;
+                            border-radius: 25px;
+                            background: rgba(255, 255, 255, 0.9);
+                            color: #FF8E53;
+                            font-size: 14px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            box-shadow: 0 2px 8px rgba(255, 126, 75, 0.2);
+                            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                            font-family: 'Montserrat', sans-serif;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                        " onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.background='#FFF5F0'; this.style.boxShadow='0 4px 12px rgba(255, 126, 75, 0.3)';" onmouseout="this.style.transform=''; this.style.background='rgba(255, 255, 255, 0.9)'; this.style.boxShadow='0 2px 8px rgba(255, 126, 75, 0.2)';">
+                            Hủy
+                        </button>
                     </div>
                 </div>
             </div>
+            
+            <style>
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(30px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+            </style>
         `;
         
         document.body.insertAdjacentHTML('beforeend', modalHTML);
@@ -5169,8 +5507,22 @@ async function sharePlan() {
 }
 
 function closeShareModal() {
-    const modal = document.getElementById('shareModal');
-    if (modal) modal.remove();
+  const modal = document.getElementById('shareModal');
+  if (modal) modal.remove();
+
+  // ✅ Mở lại Food Planner như lúc trước khi mở popup
+  const panel = document.getElementById('foodPlannerPanel');
+  if (panel && panel.dataset.prevActiveShare === '1') {
+    panel.classList.add('active');
+    isPlannerOpen = true;
+  } else {
+    isPlannerOpen = false;
+  }
+  if (panel) delete panel.dataset.prevActiveShare;
+
+  // ✅ Mở lại scroll nền
+  document.body.style.overflow = document.body.dataset.prevOverflowShare || '';
+  delete document.body.dataset.prevOverflowShare;
 }
 
 async function confirmShare() {
@@ -5294,38 +5646,26 @@ if (filtersWrapper) {
         
         <button class="action-btn"
             onclick="viewMySuggestions(${currentPlanId})"
-            style="background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);"
+            style="background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);"
             title="Xem đề xuất của tôi">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
                 <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
             </svg>
         </button>
         
-        <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất" ${hasPendingSuggestion ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
-            <span class="btn-label">${hasPendingSuggestion ? 'Đang chờ duyệt' : 'Gửi đề xuất'}</span>
-        </button>
+        <button class="action-btn primary icon-only"
+                onclick="submitSuggestion()"
+                title="Gửi đề xuất"
+                ${hasPendingSuggestion ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
 
-        ${hasPendingSuggestion ? `
-            <div style="
-                position: absolute;
-                top: -8px;
-                right: -8px;
-                background: #FF9800;
-                color: white;
-                border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 12px;
-                font-weight: 700;
-                box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
-            ">⏳</div>
-        ` : ''}
+        <!-- vẫn có text nhưng không hiện -->
+        <span class="btn-label sr-only">
+            ${hasPendingSuggestion ? 'Đang chờ duyệt' : 'Gửi đề xuất'}
+        </span>
+        </button>
     ` : ''}
 ` : `
     <div class="suggestions-wrapper" style="display: none;">  <!-- ✅ THÊM style ẨN MẶC ĐỊNH -->
@@ -5436,17 +5776,20 @@ if (filtersWrapper) {
                                 }
                             </div>
                             ${editMode ? `
-                            <div class="meal-actions">
-                                <button class="meal-action-btn select-meal ${isWaitingForSelection ? 'active' : ''}" 
-                                        onclick="selectPlaceForMeal('${key}')" title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán trên bản đồ...' : 'Nhấn để chọn quán ăn từ bản đồ'}">
-                                    <span class="btn-icon">${isWaitingForSelection ? '⏳' : '✏️'}</span>
-                                    <span class="btn-text">${isWaitingForSelection ? 'Đang chọn...' : 'Chọn quán'}</span>
+                                <div class="meal-actions">
+                                <button class="action-btn edit icon-only mini meal-action-bubble ${isWaitingForSelection ? 'active' : ''}"
+                                        onclick="event.stopPropagation(); selectPlaceForMeal('${key}')"
+                                        title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán khác trên bản đồ...' : 'Nhấn để đổi sang quán khác'}">
+                                    ${isWaitingForSelection ? ICON_SPINNER : ICON_PENCIL}
+                                    <span class="sr-only">${isWaitingForSelection ? 'Đang đổi.' : 'Đổi quán'}</span>
                                 </button>
-                                <button class="meal-action-btn delete-meal" onclick="deleteMealSlot('${key}')" title="Xóa bữa ăn này">
-                                    <span class="btn-icon">🗑️</span>
-                                    <span class="btn-text">Xóa</span>
+
+                                <button class="action-btn edit icon-only mini meal-action-bubble delete-meal"
+                                        onclick="event.stopPropagation(); deleteMealSlot('${key}')"
+                                        title="Xóa bữa ăn này">
+                                    <span class="btn-icon">✕</span>
                                 </button>
-                            </div>
+                                </div>
                             ` : ''}
                         </div>
                         <div class="empty-slot-content">
@@ -5554,17 +5897,20 @@ if (filtersWrapper) {
                             </div>
                         </div>
                         ${editMode ? `
-                        <div class="meal-actions">
-                            <button class="meal-action-btn select-meal ${isWaitingForSelection ? 'active' : ''}" 
-                                    onclick="event.stopPropagation(); selectPlaceForMeal('${key}')" title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán khác trên bản đồ...' : 'Nhấn để đổi sang quán khác'}">
-                                <span class="btn-icon">${isWaitingForSelection ? '⏳' : '✏️'}</span>
-                                <span class="btn-text">${isWaitingForSelection ? 'Đang đổi...' : 'Đổi quán'}</span>
+                            <div class="meal-actions">
+                            <button class="action-btn edit icon-only mini meal-action-bubble ${isWaitingForSelection ? 'active' : ''}"
+                                    onclick="event.stopPropagation(); selectPlaceForMeal('${key}')"
+                                    title="${isWaitingForSelection ? 'Đang chờ bạn chọn quán khác trên bản đồ...' : 'Nhấn để đổi sang quán khác'}">
+                                ${isWaitingForSelection ? ICON_SPINNER : ICON_PENCIL}
+                                <span class="sr-only">${isWaitingForSelection ? 'Đang đổi.' : 'Đổi quán'}</span>
                             </button>
-                            <button class="meal-action-btn delete-meal" onclick="event.stopPropagation(); deleteMealSlot('${key}')" title="Xóa bữa ăn này">
-                                <span class="btn-icon">🗑️</span>
-                                <span class="btn-text">Xóa</span>
+
+                            <button class="action-btn edit icon-only mini meal-action-bubble delete-meal"
+                                    onclick="event.stopPropagation(); deleteMealSlot('${key}')"
+                                    title="Xóa bữa ăn này">
+                                <span class="btn-icon">✕</span>
                             </button>
-                        </div>
+                            </div>
                         ` : ''}
                     </div>
                     <div class="place-info-vertical">
@@ -5640,7 +5986,7 @@ if (filtersWrapper) {
                         box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
                         transition: all 0.2s ease;
                     " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';" title="Làm trống lịch trình">
-                        📋
+                        ✕
                     </button>
                     <div style="margin-top: 10px; font-size: 14px; color: #FF6B35; font-weight: 600;">
                         Làm trống
@@ -7751,6 +8097,19 @@ async function openSuggestionsPanel() {
         alert('⚠️ Không có lịch trình đang mở');
         return;
     }
+
+    // ✅ Đóng tạm Food Planner khi mở popup chia sẻ (KHÔNG reset data)
+    const panel = document.getElementById('foodPlannerPanel');
+    if (panel) {
+        panel.dataset.prevActiveShare = panel.classList.contains('active') ? '1' : '0';
+        panel.classList.remove('active');
+    }
+    window._prevIsPlannerOpenShare = isPlannerOpen;
+    isPlannerOpen = false;
+
+    // ✅ Khóa scroll nền
+    document.body.dataset.prevOverflowShare = document.body.style.overflow || '';
+    document.body.style.overflow = 'hidden';
     
     try {
         const response = await fetch(`/api/accounts/food-plan/suggestions/${currentPlanId}/`);
@@ -7769,152 +8128,237 @@ async function openSuggestionsPanel() {
             return;
         }
         
-
-   // Tạo HTML cho danh sách đề xuất
-const suggestionsHTML = suggestions.map((sug, index) => {
-    const statusBg = sug.status === 'pending' ? '#FFF3E0' : sug.status === 'accepted' ? '#E8F5E9' : '#FFEBEE';
-    const statusColor = sug.status === 'pending' ? '#F57C00' : sug.status === 'accepted' ? '#2E7D32' : '#C62828';
-    const statusText = sug.status === 'pending' ? '⏳ Chờ duyệt' : sug.status === 'accepted' ? '✅ Đã chấp nhận' : '❌ Đã từ chối';
-    const borderColor = sug.status === 'pending' ? '#FF9800' : sug.status === 'accepted' ? '#4CAF50' : '#F44336';
-    
-    return `
-        <div style="
-            background: white;
-            border: 2px solid ${borderColor};
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        ">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                <div>
-                    <div style="font-weight: 700; color: #333; font-size: 15px; margin-bottom: 8px;">
-                        👤 ${sug.suggested_by_username}
-                    </div>
-                    <div style="font-size: 13px; color: #666;">
-                        📅 ${new Date(sug.created_at).toLocaleString('vi-VN')}
-                    </div>
-                </div>
-                <span style="
-                    padding: 4px 12px;
-                    border-radius: 12px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    background: ${statusBg};
-                    color: ${statusColor};
-                ">
-                    ${statusText}
-                </span>
-            </div>
-            
-            ${sug.message ? `
+        // Tạo HTML cho danh sách đề xuất
+        const suggestionsHTML = suggestions.map((sug, index) => {
+            return `
                 <div style="
-                    background: #F5F5F5;
-                    border-left: 3px solid #FF6B35;
-                    padding: 10px 12px;
-                    border-radius: 6px;
-                    margin-bottom: 12px;
-                    font-size: 13px;
-                    color: #555;
+                    background: #FFFFFF;
+                    border-radius: 20px;
+                    margin-bottom: 14px;
+                    font-family: 'Montserrat', sans-serif;
+                    position: relative;
+                    box-shadow: 0 4px 16px rgba(255, 126, 75, 0.15);
+                    overflow: hidden;
                 ">
-                    💬 ${sug.message}
-                </div>
-            ` : ''}
-            
-            <div style="display: flex; gap: 8px; margin-top: 12px;">
-                <button onclick="viewSuggestionComparison(${sug.id})" style="
-                    flex: 1;
-                    background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%);
-                    color: white;
-                    border: none;
-                    padding: 10px;
-                    border-radius: 8px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    cursor: pointer;
-                ">
-                    👁️ Xem chi tiết
-                </button>
-                
-                ${sug.status === 'pending' ? `
-                    <button onclick="approveSuggestion(${sug.id})" style="
-                        flex: 1;
-                        background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-                        color: white;
-                        border: none;
-                        padding: 10px;
-                        border-radius: 8px;
-                        font-size: 13px;
-                        font-weight: 600;
-                        cursor: pointer;
+                    <!-- Header CAM NHẠT TRẢI DÀI -->
+                    <div style="
+                        background: linear-gradient(135deg, #FFD4B8 0%, #FFBC94 100%);
+                        color: #ffffff;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 16px 20px;
                     ">
-                        ✅ Chấp nhận
-                    </button>
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            font-weight: 700;
+                            font-size: 16px;
+                            letter-spacing: -0.02em;
+                        ">
+                            Đề xuất chỉnh sửa
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <!-- Khung đếm số lượng đề xuất -->
+                            <div style="
+                                background: #FFFFFF;
+                                border: 2px solid #FF8E53;
+                                border-radius: 12px;
+                                padding: 4px 12px;
+                                font-size: 13px;
+                                font-weight: 700;
+                                color: #FF8E53;
+                                display: flex;
+                                align-items: center;
+                                gap: 4px;
+                            ">
+                                <span>${suggestions.length}</span>
+                            </div>
+                            
+                            <!-- Nút X nền trắng -->
+                            <button onclick="closeSuggestionsModal()" style="
+                                background: #FFFFFF;
+                                border: 1px solid #FFE5D9;
+                                color: #94a3b8;
+                                font-size: 18px;
+                                width: 28px;
+                                height: 28px;
+                                border-radius: 50%;
+                                cursor: pointer;
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                                font-weight: 300;
+                                line-height: 1;
+                                padding: 0;
+                            " onmouseenter="this.style.background='#FF8E53'; this.style.color='#ffffff'; this.style.transform='rotate(90deg)'; this.style.borderColor='#FF8E53'"
+                            onmouseleave="this.style.background='#FFFFFF'; this.style.color='#94a3b8'; this.style.transform='rotate(0deg)'; this.style.borderColor='#FFE5D9'">
+                                ×
+                            </button>
+                        </div>
+                    </div>
                     
-                    <button onclick="rejectSuggestion(${sug.id})" style="
-                        flex: 1;
-                        background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
-                        color: white;
-                        border: none;
-                        padding: 10px;
-                        border-radius: 8px;
-                        font-size: 13px;
-                        font-weight: 600;
-                        cursor: pointer;
-                    ">
-                        ❌ Từ chối
-                    </button>
-                ` : ''}
-            </div>
-        </div>
-    `;
-}).join('');
+                    <!-- Content bên dưới -->
+                    <div style="padding: 20px; background: #FFF5F0;">
+                        <!-- User Info -->
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div style="flex: 1;">
+                                <div style="
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                    color: #1f2933;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                    letter-spacing: -0.01em;
+                                    margin-bottom: 4px;
+                                ">
+                                    <span style="font-size: 16px;">👤</span>
+                                    ${sug.suggested_by_username}
+                                </div>
+                                <div style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    font-size: 11px;
+                                    color: #6b7280;
+                                    margin-top: 2px;
+                                    font-weight: 500;
+                                ">
+                                    <span style="font-size: 12px;">🕐</span>
+                                    ${new Date(sug.created_at).toLocaleString('vi-VN')}
+                                </div>
+                            </div>
+                            <span style="
+                                font-size: 10px;
+                                font-weight: 700;
+                                padding: 3px 8px;
+                                border-radius: 12px;
+                                flex-shrink: 0;
+                                white-space: nowrap;
+                                ${sug.status === 'pending' ? 
+                                    'background: linear-gradient(135deg, #FFB084, #FF8E53); color: #ffffff; box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);' : 
+                                sug.status === 'approved' ? 
+                                    'background: #e0e0e0; color: #888888;' : 
+                                    'background: #e0e0e0; color: #888888;'}
+                            ">
+                                ${sug.status === 'pending' ? 'Mới' : 
+                                sug.status === 'approved' ? 'Đã duyệt' : 
+                                'Đã từ chối'}
+                            </span>
+                        </div>
+                        
+                        <!-- Message Section -->
+                        ${sug.message ? `
+                            <div style="
+                                font-size: 13px;
+                                color: #555555;
+                                line-height: 1.5;
+                                margin-bottom: 12px;
+                            ">
+                                ${sug.message}
+                            </div>
+                        ` : ''}
+                        
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button onclick="viewSuggestionComparison(${sug.id})" style="
+                                flex: 1;
+                                border: none;
+                                padding: 10px 18px;
+                                border-radius: 25px;
+                                background: #FFFFFF;
+                                color: #FF8E53;
+                                font-size: 13px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                font-family: 'Montserrat', sans-serif;
+                                border: 1px solid #FFE5D9;
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 6px;
+                                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                            " onmouseenter="this.style.background='linear-gradient(135deg, #FFB084 0%, #FF8E53 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(255, 126, 75, 0.7)'"
+                            onmouseleave="this.style.background='#FFFFFF'; this.style.color='#FF8E53'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
+                                Xem chi tiết
+                            </button>
+                            
+                            ${sug.status === 'pending' ? `
+                                <button onclick="approveSuggestion(${sug.id})" style="
+                                    flex: 1;
+                                    border: none;
+                                    padding: 10px 18px;
+                                    border-radius: 25px;
+                                    background: #FFFFFF;
+                                    color: #4CAF50;
+                                    font-size: 13px;
+                                    font-weight: 600;
+                                    cursor: pointer;
+                                    font-family: 'Montserrat', sans-serif;
+                                    border: 1px solid #E8F5E9;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    gap: 6px;
+                                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                                " onmouseenter="this.style.background='linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(76, 175, 80, 0.5)'"
+                                onmouseleave="this.style.background='#FFFFFF'; this.style.color='#4CAF50'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
+                                    Chấp nhận
+                                </button>
+                                
+                                <button onclick="rejectSuggestion(${sug.id})" style="
+                                    flex: 1;
+                                    border: none;
+                                    padding: 10px 18px;
+                                    border-radius: 25px;
+                                    background: #FFFFFF;
+                                    color: #EF4444;
+                                    font-size: 13px;
+                                    font-weight: 600;
+                                    cursor: pointer;
+                                    font-family: 'Montserrat', sans-serif;
+                                    border: 1px solid #FFEBEE;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    gap: 6px;
+                                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                                " onmouseenter="this.style.background='linear-gradient(135deg, #F87171 0%, #EF4444 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(239, 68, 68, 0.5)'"
+                                onmouseleave="this.style.background='#FFFFFF'; this.style.color='#EF4444'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
+                                    Từ chối
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
         
-        // Tạo modal
+        // Tạo modal - CHỈ CÓ BACKGROUND ĐEN MỜ VÀ CÁC CARD
         const modalHTML = `
             <div id="suggestionsModal" style="
                 position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.6);
-                z-index: 99999;
+                inset: 0;
+                background: rgba(0,0,0,0.35);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                z-index: 2147483647;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                padding: 20px;
                 animation: fadeIn 0.3s ease;
+                overflow-y: auto;
             ">
                 <div style="
-                    background: linear-gradient(135deg, #F5F5F5 0%, #EEEEEE 100%);
-                    padding: 24px;
-                    border-radius: 16px;
                     max-width: 600px;
                     width: 90%;
-                    max-height: 80vh;
-                    overflow-y: auto;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                    padding: 10px;
                 ">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 style="margin: 0; color: #333; display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 28px;">📝</span>
-                            <span>Đề xuất chỉnh sửa (${suggestions.length})</span>
-                        </h3>
-                        <button onclick="closeSuggestionsModal()" style="
-                            background: #F44336;
-                            color: white;
-                            border: none;
-                            width: 36px;
-                            height: 36px;
-                            border-radius: 50%;
-                            cursor: pointer;
-                            font-size: 20px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        ">×</button>
-                    </div>
-                    
                     ${suggestionsHTML}
                 </div>
             </div>
@@ -7931,127 +8375,553 @@ const suggestionsHTML = suggestions.map((sug, index) => {
 function closeSuggestionsModal() {
     const modal = document.getElementById('suggestionsModal');
     if (modal) modal.remove();
+    
+    // ✅ Mở lại Food Planner như lúc trước khi mở popup
+    const panel = document.getElementById('foodPlannerPanel');
+    if (panel && panel.dataset.prevActiveShare === '1') {
+        panel.classList.add('active');
+        isPlannerOpen = true;
+    } else {
+        isPlannerOpen = false;
+    }
+    if (panel) delete panel.dataset.prevActiveShare;
+
+    // ✅ Mở lại scroll nền
+    document.body.style.overflow = document.body.dataset.prevOverflowShare || '';
+    delete document.body.dataset.prevOverflowShare;
 }
 
 // ========== VIEW SUGGESTION COMPARISON ==========
+// ==============================
+// ✅ COMPARISON MODAL - ORANGE THEME (render only, logic unchanged)
+// ==============================
+
+function ensureComparisonStyles() {
+    if (document.getElementById('comparisonModalStyles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'comparisonModalStyles';
+    style.textContent = `
+/* ===== Comparison Modal (match notification vibe) ===== */
+#comparisonModal.cmp-overlay{
+  --cmp-orange-1:#FFB084;
+  --cmp-orange-2:#FF8E53;
+  --cmp-orange-3:#FF6B35;
+  --cmp-ink:#1f2933;
+  --cmp-sub:#6b7280;
+  --cmp-bg:#FFF5F0;
+  --cmp-border:#FFE5D9;
+
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,0.20);              /* tối vừa phải */
+  backdrop-filter: blur(12px) saturate(100%); /* mờ nền */
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2147483647;
+  padding:20px;
+  animation: cmpFadeIn 0.22s ease;
+}
+
+@keyframes cmpFadeIn{
+  from{opacity:0;}
+  to{opacity:1;}
+}
+
+#comparisonModal .cmp-modal{
+  width:100%;
+  max-width:980px;
+  max-height:86vh;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border:1px solid var(--cmp-border);
+  border-radius:28px;
+  box-shadow:
+    0 10px 35px rgba(148, 85, 45, 0.22),
+    0 24px 60px rgba(203, 92, 37, 0.14),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  font-family:"Montserrat",sans-serif;
+  animation: cmpPopIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cmpPopIn{
+  from{opacity:0; transform: translateY(26px) scale(0.96);}
+  to{opacity:1; transform: translateY(0) scale(1);}
+}
+
+#comparisonModal .cmp-header{
+  position:relative;
+  padding:18px 24px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background: linear-gradient(135deg, rgba(255,107,53,0.14) 0%, rgba(255,142,83,0.10) 100%);
+  border-bottom:1px solid var(--cmp-border);
+}
+
+#comparisonModal .cmp-header::before{
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
+}
+
+#comparisonModal .cmp-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:700;
+  font-size:18px;
+  letter-spacing:-0.02em;
+  background: linear-gradient(135deg, var(--cmp-orange-1) 0%, var(--cmp-orange-2) 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+#comparisonModal .cmp-title .cmp-title-icon{
+  -webkit-text-fill-color: initial;
+  color: var(--cmp-orange-2);
+  filter: drop-shadow(0 6px 10px rgba(255,126,75,0.25));
+  font-size:20px;
+}
+
+#comparisonModal .cmp-close{
+  background: rgba(255,255,255,0.9);
+  border: 1px solid var(--cmp-border);
+  color: #94a3b8;
+  font-size:20px;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight:300;
+}
+
+#comparisonModal .cmp-close:hover{
+  background:#fff;
+  color: var(--cmp-orange-1);
+  transform: rotate(90deg);
+  border-color: var(--cmp-orange-1);
+  box-shadow: 0 4px 14px rgba(255,126,75,0.35);
+}
+
+#comparisonModal .cmp-body{
+  padding:14px 16px 18px;
+  background: var(--cmp-bg);
+  overflow:auto;
+}
+
+#comparisonModal .cmp-body::-webkit-scrollbar{ width:6px; }
+#comparisonModal .cmp-body::-webkit-scrollbar-track{
+  background: var(--cmp-border);
+  border-radius:10px;
+  margin:8px 0;
+}
+#comparisonModal .cmp-body::-webkit-scrollbar-thumb{
+  background: linear-gradient(135deg, var(--cmp-orange-1), var(--cmp-orange-2));
+  border-radius:10px;
+  border:2px solid transparent;
+  background-clip: padding-box;
+}
+
+#comparisonModal .cmp-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:16px;
+}
+
+@media (max-width: 860px){
+  #comparisonModal .cmp-grid{ grid-template-columns: 1fr; }
+}
+
+#comparisonModal .cmp-col{
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,229,217,0.9);
+  border-radius: 22px;
+  overflow:hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
+}
+
+#comparisonModal .cmp-col-head{
+  padding:14px 16px 12px;
+  border-bottom:1px solid var(--cmp-border);
+  background: linear-gradient(135deg, rgba(255,176,132,0.16), rgba(255,142,83,0.10));
+}
+
+#comparisonModal .cmp-col-title{
+  font-weight:700;
+  font-size:14px;
+  color: var(--cmp-ink);
+  letter-spacing:-0.01em;
+}
+
+#comparisonModal .cmp-col-content{
+  padding:12px 12px 6px;
+}
+
+#comparisonModal .cmp-empty{
+  padding:26px 14px;
+  text-align:center;
+  color: var(--cmp-sub);
+  font-size:13px;
+  font-weight:500;
+}
+
+#comparisonModal .cmp-card{
+  position:relative;
+  background:#fff;
+  border:1px solid var(--cmp-border);
+  border-radius:18px;
+  padding:12px 12px 12px;
+  margin-bottom:10px;
+  overflow:hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(148,85,45,0.06);
+}
+
+#comparisonModal .cmp-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: linear-gradient(135deg, rgba(255,107,53,0.10), rgba(255,142,83,0.06));
+  opacity:0;
+  transition: opacity 0.25s ease;
+}
+
+#comparisonModal .cmp-card:hover{
+  border-color: var(--cmp-orange-1);
+  box-shadow: 0 10px 24px rgba(255,126,75,0.16);
+}
+
+#comparisonModal .cmp-card:hover::before{ opacity:1; }
+
+/* gentle shine (not too bright) */
+#comparisonModal .cmp-card:not(.cmp-locked)::after{
+  content:"";
+  position:absolute;
+  top:0; left:-120%;
+  width:80%;
+  height:100%;
+  background: linear-gradient(90deg, transparent, rgba(255,176,132,0.22), transparent);
+  transform: skewX(-12deg);
+  animation: cmpShine 3.2s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes cmpShine{
+  0%{ left:-120%; }
+  55%, 100%{ left:140%; }
+}
+
+#comparisonModal .cmp-locked{
+  opacity:0.55;
+  pointer-events:none;
+}
+
+#comparisonModal .cmp-tag{
+  position:absolute;
+  top:10px;
+  left:10px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:0.02em;
+  color:#fff;
+  z-index:3;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+#comparisonModal .cmp-tag.added{
+  background: linear-gradient(135deg, rgba(16,185,129,0.95), rgba(34,197,94,0.92));
+}
+#comparisonModal .cmp-tag.removed{
+  background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(244,63,94,0.92));
+}
+#comparisonModal .cmp-tag.modified{
+  background: linear-gradient(135deg, var(--cmp-orange-1), var(--cmp-orange-2));
+}
+
+#comparisonModal .cmp-main{
+  position:relative;
+  z-index:2;
+  padding-top:22px;
+}
+
+#comparisonModal .cmp-row{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+
+#comparisonModal .cmp-emoji{
+  font-size:20px;
+  line-height:1;
+  margin-top:1px;
+  filter: drop-shadow(0 6px 10px rgba(255,126,75,0.10));
+}
+
+#comparisonModal .cmp-text{ flex:1; min-width:0; }
+
+#comparisonModal .cmp-titleline{
+  font-weight:700;
+  font-size:13px;
+  color: var(--cmp-ink);
+  letter-spacing:-0.01em;
+}
+
+#comparisonModal .cmp-subline{
+  margin-top:4px;
+  font-size:12px;
+  color:#555;
+}
+
+#comparisonModal .cmp-subline.muted{ color:#8b8b8b; }
+
+#comparisonModal .cmp-subline.small{
+  font-size:11px;
+  color:#6b7280;
+}
+
+#comparisonModal .cmp-strike{
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+#comparisonModal .cmp-divider{
+  height:1px;
+  background: rgba(255,229,217,0.9);
+  margin:12px 0 10px;
+}
+
+#comparisonModal .cmp-actions{
+  display:flex;
+  gap:10px;
+}
+
+#comparisonModal .cmp-btn{
+  flex:1;
+  border:none;
+  padding:10px 12px;
+  border-radius:16px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#comparisonModal .cmp-btn:active{ transform: scale(0.98); }
+
+#comparisonModal .cmp-btn-approve{
+  background: linear-gradient(135deg, rgba(16,185,129,0.95), rgba(34,197,94,0.92));
+  color:#fff;
+  box-shadow: 0 8px 18px rgba(16,185,129,0.18);
+}
+#comparisonModal .cmp-btn-approve:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px rgba(16,185,129,0.22);
+}
+
+#comparisonModal .cmp-btn-reject{
+  background: rgba(239,68,68,0.10);
+  border: 1px solid rgba(239,68,68,0.25);
+  color: rgba(239,68,68,0.95);
+}
+#comparisonModal .cmp-btn-reject:hover{
+  background: rgba(239,68,68,0.92);
+  color:#fff;
+  border-color: rgba(239,68,68,0.92);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(239,68,68,0.18);
+}
+
+#comparisonModal .cmp-status-badge{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform: translate(-50%, -50%);
+  padding:12px 22px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:800;
+  color:#fff;
+  z-index:4;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+#comparisonModal .cmp-status-badge.approved{
+  background: linear-gradient(135deg, rgba(16,185,129,0.96), rgba(34,197,94,0.92));
+}
+#comparisonModal .cmp-status-badge.rejected{
+  background: linear-gradient(135deg, rgba(239,68,68,0.96), rgba(244,63,94,0.92));
+}
+
+/* modified before/after blocks */
+#comparisonModal .cmp-compare-block{
+  border-radius:14px;
+  padding:10px 10px;
+  border: 1px solid rgba(255,229,217,0.95);
+  background: rgba(255,255,255,0.85);
+}
+#comparisonModal .cmp-compare-label{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:0.02em;
+  color: #E65100;
+  margin-bottom:6px;
+}
+#comparisonModal .cmp-arrow{
+  text-align:center;
+  font-size:18px;
+  margin:8px 0;
+  opacity:0.9;
+}
+
+/* footer actions (primary orange like notification-footer-btn) */
+#comparisonModal .cmp-footer{
+  padding:12px 16px;
+  border-top:1px solid var(--cmp-border);
+  background: linear-gradient(135deg, #FFF5F0 0%, #FFE5D9 100%);
+  display:flex;
+  gap:10px;
+}
+
+#comparisonModal .cmp-footer .cmp-footer-btn{
+  flex:1;
+  border:none;
+  padding:10px 18px;
+  border-radius:25px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#comparisonModal .cmp-footer .cmp-footer-primary{
+  background: linear-gradient(135deg, var(--cmp-orange-1) 0%, var(--cmp-orange-2) 100%);
+  color:#fff;
+  box-shadow: 0 4px 16px rgba(255, 126, 75, 0.45), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+#comparisonModal .cmp-footer .cmp-footer-primary:hover{
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 24px rgba(255, 126, 75, 0.55), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+
+#comparisonModal .cmp-footer .cmp-footer-danger{
+  background: rgba(239,68,68,0.12);
+  border:1px solid rgba(239,68,68,0.25);
+  color: rgba(239,68,68,0.95);
+}
+#comparisonModal .cmp-footer .cmp-footer-danger:hover{
+  background: rgba(239,68,68,0.92);
+  border-color: rgba(239,68,68,0.92);
+  color:#fff;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 24px rgba(239,68,68,0.20);
+}
+    `;
+    document.head.appendChild(style);
+}
+
 async function viewSuggestionComparison(suggestionId) {
- // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
+    const suggestionsModal = document.getElementById('suggestionsModal');
+    if (suggestionsModal) {
+        suggestionsModal.remove();
+    }
+
+    // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
     if (document.getElementById('comparisonModal')) {
         console.log('⚠️ Modal so sánh đã mở rồi');
         return;
     }
+
     try {
+        ensureComparisonStyles();
+
         const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
         const data = await response.json();
-        
+
         if (data.status !== 'success') {
             alert('❌ ' + data.message);
             return;
         }
-        
+
         const suggestion = data.suggestion;
         const currentData = suggestion.current_data;
         const suggestedData = suggestion.suggested_data;
-        
+
         // 🔥 PHÂN TÍCH THAY ĐỔI
         const changes = analyzeChanges(currentData, suggestedData);
-        
-        // Tạo modal với layout mới
+
         const comparisonHTML = `
-            <div id="comparisonModal" style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.7);
-                z-index: 100000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            ">
-                <div style="
-                    background: white;
-                    padding: 30px;
-                    border-radius: 16px;
-                    max-width: 900px;
-                    width: 95%;
-                    max-height: 85vh;
-                    overflow-y: auto;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 style="margin: 0;">🔍 So sánh thay đổi</h3>
-                        <button onclick="closeComparisonModal()" style="
-                            background: #F44336;
-                            color: white;
-                            border: none;
-                            width: 36px;
-                            height: 36px;
-                            border-radius: 50%;
-                            cursor: pointer;
-                            font-size: 20px;
-                        ">×</button>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <!-- Cột trái: Lịch trình hiện tại -->
-                        <div>
-                            <h4 style="
-                                background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
-                                color: white;
-                                padding: 12px;
-                                border-radius: 8px;
-                                margin: 0 0 16px 0;
-                            ">📅 Lịch trình hiện tại</h4>
-                            ${renderPlanPreview(currentData)}
+            <div id="comparisonModal" class="cmp-overlay">
+                <div class="cmp-modal">
+                    <div class="cmp-header">
+                        <div class="cmp-title">
+                            <span class="cmp-title-icon">🔍</span>
+                            <span>So sánh thay đổi</span>
                         </div>
-                        
-                        <!-- Cột phải: Đề xuất thay đổi -->
-                        <div>
-                            <h4 style="
-                                background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-                                color: white;
-                                padding: 12px;
-                                border-radius: 8px;
-                                margin: 0 0 16px 0;
-                            ">✨ Đề xuất thay đổi</h4>
-                            ${renderChangesWithActions(changes, suggestionId)}
+                        <button class="cmp-close" onclick="closeComparisonModal()" aria-label="Đóng">×</button>
+                    </div>
+
+                    <div class="cmp-body">
+                        <div class="cmp-grid">
+                            <div class="cmp-col">
+                                <div class="cmp-col-head">
+                                    <div class="cmp-col-title">📅 Lịch trình hiện tại</div>
+                                </div>
+                                <div class="cmp-col-content">
+                                    ${renderPlanPreview(currentData)}
+                                </div>
+                            </div>
+
+                            <div class="cmp-col">
+                                <div class="cmp-col-head">
+                                    <div class="cmp-col-title">✨ Đề xuất thay đổi</div>
+                                </div>
+                                <div class="cmp-col-content">
+                                    ${renderChangesWithActions(changes, suggestionId)}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
+
                     ${suggestion.status === 'pending' && changes.length > 0 ? `
-                        <div style="display: flex; gap: 12px; margin-top: 24px;">
-                            <button onclick="approveAllChanges(${suggestionId})" style="
-                                flex: 1;
-                                background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-                                color: white;
-                                border: none;
-                                padding: 14px;
-                                border-radius: 10px;
-                                font-size: 15px;
-                                font-weight: 700;
-                                cursor: pointer;
-                            ">✅ Lưu thay đổi</button>
-                            
-                            <button onclick="rejectSuggestion(${suggestionId})" style="
-                                flex: 1;
-                                background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
-                                color: white;
-                                border: none;
-                                padding: 14px;
-                                border-radius: 10px;
-                                font-size: 15px;
-                                font-weight: 700;
-                                cursor: pointer;
-                            ">❌ Từ chối toàn bộ đề xuất</button>
+                        <div class="cmp-footer">
+                            <button class="cmp-footer-btn cmp-footer-primary" onclick="approveAllChanges(${suggestionId})">
+                                Lưu thay đổi
+                            </button>
+                            <button class="cmp-footer-btn cmp-footer-danger" onclick="rejectSuggestion(${suggestionId})">
+                                Từ chối toàn bộ đề xuất
+                            </button>
                         </div>
                     ` : ''}
                 </div>
             </div>
         `;
-        
+
         document.body.insertAdjacentHTML('beforeend', comparisonHTML);
-        
+
     } catch (error) {
         console.error('Error loading comparison:', error);
         alert('Không thể tải chi tiết');
@@ -8061,19 +8931,19 @@ async function viewSuggestionComparison(suggestionId) {
 // ========== ANALYZE CHANGES ==========
 function analyzeChanges(currentData, suggestedData) {
     const changes = [];
-    
+
     // Tạo map để dễ so sánh
     const currentMap = {};
     const suggestedMap = {};
-    
+
     currentData.forEach(item => {
         currentMap[item.key] = item.data;
     });
-    
+
     suggestedData.forEach(item => {
         suggestedMap[item.key] = item.data;
     });
-    
+
     // 1. Tìm quán BỊ XÓA (có trong current nhưng không có trong suggested)
     currentData.forEach(item => {
         if (!suggestedMap[item.key]) {
@@ -8084,7 +8954,7 @@ function analyzeChanges(currentData, suggestedData) {
             });
         }
     });
-    
+
     // 2. Tìm quán MỚI THÊM (có trong suggested nhưng không có trong current)
     suggestedData.forEach(item => {
         if (!currentMap[item.key]) {
@@ -8095,23 +8965,23 @@ function analyzeChanges(currentData, suggestedData) {
             });
         }
     });
-    
+
     // 3. Tìm quán BỊ THAY ĐỔI (cùng key nhưng khác place hoặc time/title)
     suggestedData.forEach(item => {
         if (currentMap[item.key]) {
             const current = currentMap[item.key];
             const suggested = item.data;
-            
+
             // So sánh place
-            const placeChanged = 
+            const placeChanged =
                 current.place?.data_id !== suggested.place?.data_id;
-            
+
             // So sánh time hoặc title
-            const detailsChanged = 
-                current.time !== suggested.time || 
+            const detailsChanged =
+                current.time !== suggested.time ||
                 current.title !== suggested.title ||
                 current.icon !== suggested.icon;
-            
+
             if (placeChanged || detailsChanged) {
                 changes.push({
                     type: 'modified',
@@ -8122,407 +8992,192 @@ function analyzeChanges(currentData, suggestedData) {
             }
         }
     });
-    
+
     return changes;
 }
+
 // ========== RENDER CHANGES WITH ACTION BUTTONS ==========
 function renderChangesWithActions(changes, suggestionId) {
     if (changes.length === 0) {
-        return '<p style="color: #999; text-align: center; padding: 20px;">Không có thay đổi nào</p>';
+        return `
+            <div class="cmp-empty">
+                <div style="font-size:44px; opacity:0.55; margin-bottom:10px;">🟧</div>
+                Không có thay đổi nào
+            </div>
+        `;
     }
-    
+
     // 🔥 LẤY TRẠNG THÁI ĐÃ LƯU
     const pending = pendingApprovals[suggestionId] || { approvedChanges: [], rejectedChanges: [] };
-    
+
     return changes.map((change, index) => {
         // 🔥 KIỂM TRA ĐÃ APPROVE/REJECT CHƯA
         const isApproved = pending.approvedChanges.some(c => c.changeKey === change.key);
         const isRejected = pending.rejectedChanges.some(c => c.changeKey === change.key);
-        
+        const lockedClass = (isApproved || isRejected) ? 'cmp-locked' : '';
+
+        const badgeHTML = isApproved
+            ? `<div class="cmp-status-badge approved">Đã đánh dấu chấp nhận</div>`
+            : isRejected
+                ? `<div class="cmp-status-badge rejected">Đã đánh dấu từ chối</div>`
+                : '';
+
         if (change.type === 'added') {
-            // Quán mới thêm
             const meal = change.data;
             const place = meal.place;
-            
-            // 🔥 THÊM STYLE FADE NẾU ĐÃ CHỌN
-            let containerStyle = `
-                background: #E8F5E9;
-                border: 2px solid #4CAF50;
-                border-radius: 10px;
-                padding: 12px;
-                margin-bottom: 12px;
-                position: relative;
-            `;
-            
-            if (isApproved || isRejected) {
-                containerStyle += `opacity: 0.5; pointer-events: none;`;
-            }
-            
-            // 🔥 BADGE HIỆN TRẠNG THÁI
-            const badgeHTML = isApproved ? `
-                <div class="approval-badge" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: #4CAF50;
-                    color: white;
-                    padding: 12px 24px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 14px;
-                    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-                    z-index: 10;
-                ">✅ Đã đánh dấu chấp nhận</div>
-            ` : isRejected ? `
-                <div class="approval-badge" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: #F44336;
-                    color: white;
-                    padding: 12px 24px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 14px;
-                    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-                    z-index: 10;
-                ">❌ Đã đánh dấu từ chối</div>
-            ` : '';
-            
+
             return `
-                <div id="change-${index}" style="${containerStyle}">
+                <div id="change-${index}" class="cmp-card ${lockedClass}">
                     ${badgeHTML}
-                    <div style="
-                        position: absolute;
-                        top: 8px;
-                        left: 8px;
-                        background: #4CAF50;
-                        color: white;
-                        padding: 4px 8px;
-                        border-radius: 12px;
-                        font-size: 11px;
-                        font-weight: 700;
-                    ">➕ THÊM MỚI</div>
-                    
-                    <div style="margin-top: 30px;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                            <span style="font-size: 20px;">${meal.icon || '🍽️'}</span>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 700; color: #333; font-size: 14px;">
-                                    ⏰ ${meal.time} - ${meal.title}
-                                </div>
+                    <div class="cmp-tag added">THÊM MỚI</div>
+
+                    <div class="cmp-main">
+                        <div class="cmp-row">
+                            <div class="cmp-emoji">${meal.icon || '🍽️'}</div>
+                            <div class="cmp-text">
+                                <div class="cmp-titleline">⏰ ${meal.time} - ${meal.title}</div>
                                 ${place ? `
-                                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                        🏪 ${place.ten_quan}
-                                    </div>
-                                    <div style="font-size: 11px; color: #999; margin-top: 2px;">
-                                        📍 ${place.dia_chi}
-                                    </div>
-                                ` : '<div style="font-size: 12px; color: #999;">Chưa có quán</div>'}
+                                    <div class="cmp-subline">🏪 ${place.ten_quan}</div>
+                                    <div class="cmp-subline small">📍 ${place.dia_chi}</div>
+                                ` : `<div class="cmp-subline muted">Chưa có quán</div>`}
                             </div>
                         </div>
-                        
-                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid #C8E6C9; padding-top: 12px;">
-                            <button onclick="approveChange(${suggestionId}, ${index}, 'added', '${change.key}')" style="
-                                flex: 1;
-                                background: #4CAF50;
-                                color: white;
-                                border: none;
-                                padding: 8px;
-                                border-radius: 6px;
-                                font-size: 12px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            ">✅ Chấp nhận</button>
-                            
-                            <button onclick="rejectChange(${suggestionId}, ${index}, 'added', '${change.key}')" style="
-                                flex: 1;
-                                background: #F44336;
-                                color: white;
-                                border: none;
-                                padding: 8px;
-                                border-radius: 6px;
-                                font-size: 12px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            ">❌ Từ chối</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-        } else if (change.type === 'removed') {
-            // Quán bị xóa
-            const meal = change.data;
-            const place = meal.place;
-            
-            // 🔥 THÊM STYLE FADE NẾU ĐÃ CHỌN
-            let containerStyle = `
-                background: #FFEBEE;
-                border: 2px solid #F44336;
-                border-radius: 10px;
-                padding: 12px;
-                margin-bottom: 12px;
-                position: relative;
-                opacity: 0.8;
-            `;
-            
-            if (isApproved || isRejected) {
-                containerStyle = containerStyle.replace('opacity: 0.8;', 'opacity: 0.5; pointer-events: none;');
-            }
-            
-            // 🔥 BADGE HIỆN TRẠNG THÁI
-            const badgeHTML = isApproved ? `
-                <div class="approval-badge" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: #4CAF50;
-                    color: white;
-                    padding: 12px 24px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 14px;
-                    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-                    z-index: 10;
-                ">✅ Đã đánh dấu chấp nhận</div>
-            ` : isRejected ? `
-                <div class="approval-badge" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: #F44336;
-                    color: white;
-                    padding: 12px 24px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 14px;
-                    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-                    z-index: 10;
-                ">❌ Đã đánh dấu từ chối</div>
-            ` : '';
-            
-            return `
-                <div id="change-${index}" style="${containerStyle}">
-                    ${badgeHTML}
-                    <div style="
-                        position: absolute;
-                        top: 8px;
-                        left: 8px;
-                        background: #F44336;
-                        color: white;
-                        padding: 4px 8px;
-                        border-radius: 12px;
-                        font-size: 11px;
-                        font-weight: 700;
-                    ">🗑️ XÓA BỎ</div>
-                    
-                    <div style="margin-top: 30px;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                            <span style="font-size: 20px;">${meal.icon || '🍽️'}</span>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 700; color: #333; font-size: 14px; text-decoration: line-through;">
-                                    ⏰ ${meal.time} - ${meal.title}
-                                </div>
-                                ${place ? `
-                                    <div style="font-size: 12px; color: #666; margin-top: 4px; text-decoration: line-through;">
-                                        🏪 ${place.ten_quan}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid #FFCDD2; padding-top: 12px;">
-                            <button onclick="approveChange(${suggestionId}, ${index}, 'removed', '${change.key}')" style="
-                                flex: 1;
-                                background: #4CAF50;
-                                color: white;
-                                border: none;
-                                padding: 8px;
-                                border-radius: 6px;
-                                font-size: 12px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            ">✅ Đồng ý xóa</button>
-                            
-                            <button onclick="rejectChange(${suggestionId}, ${index}, 'removed', '${change.key}')" style="
-                                flex: 1;
-                                background: #F44336;
-                                color: white;
-                                border: none;
-                                padding: 8px;
-                                border-radius: 6px;
-                                font-size: 12px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            ">❌ Giữ lại</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-        } else if (change.type === 'modified') {
-            // Quán bị thay đổi
-            const oldMeal = change.oldData;
-            const newMeal = change.newData;
-            
-            // 🔥 THÊM STYLE FADE NẾU ĐÃ CHỌN
-            let containerStyle = `
-                background: #FFF3E0;
-                border: 2px solid #FF9800;
-                border-radius: 10px;
-                padding: 12px;
-                margin-bottom: 12px;
-                position: relative;
-            `;
-            
-            if (isApproved || isRejected) {
-                containerStyle += `opacity: 0.5; pointer-events: none;`;
-            }
-            
-            // 🔥 BADGE HIỆN TRẠNG THÁI
-            const badgeHTML = isApproved ? `
-                <div class="approval-badge" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: #4CAF50;
-                    color: white;
-                    padding: 12px 24px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 14px;
-                    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-                    z-index: 10;
-                ">✅ Đã đánh dấu chấp nhận</div>
-            ` : isRejected ? `
-                <div class="approval-badge" style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: #F44336;
-                    color: white;
-                    padding: 12px 24px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 14px;
-                    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-                    z-index: 10;
-                ">❌ Đã đánh dấu từ chối</div>
-            ` : '';
-            
-            return `
-                <div id="change-${index}" style="${containerStyle}">
-                    ${badgeHTML}
-                    <div style="
-                        position: absolute;
-                        top: 8px;
-                        left: 8px;
-                        background: #FF9800;
-                        color: white;
-                        padding: 4px 8px;
-                        border-radius: 12px;
-                        font-size: 11px;
-                        font-weight: 700;
-                    ">✏️ THAY ĐỔI</div>
-                    
-                    <div style="margin-top: 30px;">
-                        <div style="font-size: 11px; color: #E65100; font-weight: 600; margin-bottom: 8px;">Trước:</div>
-                        <div style="background: rgba(255,255,255,0.5); padding: 8px; border-radius: 6px; margin-bottom: 8px; opacity: 0.7;">
-                            <div style="font-size: 12px; color: #666;">
-                                <span style="font-size: 16px;">${oldMeal.icon || '🍽️'}</span>
-                                ⏰ ${oldMeal.time} - ${oldMeal.title}
-                            </div>
-                            ${oldMeal.place ? `
-                                <div style="font-size: 11px; color: #999; margin-top: 4px;">
-                                    🏪 ${oldMeal.place.ten_quan}
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        <div style="text-align: center; margin: 8px 0;">
-                            <span style="font-size: 20px;">⬇️</span>
-                        </div>
-                        
-                        <div style="font-size: 11px; color: #E65100; font-weight: 600; margin-bottom: 8px;">Sau:</div>
-                        <div style="background: rgba(255,255,255,0.8); padding: 8px; border-radius: 6px; border: 1px solid #FFB74D;">
-                            <div style="font-size: 12px; color: #333; font-weight: 600;">
-                                <span style="font-size: 16px;">${newMeal.icon || '🍽️'}</span>
-                                ⏰ ${newMeal.time} - ${newMeal.title}
-                            </div>
-                            ${newMeal.place ? `
-                                <div style="font-size: 11px; color: #666; margin-top: 4px;">
-                                    🏪 ${newMeal.place.ten_quan}
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid #FFE0B2; padding-top: 12px;">
-                            <button onclick="approveChange(${suggestionId}, ${index}, 'modified', '${change.key}')" style="
-                                flex: 1;
-                                background: #4CAF50;
-                                color: white;
-                                border: none;
-                                padding: 8px;
-                                border-radius: 6px;
-                                font-size: 12px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            ">✅ Chấp nhận</button>
-                            
-                            <button onclick="rejectChange(${suggestionId}, ${index}, 'modified', '${change.key}')" style="
-                                flex: 1;
-                                background: #F44336;
-                                color: white;
-                                border: none;
-                                padding: 8px;
-                                border-radius: 6px;
-                                font-size: 12px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            ">❌ Từ chối</button>
+
+                        <div class="cmp-divider"></div>
+
+                        <div class="cmp-actions">
+                            <button class="cmp-btn cmp-btn-approve"
+                                onclick="approveChange(${suggestionId}, ${index}, 'added', '${change.key}')">
+                                ✅ Chấp nhận
+                            </button>
+                            <button class="cmp-btn cmp-btn-reject"
+                                onclick="rejectChange(${suggestionId}, ${index}, 'added', '${change.key}')">
+                                ❌ Từ chối
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
         }
+
+        if (change.type === 'removed') {
+            const meal = change.data;
+            const place = meal.place;
+
+            return `
+                <div id="change-${index}" class="cmp-card ${lockedClass}">
+                    ${badgeHTML}
+                    <div class="cmp-tag removed">XÓA BỎ</div>
+
+                    <div class="cmp-main">
+                        <div class="cmp-row">
+                            <div class="cmp-emoji">${meal.icon || '🍽️'}</div>
+                            <div class="cmp-text">
+                                <div class="cmp-titleline cmp-strike">⏰ ${meal.time} - ${meal.title}</div>
+                                ${place ? `
+                                    <div class="cmp-subline cmp-strike">🏪 ${place.ten_quan}</div>
+                                ` : ``}
+                            </div>
+                        </div>
+
+                        <div class="cmp-divider"></div>
+
+                        <div class="cmp-actions">
+                            <button class="cmp-btn cmp-btn-approve"
+                                onclick="approveChange(${suggestionId}, ${index}, 'removed', '${change.key}')">
+                                Đồng ý xóa
+                            </button>
+                            <button class="cmp-btn cmp-btn-reject"
+                                onclick="rejectChange(${suggestionId}, ${index}, 'removed', '${change.key}')">
+                                Giữ lại
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // modified
+        if (change.type === 'modified') {
+            const oldMeal = change.oldData;
+            const newMeal = change.newData;
+
+            return `
+                <div id="change-${index}" class="cmp-card ${lockedClass}">
+                    ${badgeHTML}
+                    <div class="cmp-tag modified">THAY ĐỔI</div>
+
+                    <div class="cmp-main">
+                        <div class="cmp-compare-block" style="opacity:0.78;">
+                            <div class="cmp-compare-label">Trước</div>
+                            <div class="cmp-row">
+                                <div class="cmp-emoji">${oldMeal.icon || '🍽️'}</div>
+                                <div class="cmp-text">
+                                    <div class="cmp-titleline">⏰ ${oldMeal.time} - ${oldMeal.title}</div>
+                                    ${oldMeal.place ? `<div class="cmp-subline small">🏪 ${oldMeal.place.ten_quan}</div>` : ``}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cmp-arrow">⬇️</div>
+
+                        <div class="cmp-compare-block" style="border-color: rgba(255,176,132,0.9);">
+                            <div class="cmp-compare-label">Sau</div>
+                            <div class="cmp-row">
+                                <div class="cmp-emoji">${newMeal.icon || '🍽️'}</div>
+                                <div class="cmp-text">
+                                    <div class="cmp-titleline">⏰ ${newMeal.time} - ${newMeal.title}</div>
+                                    ${newMeal.place ? `<div class="cmp-subline small">🏪 ${newMeal.place.ten_quan}</div>` : ``}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cmp-divider"></div>
+
+                        <div class="cmp-actions">
+                            <button class="cmp-btn cmp-btn-approve"
+                                onclick="approveChange(${suggestionId}, ${index}, 'modified', '${change.key}')">
+                                Chấp nhận
+                            </button>
+                            <button class="cmp-btn cmp-btn-reject"
+                                onclick="rejectChange(${suggestionId}, ${index}, 'modified', '${change.key}')">
+                                Từ chối
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        return '';
     }).join('');
 }
 
 function renderPlanPreview(planData) {
     if (!planData || planData.length === 0) {
-        return '<p style="color: #999; text-align: center;">Không có dữ liệu</p>';
+        return `
+            <div class="cmp-empty">
+                <div style="font-size:42px; opacity:0.55; margin-bottom:10px;">📭</div>
+                Không có dữ liệu
+            </div>
+        `;
     }
-    
-    return planData.map((item, index) => {
+
+    return planData.map((item) => {
         const meal = item.data;
         const place = meal.place;
-        
+
         return `
-            <div style="
-                background: #F9F9F9;
-                border: 2px solid #E0E0E0;
-                border-radius: 10px;
-                padding: 12px;
-                margin-bottom: 12px;
-            ">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-size: 20px;">${meal.icon || '🍽️'}</span>
-                    <div>
-                        <div style="font-weight: 700; color: #333; font-size: 14px;">
-                            ⏰ ${meal.time} - ${meal.title}
+            <div class="cmp-card">
+                <div class="cmp-main" style="padding-top:0;">
+                    <div class="cmp-row">
+                        <div class="cmp-emoji">${meal.icon || '🍽️'}</div>
+                        <div class="cmp-text">
+                            <div class="cmp-titleline">⏰ ${meal.time} - ${meal.title}</div>
+                            ${place ? `
+                                <div class="cmp-subline">🏪 ${place.ten_quan}</div>
+                            ` : `<div class="cmp-subline muted">Chưa có quán</div>`}
                         </div>
-                        ${place ? `
-                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                🏪 ${place.ten_quan}
-                            </div>
-                        ` : '<div style="font-size: 12px; color: #999;">Chưa có quán</div>'}
                     </div>
                 </div>
             </div>
@@ -8533,7 +9188,23 @@ function renderPlanPreview(planData) {
 function closeComparisonModal() {
     const modal = document.getElementById('comparisonModal');
     if (modal) modal.remove();
+
+    // ✅ Mở lại Food Planner như lúc trước khi mở popup
+    const panel = document.getElementById('foodPlannerPanel');
+    if (panel && panel.dataset.prevActiveShare === '1') {
+        panel.classList.add('active');
+        isPlannerOpen = true;
+    } else {
+        isPlannerOpen = false;
+    }
+    if (panel) delete panel.dataset.prevActiveShare;
+
+    // ✅ Mở lại scroll nền
+    document.body.style.overflow = document.body.dataset.prevOverflowShare || '';
+    delete document.body.dataset.prevOverflowShare;
+
 }
+
 
 async function approveSuggestion(suggestionId) {
     if (!confirm('✅ Xác nhận chấp nhận đề xuất này?')) return;
@@ -8649,6 +9320,7 @@ function exitSharedPlanView() {
     
     console.log('✅ Đã thoát chế độ xem shared plan');
 }
+
 // ========== APPROVE SINGLE CHANGE - CHỈ LƯU TRẠNG THÁI TẠM ==========
 async function approveChange(suggestionId, changeIndex, changeType, changeKey) {
     if (!confirm('✅ Xác nhận chấp nhận thay đổi này?')) return;
@@ -8675,38 +9347,25 @@ async function approveChange(suggestionId, changeIndex, changeType, changeKey) {
     
     console.log('✅ Đã lưu trạng thái tạm:', pendingApprovals[suggestionId]);
     
-    // 🔥 CẬP NHẬT UI - HIỆN BADGE
+    // 🔥 THAY THẾ 2 NÚT BẰNG 1 NÚT DUY NHẤT
     const changeEl = document.getElementById(`change-${changeIndex}`);
     if (changeEl) {
-        changeEl.style.opacity = '0.5';
-        changeEl.style.pointerEvents = 'none';
-        
-        // Xóa badge cũ nếu có
-        const oldBadge = changeEl.querySelector('.approval-badge');
-        if (oldBadge) oldBadge.remove();
-        
-        const badge = document.createElement('div');
-        badge.className = 'approval-badge';
-        badge.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-            z-index: 10;
-        `;
-        badge.textContent = '✅ Đã đánh dấu chấp nhận';
-        changeEl.style.position = 'relative';
-        changeEl.appendChild(badge);
+        const actionsDiv = changeEl.querySelector('.cmp-actions');
+        if (actionsDiv) {
+            actionsDiv.innerHTML = `
+                <button class="cmp-btn" style="
+                    flex: 1;
+                    background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(34,197,94,0.12));
+                    border: 1px solid rgba(16,185,129,0.3);
+                    color: rgba(16,185,129,0.95);
+                    cursor: not-allowed;
+                    pointer-events: none;
+                ">
+                    Đã đánh dấu chấp nhận
+                </button>
+            `;
+        }
     }
-    
-    // 🔥 KHÔNG CÓ ALERT NỮA
 }
 
 // ========== REJECT SINGLE CHANGE - CHỈ LƯU TRẠNG THÁI TẠM ==========
@@ -8735,34 +9394,24 @@ async function rejectChange(suggestionId, changeIndex, changeType, changeKey) {
     
     console.log('❌ Đã lưu trạng thái từ chối:', pendingApprovals[suggestionId]);
     
-    // 🔥 CẬP NHẬT UI
+    // 🔥 THAY THẾ 2 NÚT BẰNG 1 NÚT DUY NHẤT
     const changeEl = document.getElementById(`change-${changeIndex}`);
     if (changeEl) {
-        changeEl.style.opacity = '0.5';
-        changeEl.style.pointerEvents = 'none';
-        
-        const oldBadge = changeEl.querySelector('.approval-badge');
-        if (oldBadge) oldBadge.remove();
-        
-        const badge = document.createElement('div');
-        badge.className = 'approval-badge';
-        badge.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #F44336;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-            z-index: 10;
-        `;
-        badge.textContent = '❌ Đã đánh dấu từ chối';
-        changeEl.style.position = 'relative';
-        changeEl.appendChild(badge);
+        const actionsDiv = changeEl.querySelector('.cmp-actions');
+        if (actionsDiv) {
+            actionsDiv.innerHTML = `
+                <button class="cmp-btn" style="
+                    flex: 1;
+                    background: rgba(239,68,68,0.12);
+                    border: 1px solid rgba(239,68,68,0.25);
+                    color: rgba(239,68,68,0.95);
+                    cursor: not-allowed;
+                    pointer-events: none;
+                ">
+                    Đã đánh dấu từ chối
+                </button>
+            `;
+        }
     }
 }
 
@@ -9051,74 +9700,360 @@ async function viewMySuggestions(planId) {
                             😔 Đề xuất của bạn đã bị từ chối
                         </div>
                     ` : ''}
-                    
-                    ${sug.status === 'pending' ? `
-                        <div style="
-                            background: #FFF3E0;
-                            border: 1px solid #FF9800;
-                            padding: 10px;
-                            border-radius: 8px;
-                            font-size: 13px;
-                            color: #F57C00;
-                            font-weight: 600;
-                        ">
-                            ⏳ Đang chờ chủ sở hữu xem xét...
-                        </div>
-                    ` : ''}
                 </div>
             `;
         }).join('');
         
         // Tạo modal
         const modalHTML = `
+            <style>
+                #mySuggestionsModal::-webkit-scrollbar {
+                    width: 6px;
+                }
+                #mySuggestionsModal::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                #mySuggestionsModal::-webkit-scrollbar-thumb {
+                    background: #FF9A6C;
+                    border-radius: 10px;
+                }
+                #mySuggestionsModal::-webkit-scrollbar-thumb:hover {
+                    background: #FF8C5A;
+                }
+                .suggestions-content::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .suggestions-content::-webkit-scrollbar-track {
+                    background: #FFE5D9;
+                    border-radius: 10px;
+                    margin: 8px 0;
+                }
+                .suggestions-content::-webkit-scrollbar-thumb {
+                    background: linear-gradient(135deg, #FFB084, #FF8E53);
+                    border-radius: 10px;
+                    border: 2px solid transparent;
+                    background-clip: padding-box;
+                }
+                
+                @keyframes slideInFromLeft {
+                    0% {
+                        opacity: 0;
+                        transform: translateX(-100%);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+                
+                @keyframes shine-slide {
+                    0% {
+                        left: -100%;
+                    }
+                    50%, 100% {
+                        left: 100%;
+                    }
+                }
+            </style>
             <div id="mySuggestionsModal" style="
                 position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.6);
-                z-index: 99999;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(4px);
+                z-index: 99999999999999;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                animation: fadeIn 0.3s ease;
+                padding: 20px;
             ">
                 <div style="
-                    background: linear-gradient(135deg, #F5F5F5 0%, #EEEEEE 100%);
-                    padding: 24px;
-                    border-radius: 16px;
+                    background: rgba(255, 255, 255, 0.96);
+                    backdrop-filter: blur(26px) saturate(180%);
+                    -webkit-backdrop-filter: blur(26px) saturate(180%);
+                    border-radius: 28px;
                     max-width: 600px;
-                    width: 90%;
-                    max-height: 80vh;
-                    overflow-y: auto;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                    width: 100%;
+                    max-height: 85vh;
+                    border: 1px solid #FFE5D9;
+                    box-shadow:
+                        0 10px 35px rgba(148, 85, 45, 0.25),
+                        0 24px 60px rgba(203, 92, 37, 0.18),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    font-family: 'Montserrat', sans-serif;
                 ">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 style="margin: 0; color: #333; display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 28px;">📋</span>
-                            <span>Đề xuất của tôi (${suggestions.length})</span>
-                        </h3>
-                        <button onclick="closeMySuggestionsModal()" style="
-                            background: #F44336;
-                            color: white;
-                            border: none;
-                            width: 36px;
-                            height: 36px;
-                            border-radius: 50%;
-                            cursor: pointer;
-                            font-size: 20px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        ">×</button>
+                <!-- HEADER -->
+                <div style="
+                    position: relative;
+                    padding: 18px 24px 14px;
+                    background: linear-gradient(
+                        135deg,
+                        rgba(255, 107, 53, 0.14) 0%,
+                        rgba(255, 142, 83, 0.10) 100%
+                    );
+                    color: #1f2933;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    border-bottom: 1px solid #FFE5D9;
+                ">
+                    <div style="
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: 1px;
+                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+                    "></div>
+                    
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        font-weight: 700;
+                        font-size: 18px;
+                        letter-spacing: -0.02em;
+                        background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                    ">
+                        <span style="font-size: 20px;">🔔</span>
+                        <span>Đề xuất của tôi</span>
                     </div>
                     
-                    ${suggestionsHTML}
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    ">
+                        <div style="
+                            background: #FFFFFF;
+                            border: 1px solid #FFE5D9;
+                            color: #FFB084;
+                            font-size: 13px;
+                            font-weight: 700;
+                            padding: 6px 12px;
+                            border-radius: 12px;
+                            box-shadow: 0 2px 4px rgba(255, 126, 75, 0.15);
+                        ">${suggestions.length}</div>
+                        
+                        <button onclick="closeMySuggestionsModal()" style="
+                            background: rgba(255, 255, 255, 0.9);
+                            backdrop-filter: blur(10px);
+                            border: 1px solid #FFE5D9;
+                            color: #94a3b8;
+                            font-size: 20px;
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                            font-weight: 300;
+                        " onmouseover="this.style.background='#FFFFFF'; this.style.color='#FFB084'; this.style.transform='rotate(90deg)'; this.style.borderColor='#FFB084'; this.style.boxShadow='0 4px 14px rgba(255, 126, 75, 0.4)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.9)'; this.style.color='#94a3b8'; this.style.transform='rotate(0deg)'; this.style.borderColor='#FFE5D9'; this.style.boxShadow='none';">×</button>
+                    </div>
+                </div>
+                    
+                    <!-- CONTENT -->
+                    <div class="suggestions-content" style="
+                        padding: 12px 16px;
+                        overflow-y: auto;
+                        max-height: 60vh;
+                        overflow-x: hidden;
+                        background: #FFF5F0;
+                    ">
+                        ${suggestions.map((sug, index) => {
+                            const isRead = sug.status !== 'pending';
+                            const statusBg = sug.status === 'pending' ? 'linear-gradient(135deg, #FFB084, #FF8E53)' : 
+                                        sug.status === 'accepted' ? 'linear-gradient(135deg, #FFB084, #FF8E53)' : 'rgba(239, 68, 68, 0.15)';
+                            const statusColor = sug.status === 'pending' ? '#ffffff' : 
+                                            sug.status === 'accepted' ? '#ffffff' : '#EF4444';
+                            const statusText = sug.status === 'pending' ? 'Mới' : 
+                                            sug.status === 'accepted' ? 'Đã chấp nhận' : 'Đã từ chối';
+                            const borderColor = sug.status === 'pending' ? '#FFE5D9' : 
+                                            sug.status === 'accepted' ? '#FFE5D9' : 'rgba(239, 68, 68, 0.3)';
+                            
+                            const createdAtFormatted = formatDateTimeWithTimezone(sug.created_at);
+                            const reviewedAtFormatted = sug.reviewed_at ? 
+                                formatDateTimeWithTimezone(sug.reviewed_at) : null;
+                            
+                            return `
+                                <div class="${!isRead ? 'new-item slide-in' : ''}" style="
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 6px;
+                                    padding: 14px 16px;
+                                    margin-bottom: 10px;
+                                    border-radius: 18px;
+                                    background: #FFFFFF;
+                                    backdrop-filter: blur(10px);
+                                    border: 1px solid ${borderColor};
+                                    cursor: pointer;
+                                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                                    position: relative;
+                                    overflow: hidden;
+                                    ${isRead ? 'opacity: 0.75;' : ''}
+                                " onmouseover="this.style.background='#FFF9F5'; this.style.transform='translateY(-2px) translateX(4px)'; this.style.borderColor='#FFB084'; this.style.boxShadow='0 8px 24px rgba(255, 126, 75, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.85)';" onmouseout="this.style.background='#FFFFFF'; this.style.transform='translateY(0) translateX(0)'; this.style.borderColor='${borderColor}'; this.style.boxShadow='none';">
+                                    ${!isRead ? `
+                                        <div style="
+                                            content: '';
+                                            position: absolute;
+                                            top: 0;
+                                            left: -100%;
+                                            width: 100%;
+                                            height: 100%;
+                                            background: linear-gradient(
+                                                90deg,
+                                                transparent 0%,
+                                                rgba(255, 176, 132, 0.4) 50%,
+                                                transparent 100%
+                                            );
+                                            animation: shine-slide 3s ease-in-out infinite;
+                                            pointer-events: none;
+                                            z-index: 1;
+                                        "></div>
+                                    ` : ''}
+                                    
+                                    <div style="
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                        color: #1f2933;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 6px;
+                                        letter-spacing: -0.01em;
+                                        position: relative;
+                                        z-index: 2;
+                                    ">
+                                        <span style="font-size: 16px;">🔔</span>
+                                        <span>Đề xuất mới</span>
+                                    </div>
+                                    
+                                    ${sug.message ? `
+                                        <div style="
+                                            font-size: 13px;
+                                            color: #555555;
+                                            line-height: 1.5;
+                                            position: relative;
+                                            z-index: 2;
+                                        ">
+                                            ${sug.message}
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div style="
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: space-between;
+                                        gap: 8px;
+                                        font-size: 11px;
+                                        color: #6b7280;
+                                        margin-top: 2px;
+                                        font-weight: 500;
+                                        position: relative;
+                                        z-index: 2;
+                                    ">
+                                        <div style="display: flex; align-items: center; gap: 4px;">
+                                            <span style="font-size: 12px;">🕐</span>
+                                            <span>${createdAtFormatted}</span>
+                                        </div>
+                                        
+                                        <div style="
+                                            display: flex;
+                                            align-items: center;
+                                            gap: 8px;
+                                            margin-left: auto;
+                                        ">
+                                            <span style="
+                                                font-size: 10px;
+                                                font-weight: 700;
+                                                padding: 3px 8px;
+                                                border-radius: 12px;
+                                                flex-shrink: 0;
+                                                white-space: nowrap;
+                                                background: ${statusBg};
+                                                color: ${statusColor};
+                                                ${sug.status !== 'pending' && sug.status !== 'accepted' ? 'border: 1px solid rgba(239, 68, 68, 0.3);' : 'box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);'}
+                                            ">
+                                                ${statusText}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    ${reviewedAtFormatted ? `
+                                        <div style="
+                                            font-size: 11px;
+                                            color: #6b7280;
+                                            display: flex;
+                                            align-items: center;
+                                            gap: 4px;
+                                            position: relative;
+                                            z-index: 2;
+                                        ">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFB084" stroke-width="2.5">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <span>Xét duyệt: ${reviewedAtFormatted}</span>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${sug.status === 'accepted' ? `
+                                        <div style="
+                                            background: linear-gradient(135deg, rgba(255, 176, 132, 0.15) 0%, rgba(255, 142, 83, 0.1) 100%);
+                                            padding: 12px;
+                                            border-radius: 8px;
+                                            font-size: 13px;
+                                            color: #FF6B35;
+                                            font-weight: 600;
+                                            margin-top: 6px;
+                                            position: relative;
+                                            z-index: 2;
+                                        ">
+                                            Đề xuất của bạn đã được chấp nhận và áp dụng vào lịch trình ✨
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${sug.status === 'rejected' ? `
+                                        <div style="
+                                            background: rgba(239, 68, 68, 0.1);
+                                            padding: 12px;
+                                            border-radius: 8px;
+                                            font-size: 13px;
+                                            color: #EF4444;
+                                            font-weight: 600;
+                                            margin-top: 6px;
+                                            position: relative;
+                                            z-index: 2;
+                                        ">
+                                            Đề xuất của bạn đã bị từ chối !
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
                 </div>
             </div>
         `;
         
+        // ✅ Đóng tạm Food Planner khi mở popup chia sẻ (KHÔNG reset data)
+        const panel = document.getElementById('foodPlannerPanel');
+        if (panel) {
+        panel.dataset.prevActiveShare = panel.classList.contains('active') ? '1' : '0';
+        panel.classList.remove('active');
+        }
+        window._prevIsPlannerOpenShare = isPlannerOpen;
+        isPlannerOpen = false;
+
+        // ✅ Khóa scroll nền
+        document.body.dataset.prevOverflowShare = document.body.style.overflow || '';
+        document.body.style.overflow = 'hidden';
+
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
     } catch (error) {
@@ -9128,8 +10063,23 @@ async function viewMySuggestions(planId) {
 }
 
 function closeMySuggestionsModal() {
-    const modal = document.getElementById('mySuggestionsModal');
-    if (modal) modal.remove();
+  const modal = document.getElementById('mySuggestionsModal');
+  if (modal) modal.remove();
+
+  // ✅ Mở lại Food Planner như lúc trước khi mở popup
+  const panel = document.getElementById('foodPlannerPanel');
+  if (panel && panel.dataset.prevActiveShare === '1') {
+    panel.classList.add('active');
+    isPlannerOpen = true;
+  } else {
+    isPlannerOpen = false;
+  }
+  if (panel) delete panel.dataset.prevActiveShare;
+
+  // ✅ Mở lại scroll nền
+  document.body.style.overflow = document.body.dataset.prevOverflowShare || '';
+  delete document.body.dataset.prevOverflowShare;
 }
+
 </script>
 '''

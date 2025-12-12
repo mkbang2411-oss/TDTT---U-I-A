@@ -840,6 +840,11 @@
                             setTimeout(function() {
                                 if (typeof checkPendingSuggestions === 'function') {
                                     checkPendingSuggestions(item.related_id);
+
+                                    if (typeof checkPendingSuggestion === 'function') {
+                                    checkPendingSuggestion(item.related_id);
+                                    }
+
                                 }
                             }, 1500);
 
@@ -873,6 +878,11 @@
                                 // Reload lại phần suggestions của plan này
                                 if (typeof checkPendingSuggestions === 'function') {
                                     checkPendingSuggestions(item.related_id);
+
+                                        if (typeof checkPendingSuggestion === 'function') {
+                                        checkPendingSuggestion(item.related_id);
+                                        }
+
                                 }
                                 
                                 // 🔥 FORCE RELOAD lại UI để xóa badge
