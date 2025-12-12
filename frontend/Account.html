@@ -462,7 +462,97 @@
       const API_URL = "/api/accounts";
       let CURRENT_USER_ID = null;
       let isLoadingUser = false; // ✅ Thêm flag
+      
+      // ==========================================================
+      // 🔔 CUSTOM ALERT FUNCTION
+      // ==========================================================
+      function showCustomAlert(message, type = 'info') {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 99999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: fadeIn 0.3s ease;
+        `;
 
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+          background: #fff5f0;
+          border-radius: 20px;
+          padding: 30px;
+          max-width: 500px;
+          width: 90%;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+          animation: slideDown 0.3s ease;
+          position: relative;
+        `;
+
+        let icon = '🔔';
+        let iconColor = '#ff9966';
+        if (type === 'success') {
+          icon = '✅';
+          iconColor = '#4caf50';
+        } else if (type === 'error') {
+          icon = '❌';
+          iconColor = '#f44336';
+        } else if (type === 'warning') {
+          icon = '⚠️';
+          iconColor = '#ff9800';
+        }
+
+        popup.innerHTML = `
+          <div style="display: flex; align-items: start; gap: 15px;">
+            <div style="font-size: 32px;">${icon}</div>
+            <div style="flex: 1;">
+              <h3 style="margin: 0 0 10px 0; color: ${iconColor}; font-size: 20px; font-weight: 600;">Thông báo</h3>
+              <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
+            </div>
+            <button id="closeAlertBtn" style="background: none; border: none; font-size: 24px; color: #999; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;">×</button>
+          </div>
+          <button id="okAlertBtn" style="margin-top: 20px; width: 100%; padding: 12px; background: linear-gradient(135deg, ${iconColor} 0%, ${iconColor}dd 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s;">OK</button>
+        `;
+
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+
+        const closeBtn = popup.querySelector('#closeAlertBtn');
+        closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#f0f0f0'; });
+        closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'none'; });
+
+        const okBtn = popup.querySelector('#okAlertBtn');
+        okBtn.addEventListener('mouseenter', () => { okBtn.style.transform = 'scale(1.02)'; });
+        okBtn.addEventListener('mouseleave', () => { okBtn.style.transform = 'scale(1)'; });
+
+        const closePopup = () => {
+          overlay.style.animation = 'fadeOut 0.3s ease';
+          popup.style.animation = 'slideUp 0.3s ease';
+          setTimeout(() => overlay.remove(), 300);
+        };
+
+        closeBtn.addEventListener('click', closePopup);
+        okBtn.addEventListener('click', closePopup);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) closePopup(); });
+      }
+
+      // Thêm CSS animations
+      if (!document.getElementById('custom-alert-style')) {
+        const style = document.createElement('style');
+        style.id = 'custom-alert-style';
+        style.textContent = `
+          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+          @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          @keyframes slideUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-50px); opacity: 0; } }
+        `;
+        document.head.appendChild(style);
+      }
       // ✅ LẤY THÔNG TIN USER HIỆN TẠI
       async function loadCurrentUser() {
         if (isLoadingUser) return; // ✅ Tránh gọi nhiều lần
@@ -655,24 +745,18 @@
       }
 
       // GỬI LỜI MỜI KẾT BẠN
-      async function sendFriendRequest(receiverId, buttonElement) {
-  // ✅ Đảm bảo đã load user ID
+     // GỬI LỜI MỜI KẾT BẠN
+async function sendFriendRequest(receiverId, buttonElement) {
   await ensureUserLoaded();
 
   if (!CURRENT_USER_ID) {
-    Swal.fire(
-      "Lỗi",
-      "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.",
-      "error"
-    );
+    Swal.fire("Lỗi", "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.", "error");
     return;
   }
 
-  console.log(
-    `📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`
-  );
+  console.log(`📤 Gửi lời mời: sender=${CURRENT_USER_ID}, receiver=${receiverId}`);
 
-  // ✅ DISABLE BUTTON NGAY LẬP TỨC
+  // DISABLE BUTTON NGAY
   if (buttonElement) {
     buttonElement.disabled = true;
     buttonElement.textContent = "⏳ Đang gửi...";
@@ -681,7 +765,10 @@
   try {
     const response = await fetch(`${API_URL}/friend-request/send/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
       credentials: "include",
       body: JSON.stringify({
         sender_id: CURRENT_USER_ID,
@@ -690,16 +777,18 @@
     });
 
     const data = await response.json();
-    
+
     if (data.success) {
-      // ✅ THÀNH CÔNG → ĐỔI NÚT THÀNH "ĐÃ GỬI LỜI MỜI"
+      // ✅ THÀNH CÔNG → ĐỔI NÚT THÀNH "THU HỒI LỜI MỜI"
       if (buttonElement) {
-        buttonElement.textContent = "✓ Đã gửi lời mời";
+        buttonElement.textContent = "🔄 Thu hồi lời mời";
         buttonElement.style.backgroundColor = "#6c757d"; // Màu xám
-        buttonElement.style.cursor = "not-allowed";
-        buttonElement.disabled = true;
+        buttonElement.style.cursor = "pointer";
+        buttonElement.disabled = false;
+        // ✅ QUAN TRỌNG: Đổi onclick sang cancelFriendRequest
+        buttonElement.onclick = function() { cancelFriendRequest(receiverId, this); };
       }
-      
+
       Swal.fire("Thành công", "Đã gửi lời mời kết bạn", "success");
     } else {
       // ❌ THẤT BẠI → KHÔI PHỤC NÚT
@@ -711,14 +800,77 @@
     }
   } catch (error) {
     console.error("Lỗi gửi lời mời:", error);
-    
-    // ❌ LỖI → KHÔI PHỤC NÚT
+
     if (buttonElement) {
       buttonElement.disabled = false;
       buttonElement.textContent = "➕ Kết bạn";
     }
-    
+
     Swal.fire("Lỗi", "Không thể gửi lời mời", "error");
+  }
+}
+// 🔥 THÊM HÀM MỚI - THU HỒI LỜI MỜI KẾT BẠN
+async function cancelFriendRequest(receiverId, buttonElement) {
+  // Đảm bảo đã load user ID
+  await ensureUserLoaded();
+
+  if (!CURRENT_USER_ID) {
+    Swal.fire("Lỗi", "Không thể xác định user hiện tại. Vui lòng đăng nhập lại.", "error");
+    return;
+  }
+
+  console.log(`🔄 Thu hồi lời mời: receiver=${receiverId}`);
+
+  // Disable button ngay lập tức
+  if (buttonElement) {
+    buttonElement.disabled = true;
+    buttonElement.textContent = "⏳ Đang xử lý...";
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/friend-request/cancel/`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        receiver_id: receiverId
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.status === "success") {
+      // ✅ THÀNH CÔNG → ĐỔI NÚT VỀ "KẾT BẠN"
+      if (buttonElement) {
+        buttonElement.textContent = "➕ Kết bạn";
+        buttonElement.style.backgroundColor = ""; // Reset màu
+        buttonElement.style.cursor = "pointer";
+        buttonElement.disabled = false;
+        buttonElement.onclick = function() { sendFriendRequest(receiverId, this); };
+      }
+
+      Swal.fire("Thành công", "Đã thu hồi lời mời kết bạn", "success");
+    } else {
+      // ❌ THẤT BẠI → KHÔI PHỤC NÚT
+      if (buttonElement) {
+        buttonElement.disabled = false;
+        buttonElement.textContent = "🔄 Thu hồi lời mời";
+      }
+      Swal.fire("Lỗi", data.message || "Không thể thu hồi lời mời", "error");
+    }
+  } catch (error) {
+    console.error("Lỗi thu hồi lời mời:", error);
+
+    // ❌ LỖI → KHÔI PHỤC NÚT
+    if (buttonElement) {
+      buttonElement.disabled = false;
+      buttonElement.textContent = "🔄 Thu hồi lời mời";
+    }
+
+    Swal.fire("Lỗi", "Không thể thu hồi lời mời", "error");
   }
 }
 
@@ -1297,11 +1449,11 @@
       function changePassword() {
         const newPass = document.getElementById("user-password").value;
         if (!newPass) {
-          alert("Vui lòng nhập mật khẩu mới!");
+          showCustomAlert("Vui lòng nhập mật khẩu mới!");
           return;
         }
         if (newPass.length < 6) {
-          alert("Mật khẩu phải dài hơn 6 ký tự!");
+          showCustomAlert("Mật khẩu phải dài hơn 6 ký tự!");
           return;
         }
 
@@ -1317,10 +1469,10 @@
               Swal.fire("Thành công", "Đổi mật khẩu thành công!", "success");
               document.getElementById("user-password").value = "";
             } else {
-              alert("Lỗi: " + data.message);
+              showCustomAlert("Lỗi: " + data.message);
             }
           })
-          .catch((err) => alert("Lỗi kết nối server."));
+          .catch((err) => showCustomAlert("Lỗi kết nối server."));
       }
 
       // 2. Khi người dùng chọn file -> Kiểm tra và Hiện Modal Preview
@@ -1403,12 +1555,12 @@
               closeModal(); // Tắt modal
               Swal.fire("Thành công", "Đã cập nhật ảnh đại diện!", "success");
             } else {
-              alert("Lỗi: " + data.message);
+              showCustomAlert("Lỗi: " + data.message);
             }
           })
           .catch((err) => {
             console.error("Lỗi upload:", err);
-            alert("Có lỗi kết nối.");
+            showCustomAlert("Có lỗi kết nối.");
           })
           .finally(() => {
             btnSave.innerText = oldText;
@@ -1683,28 +1835,18 @@
       }
     }
 
-    function renderSearchPage() {
+   async function renderSearchPage() {
   const resultsDiv = document.getElementById("search-results");
   
   if (allSearchResults.length === 0) {
-
     resultsDiv.innerHTML = `
-             <div style="
-              position: fixed;
-              top: 44vh;
-              left: 13vw;
-              text-align:center;
-              color: #777;
-              width: 100%;
-              z-index: 10;
-            ">
-             <p class="no-data" data-translate="no_users_found">Không tìm thấy người dùng nào</p>
-            </div>`;
-
-          // ✅ Áp dụng ngôn ngữ sau khi render
-      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
-        window.LanguageToggle.applyTranslations();
-      }
+      <div style="position: fixed; top: 44vh; left: 13vw; text-align:center; color: #777; width: 100%; z-index: 10;">
+        <p class="no-data" data-translate="no_users_found">Không tìm thấy người dùng nào</p>
+      </div>`;
+    
+    if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+      window.LanguageToggle.applyTranslations();
+    }
     return;
   }
 
@@ -1712,32 +1854,79 @@
   const endIndex = startIndex + FRIENDS_PER_PAGE;
   const currentItems = allSearchResults.slice(startIndex, endIndex);
 
-  resultsDiv.innerHTML = currentItems
-    .map(
-      (user) => `
-      <div class="friend-card">
-        <div class="friend-info">
-          <div class="friend-avatar">👤</div>
-          <div>
-            <div class="friend-name">${user.username}</div>
-            <div class="friend-email">${user.email}</div>
+  // ✅ BƯỚC 2.1: Kiểm tra trạng thái từng user
+  const itemsWithStatus = await Promise.all(
+    currentItems.map(async (user) => {
+      try {
+        const response = await fetch(`${API_URL}/friend-status/${user.id}/`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        return { ...user, friendStatus: data.status };
+      } catch (error) {
+        console.error(`Lỗi check status user ${user.id}:`, error);
+        return { ...user, friendStatus: 'not_friend' };
+      }
+    })
+  );
+
+  // ✅ BƯỚC 2.2: Render với nút phù hợp
+  resultsDiv.innerHTML = itemsWithStatus
+    .map((user) => {
+      let buttonHTML = '';
+      
+      if (user.friendStatus === 'friend') {
+        // Đã là bạn
+        buttonHTML = `
+          <button class="btn-add" disabled style="background: #28a745; cursor: not-allowed;">
+            ✓ Đã là bạn
+          </button>`;
+      } else if (user.friendStatus === 'pending_sent') {
+        // Đã gửi lời mời → Hiện nút Thu hồi
+        buttonHTML = `
+          <button 
+            class="btn-add" 
+            style="background: #6c757d;"
+            onclick="cancelFriendRequest(${user.id}, this)">
+            🔄 Hủy lời mời
+          </button>`;
+      } else if (user.friendStatus === 'pending_received') {
+        // Người này đã gửi cho mình → Hiện nút Chấp nhận
+        buttonHTML = `
+          <button 
+            class="btn-accept" 
+            onclick="acceptRequestFromSearch(${user.id})">
+            ✓ Chấp nhận
+          </button>`;
+      } else {
+        // Chưa có quan hệ → Hiện nút Kết bạn
+        buttonHTML = `
+          <button 
+            class="btn-add" 
+            data-translate="add_friend_btn"
+            onclick="sendFriendRequest(${user.id}, this)">
+            ➕ Kết bạn
+          </button>`;
+      }
+
+      return `
+        <div class="friend-card">
+          <div class="friend-info">
+            <div class="friend-avatar">👤</div>
+            <div>
+              <div class="friend-name">${user.username}</div>
+              <div class="friend-email">${user.email}</div>
+            </div>
           </div>
+          ${buttonHTML}
         </div>
-        <button 
-          class="btn-add" 
-          data-translate="add_friend_btn"
-          onclick="sendFriendRequest(${user.id}, this)">
-          ➕ Kết bạn
-        </button>
-      </div>
-    `
-    )
+      `;
+    })
     .join("");
       
-      // ✅ Áp dụng ngôn ngữ sau khi render
-      if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
-        window.LanguageToggle.applyTranslations();
-      }
+  if (window.LanguageToggle && typeof window.LanguageToggle.applyTranslations === "function") {
+    window.LanguageToggle.applyTranslations();
+  }
 }
 
 
@@ -2257,6 +2446,31 @@
 
         applyLangWhenReady();
     });
+    // ✅ Chấp nhận lời mời từ màn hình tìm kiếm
+async function acceptRequestFromSearch(senderId) {
+  try {
+    // Tìm request_id từ danh sách lời mời đã load
+    const response = await fetch(`${API_URL}/friend-requests/${CURRENT_USER_ID}/`);
+    const data = await response.json();
+    
+    const request = data.requests.find(r => r.sender_id === senderId);
+    
+    if (!request) {
+      Swal.fire("Lỗi", "Không tìm thấy lời mời", "error");
+      return;
+    }
+    
+    // ✅ GỌI LẠI HÀM CŨ
+    await acceptRequest(request.id);
+    
+    // Reload search results để cập nhật trạng thái button
+    await searchUsers();
+    
+  } catch (error) {
+    console.error("Lỗi:", error);
+    Swal.fire("Lỗi", "Không thể chấp nhận", "error");
+  }
+}
     </script>
 
   </body>

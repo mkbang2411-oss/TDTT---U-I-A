@@ -226,44 +226,46 @@ class JigsawPuzzle {
     }
   }
   
- setupMapSelector() {
-  // 🆕 1. XỬ LÝ TAB SWITCHING
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
-  
+setupMapSelector() {
+  const overlay = document.getElementById('miniGameOverlay');
+  if (!overlay) return;
+
+  // ✅ CHỈ scope trong mini game, KHÔNG đụng Food Planner
+  const tabButtons = overlay.querySelectorAll('.tab-btn');
+  const tabContents = overlay.querySelectorAll('.map-selector .tab-content');
+
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       const targetTab = btn.dataset.tab;
-      
-      // Remove active từ tất cả
+
       tabButtons.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
-      
-      // Add active cho tab được chọn
+
       btn.classList.add('active');
-      document.getElementById(`tab-${targetTab}`).classList.add('active');
-      
-      // 🆕 Nếu click vào tab Achievements → Load achievements
+
+      const targetEl = overlay.querySelector(`#tab-${targetTab}`);
+      if (targetEl) targetEl.classList.add('active');
+
       if (targetTab === 'achievements') {
         this.loadAchievements();
       }
     });
   });
-  
-  // 🆕 2. XỬ LÝ CLICK MAP OPTIONS (giữ nguyên logic cũ)
-  const mapButtons = document.querySelectorAll('.map-option');
-  
+
+  // ✅ scope map buttons trong mini game luôn cho chắc
+  const mapButtons = overlay.querySelectorAll('.map-option');
   mapButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       const newMap = btn.dataset.map;
-      
+
       mapButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      
+
       this.changeMap(newMap);
     });
   });
 }
+
   // 🆕 Helper function để preload ảnh
   preloadImage(src) {
     return new Promise((resolve, reject) => {
@@ -818,6 +820,7 @@ async showFoodStoryModal(mapName) {
 // 🆕 LOAD VÀ HIỂN THỊ DANH SÁCH THÀNH TỰU
 async loadAchievements() {
   const container = document.querySelector('.achievements-container');
+  if (!container) return;
   
   // Hiển thị loading
   container.innerHTML = '<p class="loading-achievements">Đang tải thành tựu...</p>';
@@ -864,6 +867,7 @@ async loadAchievements() {
 // 🆕 RENDER DANH SÁCH THÀNH TỰU - GỌNG HƠN
 async renderAchievements(unlockedStories) {
   const container = document.querySelector('.achievements-container');
+  if (!container) return;
   
   // Danh sách TẤT CẢ các món (bao gồm locked và unlocked)
   const allMaps = [

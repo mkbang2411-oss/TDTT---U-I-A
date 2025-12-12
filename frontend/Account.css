@@ -1382,6 +1382,28 @@ body {
         padding: 28px 24px;
     }
 }
+/* Nút Thu hồi lời mời */
+.btn-cancel-request {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-cancel-request:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+}
+
+.btn-cancel-request:disabled {
+    background: #dee2e6;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
 
 
 /* CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE */
