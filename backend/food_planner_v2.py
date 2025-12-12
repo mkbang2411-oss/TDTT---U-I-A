@@ -990,9 +990,14 @@ def generate_meal_schedule(time_start_str, time_end_str, user_selected_themes):
 
 # ==================== ĐIỀU CHỈNH MEAL SCHEDULE DỰA TRÊN THEME ====================
 
-def filter_meal_schedule_by_themes(plan, user_selected_themes):
+def parse_time_to_float(time_str):
+    """Parse 'HH:MM' thành float"""
+    parts = time_str.split(':')
+    return int(parts[0]) + int(parts[1]) / 60.0
+
+def filter_meal_schedule_by_themes(plan, user_selected_themes, start_time='07:00', end_time='21:00'):
     """
-    🔥 LỌC VÀ ĐIỀU CHỈNH LỊCH TRÌNH DỰA TRÊN THEME USER CHỌN
+    🔥 Lọc VÀ ĐIỀU CHỈNH LỊCH TRÌNH Dựa TRÊN THEME USER CHỌN
     
     Logic:
     1. CHỈ chọn coffee_chill → CHỈ GIỮ 2 buổi nước (morning_drink, afternoon_drink)
@@ -1031,60 +1036,120 @@ def filter_meal_schedule_by_themes(plan, user_selected_themes):
     if has_food_theme:
         return plan
     
+    # 🔥 LẤY KHUNG GIỜ TỪ PLAN (từ key _order hoặc tính từ thời gian các bữa)
+    # 🔥 PARSE THỜI GIAN GỐC TỪ USER INPUT
+    start_hour = parse_time_to_float(start_time)
+    end_hour = parse_time_to_float(end_time)
+
+    # 🔥 NẾU START > END (VD: 16:00 -> 02:00) → ĐẶT END = 23:59
+    if start_hour >= end_hour:
+        end_hour = 23.983333  # 23:59 (23 + 59/60)
+    
     # ✅ TRƯỜNG HỢP 2: CHỈ CÓ COFFEE_CHILL
     if has_coffee and not has_dessert:
         filtered_plan = {}
         
-        # CHỈ GIỮ CÁC BỮA NƯỚC
+        # 🔥 TÍNH DURATION TRƯỚC
+        duration = end_hour - start_hour
+        
+        # CHỈ GIỮ CÁC BUỔI NƯỚC
         drink_keys = ['morning_drink', 'afternoon_drink', 'drink']
         
         for key in drink_keys:
             if key in plan:
-                filtered_plan[key] = plan[key]
+                # 🔥 KIỂM TRA THỜI GIAN CÓ NẰM TRONG KHUNG GIỜ KHÔNG
+                meal_time = plan[key]['time']
+                meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
+                
+                if start_hour <= meal_hour < end_hour:
+                    filtered_plan[key] = plan[key]
         
-        # ✅ NẾU KHÔNG CÓ BỮA NÀO → TẠO 2 BUỔI NƯỚC MẶC ĐỊNH
+        # ✅ Nếu KHÔNG CÓ BUỔI NÀO → Tạo BUỔI NƯỚC MẶC ĐỊNH
         if len(filtered_plan) == 0:
-            filtered_plan['morning_drink'] = {
-                'time': '09:30',
-                'title': 'Giải khát buổi sáng',
-                'categories': ['tra sua', 'cafe', 'coffee'],
-                'icon': '🧋'
-            }
-            filtered_plan['afternoon_drink'] = {
-                'time': '14:30',
-                'title': 'Giải khát buổi chiều',
-                'categories': ['tra sua', 'cafe', 'coffee'],
-                'icon': '☕'
-            }
-        
-        # Nếu chỉ có 1 buổi nước → Thêm 1 buổi nữa
-        elif len(filtered_plan) == 1:
-            existing_key = list(filtered_plan.keys())[0]
-            existing_time = filtered_plan[existing_key]['time']
-            
-            # Tính thời gian buổi thứ 2 (cách 3 tiếng)
-            from datetime import datetime, timedelta
-            time_obj = datetime.strptime(existing_time, '%H:%M')
-            new_time_obj = time_obj + timedelta(hours=3)
-            new_time = new_time_obj.strftime('%H:%M')
-            
-            # Thêm buổi nước thứ 2
-            if existing_key == 'morning_drink':
-                filtered_plan['afternoon_drink'] = {
-                    'time': new_time,
-                    'title': 'Giải khát buổi chiều',
+            # 🔥 KIỂM TRA DURATION: < 4 GIỜ THÌ CHỈ TẠO 1 BUỔI
+            if duration < 4:
+                # Tạo 1 buổi ở giữa khung giờ
+                mid_time = calculate_time_at_ratio(start_hour, end_hour, 0.5)
+                filtered_plan['drink'] = {
+                    'time': mid_time,
+                    'title': 'Giải khát',
                     'categories': ['tra sua', 'cafe', 'coffee'],
                     'icon': '☕'
                 }
             else:
+                # Tạo 2 buổi nước
+                time1, time2 = generate_two_drink_times(start_hour, end_hour)
+                
                 filtered_plan['morning_drink'] = {
-                    'time': new_time,
-                    'title': 'Giải khát buổi sáng',
+                    'time': time1,
+                    'title': 'Giải khát',
                     'categories': ['tra sua', 'cafe', 'coffee'],
                     'icon': '🧋'
                 }
+                filtered_plan['afternoon_drink'] = {
+                    'time': time2,
+                    'title': 'Giải khát',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '☕'
+                }
         
-        # 🔥🔥 QUAN TRỌNG: Cập nhật _order theo đúng thứ tự thời gian 🔥🔥
+        # Nếu chỉ có 1 buổi nước → 🔥 KIỂM TRA DURATION TRƯỚC KHI THÊM BUỔI THỨ 2
+        elif len(filtered_plan) == 1:
+            # 🔥 CHỈ THÊM BUỔI THỨ 2 NẾU DURATION >= 4 GIỜ
+            if duration >= 4:
+                existing_key = list(filtered_plan.keys())[0]
+                existing_time = filtered_plan[existing_key]['time']
+                
+                # Tính thời gian buổi thứ 2 (cách 3 tiếng)
+                from datetime import datetime, timedelta
+                time_obj = datetime.strptime(existing_time, '%H:%M')
+                new_time_obj = time_obj + timedelta(hours=3)
+                new_time = new_time_obj.strftime('%H:%M')
+                
+                # 🔥 KIỂM TRA THỜI GIAN MỚI CÓ HỢP LỆ KHÔNG
+                new_hour = float(new_time.split(':')[0]) + float(new_time.split(':')[1]) / 60
+                
+                if start_hour <= new_hour < end_hour:
+                    # Thêm buổi nước thứ 2
+                    if existing_key == 'morning_drink':
+                        filtered_plan['afternoon_drink'] = {
+                            'time': new_time,
+                            'title': 'Giải khát',
+                            'categories': ['tra sua', 'cafe', 'coffee'],
+                            'icon': '☕'
+                        }
+                    else:
+                        filtered_plan['morning_drink'] = {
+                            'time': new_time,
+                            'title': 'Giải khát',
+                            'categories': ['tra sua', 'cafe', 'coffee'],
+                            'icon': '🧋'
+                        }
+                # 🔥 NGƯỢC LẠI: Tính thời gian mới theo hướng khác
+                else:
+                    # Thử thời gian trước đó 3 tiếng
+                    new_time_obj = time_obj - timedelta(hours=3)
+                    new_time = new_time_obj.strftime('%H:%M')
+                    new_hour = float(new_time.split(':')[0]) + float(new_time.split(':')[1]) / 60
+                    
+                    if start_hour <= new_hour < end_hour:
+                        if existing_key == 'afternoon_drink':
+                            filtered_plan['morning_drink'] = {
+                                'time': new_time,
+                                'title': 'Giải khát',
+                                'categories': ['tra sua', 'cafe', 'coffee'],
+                                'icon': '🧋'
+                            }
+                        else:
+                            filtered_plan['afternoon_drink'] = {
+                                'time': new_time,
+                                'title': 'Giải khát',
+                                'categories': ['tra sua', 'cafe', 'coffee'],
+                                'icon': '☕'
+                            }
+            # 🔥 NẾU DURATION < 4 GIỜ → GIỮ NGUYÊN 1 BUỔI, KHÔNG THÊM
+        
+        # 🔥🔥 Cập nhật _order theo đúng thứ tự thời gian 🔥🔥
         filtered_plan['_order'] = sorted(
             [k for k in filtered_plan.keys() if k != '_order'],
             key=lambda k: filtered_plan[k]['time']
@@ -1099,11 +1164,20 @@ def filter_meal_schedule_by_themes(plan, user_selected_themes):
         
         # CHỈ GIỮ BỮA TRÁNG MIỆNG
         if 'dessert' in plan:
-            filtered_plan['dessert'] = plan['dessert']
-        else:
-            # ✅ TẠO TRÁNG MIỆNG MẶC ĐỊNH
+            # 🔥 KIỂM TRA THỜI GIAN
+            meal_time = plan['dessert']['time']
+            meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
+            
+            if start_hour <= meal_hour < end_hour:
+                filtered_plan['dessert'] = plan['dessert']
+        
+        # ✅ Nếu không có → TẠO TRÁNG MIỆNG MẶC ĐỊNH
+        if 'dessert' not in filtered_plan:
+            # 🔥 TÍNH THỜI GIAN TRÁNG MIỆNG TRONG KHUNG GIỜ (80% khung giờ)
+            dessert_time = calculate_time_at_ratio(start_hour, end_hour, 0.8)
+            
             filtered_plan['dessert'] = {
-                'time': '20:00',
+                'time': dessert_time,
                 'title': 'Tráng miệng',
                 'categories': ['banh kem', 'kem', 'tra sua'],
                 'icon': '🍰'
@@ -1113,35 +1187,58 @@ def filter_meal_schedule_by_themes(plan, user_selected_themes):
         print(f"✅ Filter dessert_bakery: {list(filtered_plan.keys())}")
         return filtered_plan
     
-    # ✅ TRƯỜNG HỢP 4: CẢ COFFEE + DESSERT (KHÔNG CÓ THEME ĂN)
+    # ✅ TRƯỜNG HỢP 4: Cả COFFEE + DESSERT (KHÔNG CÓ THEME ĂN)
     if has_coffee and has_dessert:
         filtered_plan = {}
         
-        # GIỮ 2 BUỔI NƯỚC
+        # 🔥 TÍNH DURATION TRƯỚC
+        duration = end_hour - start_hour
+        
+        # GIỮ 2 BUỔI NƯỚC (hoặc ít hơn nếu duration ngắn)
         drink_keys = ['morning_drink', 'afternoon_drink', 'drink']
         drink_count = 0
+        max_drinks = 1 if duration < 4 else 2  # 🔥 GIỚI HẠN SỐ BUỔI NƯỚC
         
         for key in drink_keys:
-            if key in plan and drink_count < 2:
-                filtered_plan[key] = plan[key]
-                drink_count += 1
+            if key in plan and drink_count < max_drinks:
+                # 🔥 KIỂM TRA THỜI GIAN
+                meal_time = plan[key]['time']
+                meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
+                
+                if start_hour <= meal_hour < end_hour:
+                    filtered_plan[key] = plan[key]
+                    drink_count += 1
         
-        # ✅ NẾU KHÔNG ĐỦ 2 BUỔI NƯỚC → TẠO THÊM
+        # ✅ NẾU KHÔNG ĐỦ BUỔI NƯỚC → TẠO THÊM
         if drink_count == 0:
-            filtered_plan['morning_drink'] = {
-                'time': '09:30',
-                'title': 'Giải khát buổi sáng',
-                'categories': ['tra sua', 'cafe', 'coffee'],
-                'icon': '🧋'
-            }
-            filtered_plan['afternoon_drink'] = {
-                'time': '14:30',
-                'title': 'Giải khát buổi chiều',
-                'categories': ['tra sua', 'cafe', 'coffee'],
-                'icon': '☕'
-            }
-            drink_count = 2
-        elif drink_count == 1:
+            if duration < 4:
+                # Chỉ tạo 1 buổi
+                mid_time = calculate_time_at_ratio(start_hour, end_hour, 0.4)
+                filtered_plan['drink'] = {
+                    'time': mid_time,
+                    'title': 'Giải khát',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '☕'
+                }
+                drink_count = 1
+            else:
+                # Tạo 2 buổi
+                time1, time2 = generate_two_drink_times(start_hour, end_hour)
+                
+                filtered_plan['morning_drink'] = {
+                    'time': time1,
+                    'title': 'Giải khát',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '🧋'
+                }
+                filtered_plan['afternoon_drink'] = {
+                    'time': time2,
+                    'title': 'Giải khát',
+                    'categories': ['tra sua', 'cafe', 'coffee'],
+                    'icon': '☕'
+                }
+                drink_count = 2
+        elif drink_count == 1 and duration >= 4:  # 🔥 CHỈ THÊM BUỔI THỨ 2 NẾU ĐỦ THỜI GIAN
             existing_key = [k for k in drink_keys if k in filtered_plan][0]
             existing_time = filtered_plan[existing_key]['time']
             
@@ -1149,40 +1246,67 @@ def filter_meal_schedule_by_themes(plan, user_selected_themes):
             time_obj = datetime.strptime(existing_time, '%H:%M')
             new_time_obj = time_obj + timedelta(hours=3)
             new_time = new_time_obj.strftime('%H:%M')
+            new_hour = float(new_time.split(':')[0]) + float(new_time.split(':')[1]) / 60
             
-            if existing_key == 'morning_drink':
-                filtered_plan['afternoon_drink'] = {
-                    'time': new_time,
-                    'title': 'Giải khát buổi chiều',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '☕'
-                }
-            else:
-                filtered_plan['morning_drink'] = {
-                    'time': new_time,
-                    'title': 'Giải khát buổi sáng',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '🧋'
-                }
-            drink_count = 2
+            if start_hour <= new_hour < end_hour:
+                if existing_key == 'morning_drink':
+                    filtered_plan['afternoon_drink'] = {
+                        'time': new_time,
+                        'title': 'Giải khát',
+                        'categories': ['tra sua', 'cafe', 'coffee'],
+                        'icon': '☕'
+                    }
+                else:
+                    filtered_plan['morning_drink'] = {
+                        'time': new_time,
+                        'title': 'Giải khát',
+                        'categories': ['tra sua', 'cafe', 'coffee'],
+                        'icon': '🧋'
+                    }
+                drink_count = 2
         
         # GIỮ 1 TRÁNG MIỆNG
         if 'dessert' in plan:
-            filtered_plan['dessert'] = plan['dessert']
-        else:
-            # Tính thời gian tráng miệng (sau buổi nước cuối 2 tiếng)
-            last_drink_time = max([filtered_plan[k]['time'] for k in filtered_plan.keys() if k != '_order'])
-            from datetime import datetime, timedelta
-            time_obj = datetime.strptime(last_drink_time, '%H:%M')
-            dessert_time_obj = time_obj + timedelta(hours=2)
-            dessert_time = dessert_time_obj.strftime('%H:%M')
+            meal_time = plan['dessert']['time']
+            meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
             
-            filtered_plan['dessert'] = {
-                'time': dessert_time,
-                'title': 'Tráng miệng',
-                'categories': ['banh kem', 'kem', 'tra sua'],
-                'icon': '🍰'
-            }
+            if start_hour <= meal_hour < end_hour:
+                filtered_plan['dessert'] = plan['dessert']
+        
+        # Nếu không có tráng miệng → Tạo mới
+        if 'dessert' not in filtered_plan:
+            # Tính thời gian tráng miệng (80% khung giờ hoặc sau buổi nước cuối)
+            if len(filtered_plan) > 0:
+                last_drink_time = max([filtered_plan[k]['time'] for k in filtered_plan.keys() if k != '_order'])
+                from datetime import datetime, timedelta
+                time_obj = datetime.strptime(last_drink_time, '%H:%M')
+                dessert_time_obj = time_obj + timedelta(hours=1.5)
+                dessert_time = dessert_time_obj.strftime('%H:%M')
+                dessert_hour = float(dessert_time.split(':')[0]) + float(dessert_time.split(':')[1]) / 60
+                
+                if start_hour <= dessert_hour < end_hour:
+                    filtered_plan['dessert'] = {
+                        'time': dessert_time,
+                        'title': 'Tráng miệng',
+                        'categories': ['banh kem', 'kem', 'tra sua'],
+                        'icon': '🰔'
+                    }
+                else:
+                    dessert_time = calculate_time_at_ratio(start_hour, end_hour, 0.8)
+                    filtered_plan['dessert'] = {
+                        'time': dessert_time,
+                        'title': 'Tráng miệng',
+                        'categories': ['banh kem', 'kem', 'tra sua'],
+                        'icon': '🰔'
+                    }
+            else:
+                dessert_time = calculate_time_at_ratio(start_hour, end_hour, 0.8)
+                filtered_plan['dessert'] = {
+                    'time': dessert_time,
+                    'title': 'Tráng miệng',
+                    'categories': ['banh kem', 'kem', 'tra sua'],
+                    'icon': '🰔'
+                }
         
         # 🔥🔥 Cập nhật _order theo đúng thứ tự thời gian 🔥🔥
         filtered_plan['_order'] = sorted(
@@ -1192,9 +1316,71 @@ def filter_meal_schedule_by_themes(plan, user_selected_themes):
         
         print(f"✅ Filter coffee + dessert: {list(filtered_plan.keys())}")
         return filtered_plan
+
+def generate_two_drink_times(start_hour, end_hour):
+    """
+    🔥 TẠO 2 THỜI GIAN BUỔI NƯỚC HỢP LÝ TRONG KHUNG GIỜ
     
-    # ✅ MẶC ĐỊNH: GIỮ NGUYÊN
-    return plan
+    Args:
+        start_hour: Giờ bắt đầu (float)
+        end_hour: Giờ kết thúc (float)
+    
+    Returns:
+        tuple: (time1, time2) dạng 'HH:MM'
+    """
+    duration = end_hour - start_hour
+    
+    if duration < 3:  # Nếu khung giờ quá ngắn (< 3h)
+        # Tạo 2 buổi cách đều
+        time1_hour = start_hour + duration * 0.3
+        time2_hour = start_hour + duration * 0.7
+    else:
+        # Tạo 2 buổi cách 3 tiếng
+        time1_hour = start_hour + 1
+        time2_hour = time1_hour + 3
+        
+        # Đảm bảo time2 không vượt quá end_hour
+        if time2_hour >= end_hour:
+            time2_hour = end_hour - 0.5
+            time1_hour = time2_hour - 3
+    
+    # Format thành HH:MM
+    time1 = format_hour_to_time(time1_hour)
+    time2 = format_hour_to_time(time2_hour)
+    
+    return (time1, time2)
+
+def calculate_time_at_ratio(start_hour, end_hour, ratio):
+    """
+    🔥 TÍNH THỜI GIAN TẠI % KHUNG GIỜ
+    
+    Args:
+        start_hour: Giờ bắt đầu (float)
+        end_hour: Giờ kết thúc (float)
+        ratio: Tỷ lệ % (0.0 - 1.0)
+    
+    Returns:
+        str: Thời gian dạng 'HH:MM'
+    """
+    duration = end_hour - start_hour
+    target_hour = start_hour + duration * ratio
+    
+    return format_hour_to_time(target_hour)
+
+def format_hour_to_time(hour_float):
+    """
+    🔥 FORMAT GIỜ DẠNG FLOAT THÀNH 'HH:MM'
+    
+    Args:
+        hour_float: Giờ dạng float (ví dụ: 14.5 = 14:30)
+    
+    Returns:
+        str: Thời gian dạng 'HH:MM'
+    """
+    hour_float = hour_float % 24  # Quay vòng 24 giờ
+    hour = int(hour_float)
+    minute = int((hour_float % 1) * 60)
+    return f'{hour:02d}:{minute:02d}'
 
 def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', theme=None, user_tastes=None, start_time='07:00', end_time='21:00', radius_km=None):
     """Tạo kế hoạch ăn uống thông minh"""
@@ -1219,7 +1405,7 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
     plan = generate_meal_schedule(start_time, end_time, user_selected_themes)
     
     # 🔥🔥🔥 LỌC LỊCH TRÌNH DỰA TRÊN THEME 🔥🔥🔥
-    plan = filter_meal_schedule_by_themes(plan, user_selected_themes)
+    plan = filter_meal_schedule_by_themes(plan, user_selected_themes, start_time, end_time)
     
     # 🔥🔥 THÊM DÒNG DEBUG 🔥🔥
     print(f"🔍 Plan sau filter: {list(plan.keys())}")
@@ -3163,6 +3349,7 @@ let dragDirection = 0;
 let lastTargetElement = null;
 window.currentPlanName = null;
 window.loadedFromSavedPlan = false;
+let cachedPendingSuggestionsCount = 0; // Lưu số lượng suggestions pending
 
 // Themes data
 const themes = {
@@ -3947,7 +4134,7 @@ function toggleEditMode() {
         if (isEditMode) {
             editBtn.classList.add('active');
             editBtn.title = 'Thoát chỉnh sửa';
-            clearRoutes(); // Xóa đường khi vào edit mode
+            clearRoutes();
         } else {
             editBtn.classList.remove('active');
             editBtn.title = 'Chỉnh sửa';
@@ -3985,6 +4172,19 @@ function toggleEditMode() {
 
         // ⬅ Sau khi render xong → gọi API update lại đúng trạng thái
         if (currentPlanId) checkPendingSuggestions(currentPlanId);
+    }
+    
+    // 🔥 HIỂN THỊ NÚT NGAY LẬP TỨC KHI THOÁT EDIT MODE
+    if (!isEditMode && !isSharedPlan && currentPlanId) {
+        // Hiển thị nút ngay từ cache
+        setTimeout(() => {
+            showSuggestionsButtonImmediately();
+        }, 100); // 100ms để đợi DOM render xong
+        
+        // Sau đó fetch lại để cập nhật chính xác
+        setTimeout(() => {
+            checkPendingSuggestions(currentPlanId);
+        }, 300);
     }
 }
 // ========== OPEN/CLOSE PLANNER ==========
@@ -4912,6 +5112,11 @@ function comparePlanData(plan1, plan2) {
 }
 
 async function sharePlan() {
+ // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
+    if (document.getElementById('shareModal')) {
+        console.log('⚠️ Modal chia sẻ đã mở rồi');
+        return;
+    }
     if (!currentPlan || !currentPlanId) {
         alert('⚠️ Chưa có lịch trình để chia sẻ');
         return;
@@ -7503,8 +7708,9 @@ async function checkPendingSuggestions(planId) {
         const pendingSuggestions = data.suggestions ? 
             data.suggestions.filter(s => s.status === 'pending') : [];
         
-        const wrapper = document.querySelector('.suggestions-wrapper');
-
+        // 🔥 LƯU VÀO CACHE
+        cachedPendingSuggestionsCount = pendingSuggestions.length;
+        
         if (pendingSuggestions.length > 0) {
             if (wrapper) wrapper.style.display = 'flex';   // <--- THÊM NÈ
             suggestionsBtn.style.display = 'flex';
@@ -7521,9 +7727,27 @@ async function checkPendingSuggestions(planId) {
         console.error('Error checking suggestions:', error);
     }
 }
+// 🔥 HÀM MỚI - HIỂN THỊ NÚT ĐỀ XUẤT NGAY LẬP TỨC
+function showSuggestionsButtonImmediately() {
+    const suggestionsBtn = document.getElementById('suggestionsBtn');
+    const suggestionCount = document.getElementById('suggestionCount');
+    
+    if (!suggestionsBtn || !suggestionCount) return;
+    
+    if (cachedPendingSuggestionsCount > 0) {
+        suggestionsBtn.style.display = 'flex';
+        suggestionCount.textContent = cachedPendingSuggestionsCount;
+    }
+}
 
 // ========== OPEN SUGGESTIONS PANEL ==========
 async function openSuggestionsPanel() {
+    // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI → KHÔNG MỞ THÊM
+    if (document.getElementById('suggestionsModal')) {
+        console.log('⚠️ Modal đã mở rồi, không mở thêm');
+        return;
+    }
+    
     if (!currentPlanId) {
         alert('⚠️ Không có lịch trình đang mở');
         return;
@@ -7712,6 +7936,11 @@ function closeSuggestionsModal() {
 
 // ========== VIEW SUGGESTION COMPARISON ==========
 async function viewSuggestionComparison(suggestionId) {
+ // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
+    if (document.getElementById('comparisonModal')) {
+        console.log('⚠️ Modal so sánh đã mở rồi');
+        return;
+    }
     try {
         const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
         const data = await response.json();
