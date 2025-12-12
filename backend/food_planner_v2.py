@@ -45,14 +45,14 @@ def clean_value(value):
         return value
     return value
 
-def is_open_now(opening_hours_str, check_time=None, min_hours_before_close=2, place_name=None):
+def is_open_now(opening_hours_str, check_time=None, min_hours_before_close=1, place_name=None):
     """
     Kiểm tra quán có đang mở cửa không VÀ còn đủ thời gian hoạt động
     
     Args:
         opening_hours_str: Chuỗi giờ mở cửa từ CSV (VD: "Mở cửa vào 4:30 · Đóng cửa vào 12:00")
         check_time: Thời gian cần kiểm tra (HH:MM hoặc time object)
-        min_hours_before_close: Số giờ tối thiểu trước khi đóng cửa (mặc định 2 giờ)
+        min_hours_before_close: Số giờ tối thiểu trước khi đóng cửa (mặc định 1 giờ)
         place_name: Tên quán (dùng để debug)
     
     Returns:
@@ -122,21 +122,21 @@ def is_open_now(opening_hours_str, check_time=None, min_hours_before_close=2, pl
         # Tính thời gian tối thiểu cần có trước khi đóng cửa (đổi từ giờ sang phút)
         min_minutes_before_close = min_hours_before_close * 60
         
-        # 3 điều kiện để quán hợp lệ:
+        # 🔥 THAY ĐOẠN NÀY (từ dòng "# 3 điều kiện để quán hợp lệ:")
+        
+        # 🔥 CHỈ KIỂM TRA 2 ĐIỀU KIỆN:
         # 1. Đã đến giờ mở cửa
         is_open = (current_minutes >= open_minutes)
 
-        # 2. Chưa đến giờ đóng cửa
-        is_before_close = (current_minutes < close_minutes)
-
-        # 3. Còn đủ thời gian hoạt động (ít nhất 2 giờ trước khi đóng)
+        # 2. Còn đủ thời gian hoạt động (ít nhất 1 giờ từ current_time đến giờ đóng)
+        min_minutes_before_close = min_hours_before_close * 60
         has_enough_time = ((close_minutes - current_minutes) >= min_minutes_before_close)
 
-        # 🔥 CHẶN CHẶT: Nếu KHÔNG thỏa mãn cả 3 điều kiện → CHẶN LUÔN
-        if not (is_open and is_before_close and has_enough_time):
+        # 🔥 CHẶN CHẶT: Nếu KHÔNG thỏa mãn CẢ 2 điều kiện → CHẶN LUÔN
+        if not (is_open and has_enough_time):
             return False
 
-        # ✅ Nếu đến đây → CẢ 3 ĐIỀU KIỆN ĐỀU ĐÚNG
+        # ✅ Nếu đến đây → CẢ 2 ĐIỀU KIỆN ĐỀU ĐÚNG
         result = True
         
         return result
@@ -524,15 +524,17 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
             
             # Lọc giờ mở cửa
             gio_mo_cua = row.get('gio_mo_cua', '')
-            check_time_str = filters.get('meal_time')
+            check_time_str = filters.get('meal_time')  # Thời gian gắn quán vào lịch trình
             ten_quan = str(row.get('ten_quan', ''))
-            name_normalized = normalize_text_with_accent(ten_quan)  # ← THÊM DÒNG NÀY
-
+            name_normalized = normalize_text_with_accent(ten_quan)
+            
             if check_time_str:
-                if not is_open_now(gio_mo_cua, check_time=check_time_str, min_hours_before_close=2, place_name=ten_quan):
+                # min_hours_before_close=1 → quán phải còn mở ít nhất 1h từ check_time
+                if not is_open_now(gio_mo_cua, check_time=check_time_str, min_hours_before_close=1, place_name=ten_quan):
                     continue
             else:
-                if not is_open_now(gio_mo_cua, min_hours_before_close=2, place_name=ten_quan):
+                # Fallback: dùng thời gian hiện tại
+                if not is_open_now(gio_mo_cua, min_hours_before_close=1, place_name=ten_quan):
                     continue
             
             # LỌC THEO THEME
@@ -615,15 +617,20 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                 if is_drink_place:
                     continue
 
-            # 🔥 Lọc BÁNH MÌ KHỎI THEME dessert_bakery
+            # 🔥 Lọc BÁNH MÌ + BÁNH XÈO KHỎI THEME dessert_bakery
             if theme and 'dessert_bakery' in theme_list:
-                # Bỏ dấu để kiểm tra
                 name_for_check = normalize_text(str(row.get('ten_quan', '')))
-                # Loại bỏ tất cả biến thể của bánh mì
+                # chuẩn hoá thêm để bắt được "banh-xeo"
+                name_for_check = ' '.join(name_for_check.replace('-', ' ').split())
+
                 banh_mi_variants = ['banhmi', 'banh mi', 'banhmy', 'banh my']
-                if any(variant in name_for_check for variant in banh_mi_variants):
+                if any(v in name_for_check for v in banh_mi_variants):
                     continue
-            
+
+                banh_xeo_variants = ['banh xeo', 'banhxeo']
+                if any(v in name_for_check for v in banh_xeo_variants):
+                    continue
+
             # THÊM VÀO RESULTS (phần code cũ giữ nguyên)
             results.append({
                 'ten_quan': clean_value(row.get('ten_quan', '')),
@@ -709,282 +716,276 @@ MEAL_THEME_MAP = {
 
 def get_theme_for_meal(meal_key, user_selected_themes):
     """
-    Chọn theme phù hợp cho từng bữa ăn
-    
-    Logic:
-    1. Nếu user CHỌN theme → DÙNG theme ưu tiên phù hợp với bữa
-    2. 🔥 FOOD_STREET / MICHELIN → TÌMẦN BÌNH THƯỜNG (không dùng theme đặc biệt cho bữa chính)
-    3. Nếu KHÔNG → dùng theme mặc định theo bữa
-    
-    ⚠️ HÀM NÀY CHỈ DÙNG CHO 3 BỮA CHÍNH - KHÔNG ẢNH HƯỞNG ĐẾN CARD GỢI Ý
+    Chọn theme phù hợp cho từng bữa ăn/uống
     """
-    # ⚡ DANH SÁCH THEME KHÔNG PHÙ HỢP CHO TỪNG BỮA
-    MEAL_RESTRICTIONS = {
-        'dessert': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'spicy_food'],
-        'morning_drink': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'asian_fusion', 'spicy_food', 'vegetarian'],
-        'afternoon_drink': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'asian_fusion', 'spicy_food', 'vegetarian'],
-        'drink': ['michelin', 'food_street', 'luxury_dining', 'seafood', 'asian_fusion', 'spicy_food', 'vegetarian']
-    }
+    # Nếu là bữa uống/tráng miệng (drink_*)
+    if meal_key.startswith('drink_'):
+        if 'coffee_chill' in user_selected_themes:
+            return 'coffee_chill'
+        elif 'dessert_bakery' in user_selected_themes:
+            return 'dessert_bakery'
+        else:
+            return 'coffee_chill'
     
-    # 🔥 NẾU USER ĐÃ CHỌN THEME
+    # Nếu là bữa ăn (meal_*)
     if user_selected_themes:
-        # 🔥 ✅ XỬ LÝ ĐẶC BIỆT: CHỈ CHỌN DUY NHẤT food_street HOẶC michelin
-        if len(user_selected_themes) == 1:
-            if user_selected_themes[0] in ['food_street', 'michelin']:
-                # ✅ TRẢ VỀ ĐÚNG THEME ĐẶC BIỆT
-                return user_selected_themes[0]
+        # Lọc bỏ theme không phù hợp cho bữa ăn
+        food_themes = ['street_food', 'asian_fusion', 'seafood', 'spicy_food', 
+                      'luxury_dining', 'vegetarian', 'food_street', 'michelin']
         
-        # 🔥🔥🔥 TẠO BẢN SAO ĐỂ KHÔNG GHI ĐÈ user_selected_themes GỐC 🔥🔥🔥
-        themes_for_meal = user_selected_themes.copy()
+        suitable_themes = [t for t in user_selected_themes if t in food_themes]
         
-        # 🔥🔥🔥 Xử lý cho NHIỀU THEME (có food_street/michelin + theme khác) 🔥🔥🔥
-        if 'food_street' in themes_for_meal or 'michelin' in themes_for_meal:
-            # Loại bỏ food_street VÀ michelin ra khỏi danh sách BỮA CHÍNH
-            themes_without_special = [t for t in themes_for_meal if t not in ['food_street', 'michelin']]
-            
-            if themes_without_special:
-                # Có theme khác → Dùng theme khác CHO BỮA NÀY
-                themes_for_meal = themes_without_special
-            else:
-                # 🔥 CHỈ CÓ MỘT MÌNH food_street/michelin (nhưng đã xử lý ở trên rồi)
-                meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
-                return meal_map['preferred'][0]
-        
-        # Lọc bỏ theme không phù hợp với bữa này
-        restricted = MEAL_RESTRICTIONS.get(meal_key, [])
-        suitable_themes = [t for t in themes_for_meal if t not in restricted]
-        
-        # 🔥 XÁC ĐỊNH LOẠI BỮA ĂN
-        is_main_meal = meal_key in ['breakfast', 'lunch', 'dinner', 'meal', 'meal1', 'meal2']
-        is_drink = meal_key in ['morning_drink', 'afternoon_drink', 'drink']
-        is_dessert = meal_key == 'dessert'
-        
-        # ⚡ Nếu LÀ BỮA ĂN CHÍNH → 🔥🔥 LOẠI BỎ COFFEE_CHILL VÀ DESSERT_BAKERY 🔥🔥
-        if is_main_meal:
-            food_themes = ['street_food', 'asian_fusion', 'seafood', 'spicy_food', 'luxury_dining', 'vegetarian']
-            
-            # 🔥 CHỈ LẤY THEME ĂN, LOẠI BỎ COFFEE/DESSERT
-            suitable_food_themes = [t for t in suitable_themes if t in food_themes]
-            
-            if suitable_food_themes:
-                # ✅ CÓ THEME ĂN → DÙNG THEME ĐẦU TIÊN
-                return suitable_food_themes[0]
-            else:
-                # ❌ KHÔNG CÓ THEME ĂN → DÙNG MẶC ĐỊNH
-                meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
-                return meal_map['preferred'][0]
-        
-        # ⚡ Nếu LÀ BỮA DRINK → ưu tiên coffee_chill
-        elif is_drink:
-            if 'coffee_chill' in suitable_themes:
-                return 'coffee_chill'
-            elif 'dessert_bakery' in suitable_themes:
-                return 'dessert_bakery'
-            elif suitable_themes:
-                return suitable_themes[0]
-            else:
-                return 'coffee_chill'
-        
-        # ⚡ Nếu LÀ TRÁNG MIỆNG → ưu tiên dessert_bakery
-        elif is_dessert:
-            # 🔥🔥 ƯU TIÊN THỨ TỰ MỚI - LOẠI BỎ LUXURY_DINING 🔥🔥
-            if 'dessert_bakery' in suitable_themes:
-                return 'dessert_bakery'
-            elif 'street_food' in suitable_themes:
-                return 'street_food'
-            elif 'asian_fusion' in suitable_themes:
-                return 'asian_fusion'
-            elif 'coffee_chill' in suitable_themes:
-                return 'coffee_chill'
-            elif suitable_themes:
-                # 🔥 KIỂM TRA THÊM: Nếu theme còn lại là luxury_dining → dùng mặc định
-                if suitable_themes[0] == 'luxury_dining':
-                    return 'dessert_bakery'  # ✅ FALLBACK về tráng miệng
-                return suitable_themes[0]
-            else:
-                return 'dessert_bakery'
-        
-        # Fallback: lấy theme đầu tiên
         if suitable_themes:
             return suitable_themes[0]
-        else:
-            meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
-            return meal_map['preferred'][0]
     
-    # 🔥 Nếu USER KHÔNG CHỌN THEME → Tự động chọn theo bữa
-    meal_map = MEAL_THEME_MAP.get(meal_key, {'preferred': ['street_food'], 'fallback': []})
-    return meal_map['preferred'][0]
+    # Fallback mặc định
+    return 'street_food'
+
+def assign_drink_themes_to_plan(plan, user_selected_themes):
+    """
+    Random theme cho từng drink_*.
+    Nếu có cả coffee + dessert và có >=2 slot thì đảm bảo có ít nhất 1 coffee và 1 dessert.
+    Đồng thời update title/icon đúng theo theme.
+    """
+    has_coffee = user_selected_themes and ('coffee_chill' in user_selected_themes)
+    has_dessert = user_selected_themes and ('dessert_bakery' in user_selected_themes)
+
+    # Lấy danh sách drink keys theo thứ tự
+    order = plan.get('_order')
+    if order:
+        drink_keys = [k for k in order if isinstance(k, str) and k.startswith('drink_') and k in plan]
+    else:
+        drink_keys = [k for k in plan.keys() if isinstance(k, str) and k.startswith('drink_')]
+        def _idx(k):
+            try:
+                return int(k.split('_', 1)[1])
+            except:
+                return 999999
+        drink_keys.sort(key=_idx)
+
+    if not drink_keys:
+        return
+
+    # Helper label/icon theo giờ + theme
+    def drink_label_icon(time_str, drink_theme):
+        try:
+            hour = int(str(time_str).split(':')[0])
+        except:
+            hour = 12
+
+        if 5 <= hour < 10:
+            segment = 'buổi sáng'
+        elif 10 <= hour < 14:
+            segment = 'buổi trưa'
+        elif 14 <= hour < 18:
+            segment = 'xế chiều'
+        elif 18 <= hour < 22:
+            segment = 'buổi tối'
+        elif 22 <= hour < 24:
+            segment = 'buổi đêm'
+        else:
+            segment = 'đêm khuya'
+
+        if drink_theme == 'dessert_bakery':
+            return f'Tráng miệng {segment}', THEME_CATEGORIES['dessert_bakery']['icon']
+        return f'Giải khát {segment}', THEME_CATEGORIES['coffee_chill']['icon']
+
+    # Nếu không chọn đủ 2 theme -> cố định 1 loại
+    if not (has_coffee and has_dessert):
+        fixed = 'coffee_chill' if has_coffee else ('dessert_bakery' if has_dessert else 'coffee_chill')
+        for k in drink_keys:
+            plan[k]['theme'] = fixed
+            title, icon = drink_label_icon(plan[k].get('time'), fixed)
+            plan[k]['title'] = title
+            plan[k]['icon'] = icon
+        return
+
+    # Có cả 2 theme -> random theo slot, nhưng đảm bảo mix nếu >=2
+    n = len(drink_keys)
+    if n == 1:
+        themes = [random.choice(['coffee_chill', 'dessert_bakery'])]
+    else:
+        themes = ['coffee_chill', 'dessert_bakery']
+        for _ in range(n - 2):
+            themes.append(random.choice(['coffee_chill', 'dessert_bakery']))
+        random.shuffle(themes)
+
+    for k, t in zip(drink_keys, themes):
+        plan[k]['theme'] = t
+        title, icon = drink_label_icon(plan[k].get('time'), t)
+        plan[k]['title'] = title
+        plan[k]['icon'] = icon
+
 
 # ==================== GENERATE SMART PLAN ====================
 
 def generate_meal_schedule(time_start_str, time_end_str, user_selected_themes):
     """
-    Generate meal schedule dựa trên KHUNG GIỜ thực tế
-    Hỗ trợ khung giờ qua đêm (vd: 7:00 → 6:00 sáng hôm sau)
+    Generate meal schedule - Hỗ trợ QUA ĐÊM, KHÔNG SORT
+    Giữ nguyên thứ tự thời gian thực tế
+    
+    🔥 FIX: Cho phép tạo quán đúng vào thời điểm end_time
     """
+    from datetime import datetime, timedelta
+    
     time_start = datetime.strptime(time_start_str, '%H:%M')
     time_end = datetime.strptime(time_end_str, '%H:%M')
     
-    # 🔥 NẾU GIỜ KẾT THÚC < GIỜ BẮT ĐẦU → COI LÀ NGÀY HÔM SAU
-    if time_end <= time_start:
-        time_end = time_end + timedelta(days=1)
-    
-    start_hour = time_start.hour + time_start.minute / 60.0
-    end_hour = time_end.hour + time_end.minute / 60.0
-    
-    # 🔥 NẾU QUA ĐÊM → CỘNG 24 GIỜ CHO end_hour
-    if time_end.day > time_start.day:
-        end_hour += 24
-    
-    # 🔥 KIỂM TRA CÓ CHỌN THEME KHÔNG
-    has_selected_themes = user_selected_themes and len(user_selected_themes) > 0
-    
-    if has_selected_themes:
-        has_coffee_chill = 'coffee_chill' in user_selected_themes
-        dessert_themes = {'street_food', 'asian_fusion', 'dessert_bakery', 'coffee_chill'}
-        has_dessert_theme = any(theme in dessert_themes for theme in user_selected_themes)
+    # 🔥 TÍNH DURATION (hỗ trợ qua đêm)
+    if time_start_str == time_end_str:
+        duration_hours = 24.0
+    elif time_end <= time_start:
+        # Qua đêm: tính từ start -> 24h + 0h -> end
+        duration_hours = ((24 * 60 - time_start.hour * 60 - time_start.minute) + 
+                         (time_end.hour * 60 + time_end.minute)) / 60.0
     else:
-        has_coffee_chill = True
-        has_dessert_theme = True
+        duration_hours = (time_end - time_start).seconds / 3600.0
+    
+    # Kiểm tra theme
+    has_drink_theme = any(t in ['coffee_chill', 'dessert_bakery'] for t in user_selected_themes) if user_selected_themes else False
     
     plan = {}
+    order = []
     
-    # 🔥 HÀM HELPER: TÍNH GIỜ VÀ FORMAT
-    def format_time(hour_float):
-        """Chuyển số giờ (có thể > 24) thành HH:MM"""
-        hour_float = hour_float % 24  # Quay vòng 24 giờ
-        return f'{int(hour_float):02d}:{int((hour_float % 1) * 60):02d}'
+    current_time = time_start
+    meal_counter = 1
+    drink_counter = 1
+    elapsed_hours = 0.0
     
-    def is_in_range(target_hour, range_start, range_end):
-        """Kiểm tra giờ có nằm trong khoảng không (hỗ trợ qua đêm)"""
-        # Nếu target_hour < start_hour → coi như ngày hôm sau
-        if target_hour < start_hour:
-            target_hour += 24
-        return range_start <= target_hour < range_end and start_hour <= target_hour < end_hour
+    def format_time(dt):
+        """Format thời gian, cho phép vượt qua 24h"""
+        return dt.strftime('%H:%M')
     
-    # 🔥 KHUNG GIỜ BỮA SÁNG (6:00 - 10:00)
-    breakfast_time = max(start_hour, 7)
-    if breakfast_time < start_hour:
-        breakfast_time += 24
-    if is_in_range(breakfast_time, 7, 10):
-        plan['breakfast'] = {
-            'time': format_time(breakfast_time),
-            'title': 'Bữa sáng',
-            'categories': ['pho', 'banh mi', 'bun'],
-            'icon': '🍳'
-        }
+    def get_meal_label(time_obj):
+        """Phân loại bữa ăn theo giờ"""
+        hour = time_obj.hour
+        if 5 <= hour < 10:
+            return 'Bữa sáng', '🍳'
+        elif 10 <= hour < 14:
+            return 'Bữa trưa', '🍚'
+        elif 14 <= hour < 18:
+            return 'Bữa xế', '🥖'
+        elif 18 <= hour < 22:
+            return 'Bữa tối', '🍽️'
+        elif 22 <= hour < 24:
+            return 'Bữa đêm', '🌙'
+        else:  # 0-5h
+            return 'Bữa khuya', '🌃'
     
-    # 🔥 ĐỒ UỐNG BUỔI SÁNG (9:30 - 11:30)
-    if has_coffee_chill:
-        morning_drink_time = max(start_hour + 1.5, 9.5)
-        if morning_drink_time < start_hour:
-            morning_drink_time += 24
-        if is_in_range(morning_drink_time, 9.5, 11.5):
-            if 'breakfast' not in plan or (morning_drink_time - start_hour >= 1.5):
-                plan['morning_drink'] = {
-                    'time': format_time(morning_drink_time),
-                    'title': 'Giải khát buổi sáng',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '🧋'
-                }
+    def decide_drink_theme():
+        """Chọn loại slot: Giải khát (coffee_chill) hay Tráng miệng (dessert_bakery)"""
+        if not user_selected_themes:
+            return 'coffee_chill'
+        if 'coffee_chill' in user_selected_themes:
+            return 'coffee_chill'
+        if 'dessert_bakery' in user_selected_themes:
+            return 'dessert_bakery'
+        return 'coffee_chill'
+
+    def get_drink_label(time_obj, drink_theme):
+        """Tạo label + icon cho bữa uống/tráng miệng theo THEME đã chọn"""
+        hour = time_obj.hour
+        if 5 <= hour < 10:
+            segment = 'buổi sáng'
+        elif 10 <= hour < 14:
+            segment = 'buổi trưa'
+        elif 14 <= hour < 18:
+            segment = 'xế chiều'
+        elif 18 <= hour < 22:
+            segment = 'buổi tối'
+        elif 22 <= hour < 24:
+            segment = 'buổi đêm'
+        else:  # 0-5h
+            segment = 'đêm khuya'
+
+        if drink_theme == 'dessert_bakery':
+            return f'Tráng miệng {segment}', THEME_CATEGORIES['dessert_bakery']['icon']
+        else:
+            return f'Giải khát {segment}', THEME_CATEGORIES['coffee_chill']['icon']
     
-    # 🔥 BỮA TRƯA (11:00 - 14:00)
-    lunch_time = max(start_hour, 11.5)
-    if lunch_time < start_hour:
-        lunch_time += 24
-    if 'breakfast' in plan:
-        breakfast_hour = float(plan['breakfast']['time'].split(':')[0]) + float(plan['breakfast']['time'].split(':')[1]) / 60
-        if breakfast_hour < start_hour:
-            breakfast_hour += 24
-        lunch_time = max(lunch_time, breakfast_hour + 3)
-    
-    if is_in_range(lunch_time, 11, 14):
-        plan['lunch'] = {
-            'time': format_time(lunch_time),
-            'title': 'Bữa trưa',
-            'categories': ['com tam', 'mi', 'bun'],
-            'icon': '🍚'
-        }
-    
-    # 🔥 ĐỒ UỐNG BUỔI CHIỀU (14:00 - 17:00)
-    if has_coffee_chill:
-        afternoon_drink_time = max(start_hour, 14.5)
-        if afternoon_drink_time < start_hour:
-            afternoon_drink_time += 24
-        if 'lunch' in plan:
-            lunch_hour = float(plan['lunch']['time'].split(':')[0]) + float(plan['lunch']['time'].split(':')[1]) / 60
-            if lunch_hour < start_hour:
-                lunch_hour += 24
-            afternoon_drink_time = max(afternoon_drink_time, lunch_hour + 1.5)
-        
-        if is_in_range(afternoon_drink_time, 14, 17):
-            plan['afternoon_drink'] = {
-                'time': format_time(afternoon_drink_time),
-                'title': 'Giải khát buổi chiều',
-                'categories': ['tra sua', 'cafe', 'coffee'],
-                'icon': '☕'
+    # 🔥 LOGIC MỚI: KHÔNG SORT, GIỮ NGUYÊN THỨ TỰ THỜI GIAN THỰC TẾ
+    if duration_hours >= 2.5:
+        while True:  # 🔥 Đổi từ while elapsed_hours < duration_hours
+            # 1. Thêm bữa ăn
+            meal_key = f'meal_{meal_counter}'
+            meal_label, meal_icon = get_meal_label(current_time)
+            
+            plan[meal_key] = {
+                'time': format_time(current_time),
+                'title': meal_label,
+                'icon': meal_icon,
+                'categories': ['pho', 'com tam', 'bun']
             }
-    
-    # 🔥 BỮA TỐI (17:00 - 21:00)
-    dinner_time = max(start_hour, 18)
-    if dinner_time < start_hour:
-        dinner_time += 24
-    if 'lunch' in plan:
-        lunch_hour = float(plan['lunch']['time'].split(':')[0]) + float(plan['lunch']['time'].split(':')[1]) / 60
-        if lunch_hour < start_hour:
-            lunch_hour += 24
-        dinner_time = max(dinner_time, lunch_hour + 4)
-    elif 'breakfast' in plan:
-        breakfast_hour = float(plan['breakfast']['time'].split(':')[0]) + float(plan['breakfast']['time'].split(':')[1]) / 60
-        if breakfast_hour < start_hour:
-            breakfast_hour += 24
-        dinner_time = max(dinner_time, breakfast_hour + 6)
-    
-    if is_in_range(dinner_time, 17, 21):
-        plan['dinner'] = {
-            'time': format_time(dinner_time),
-            'title': 'Bữa tối',
-            'categories': ['com tam', 'mi cay', 'pho'],
-            'icon': '🍽️'
-        }
-    
-    # 🔥 TRÁNG MIỆNG (19:00 - 23:00)
-    if has_dessert_theme:
-        dessert_time = max(start_hour, 20)
-        if dessert_time < start_hour:
-            dessert_time += 24
-        if 'dinner' in plan:
-            dinner_hour = float(plan['dinner']['time'].split(':')[0]) + float(plan['dinner']['time'].split(':')[1]) / 60
-            if dinner_hour < start_hour:
-                dinner_hour += 24
-            dessert_time = max(dessert_time, dinner_hour + 1.5)
+            order.append(meal_key)
+            meal_counter += 1
+            
+            # 2. Thêm bữa uống/tráng miệng sau 2.5h (nếu còn thời gian)
+            # 🔥 QUAN TRỌNG: Luôn cộng elapsed_hours để giữ logic thời gian nhất quán
+            if elapsed_hours + 2.5 <= duration_hours:
+                if has_drink_theme:
+                    # Chỉ thêm quán vào plan khi CÓ theme
+                    drink_time = current_time + timedelta(hours=2.5)
+                    drink_key = f'drink_{drink_counter}'
+                    drink_theme = decide_drink_theme()
+                    drink_label, drink_icon = get_drink_label(drink_time, drink_theme)
+                    
+                    plan[drink_key] = {
+                        'time': format_time(drink_time),
+                        'title': drink_label,
+                        'icon': drink_icon,
+                        'categories': ['tra sua', 'cafe', 'banh']
+                    }
+                    order.append(drink_key)
+                    drink_counter += 1
+                
+                # Cộng 2.5h bất kể có thêm quán hay không (để giữ logic nhất quán)
+                elapsed_hours += 2.5
+
+            # 3. Chuyển sang bữa ăn tiếp theo (5h sau bữa ăn đầu)
+            elapsed_hours += 2.5  # Tổng 5h từ bữa ăn trước
+            
+            # 🔥 FIX QUAN TRỌNG: Cho phép tạo bữa ăn ĐÚNG VÀO end_time
+            # Chỉ dừng khi elapsed_hours VƯỢT QUÁ duration_hours
+            if elapsed_hours > duration_hours:
+                break
+            
+            current_time = current_time + timedelta(hours=5)
+    else:
+        # Duration < 2.5h
+        meal_key = 'meal_1'
+        meal_label, meal_icon = get_meal_label(current_time)
         
-        if is_in_range(dessert_time, 19, 24):  # 🔥 Đến 24h (0h)
-            plan['dessert'] = {
-                'time': format_time(dessert_time),
-                'title': 'Tráng miệng',
-                'categories': ['banh kem', 'kem', 'tra sua'],
-                'icon': '🍰'
-            }
-    
-    # 🔥 NẾU KHÔNG CÓ BỮA NÀO → TẠO BỮA MẶC ĐỊNH
-    if len(plan) == 0:
-        plan['meal'] = {
-            'time': time_start_str,
-            'title': 'Bữa ăn',
-            'categories': ['pho', 'com tam', 'bun'],
-            'icon': '🍜'
+        plan[meal_key] = {
+            'time': format_time(current_time),
+            'title': meal_label,
+            'icon': meal_icon,
+            'categories': ['pho', 'com tam', 'bun']
         }
+        order.append(meal_key)
         
-        duration_hours = (time_end - time_start).seconds / 3600
-        if has_coffee_chill and duration_hours >= 1.5:
-            drink_time = time_start + timedelta(hours=duration_hours * 0.7)
-            plan['drink'] = {
-                'time': drink_time.strftime('%H:%M'),
-                'title': 'Giải khát',
-                'categories': ['tra sua', 'cafe'],
-                'icon': '☕'
+        # Thêm bữa uống sau 1h nếu còn thời gian VÀ có theme
+        if duration_hours >= 1.0 and has_drink_theme:
+            drink_time = current_time + timedelta(hours=1)
+            drink_key = 'drink_1'
+            drink_theme = decide_drink_theme()
+            drink_label, drink_icon = get_drink_label(drink_time, drink_theme)
+            
+            plan[drink_key] = {
+                'time': format_time(drink_time),
+                'title': drink_label,
+                'icon': drink_icon,
+                'categories': ['tra sua', 'cafe', 'banh']
             }
+            order.append(drink_key)
+    
+    # 🔥 QUAN TRỌNG: LƯU _order THEO THỨ TỰ TẠO RA, KHÔNG SORT
+    plan['_order'] = order
+    
+    print(f"📊 [SCHEDULE] Duration: {duration_hours}h")
+    print(f"📊 [SCHEDULE] Generated order: {order}")
+    for key in order:
+        if key in plan:
+            print(f"  - {key}: {plan[key]['time']} - {plan[key]['title']}")
     
     return plan
 
@@ -997,25 +998,7 @@ def parse_time_to_float(time_str):
 
 def filter_meal_schedule_by_themes(plan, user_selected_themes, start_time='07:00', end_time='21:00'):
     """
-    🔥 Lọc VÀ ĐIỀU CHỈNH LỊCH TRÌNH Dựa TRÊN THEME USER CHỌN
-    
-    Logic:
-    1. CHỈ chọn coffee_chill → CHỈ GIỮ 2 buổi nước (morning_drink, afternoon_drink)
-    2. CHỈ chọn dessert_bakery → CHỈ GIỮ 1 buổi tráng miệng (dessert)
-    3. Chọn CẢ coffee_chill + dessert_bakery (KHÔNG có theme ăn khác)
-       → GIỮ 2 buổi nước + 1 tráng miệng
-    4. Chọn coffee_chill/dessert_bakery + theme ăn khác 
-       → GIỮ NGUYÊN (3 bữa ăn + 2 nước + 1 tráng miệng)
-    5. Chọn theme ăn (street_food, asian_fusion, v.v.) 
-       → GIỮ NGUYÊN
-    6. KHÔNG chọn theme → GIỮ NGUYÊN
-    
-    Args:
-        plan: Dict lịch trình từ generate_meal_schedule()
-        user_selected_themes: List theme user đã chọn
-    
-    Returns:
-        Dict lịch trình đã lọc
+    🔥 Logic mới: Xử lý đặc biệt khi CHỈ chọn Giải khát/Tráng miệng
     """
     # ❌ KHÔNG có theme → GIỮ NGUYÊN
     if not user_selected_themes or len(user_selected_themes) == 0:
@@ -1027,295 +1010,79 @@ def filter_meal_schedule_by_themes(plan, user_selected_themes, start_time='07:00
         'luxury_dining', 'vegetarian', 'michelin', 'food_street'
     }
     
-    # 🔥 KIỂM TRA USER CÓ CHỌN THEME ĂN KHÔNG
     has_food_theme = any(theme in food_themes for theme in user_selected_themes)
     has_coffee = 'coffee_chill' in user_selected_themes
     has_dessert = 'dessert_bakery' in user_selected_themes
     
-    # ✅ TRƯỜNG HỢP 1: CÓ THEME ĂN → GIỮ NGUYÊN
+    # ✅ CÓ THEME ĂN → GIỮ NGUYÊN
     if has_food_theme:
         return plan
     
-    # 🔥 LẤY KHUNG GIỜ TỪ PLAN (từ key _order hoặc tính từ thời gian các bữa)
-    # 🔥 PARSE THỜI GIAN GỐC TỪ USER INPUT
+    # 🔥 CHỈ CÓ COFFEE/DESSERT → ÁP DỤNG LOGIC MỚI
+    # Random chọn 1 theme nếu có cả 2
+    selected_drink_theme = None
+    if has_coffee and has_dessert:
+        selected_drink_theme = random.choice(['coffee_chill', 'dessert_bakery'])
+    elif has_coffee:
+        selected_drink_theme = 'coffee_chill'
+    elif has_dessert:
+        selected_drink_theme = 'dessert_bakery'
+    
     start_hour = parse_time_to_float(start_time)
     end_hour = parse_time_to_float(end_time)
 
-    # 🔥 NẾU START > END (VD: 16:00 -> 02:00) → ĐẶT END = 23:59
-    if start_hour >= end_hour:
-        end_hour = 23.983333  # 23:59 (23 + 59/60)
-    
-    # ✅ TRƯỜNG HỢP 2: CHỈ CÓ COFFEE_CHILL
-    if has_coffee and not has_dessert:
-        filtered_plan = {}
-        
-        # 🔥 TÍNH DURATION TRƯỚC
+    # Tính duration có xử lý qua đêm — kể cả khi start == end vẫn tính qua đêm
+    if end_hour > start_hour:
         duration = end_hour - start_hour
-        
-        # CHỈ GIỮ CÁC BUỔI NƯỚC
-        drink_keys = ['morning_drink', 'afternoon_drink', 'drink']
-        
-        for key in drink_keys:
-            if key in plan:
-                # 🔥 KIỂM TRA THỜI GIAN CÓ NẰM TRONG KHUNG GIỜ KHÔNG
-                meal_time = plan[key]['time']
-                meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
-                
-                if start_hour <= meal_hour < end_hour:
-                    filtered_plan[key] = plan[key]
-        
-        # ✅ Nếu KHÔNG CÓ BUỔI NÀO → Tạo BUỔI NƯỚC MẶC ĐỊNH
-        if len(filtered_plan) == 0:
-            # 🔥 KIỂM TRA DURATION: < 4 GIỜ THÌ CHỈ TẠO 1 BUỔI
-            if duration < 4:
-                # Tạo 1 buổi ở giữa khung giờ
-                mid_time = calculate_time_at_ratio(start_hour, end_hour, 0.5)
-                filtered_plan['drink'] = {
-                    'time': mid_time,
-                    'title': 'Giải khát',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '☕'
-                }
-            else:
-                # Tạo 2 buổi nước
-                time1, time2 = generate_two_drink_times(start_hour, end_hour)
-                
-                filtered_plan['morning_drink'] = {
-                    'time': time1,
-                    'title': 'Giải khát',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '🧋'
-                }
-                filtered_plan['afternoon_drink'] = {
-                    'time': time2,
-                    'title': 'Giải khát',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '☕'
-                }
-        
-        # Nếu chỉ có 1 buổi nước → 🔥 KIỂM TRA DURATION TRƯỚC KHI THÊM BUỔI THỨ 2
-        elif len(filtered_plan) == 1:
-            # 🔥 CHỈ THÊM BUỔI THỨ 2 NẾU DURATION >= 4 GIỜ
-            if duration >= 4:
-                existing_key = list(filtered_plan.keys())[0]
-                existing_time = filtered_plan[existing_key]['time']
-                
-                # Tính thời gian buổi thứ 2 (cách 3 tiếng)
-                from datetime import datetime, timedelta
-                time_obj = datetime.strptime(existing_time, '%H:%M')
-                new_time_obj = time_obj + timedelta(hours=3)
-                new_time = new_time_obj.strftime('%H:%M')
-                
-                # 🔥 KIỂM TRA THỜI GIAN MỚI CÓ HỢP LỆ KHÔNG
-                new_hour = float(new_time.split(':')[0]) + float(new_time.split(':')[1]) / 60
-                
-                if start_hour <= new_hour < end_hour:
-                    # Thêm buổi nước thứ 2
-                    if existing_key == 'morning_drink':
-                        filtered_plan['afternoon_drink'] = {
-                            'time': new_time,
-                            'title': 'Giải khát',
-                            'categories': ['tra sua', 'cafe', 'coffee'],
-                            'icon': '☕'
-                        }
-                    else:
-                        filtered_plan['morning_drink'] = {
-                            'time': new_time,
-                            'title': 'Giải khát',
-                            'categories': ['tra sua', 'cafe', 'coffee'],
-                            'icon': '🧋'
-                        }
-                # 🔥 NGƯỢC LẠI: Tính thời gian mới theo hướng khác
-                else:
-                    # Thử thời gian trước đó 3 tiếng
-                    new_time_obj = time_obj - timedelta(hours=3)
-                    new_time = new_time_obj.strftime('%H:%M')
-                    new_hour = float(new_time.split(':')[0]) + float(new_time.split(':')[1]) / 60
-                    
-                    if start_hour <= new_hour < end_hour:
-                        if existing_key == 'afternoon_drink':
-                            filtered_plan['morning_drink'] = {
-                                'time': new_time,
-                                'title': 'Giải khát',
-                                'categories': ['tra sua', 'cafe', 'coffee'],
-                                'icon': '🧋'
-                            }
-                        else:
-                            filtered_plan['afternoon_drink'] = {
-                                'time': new_time,
-                                'title': 'Giải khát',
-                                'categories': ['tra sua', 'cafe', 'coffee'],
-                                'icon': '☕'
-                            }
-            # 🔥 NẾU DURATION < 4 GIỜ → GIỮ NGUYÊN 1 BUỔI, KHÔNG THÊM
-        
-        # 🔥🔥 Cập nhật _order theo đúng thứ tự thời gian 🔥🔥
-        filtered_plan['_order'] = sorted(
-            [k for k in filtered_plan.keys() if k != '_order'],
-            key=lambda k: filtered_plan[k]['time']
-        )
-        
-        print(f"✅ Filter coffee_chill: {list(filtered_plan.keys())}")
-        return filtered_plan
+    else:
+        duration = (24 - start_hour) + end_hour  # qua đêm hoặc start == end
     
-    # ✅ TRƯỜNG HỢP 3: CHỈ CÓ DESSERT_BAKERY
-    if has_dessert and not has_coffee:
-        filtered_plan = {}
+    # 🔥 PHÂN BỔ QUÁN THEO THỜI GIAN
+    filtered_plan = {}
+    
+    # Dưới 3h: 1 quán
+    if duration < 3:
+        mid_time = calculate_time_at_ratio(start_hour, end_hour, 0.5)
+        filtered_plan['drink_1'] = {
+            'time': mid_time,
+            'title': 'Giải khát' if selected_drink_theme == 'coffee_chill' else 'Tráng miệng',
+            'categories': ['tra sua', 'cafe', 'banh'],
+            'icon': '☕' if selected_drink_theme == 'coffee_chill' else '🍰'
+        }
+    
+    # 3-6h: 2 quán cách 3h
+    elif 3 <= duration < 6:
+        time1 = format_hour_to_time(start_hour)
+        time2 = format_hour_to_time(start_hour + 3)
         
-        # CHỈ GIỮ BỮA TRÁNG MIỆNG
-        if 'dessert' in plan:
-            # 🔥 KIỂM TRA THỜI GIAN
-            meal_time = plan['dessert']['time']
-            meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
-            
-            if start_hour <= meal_hour < end_hour:
-                filtered_plan['dessert'] = plan['dessert']
-        
-        # ✅ Nếu không có → TẠO TRÁNG MIỆNG MẶC ĐỊNH
-        if 'dessert' not in filtered_plan:
-            # 🔥 TÍNH THỜI GIAN TRÁNG MIỆNG TRONG KHUNG GIỜ (80% khung giờ)
-            dessert_time = calculate_time_at_ratio(start_hour, end_hour, 0.8)
-            
-            filtered_plan['dessert'] = {
-                'time': dessert_time,
-                'title': 'Tráng miệng',
-                'categories': ['banh kem', 'kem', 'tra sua'],
-                'icon': '🍰'
+        filtered_plan['drink_1'] = {
+            'time': time1,
+            'title': 'Giải khát' if selected_drink_theme == 'coffee_chill' else 'Tráng miệng',
+            'categories': ['tra sua', 'cafe', 'banh'],
+            'icon': '☕' if selected_drink_theme == 'coffee_chill' else '🍰'
+        }
+        filtered_plan['drink_2'] = {
+            'time': time2,
+            'title': 'Giải khát' if selected_drink_theme == 'coffee_chill' else 'Tráng miệng',
+            'categories': ['tra sua', 'cafe', 'banh'],
+            'icon': '☕' if selected_drink_theme == 'coffee_chill' else '🍰'
+        }
+    
+    # >=6h: Mỗi 3h 1 quán
+    else:
+        num_places = int(duration / 3) + 1
+        for i in range(num_places):
+            place_time = format_hour_to_time(start_hour + (i * 3))
+            filtered_plan[f'drink_{i+1}'] = {
+                'time': place_time,
+                'title': 'Giải khát' if selected_drink_theme == 'coffee_chill' else 'Tráng miệng',
+                'categories': ['tra sua', 'cafe', 'banh'],
+                'icon': '☕' if selected_drink_theme == 'coffee_chill' else '🍰'
             }
-        
-        filtered_plan['_order'] = ['dessert']
-        print(f"✅ Filter dessert_bakery: {list(filtered_plan.keys())}")
-        return filtered_plan
     
-    # ✅ TRƯỜNG HỢP 4: Cả COFFEE + DESSERT (KHÔNG CÓ THEME ĂN)
-    if has_coffee and has_dessert:
-        filtered_plan = {}
-        
-        # 🔥 TÍNH DURATION TRƯỚC
-        duration = end_hour - start_hour
-        
-        # GIỮ 2 BUỔI NƯỚC (hoặc ít hơn nếu duration ngắn)
-        drink_keys = ['morning_drink', 'afternoon_drink', 'drink']
-        drink_count = 0
-        max_drinks = 1 if duration < 4 else 2  # 🔥 GIỚI HẠN SỐ BUỔI NƯỚC
-        
-        for key in drink_keys:
-            if key in plan and drink_count < max_drinks:
-                # 🔥 KIỂM TRA THỜI GIAN
-                meal_time = plan[key]['time']
-                meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
-                
-                if start_hour <= meal_hour < end_hour:
-                    filtered_plan[key] = plan[key]
-                    drink_count += 1
-        
-        # ✅ NẾU KHÔNG ĐỦ BUỔI NƯỚC → TẠO THÊM
-        if drink_count == 0:
-            if duration < 4:
-                # Chỉ tạo 1 buổi
-                mid_time = calculate_time_at_ratio(start_hour, end_hour, 0.4)
-                filtered_plan['drink'] = {
-                    'time': mid_time,
-                    'title': 'Giải khát',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '☕'
-                }
-                drink_count = 1
-            else:
-                # Tạo 2 buổi
-                time1, time2 = generate_two_drink_times(start_hour, end_hour)
-                
-                filtered_plan['morning_drink'] = {
-                    'time': time1,
-                    'title': 'Giải khát',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '🧋'
-                }
-                filtered_plan['afternoon_drink'] = {
-                    'time': time2,
-                    'title': 'Giải khát',
-                    'categories': ['tra sua', 'cafe', 'coffee'],
-                    'icon': '☕'
-                }
-                drink_count = 2
-        elif drink_count == 1 and duration >= 4:  # 🔥 CHỈ THÊM BUỔI THỨ 2 NẾU ĐỦ THỜI GIAN
-            existing_key = [k for k in drink_keys if k in filtered_plan][0]
-            existing_time = filtered_plan[existing_key]['time']
-            
-            from datetime import datetime, timedelta
-            time_obj = datetime.strptime(existing_time, '%H:%M')
-            new_time_obj = time_obj + timedelta(hours=3)
-            new_time = new_time_obj.strftime('%H:%M')
-            new_hour = float(new_time.split(':')[0]) + float(new_time.split(':')[1]) / 60
-            
-            if start_hour <= new_hour < end_hour:
-                if existing_key == 'morning_drink':
-                    filtered_plan['afternoon_drink'] = {
-                        'time': new_time,
-                        'title': 'Giải khát',
-                        'categories': ['tra sua', 'cafe', 'coffee'],
-                        'icon': '☕'
-                    }
-                else:
-                    filtered_plan['morning_drink'] = {
-                        'time': new_time,
-                        'title': 'Giải khát',
-                        'categories': ['tra sua', 'cafe', 'coffee'],
-                        'icon': '🧋'
-                    }
-                drink_count = 2
-        
-        # GIỮ 1 TRÁNG MIỆNG
-        if 'dessert' in plan:
-            meal_time = plan['dessert']['time']
-            meal_hour = float(meal_time.split(':')[0]) + float(meal_time.split(':')[1]) / 60
-            
-            if start_hour <= meal_hour < end_hour:
-                filtered_plan['dessert'] = plan['dessert']
-        
-        # Nếu không có tráng miệng → Tạo mới
-        if 'dessert' not in filtered_plan:
-            # Tính thời gian tráng miệng (80% khung giờ hoặc sau buổi nước cuối)
-            if len(filtered_plan) > 0:
-                last_drink_time = max([filtered_plan[k]['time'] for k in filtered_plan.keys() if k != '_order'])
-                from datetime import datetime, timedelta
-                time_obj = datetime.strptime(last_drink_time, '%H:%M')
-                dessert_time_obj = time_obj + timedelta(hours=1.5)
-                dessert_time = dessert_time_obj.strftime('%H:%M')
-                dessert_hour = float(dessert_time.split(':')[0]) + float(dessert_time.split(':')[1]) / 60
-                
-                if start_hour <= dessert_hour < end_hour:
-                    filtered_plan['dessert'] = {
-                        'time': dessert_time,
-                        'title': 'Tráng miệng',
-                        'categories': ['banh kem', 'kem', 'tra sua'],
-                        'icon': '🰔'
-                    }
-                else:
-                    dessert_time = calculate_time_at_ratio(start_hour, end_hour, 0.8)
-                    filtered_plan['dessert'] = {
-                        'time': dessert_time,
-                        'title': 'Tráng miệng',
-                        'categories': ['banh kem', 'kem', 'tra sua'],
-                        'icon': '🰔'
-                    }
-            else:
-                dessert_time = calculate_time_at_ratio(start_hour, end_hour, 0.8)
-                filtered_plan['dessert'] = {
-                    'time': dessert_time,
-                    'title': 'Tráng miệng',
-                    'categories': ['banh kem', 'kem', 'tra sua'],
-                    'icon': '🰔'
-                }
-        
-        # 🔥🔥 Cập nhật _order theo đúng thứ tự thời gian 🔥🔥
-        filtered_plan['_order'] = sorted(
-            [k for k in filtered_plan.keys() if k != '_order'],
-            key=lambda k: filtered_plan[k]['time']
-        )
-        
-        print(f"✅ Filter coffee + dessert: {list(filtered_plan.keys())}")
-        return filtered_plan
+    filtered_plan['_order'] = [k for k in filtered_plan.keys() if k != '_order']
+    
+    return filtered_plan
 
 def generate_two_drink_times(start_hour, end_hour):
     """
@@ -1406,7 +1173,8 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
     
     # 🔥🔥🔥 LỌC LỊCH TRÌNH DỰA TRÊN THEME 🔥🔥🔥
     plan = filter_meal_schedule_by_themes(plan, user_selected_themes, start_time, end_time)
-    
+    assign_drink_themes_to_plan(plan, user_selected_themes)
+
     # 🔥🔥 THÊM DÒNG DEBUG 🔥🔥
     print(f"🔍 Plan sau filter: {list(plan.keys())}")
     
@@ -1422,7 +1190,7 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
             continue
             
         # 🔥 CHỌN THEME PHÙ HỢP CHO TỪNG BỮA
-        meal_theme = get_theme_for_meal(key, user_selected_themes)
+        meal_theme = meal.get('theme') or get_theme_for_meal(key, user_selected_themes)
         
         print(f"🔍 Tìm quán cho {key} với theme {meal_theme}")
         
@@ -1439,17 +1207,28 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
         )
         
         # 🔥 LỌC ĐẶC BIỆT: Loại bánh mì khỏi bữa tráng miệng
-        if key == 'dessert' and places:
+        if places and (key == 'dessert' or meal_theme == 'dessert_bakery'):
             filtered_places = []
             for p in places:
                 name_lower = normalize_text(p['ten_quan'])  # Dùng normalize_text (BỎ DẤU)
                 # Loại bỏ tất cả quán có "banh mi" hoặc "banhmi"
-                if 'banhmi' not in name_lower and 'banh mi' not in name_lower:
+                if ('banhmi' not in name_lower and 'banh mi' not in name_lower
+                    and 'banhxeo' not in name_lower and 'banh xeo' not in name_lower):
                     filtered_places.append(p)
             places = filtered_places
         
         # 🔥 Lọc CHẶT THEO KEYWORD - NHƯNG BỎ QUA CHO THEME ĐẶC BIỆT
-        if places and key in MEAL_TYPE_KEYWORDS:
+        keyword_key = None
+        if key in MEAL_TYPE_KEYWORDS:
+            keyword_key = key
+        elif key.startswith('drink_'):
+            # Slot nước/tráng miệng: nếu đang là tráng miệng thì dùng bộ keyword dessert
+            keyword_key = 'dessert' if meal_theme == 'dessert_bakery' else 'drink'
+        elif key.startswith('meal_'):
+            keyword_key = 'meal'
+
+        if places and keyword_key:
+
             # ⚡ KIỂM TRA XEM CÓ PHẢI THEME ĐẶC BIỆT KHÔNG
             skip_keyword_filter = False
             
@@ -1459,7 +1238,7 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
             
             # ⚡ CHỈ LỌC NẾU KHÔNG PHẢI THEME ĐẶC BIỆT
             if not skip_keyword_filter:
-                meal_keywords = MEAL_TYPE_KEYWORDS[key]
+                meal_keywords = MEAL_TYPE_KEYWORDS[keyword_key]
                 filtered_places = []
                 
                 for place in places:
@@ -1802,13 +1581,14 @@ def get_food_planner_html():
 /* ⏰ TIME PICKER REDESIGN */
 .time-picker-container {
     display: flex;
-    align-items: center;
+    align-items: stretch; /* 🔥 Thay đổi từ center → stretch */
     justify-content: space-between;
     gap: 16px;
     background: white;
     padding: 16px;
     border-radius: 12px;
     border: 2px solid #E9ECEF;
+    box-sizing: border-box; /* 🔥 THÊM dòng này */
 }
 
 .time-picker-group {
@@ -1816,6 +1596,8 @@ def get_food_planner_html():
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-width: 0; /* 🔥 THÊM dòng này để tránh overflow */
+    box-sizing: border-box;
 }
 
 .time-label {
@@ -1834,21 +1616,34 @@ def get_food_planner_html():
     padding: 12px;
     border-radius: 12px;
     border: 2px solid #FFD699;
+    width: 100%; /* 🔥 THÊM dòng này */
+    box-sizing: border-box; /* 🔥 THÊM dòng này */
+    max-width: 100%; /* 🔥 THÊM dòng này để chặn overflow */
 }
 
 .time-input {
     width: 52px;
     height: 48px;
-    padding: 0;
+    padding: 0 !important;
+    margin: 0;
     border: 2px solid #FF6B35;
     border-radius: 10px;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     text-align: center;
     background: white;
     color: #FF6B35;
     outline: none;
     transition: all 0.2s ease;
+    box-sizing: border-box; /* 🔥 THÊM DÒNG NÀY */
+    line-height: 44px;
+}
+
+/* 🔥 Override input[type="number"] mặc định */
+input.time-input[type="number"] {
+    padding: 0 !important;
+    padding-block: 0 !important;
+    padding-inline: 0 !important;
 }
 
 .time-input:focus {
@@ -2733,20 +2528,20 @@ def get_food_planner_html():
 
 /* ========== ACTION BUTTONS ========== */
 .action-btn {
-    min-width: 52px;
-    height: 52px;
-    border-radius: 26px;
+    min-width: 40px;      /* bé lại */
+    height: 40px;         /* bé lại */
+    border-radius: 50%;   /* giữ hình tròn */
     border: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 0 16px;
+    padding: 0;           /* quan trọng: bỏ padding để nút không bị hình bầu dục */
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
-    font-size: 15px;
+    font-size: 14px;      /* nhỏ lại cho hợp kích thước */
     font-weight: 700;
     position: relative;
     overflow: hidden;
@@ -2853,13 +2648,13 @@ def get_food_planner_html():
 
 /* 🔥 NÚT CHIA SẺ (XANH DƯƠNG) */
 .action-btn.share {
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
     color: white;
 }
 
 .action-btn.share:hover {
-    background: linear-gradient(135deg, #42A5F5 0%, #2196F3 100%);
-    box-shadow: 0 8px 24px rgba(33, 150, 243, 0.4);
+    background: linear-gradient(135deg, #FFB84D 0%, #FF9F2D 100%);
+    box-shadow: 0 8px 24px rgba(255, 184, 77, 0.4);
 }
 
 /* ========== SCHEDULE HEADER ========== */
@@ -2917,15 +2712,17 @@ def get_food_planner_html():
 }
 
 /* ========== STYLE INPUT TÊN CARD ========== */
-.meal-title-input {
-    padding: 4px 8px;
+.meal-title-input,
+.time-input-inline {
+    padding: 6px 10px; /* 🔥 SỬA: Tăng padding */
     border: 2px solid #FFE5D9;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px; /* 🔥 SỬA: Tăng font */
     font-weight: 600;
     outline: none;
-    width: 160px;
-    background: white; /* 🔥 THÊM background */
+    text-align: center;
+    background: white;
+    line-height: 1.5; /* 🔥 THÊM */
 }
 
 .meal-title-input:focus {
@@ -3174,6 +2971,57 @@ def get_food_planner_html():
         height: 70px;
     }
 }
+
+/* ===== Nút đề xuất: ép buộc tròn 100% ===== */
+/* ========== FIX NÚT ĐỀ XUẤT TRÒN Y NHƯ NÚT EDIT ========== */
+#suggestionsBtn {
+    width: 40px !important;
+    height: 40px !important;
+
+    min-width: 40px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+
+    cursor: pointer;
+}
+
+.suggestions-wrapper {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: none; /* ẩn mặc định */
+}
+
+.suggestions-wrapper .notif-dot {
+    position: absolute;
+    bottom: 0px;   /* Kéo sát vào mép dưới */
+    right: 0px;    /* Kéo sát vào mép phải */
+    width: 10px;
+    height: 10px;
+    background: #00c853;
+    border-radius: 50%;
+    border: 2px solid white;
+    animation: notif-blink 0.9s infinite ease-in-out;
+    box-shadow: 0 0 4px rgba(0, 200, 83, 0.6);
+    z-index: 9999;
+}
+
+/* Nhấp nháy */
+@keyframes notif-blink {
+    0%   { transform: scale(1); opacity: 1; }
+    50%  { transform: scale(1.35); opacity: 1; }  /* giữ opacity để không “mất màu” */
+    100% { transform: scale(1); opacity: 1; }
+}
+
+#suggestionCount { display: none !important; }
+
 </style>
 
 <!-- Food Planner Button -->
@@ -3220,7 +3068,7 @@ def get_food_planner_html():
                                 </div>
                             </div>
                             
-                            <div class="time-arrow">→</div>
+                            <div class="time-arrow"></div>
                             
                             <div class="time-picker-group">
                                 <label class="time-label">Đến</label>
@@ -3235,9 +3083,7 @@ def get_food_planner_html():
                     
                     <!-- 🎯 NÚT TẠO KẾ HOẠCH ĐẸP -->
                     <button class="generate-btn-new" onclick="generateAutoPlan()">
-                        <span class="btn-icon">✨</span>
                         <span class="btn-text">Tạo kế hoạch tự động</span>
-                        <span class="btn-arrow">→</span>
                     </button>
                 </div>
                 
@@ -3807,7 +3653,7 @@ if (planId) {
             
             // 🔥 FIX: THÊM AWAIT ĐỂ ĐỢI PENDING CHECK HOÀN TẤT
             if (hasEditPermission) {
-                await checkPendingSuggestion(planId);
+                await checkPendingSuggestions(planId);
                 console.log('✅ Đã check pending suggestion sau reload:', hasPendingSuggestion);
             }
         } else {
@@ -3865,9 +3711,7 @@ if (planId) {
                 if (section) {
                     section.style.display = 'block';
                 }
-                if (!plan.is_shared) {
-                    checkPendingSuggestions(planId);
-                }
+                checkPendingSuggestions(planId);
             }
         }
     } catch (error) {
@@ -4095,7 +3939,20 @@ function toggleEditMode() {
     }
     
     if (currentPlan) {
+        // ⬅⬅ RESET DOT NGAY LẬP TỨC (ngăn nháy)
+        const btn = document.getElementById("suggestionsBtn");
+        const dot = document.getElementById("suggestionDot");
+        const count = document.getElementById("suggestionCount");
+
+        if (btn) btn.style.display = "none";
+        if (dot) dot.style.display = "none";
+        if (count) count.textContent = "0";
+
+        // ⬅ Render giao diện
         displayPlanVertical(currentPlan, isEditMode);
+
+        // ⬅ Sau khi render xong → gọi API update lại đúng trạng thái
+        if (currentPlanId) checkPendingSuggestions(currentPlanId);
     }
     
     // 🔥 HIỂN THỊ NÚT NGAY LẬP TỨC KHI THOÁT EDIT MODE
@@ -5207,20 +5064,20 @@ if (filtersWrapper) {
     
    ${isSharedPlan ? `
     ${hasEditPermission ? `
+
         <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
             </svg>
-            <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
         </button>
         
-        <button class="action-btn" onclick="viewMySuggestions(${currentPlanId})" 
-            style="background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);" 
+        <button class="action-btn"
+            onclick="viewMySuggestions(${currentPlanId})"
+            style="background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);"
             title="Xem đề xuất của tôi">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
                 <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
             </svg>
-            <span class="btn-label">Đề xuất của tôi</span>
         </button>
         
         <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất" ${hasPendingSuggestion ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
@@ -5229,6 +5086,7 @@ if (filtersWrapper) {
             </svg>
             <span class="btn-label">${hasPendingSuggestion ? 'Đang chờ duyệt' : 'Gửi đề xuất'}</span>
         </button>
+
         ${hasPendingSuggestion ? `
             <div style="
                 position: absolute;
@@ -5249,32 +5107,39 @@ if (filtersWrapper) {
         ` : ''}
     ` : ''}
 ` : `
-    <button class="action-btn" onclick="openSuggestionsPanel()" id="suggestionsBtn" title="Xem đề xuất chỉnh sửa" style="display: none; background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
-        </svg>
-        <span class="btn-label">Đề xuất (<span id="suggestionCount">0</span>)</span>
-    </button>
+    <div class="suggestions-wrapper" style="display: none;">  <!-- ✅ THÊM style ẨN MẶC ĐỊNH -->
+        <button class="action-btn"
+                onclick="openSuggestionsPanel()"
+                id="suggestionsBtn"
+                title="Xem đề xuất chỉnh sửa"
+                style="width: 40px; height: 40px;">  <!-- ✅ BỎ display: none, chỉ giữ kích thước -->
+
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+            </svg>
+
+            <span id="suggestionCount">0</span>
+        </button>
+
+        <span class="notif-dot" id="suggestionDot"></span>
+    </div>
     
     <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
             <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
         </svg>
-        <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
     </button>
-    
-    <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+
+    <button class="action-btn primary" onclick="savePlan()" title="Lưu">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
             <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
         </svg>
-        <span class="btn-label">Lưu</span>
     </button>
-    
+
     <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
             <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
         </svg>
-        <span class="btn-label">Chia sẻ</span>
     </button>
 `}
     </div>
@@ -5288,24 +5153,16 @@ if (filtersWrapper) {
     const mealOrder = ['breakfast', 'morning_drink', 'lunch', 'afternoon_drink', 'dinner', 'dessert', 'meal', 'meal1', 'drink', 'meal2'];
     let hasPlaces = false;
     
-    // 🔥 ƯU TIÊN THỨ TỰ ĐÃ KÉO THẢ (_order), CHỈ SORT KHI CHƯA CÓ _order
     let allMealKeys;
-
     if (plan._order && plan._order.length > 0) {
-        // ✅ Nếu có _order (đã kéo thả) → GIỮ NGUYÊN thứ tự
+        // 🔥 GIỮ NGUYÊN THỨ TỰ _order, KHÔNG SORT LẠI
         allMealKeys = plan._order.filter(k => plan[k] && plan[k].time);
+        console.log('✅ Dùng _order từ backend:', allMealKeys);
     } else {
-        // ✅ Nếu chưa có _order → Sắp xếp theo thời gian
-        allMealKeys = Object.keys(plan)
-            .filter(k => k !== '_order' && plan[k] && plan[k].time)
-            .sort((a, b) => {
-                const timeA = plan[a].time || '00:00';
-                const timeB = plan[b].time || '00:00';
-                return timeA.localeCompare(timeB);
-            });
-        
-        // 🔥 LƯU vào _order để lần sau không bị sort lại
+        // 🔥 Fallback: lấy tất cả keys KHÔNG SORT
+        allMealKeys = Object.keys(plan).filter(k => k !== '_order' && plan[k] && plan[k].time);
         plan._order = allMealKeys;
+        console.log('⚠️ Không có _order, lấy tất cả keys:', allMealKeys);
     }
     
     for (const key of allMealKeys) {
@@ -6265,14 +6122,10 @@ function drawRouteOnMap(plan) {
         });
     }
     
-    // Lấy tất cả meal keys và sắp xếp theo thời gian
-    const allMealKeys = Object.keys(plan)
-        .filter(k => k !== '_order' && plan[k] && plan[k].time && plan[k].place)
-        .sort((a, b) => {
-            const timeA = plan[a].time || '00:00';
-            const timeB = plan[b].time || '00:00';
-            return timeA.localeCompare(timeB);
-        });
+    // 🔥 DÙNG _order TRỰC TIẾP - KHÔNG SORT THEO TIME
+    const allMealKeys = plan._order 
+        ? plan._order.filter(k => plan[k] && plan[k].place)
+        : Object.keys(plan).filter(k => k !== '_order' && plan[k] && plan[k].place);
     
     // Thêm các quán theo thứ tự
     allMealKeys.forEach(key => {
@@ -6376,8 +6229,11 @@ function drawRouteOnMap(plan) {
                 
                 routeLayers.push(mainPolyline);
                 
-                // ĐÁNH SỐ QUÁN
+                // 🔥 FIX: ĐÁNH SỐ TỪ 1 THAY VÌ 0
                 if (!startPoint.isUser) {
+                    // Số hiển thị = index nếu có user coords, index+1 nếu không có
+                    const displayNumber = window.currentUserCoords ? index : index + 1;
+                    
                     const numberMarker = L.marker([startPoint.lat, startPoint.lon], {
                         icon: L.divIcon({
                             className: 'route-number-marker',
@@ -6395,7 +6251,7 @@ function drawRouteOnMap(plan) {
                                 border: 4px solid white;
                                 box-shadow: 0 3px 10px rgba(0,0,0,0.4);
                                 z-index: 1000;
-                            ">${index}</div>`,
+                            ">${displayNumber}</div>`,
                             iconSize: [40, 40],
                             iconAnchor: [20, 20]
                         }),
@@ -6405,9 +6261,12 @@ function drawRouteOnMap(plan) {
                     routeLayers.push(numberMarker);
                 }
                 
-                // ĐÁNH SỐ QUÁN CUỐI
+                // 🔥 FIX: ĐÁNH SỐ CUỐI
                 if (index === totalRoutes - 1 && !endPoint.isUser) {
                     const lastColor = getRouteColor(totalRoutes - 1, totalRoutes);
+                    // Số cuối = totalRoutes nếu có user coords, ngược lại là số lượng quán
+                    const lastDisplayNumber = window.currentUserCoords ? totalRoutes : allMealKeys.length;
+                    
                     const lastNumberMarker = L.marker([endPoint.lat, endPoint.lon], {
                         icon: L.divIcon({
                             className: 'route-number-marker',
@@ -6425,7 +6284,7 @@ function drawRouteOnMap(plan) {
                                 border: 4px solid white;
                                 box-shadow: 0 3px 10px rgba(0,0,0,0.4);
                                 z-index: 1000;
-                            ">${totalRoutes}</div>`,
+                            ">${lastDisplayNumber}</div>`,
                             iconSize: [40, 40],
                             iconAnchor: [20, 20]
                         }),
@@ -6951,15 +6810,9 @@ function handleDrop(e) {
         currentPlan[targetKey] = temp;
     }
     
-    // 🔥 LƯU VỊ TRÍ CŨ để biết quán nào bị di chuyển
+    // 🔥 CẬP NHẬT _order THEO VỊ TRÍ MỚI (KHÔNG SORT THEO TIME)
     const allMealItems = document.querySelectorAll('.meal-item[data-meal-key]');
-    const oldOrder = Array.from(allMealItems).map(item => item.dataset.mealKey);
-    const draggedOldIndex = oldOrder.indexOf(draggedKey);
-    const targetOldIndex = oldOrder.indexOf(targetKey);
-    
-    // Cập nhật thứ tự mới
-    const newOrder = [...oldOrder];
-    [newOrder[draggedOldIndex], newOrder[targetOldIndex]] = [newOrder[targetOldIndex], newOrder[draggedOldIndex]];
+    const newOrder = Array.from(allMealItems).map(item => item.dataset.mealKey);
     
     if (!currentPlan._order) {
         currentPlan._order = [];
@@ -7302,15 +7155,7 @@ function updateTimeFromInputs(input) {
         const newTime = `${hour}:${minute}`;
         
         if (currentPlan && currentPlan[mealKey]) {
-            // 🔥 LƯU VỊ TRÍ CŨ trước khi sort
-            const oldOrder = currentPlan._order ? [...currentPlan._order] : 
-                Object.keys(currentPlan)
-                    .filter(k => k !== '_order' && currentPlan[k] && currentPlan[k].time)
-                    .sort((a, b) => currentPlan[a].time.localeCompare(currentPlan[b].time));
-            
-            const oldIndex = oldOrder.indexOf(mealKey);
-            
-            // Cập nhật thời gian
+            // ✅ CHỈ CẬP NHẬT TIME, KHÔNG SORT LẠI _order
             currentPlan[mealKey].time = newTime;
             
             // Cập nhật title nếu có
@@ -7319,52 +7164,10 @@ function updateTimeFromInputs(input) {
                 currentPlan[mealKey].title = titleInput.value;
             }
             
-            // 🔥 SORT lại theo thời gian
-            const newOrder = Object.keys(currentPlan)
-                .filter(k => k !== '_order' && currentPlan[k] && currentPlan[k].time)
-                .sort((a, b) => {
-                    const timeA = currentPlan[a].time || '00:00';
-                    const timeB = currentPlan[b].time || '00:00';
-                    return timeA.localeCompare(timeB);
-                });
-            
-            const newIndex = newOrder.indexOf(mealKey);
-            
-            currentPlan._order = newOrder;
-            
-            // ✅ RENDER lại
+            // 🔥 KHÔNG SORT LẠI, CHỈ RENDER LẠI
             displayPlanVertical(currentPlan, isEditMode);
             
-            // 🔥 HIGHLIGHT card vừa di chuyển + HIỂN THỊ ICON
-            setTimeout(() => {
-                const movedCard = document.querySelector(`[data-meal-key="${mealKey}"] .meal-card-vertical`);
-                if (movedCard && oldIndex !== newIndex) {
-                    // Thêm class animation
-                    movedCard.classList.add('repositioned');
-                    
-                    // Thêm icon mũi tên
-                    const direction = newIndex < oldIndex ? '⬆️' : '⬇️';
-                    const indicator = document.createElement('div');
-                    indicator.className = 'reposition-indicator';
-                    indicator.textContent = direction;
-                    movedCard.style.position = 'relative';
-                    movedCard.appendChild(indicator);
-                    
-                    // Scroll đến vị trí mới
-                    const mealItem = document.querySelector(`[data-meal-key="${mealKey}"]`);
-                    if (mealItem) {
-                        mealItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                    
-                    // Xóa animation và icon sau 1.5s
-                    setTimeout(() => {
-                        movedCard.classList.remove('repositioned');
-                        if (indicator.parentNode) {
-                            indicator.remove();
-                        }
-                    }, 1500);
-                }
-            }, 100);
+            console.log('✅ Updated time:', mealKey, newTime, '- No sorting applied');
         }
     }
 }
@@ -7610,10 +7413,12 @@ async function checkPendingSuggestions(planId) {
         const response = await fetch(`/api/accounts/food-plan/suggestions/${planId}/`);
         const data = await response.json();
         
+        const wrapper = document.querySelector('.suggestions-wrapper');  // ✅ LẤY WRAPPER
         const suggestionsBtn = document.getElementById('suggestionsBtn');
         const suggestionCount = document.getElementById('suggestionCount');
+        const dot = document.getElementById("suggestionDot");
         
-        if (!suggestionsBtn || !suggestionCount) return;
+        if (!wrapper || !suggestionsBtn || !suggestionCount || !dot) return;  // ✅ KIỂM TRA WRAPPER
         
         // 🔥 LỌC CHỈ LẤY PENDING
         const pendingSuggestions = data.suggestions ? 
@@ -7623,10 +7428,12 @@ async function checkPendingSuggestions(planId) {
         cachedPendingSuggestionsCount = pendingSuggestions.length;
         
         if (pendingSuggestions.length > 0) {
-            suggestionsBtn.style.display = 'flex';
+            wrapper.style.display = 'flex';   // ✅ HIỆN WRAPPER
+            dot.style.display = 'block';
             suggestionCount.textContent = pendingSuggestions.length;
         } else {
-            suggestionsBtn.style.display = 'none';
+            wrapper.style.display = 'none';   // ✅ ẨN WRAPPER
+            dot.style.display = 'none';
             suggestionCount.textContent = '0';
         }
         
@@ -7634,15 +7441,17 @@ async function checkPendingSuggestions(planId) {
         console.error('Error checking suggestions:', error);
     }
 }
+
 // 🔥 HÀM MỚI - HIỂN THỊ NÚT ĐỀ XUẤT NGAY LẬP TỨC
 function showSuggestionsButtonImmediately() {
+    const wrapper = document.querySelector('.suggestions-wrapper');  // ✅ THÊM
     const suggestionsBtn = document.getElementById('suggestionsBtn');
     const suggestionCount = document.getElementById('suggestionCount');
     
-    if (!suggestionsBtn || !suggestionCount) return;
+    if (!wrapper || !suggestionsBtn || !suggestionCount) return;  // ✅ KIỂM TRA WRAPPER
     
     if (cachedPendingSuggestionsCount > 0) {
-        suggestionsBtn.style.display = 'flex';
+        wrapper.style.display = 'flex';  // ✅ HIỆN WRAPPER TRƯỚC
         suggestionCount.textContent = cachedPendingSuggestionsCount;
     }
 }
