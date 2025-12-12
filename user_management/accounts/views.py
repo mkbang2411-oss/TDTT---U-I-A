@@ -868,13 +868,24 @@ def change_password_api(request):
                 return JsonResponse({'status': 'error', 'message': 'Mật khẩu xác nhận không khớp'}, status=400)
 
             if len(new_password) < 6:
-                return JsonResponse({'status': 'error', 'message': 'Mật khẩu mới quá ngắn (>6 ký tự)'}, status=400)
+                return JsonResponse({'status': 'error', 'message': 'Mật khẩu mới quá ngắn (tối thiểu 6 ký tự)'}, status=400)
+
+            # ✅ Kiểm tra mật khẩu không chứa dấu cách
+            if ' ' in new_password:
+                return JsonResponse({'status': 'error', 'message': 'Mật khẩu không được chứa dấu cách'}, status=400)
 
             # 2. Kiểm tra mật khẩu cũ có đúng không
             if not request.user.check_password(old_password):
                 return JsonResponse({'status': 'error', 'message': 'Mật khẩu cũ không chính xác'}, status=400)
 
-            # 3. Đổi mật khẩu
+            # ✅ 3. Kiểm tra mật khẩu mới không được trùng với mật khẩu cũ
+            if old_password == new_password:
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': 'Mật khẩu mới không được trùng với mật khẩu hiện tại'
+                }, status=400)
+
+            # 4. Đổi mật khẩu
             request.user.set_password(new_password)
             request.user.save()
             update_session_auth_hash(request, request.user) # Giữ đăng nhập
@@ -2142,6 +2153,13 @@ def reset_password_api(request):
             return JsonResponse({
                 'status': 'error',
                 'message': 'Mật khẩu phải có ít nhất 6 ký tự'
+            }, status=400)
+        
+        # ✅ Kiểm tra mật khẩu không chứa dấu cách
+        if ' ' in new_password:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Mật khẩu không được chứa dấu cách'
             }, status=400)
         
         # Đặt lại mật khẩu
