@@ -1657,27 +1657,53 @@ function distance(lat1, lon1, lat2, lon2) {
   return R * c; // km
 }
 function clearAllMarkers() {
-    // ✅ Xóa toàn bộ markers NHƯNG GIỮ LẠI marker GPS
-    map.eachLayer(layer => {
-        if (layer instanceof L.Marker) {
-            // 🔥 KHÔNG XÓA marker GPS (startMarker)
-            if (window.startMarker && layer === window.startMarker) {
-                console.log('🔒 Giữ lại marker GPS');
-                return;
-            }
-            map.removeLayer(layer);
-        }
+  // ✅ Marker số 1,2,3,4,5 của Food Plan (divIcon có class route-number-marker)
+  const isFoodPlanNumberMarker = (m) => {
+    const cls = m?.options?.icon?.options?.className || "";
+    return cls.includes("route-number-marker");
+  };
+
+  // ✅ Xóa marker trên map nhưng GIỮ GPS + GIỮ marker số Food Plan
+  map.eachLayer((layer) => {
+    if (!(layer instanceof L.Marker)) return;
+
+    // Giữ marker GPS
+    if (window.startMarker && layer === window.startMarker) return;
+
+    // Giữ marker số Food Plan
+    if (isFoodPlanNumberMarker(layer)) return;
+
+    map.removeLayer(layer);
+  });
+
+  // ✅ Nếu marker thường nằm trong cluster thì xóa phần cluster, nhưng vẫn giữ marker số Food Plan
+  const clearClusterKeepPlanNumbers = (cg) => {
+    if (!cg) return;
+
+    const toRemove = [];
+    cg.eachLayer((layer) => {
+      if (layer instanceof L.Marker && isFoodPlanNumberMarker(layer)) return;
+      toRemove.push(layer);
     });
+    toRemove.forEach((l) => cg.removeLayer(l));
+  };
 
-    // Xóa tất cả cluster (dù là biến nào)
-    if (markerClusterGroup) markerClusterGroup.clearLayers();
-    if (window.markerClusterGroup) window.markerClusterGroup.clearLayers();
+  clearClusterKeepPlanNumbers(markerClusterGroup);
+  clearClusterKeepPlanNumbers(window.markerClusterGroup);
 
-    // Reset data
-    markers = [];
-    visibleMarkers.clear();
-    window.placeMarkersById = {};
+  // Reset list marker thường
+  markers = [];
+  visibleMarkers.clear();
+
+  // (tuỳ chọn) dọn mapping marker thường, không đụng marker số Food Plan nếu lỡ có lưu trong đây
+  if (!window.placeMarkersById) window.placeMarkersById = {};
+  Object.keys(window.placeMarkersById).forEach((id) => {
+    const mk = window.placeMarkersById[id];
+    if (mk && isFoodPlanNumberMarker(mk)) return;
+    if (!mk || !map.hasLayer(mk)) delete window.placeMarkersById[id];
+  });
 }
+
 
 
 // =======================================================
@@ -3058,8 +3084,21 @@ window.flyToPlaceFromPlanner = function(lat, lon, placeId, placeName) {
 
   // ✅ HÀM TÌM DATA QUÁN
   function findPlaceData() {
-    console.log('🔍 Tìm data quán trong allPlacesData...');
-    
+    console.log('🔍 Tìm data quán (ưu tiên cache của planner trước).');
+
+    const pid = (placeId !== undefined && placeId !== null) ? String(placeId) : null;
+
+    // 0️⃣ Ưu tiên lấy từ cache của plan (KHÔNG phụ thuộc allPlacesData)
+    if (pid && window.plannerPlacesById && window.plannerPlacesById[pid]) {
+      console.log('✅ Tìm thấy data trong plannerPlacesById theo ID:', pid);
+      return window.plannerPlacesById[pid];
+    }
+    if (placeName && window.plannerPlacesById && window.plannerPlacesById[String(placeName)]) {
+      console.log('✅ Tìm thấy data trong plannerPlacesById theo tên:', placeName);
+      return window.plannerPlacesById[String(placeName)];
+    }
+
+    // 1️⃣ Fallback: tìm trong allPlacesData (danh sách search hiện tại)
     if (typeof allPlacesData === 'undefined' || !allPlacesData || allPlacesData.length === 0) {
       console.error('❌ allPlacesData không tồn tại hoặc rỗng');
       return null;
@@ -3067,41 +3106,38 @@ window.flyToPlaceFromPlanner = function(lat, lon, placeId, placeName) {
 
     let foundPlace = null;
 
-    // Tìm theo ID
-    if (placeId) {
-      foundPlace = allPlacesData.find(p => p.data_id === placeId);
+    // Tìm theo ID (so sánh string để khỏi lỗi number vs string)
+    if (pid) {
+      foundPlace = allPlacesData.find(p => String(p.data_id) === pid);
       if (foundPlace) {
-        console.log('✅ Tìm thấy data theo ID:', placeId);
+        console.log('✅ Tìm thấy data theo ID trong allPlacesData:', pid);
         return foundPlace;
       }
     }
 
     // Tìm theo tên
     if (placeName) {
-      foundPlace = allPlacesData.find(p => p.ten_quan === placeName);
+      foundPlace = allPlacesData.find(p => String(p.ten_quan) === String(placeName));
       if (foundPlace) {
-        console.log('✅ Tìm thấy data theo tên:', placeName);
+        console.log('✅ Tìm thấy data theo tên trong allPlacesData:', placeName);
         return foundPlace;
       }
     }
 
-    // Tìm theo tọa độ
+    // (GIỮ NGUYÊN đoạn tìm theo tọa độ của bạn ở dưới)
     foundPlace = allPlacesData.find(p => {
       const pLat = parseFloat(p.lat);
       const pLon = parseFloat(p.lon);
       if (isNaN(pLat) || isNaN(pLon)) return false;
-      
+
       const dist = Math.sqrt(
-        Math.pow(pLat - lat, 2) + 
+        Math.pow(pLat - lat, 2) +
         Math.pow(pLon - lon, 2)
       );
       return dist < 0.00001;
     });
 
-    if (foundPlace) {
-      console.log('✅ Tìm thấy data theo tọa độ');
-    }
-
+    if (foundPlace) console.log('✅ Tìm thấy data theo tọa độ');
     return foundPlace;
   }
 
@@ -3258,6 +3294,17 @@ showMarkersForPlaceIds = function (plan) {
       placesInPlan.push({ id, place });
     }
 
+    // ✅ Cache data quán của plan để click card vẫn có data dù search làm mất marker
+    if (!window.plannerPlacesById) window.plannerPlacesById = {};
+    placesInPlan.forEach(({ id, place }) => {
+      if (!place) return;
+
+      // key theo id / data_id / tên (đều stringify cho chắc)
+      if (id) window.plannerPlacesById[String(id)] = place;
+      if (place.data_id) window.plannerPlacesById[String(place.data_id)] = place;
+      if (place.ten_quan) window.plannerPlacesById[String(place.ten_quan)] = place;
+    });
+    
     if (placesInPlan.length === 0) {
       console.log("⚠️ Plan không có quán nào để vẽ marker.");
       return;
