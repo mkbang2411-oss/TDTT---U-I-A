@@ -2537,9 +2537,15 @@ def share_food_plan_api(request, plan_id):
             except User.DoesNotExist:
                 continue
         
-        message = f"Đã chia sẻ cho {shared_count} người"
-        if already_shared:
-            message += f" ({', '.join(already_shared)} đã được chia sẻ trước đó)"
+        # Tạo message
+        if shared_count > 0 and already_shared:
+            message = f"Đã chia sẻ cho {shared_count} người ({', '.join(already_shared)} đã được chia sẻ trước đó)"
+        elif shared_count > 0:
+            message = f"Đã chia sẻ cho {shared_count} người"
+        elif already_shared:
+            message = f"{', '.join(already_shared)} đã được chia sẻ trước đó"
+        else:
+            message = "Không có thay đổi nào"
         
         return JsonResponse({
             'status': 'success',
@@ -2550,7 +2556,7 @@ def share_food_plan_api(request, plan_id):
     except FoodPlan.DoesNotExist:
         return JsonResponse({
             'status': 'error',
-            'message': 'Không tìm thấy lịch trình'
+            'message': 'Không tìm thấy kế hoạch'
         }, status=404)
     except Exception as e:
         return JsonResponse({
