@@ -4,12 +4,14 @@ from . import views
 urlpatterns = [
     # API kết bạn
     path('friend-request/send/', views.send_friend_request, name='send_friend_request'),
+    path('friend-request/cancel/', views.cancel_friend_request, name='cancel_friend_request'),
     path('friend-request/accept/', views.accept_friend_request, name='accept_friend_request'),
     path('friend-request/reject/', views.reject_friend_request, name='reject_friend_request'),
     path('friends/<int:user_id>/', views.get_friends_list, name='get_friends_list'),
     path('friend-requests/<int:user_id>/', views.get_friend_requests, name='get_friend_requests'),
     path('users/search/', views.search_user, name='search_user'),
     path('current-user/', views.get_current_user, name='get_current_user'),
+    path('friend-status/<int:user_id>/', views.check_friend_status, name='check_friend_status'),  # ✅ THÊM DÒNG NÀY
     path('streak/', views.streak_handler, name='streak_handler'),
     path('streak/log-popup/', views.log_streak_popup_api, name='log_streak_popup'),
     path('friend/unfriend/', views.unfriend, name='unfriend'),

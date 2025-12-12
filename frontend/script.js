@@ -169,13 +169,19 @@ if (!document.getElementById('custom-alert-style')) {
 // =========================
 const icons = {
   default: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/icon.png",
+    iconUrl: "icons/normal.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png",
+    iconUrl: "icons/michelin.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
+  }),
+  khuamthuc: L.icon({
+    iconUrl: "icons/khuamthuc.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
@@ -185,8 +191,20 @@ const icons = {
 // =========================
 // 🧠 XÁC ĐỊNH LOẠI QUÁN
 // =========================
-function detectCategory(name = "") {
-  // Tất cả quán đều dùng icon mặc định
+function detectCategory(name = "", moTa = "") {
+  const normalizedMoTa = (moTa || "").toLowerCase();
+  
+  // Kiểm tra Michelin trước
+  if (normalizedMoTa.includes("michelin")) {
+    return "michelin";
+  }
+  
+  // Kiểm tra khu ẩm thực
+  if (normalizedMoTa.includes("khu ẩm thực")) {
+    return "khuamthuc";
+  }
+  
+  // Mặc định
   return "default";
 }
 
@@ -796,13 +814,17 @@ function loadMarkersInViewport() {
 
 // =========================
 function createMarker(p, lat, lon) {
-  // 🎯 Chọn icon phù hợp
+// 🎯 Chọn icon phù hợp
 let icon;
 
-if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
-  icon = icons.michelin;  // ⭐ Chỉ quán Michelin dùng icon sao
+const moTaLower = (p.mo_ta || "").toLowerCase();
+
+if (moTaLower.includes("michelin")) {
+  icon = icons.michelin;  // ⭐ Quán Michelin
+} else if (moTaLower.includes("khu ẩm thực")) {
+  icon = icons.khuamthuc;  // 🏙️ Khu ẩm thực
 } else {
-  icon = icons.default;   // 🍽️ Tất cả quán khác dùng icon chung
+  icon = icons.default;   // 🍽️ Quán bình thường
 }
 
   // 🎯 Tạo marker (KHÔNG dùng .addTo(map) nữa)

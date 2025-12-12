@@ -22,6 +22,7 @@ from .models import FriendRequest, Friendship
 from datetime import date, timedelta
 from .nudenet_detector import check_nsfw_image_local
 import requests 
+from django.db import models
 from .gemini_utils import check_review_content
 from .models import UserPreference
 from .models import (
@@ -1041,6 +1042,102 @@ def send_friend_request(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def cancel_friend_request(request):
+    """
+    Thu hồi lời mời kết bạn đã gửi
+    POST /api/accounts/friend-request/cancel/
+    Body: {"receiver_id": 123}
+    """
+    try:
+        data = json.loads(request.body)
+        receiver_id = data.get('receiver_id')
+        
+        if not receiver_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Thiếu receiver_id'
+            }, status=400)
+        
+        receiver = get_object_or_404(User, id=receiver_id)
+        
+        # Tìm lời mời đang pending
+        friend_request = FriendRequest.objects.filter(
+            sender=request.user,
+            receiver=receiver,
+            status='pending'
+        ).first()
+        
+        if not friend_request:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không tìm thấy lời mời kết bạn'
+            }, status=404)
+        
+        # Xóa lời mời
+        friend_request.delete()
+        
+        print(f"✅ [CANCEL REQUEST] {request.user.username} đã thu hồi lời mời gửi cho {receiver.username}")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã thu hồi lời mời kết bạn'
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)    
+@require_http_methods(["GET"])
+@login_required
+def check_friend_status(request, user_id):
+    """
+    Kiểm tra trạng thái quan hệ với user khác
+    Trả về: 'not_friend', 'pending_sent', 'pending_received', 'friend'
+    """
+    try:
+        target_user = get_object_or_404(User, id=user_id)
+        current_user = request.user
+        
+        # Kiểm tra đã là bạn chưa
+        is_friend = Friendship.objects.filter(
+            models.Q(user1=current_user, user2=target_user) |
+            models.Q(user1=target_user, user2=current_user)
+        ).exists()
+        
+        if is_friend:
+            return JsonResponse({'status': 'friend'})
+        
+        # Kiểm tra lời mời đã gửi (pending)
+        sent_request = FriendRequest.objects.filter(
+            sender=current_user,
+            receiver=target_user,
+            status='pending'
+        ).first()
+        
+        if sent_request:
+            return JsonResponse({'status': 'pending_sent', 'request_id': sent_request.id})
+        
+        # Kiểm tra lời mời nhận được (pending)
+        received_request = FriendRequest.objects.filter(
+            sender=target_user,
+            receiver=current_user,
+            status='pending'
+        ).first()
+        
+        if received_request:
+            return JsonResponse({'status': 'pending_received', 'request_id': received_request.id})
+        
+        # Chưa có quan hệ gì
+        return JsonResponse({'status': 'not_friend'})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 @csrf_exempt
 @require_http_methods(["POST"])
 def accept_friend_request(request):
