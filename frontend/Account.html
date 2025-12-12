@@ -462,7 +462,97 @@
       const API_URL = "/api/accounts";
       let CURRENT_USER_ID = null;
       let isLoadingUser = false; // ✅ Thêm flag
+      
+      // ==========================================================
+      // 🔔 CUSTOM ALERT FUNCTION
+      // ==========================================================
+      function showCustomAlert(message, type = 'info') {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 99999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: fadeIn 0.3s ease;
+        `;
 
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+          background: #fff5f0;
+          border-radius: 20px;
+          padding: 30px;
+          max-width: 500px;
+          width: 90%;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+          animation: slideDown 0.3s ease;
+          position: relative;
+        `;
+
+        let icon = '🔔';
+        let iconColor = '#ff9966';
+        if (type === 'success') {
+          icon = '✅';
+          iconColor = '#4caf50';
+        } else if (type === 'error') {
+          icon = '❌';
+          iconColor = '#f44336';
+        } else if (type === 'warning') {
+          icon = '⚠️';
+          iconColor = '#ff9800';
+        }
+
+        popup.innerHTML = `
+          <div style="display: flex; align-items: start; gap: 15px;">
+            <div style="font-size: 32px;">${icon}</div>
+            <div style="flex: 1;">
+              <h3 style="margin: 0 0 10px 0; color: ${iconColor}; font-size: 20px; font-weight: 600;">Thông báo</h3>
+              <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
+            </div>
+            <button id="closeAlertBtn" style="background: none; border: none; font-size: 24px; color: #999; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;">×</button>
+          </div>
+          <button id="okAlertBtn" style="margin-top: 20px; width: 100%; padding: 12px; background: linear-gradient(135deg, ${iconColor} 0%, ${iconColor}dd 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s;">OK</button>
+        `;
+
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+
+        const closeBtn = popup.querySelector('#closeAlertBtn');
+        closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#f0f0f0'; });
+        closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'none'; });
+
+        const okBtn = popup.querySelector('#okAlertBtn');
+        okBtn.addEventListener('mouseenter', () => { okBtn.style.transform = 'scale(1.02)'; });
+        okBtn.addEventListener('mouseleave', () => { okBtn.style.transform = 'scale(1)'; });
+
+        const closePopup = () => {
+          overlay.style.animation = 'fadeOut 0.3s ease';
+          popup.style.animation = 'slideUp 0.3s ease';
+          setTimeout(() => overlay.remove(), 300);
+        };
+
+        closeBtn.addEventListener('click', closePopup);
+        okBtn.addEventListener('click', closePopup);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) closePopup(); });
+      }
+
+      // Thêm CSS animations
+      if (!document.getElementById('custom-alert-style')) {
+        const style = document.createElement('style');
+        style.id = 'custom-alert-style';
+        style.textContent = `
+          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+          @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          @keyframes slideUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-50px); opacity: 0; } }
+        `;
+        document.head.appendChild(style);
+      }
       // ✅ LẤY THÔNG TIN USER HIỆN TẠI
       async function loadCurrentUser() {
         if (isLoadingUser) return; // ✅ Tránh gọi nhiều lần
@@ -1359,11 +1449,11 @@ async function cancelFriendRequest(receiverId, buttonElement) {
       function changePassword() {
         const newPass = document.getElementById("user-password").value;
         if (!newPass) {
-          alert("Vui lòng nhập mật khẩu mới!");
+          showCustomAlert("Vui lòng nhập mật khẩu mới!");
           return;
         }
         if (newPass.length < 6) {
-          alert("Mật khẩu phải dài hơn 6 ký tự!");
+          showCustomAlert("Mật khẩu phải dài hơn 6 ký tự!");
           return;
         }
 
@@ -1379,10 +1469,10 @@ async function cancelFriendRequest(receiverId, buttonElement) {
               Swal.fire("Thành công", "Đổi mật khẩu thành công!", "success");
               document.getElementById("user-password").value = "";
             } else {
-              alert("Lỗi: " + data.message);
+              showCustomAlert("Lỗi: " + data.message);
             }
           })
-          .catch((err) => alert("Lỗi kết nối server."));
+          .catch((err) => showCustomAlert("Lỗi kết nối server."));
       }
 
       // 2. Khi người dùng chọn file -> Kiểm tra và Hiện Modal Preview
@@ -1465,12 +1555,12 @@ async function cancelFriendRequest(receiverId, buttonElement) {
               closeModal(); // Tắt modal
               Swal.fire("Thành công", "Đã cập nhật ảnh đại diện!", "success");
             } else {
-              alert("Lỗi: " + data.message);
+              showCustomAlert("Lỗi: " + data.message);
             }
           })
           .catch((err) => {
             console.error("Lỗi upload:", err);
-            alert("Có lỗi kết nối.");
+            showCustomAlert("Có lỗi kết nối.");
           })
           .finally(() => {
             btnSave.innerText = oldText;
