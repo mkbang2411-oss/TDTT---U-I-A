@@ -1737,15 +1737,17 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
 
      let filtered = data;
 
-    // ========== 1️⃣ Tìm theo tên (có rút ngắn dần) ==========
+    // ========== 1️⃣ Tìm theo tên HOẶC mô tả (có rút ngắn dần) ==========
     if (query) {
       const queryKeepTone = normalizeKeepTone(query);
       const queryNoTone = normalizeRemoveAll(query);
 
       // --- Bước 1: thử exact-match với chuỗi đầy đủ (giữ dấu thanh) ---
+      // ✅ TÌM TRONG TÊN QUÁN + MÔ TẢ
       const exactMatches = data.filter((p) => {
         const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
-        return nameKeepTone.includes(queryKeepTone);
+        const moTaKeepTone = normalizeKeepTone(p.mo_ta || "");
+        return nameKeepTone.includes(queryKeepTone) || moTaKeepTone.includes(queryKeepTone);
       });
 
       if (exactMatches.length > 0) {
@@ -1776,13 +1778,14 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
         }
 
         // Chuẩn bị dữ liệu cho Fuse chỉ 1 lần
-        const fuse = new Fuse(
+         const fuse = new Fuse(
           data.map((p) => ({
             ...p,
             ten_quan_no_dau: normalizeRemoveAll(p.ten_quan || ""),
+            mo_ta_no_dau: normalizeRemoveAll(p.mo_ta || "")
           })),
           {
-            keys: ["ten_quan_no_dau"],
+            keys: ["ten_quan_no_dau", "mo_ta_no_dau"], // ✅ TÌM TRONG CẢ 2 TRƯỜNG
             threshold: 0.35,   // khá strict
             ignoreLocation: true,
             includeScore: true,
@@ -1798,9 +1801,11 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
             .map((r) => r.item)
             .filter((p) => {
               const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
-              const hasPhrase = nameNoTone.includes(normQ);
+              const moTaNoTone = normalizeRemoveAll(p.mo_ta || ""); // ✅ THÊM MÔ TẢ
+              
+              const hasPhrase = nameNoTone.includes(normQ) || moTaNoTone.includes(normQ); // ✅ CHECK CẢ 2
               const hasAllWords = queryWords.every((w) =>
-                nameNoTone.includes(w)
+                nameNoTone.includes(w) || moTaNoTone.includes(w) // ✅ CHECK CẢ 2
               );
 
               // Query nhiều từ: cho pass nếu chứa cụm hoặc đủ các từ
