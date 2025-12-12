@@ -1581,13 +1581,14 @@ def get_food_planner_html():
 /* ⏰ TIME PICKER REDESIGN */
 .time-picker-container {
     display: flex;
-    align-items: center;
+    align-items: stretch; /* 🔥 Thay đổi từ center → stretch */
     justify-content: space-between;
     gap: 16px;
     background: white;
     padding: 16px;
     border-radius: 12px;
     border: 2px solid #E9ECEF;
+    box-sizing: border-box; /* 🔥 THÊM dòng này */
 }
 
 .time-picker-group {
@@ -1595,6 +1596,8 @@ def get_food_planner_html():
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-width: 0; /* 🔥 THÊM dòng này để tránh overflow */
+    box-sizing: border-box;
 }
 
 .time-label {
@@ -1613,21 +1616,34 @@ def get_food_planner_html():
     padding: 12px;
     border-radius: 12px;
     border: 2px solid #FFD699;
+    width: 100%; /* 🔥 THÊM dòng này */
+    box-sizing: border-box; /* 🔥 THÊM dòng này */
+    max-width: 100%; /* 🔥 THÊM dòng này để chặn overflow */
 }
 
 .time-input {
     width: 52px;
     height: 48px;
-    padding: 0;
+    padding: 0 !important;
+    margin: 0;
     border: 2px solid #FF6B35;
     border-radius: 10px;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     text-align: center;
     background: white;
     color: #FF6B35;
     outline: none;
     transition: all 0.2s ease;
+    box-sizing: border-box; /* 🔥 THÊM DÒNG NÀY */
+    line-height: 44px;
+}
+
+/* 🔥 Override input[type="number"] mặc định */
+input.time-input[type="number"] {
+    padding: 0 !important;
+    padding-block: 0 !important;
+    padding-inline: 0 !important;
 }
 
 .time-input:focus {
@@ -2512,20 +2528,20 @@ def get_food_planner_html():
 
 /* ========== ACTION BUTTONS ========== */
 .action-btn {
-    min-width: 52px;
-    height: 52px;
-    border-radius: 26px;
+    min-width: 40px;      /* bé lại */
+    height: 40px;         /* bé lại */
+    border-radius: 50%;   /* giữ hình tròn */
     border: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 0 16px;
+    padding: 0;           /* quan trọng: bỏ padding để nút không bị hình bầu dục */
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
-    font-size: 15px;
+    font-size: 14px;      /* nhỏ lại cho hợp kích thước */
     font-weight: 700;
     position: relative;
     overflow: hidden;
@@ -2632,13 +2648,13 @@ def get_food_planner_html():
 
 /* 🔥 NÚT CHIA SẺ (XANH DƯƠNG) */
 .action-btn.share {
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
     color: white;
 }
 
 .action-btn.share:hover {
-    background: linear-gradient(135deg, #42A5F5 0%, #2196F3 100%);
-    box-shadow: 0 8px 24px rgba(33, 150, 243, 0.4);
+    background: linear-gradient(135deg, #FFB84D 0%, #FF9F2D 100%);
+    box-shadow: 0 8px 24px rgba(255, 184, 77, 0.4);
 }
 
 /* ========== SCHEDULE HEADER ========== */
@@ -2696,15 +2712,17 @@ def get_food_planner_html():
 }
 
 /* ========== STYLE INPUT TÊN CARD ========== */
-.meal-title-input {
-    padding: 4px 8px;
+.meal-title-input,
+.time-input-inline {
+    padding: 6px 10px; /* 🔥 SỬA: Tăng padding */
     border: 2px solid #FFE5D9;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px; /* 🔥 SỬA: Tăng font */
     font-weight: 600;
     outline: none;
-    width: 160px;
-    background: white; /* 🔥 THÊM background */
+    text-align: center;
+    background: white;
+    line-height: 1.5; /* 🔥 THÊM */
 }
 
 .meal-title-input:focus {
@@ -2953,6 +2971,57 @@ def get_food_planner_html():
         height: 70px;
     }
 }
+
+/* ===== Nút đề xuất: ép buộc tròn 100% ===== */
+/* ========== FIX NÚT ĐỀ XUẤT TRÒN Y NHƯ NÚT EDIT ========== */
+#suggestionsBtn {
+    width: 40px !important;
+    height: 40px !important;
+
+    min-width: 40px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+
+    cursor: pointer;
+}
+
+.suggestions-wrapper {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: none; /* ẩn mặc định */
+}
+
+.suggestions-wrapper .notif-dot {
+    position: absolute;
+    bottom: 0px;   /* Kéo sát vào mép dưới */
+    right: 0px;    /* Kéo sát vào mép phải */
+    width: 10px;
+    height: 10px;
+    background: #00c853;
+    border-radius: 50%;
+    border: 2px solid white;
+    animation: notif-blink 0.9s infinite ease-in-out;
+    box-shadow: 0 0 4px rgba(0, 200, 83, 0.6);
+    z-index: 9999;
+}
+
+/* Nhấp nháy */
+@keyframes notif-blink {
+    0%   { transform: scale(1); opacity: 1; }
+    50%  { transform: scale(1.35); opacity: 1; }  /* giữ opacity để không “mất màu” */
+    100% { transform: scale(1); opacity: 1; }
+}
+
+#suggestionCount { display: none !important; }
+
 </style>
 
 <!-- Food Planner Button -->
@@ -2999,7 +3068,7 @@ def get_food_planner_html():
                                 </div>
                             </div>
                             
-                            <div class="time-arrow">→</div>
+                            <div class="time-arrow"></div>
                             
                             <div class="time-picker-group">
                                 <label class="time-label">Đến</label>
@@ -3014,9 +3083,7 @@ def get_food_planner_html():
                     
                     <!-- 🎯 NÚT TẠO KẾ HOẠCH ĐẸP -->
                     <button class="generate-btn-new" onclick="generateAutoPlan()">
-                        <span class="btn-icon">✨</span>
                         <span class="btn-text">Tạo kế hoạch tự động</span>
-                        <span class="btn-arrow">→</span>
                     </button>
                 </div>
                 
@@ -3063,6 +3130,7 @@ let dragDirection = 0;
 let lastTargetElement = null;
 window.currentPlanName = null;
 window.loadedFromSavedPlan = false;
+let cachedPendingSuggestionsCount = 0; // Lưu số lượng suggestions pending
 
 // Themes data
 const themes = {
@@ -3585,7 +3653,7 @@ if (planId) {
             
             // 🔥 FIX: THÊM AWAIT ĐỂ ĐỢI PENDING CHECK HOÀN TẤT
             if (hasEditPermission) {
-                await checkPendingSuggestion(planId);
+                await checkPendingSuggestions(planId);
                 console.log('✅ Đã check pending suggestion sau reload:', hasPendingSuggestion);
             }
         } else {
@@ -3643,9 +3711,7 @@ if (planId) {
                 if (section) {
                     section.style.display = 'block';
                 }
-                if (!plan.is_shared) {
-                    checkPendingSuggestions(planId);
-                }
+                checkPendingSuggestions(planId);
             }
         }
     } catch (error) {
@@ -3849,7 +3915,7 @@ function toggleEditMode() {
         if (isEditMode) {
             editBtn.classList.add('active');
             editBtn.title = 'Thoát chỉnh sửa';
-            clearRoutes(); // Xóa đường khi vào edit mode
+            clearRoutes();
         } else {
             editBtn.classList.remove('active');
             editBtn.title = 'Chỉnh sửa';
@@ -3873,7 +3939,33 @@ function toggleEditMode() {
     }
     
     if (currentPlan) {
+        // ⬅⬅ RESET DOT NGAY LẬP TỨC (ngăn nháy)
+        const btn = document.getElementById("suggestionsBtn");
+        const dot = document.getElementById("suggestionDot");
+        const count = document.getElementById("suggestionCount");
+
+        if (btn) btn.style.display = "none";
+        if (dot) dot.style.display = "none";
+        if (count) count.textContent = "0";
+
+        // ⬅ Render giao diện
         displayPlanVertical(currentPlan, isEditMode);
+
+        // ⬅ Sau khi render xong → gọi API update lại đúng trạng thái
+        if (currentPlanId) checkPendingSuggestions(currentPlanId);
+    }
+    
+    // 🔥 HIỂN THỊ NÚT NGAY LẬP TỨC KHI THOÁT EDIT MODE
+    if (!isEditMode && !isSharedPlan && currentPlanId) {
+        // Hiển thị nút ngay từ cache
+        setTimeout(() => {
+            showSuggestionsButtonImmediately();
+        }, 100); // 100ms để đợi DOM render xong
+        
+        // Sau đó fetch lại để cập nhật chính xác
+        setTimeout(() => {
+            checkPendingSuggestions(currentPlanId);
+        }, 300);
     }
 }
 // ========== OPEN/CLOSE PLANNER ==========
@@ -4801,6 +4893,11 @@ function comparePlanData(plan1, plan2) {
 }
 
 async function sharePlan() {
+ // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
+    if (document.getElementById('shareModal')) {
+        console.log('⚠️ Modal chia sẻ đã mở rồi');
+        return;
+    }
     if (!currentPlan || !currentPlanId) {
         alert('⚠️ Chưa có lịch trình để chia sẻ');
         return;
@@ -4967,20 +5064,20 @@ if (filtersWrapper) {
     
    ${isSharedPlan ? `
     ${hasEditPermission ? `
+
         <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
             </svg>
-            <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
         </button>
         
-        <button class="action-btn" onclick="viewMySuggestions(${currentPlanId})" 
-            style="background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);" 
+        <button class="action-btn"
+            onclick="viewMySuggestions(${currentPlanId})"
+            style="background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);"
             title="Xem đề xuất của tôi">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
                 <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
             </svg>
-            <span class="btn-label">Đề xuất của tôi</span>
         </button>
         
         <button class="action-btn primary" onclick="submitSuggestion()" title="Gửi đề xuất" ${hasPendingSuggestion ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
@@ -4989,6 +5086,7 @@ if (filtersWrapper) {
             </svg>
             <span class="btn-label">${hasPendingSuggestion ? 'Đang chờ duyệt' : 'Gửi đề xuất'}</span>
         </button>
+
         ${hasPendingSuggestion ? `
             <div style="
                 position: absolute;
@@ -5009,32 +5107,39 @@ if (filtersWrapper) {
         ` : ''}
     ` : ''}
 ` : `
-    <button class="action-btn" onclick="openSuggestionsPanel()" id="suggestionsBtn" title="Xem đề xuất chỉnh sửa" style="display: none; background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
-        </svg>
-        <span class="btn-label">Đề xuất (<span id="suggestionCount">0</span>)</span>
-    </button>
+    <div class="suggestions-wrapper" style="display: none;">  <!-- ✅ THÊM style ẨN MẶC ĐỊNH -->
+        <button class="action-btn"
+                onclick="openSuggestionsPanel()"
+                id="suggestionsBtn"
+                title="Xem đề xuất chỉnh sửa"
+                style="width: 40px; height: 40px;">  <!-- ✅ BỎ display: none, chỉ giữ kích thước -->
+
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+            </svg>
+
+            <span id="suggestionCount">0</span>
+        </button>
+
+        <span class="notif-dot" id="suggestionDot"></span>
+    </div>
     
     <button class="action-btn edit ${editMode ? 'active' : ''}" id="editPlanBtn" onclick="toggleEditMode()" title="${editMode ? 'Thoát chỉnh sửa' : 'Chỉnh sửa'}">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
             <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
         </svg>
-        <span class="btn-label">${editMode ? 'Xong' : 'Sửa'}</span>
     </button>
-    
-    <button class="action-btn primary" onclick="savePlan()" title="Lưu kế hoạch">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+
+    <button class="action-btn primary" onclick="savePlan()" title="Lưu">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
             <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
         </svg>
-        <span class="btn-label">Lưu</span>
     </button>
-    
+
     <button class="action-btn share" onclick="sharePlan()" title="Chia sẻ kế hoạch">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
             <path d="M15 8l4.39 4.39a1 1 0 010 1.42L15 18.2v-3.1c-4.38.04-7.43 1.4-9.88 4.3.94-4.67 3.78-8.36 9.88-8.4V8z"/>
         </svg>
-        <span class="btn-label">Chia sẻ</span>
     </button>
 `}
     </div>
@@ -7308,20 +7413,27 @@ async function checkPendingSuggestions(planId) {
         const response = await fetch(`/api/accounts/food-plan/suggestions/${planId}/`);
         const data = await response.json();
         
+        const wrapper = document.querySelector('.suggestions-wrapper');  // ✅ LẤY WRAPPER
         const suggestionsBtn = document.getElementById('suggestionsBtn');
         const suggestionCount = document.getElementById('suggestionCount');
+        const dot = document.getElementById("suggestionDot");
         
-        if (!suggestionsBtn || !suggestionCount) return;
+        if (!wrapper || !suggestionsBtn || !suggestionCount || !dot) return;  // ✅ KIỂM TRA WRAPPER
         
         // 🔥 LỌC CHỈ LẤY PENDING
         const pendingSuggestions = data.suggestions ? 
             data.suggestions.filter(s => s.status === 'pending') : [];
         
+        // 🔥 LƯU VÀO CACHE
+        cachedPendingSuggestionsCount = pendingSuggestions.length;
+        
         if (pendingSuggestions.length > 0) {
-            suggestionsBtn.style.display = 'flex';
+            wrapper.style.display = 'flex';   // ✅ HIỆN WRAPPER
+            dot.style.display = 'block';
             suggestionCount.textContent = pendingSuggestions.length;
         } else {
-            suggestionsBtn.style.display = 'none';
+            wrapper.style.display = 'none';   // ✅ ẨN WRAPPER
+            dot.style.display = 'none';
             suggestionCount.textContent = '0';
         }
         
@@ -7330,8 +7442,28 @@ async function checkPendingSuggestions(planId) {
     }
 }
 
+// 🔥 HÀM MỚI - HIỂN THỊ NÚT ĐỀ XUẤT NGAY LẬP TỨC
+function showSuggestionsButtonImmediately() {
+    const wrapper = document.querySelector('.suggestions-wrapper');  // ✅ THÊM
+    const suggestionsBtn = document.getElementById('suggestionsBtn');
+    const suggestionCount = document.getElementById('suggestionCount');
+    
+    if (!wrapper || !suggestionsBtn || !suggestionCount) return;  // ✅ KIỂM TRA WRAPPER
+    
+    if (cachedPendingSuggestionsCount > 0) {
+        wrapper.style.display = 'flex';  // ✅ HIỆN WRAPPER TRƯỚC
+        suggestionCount.textContent = cachedPendingSuggestionsCount;
+    }
+}
+
 // ========== OPEN SUGGESTIONS PANEL ==========
 async function openSuggestionsPanel() {
+    // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI → KHÔNG MỞ THÊM
+    if (document.getElementById('suggestionsModal')) {
+        console.log('⚠️ Modal đã mở rồi, không mở thêm');
+        return;
+    }
+    
     if (!currentPlanId) {
         alert('⚠️ Không có lịch trình đang mở');
         return;
@@ -7520,6 +7652,11 @@ function closeSuggestionsModal() {
 
 // ========== VIEW SUGGESTION COMPARISON ==========
 async function viewSuggestionComparison(suggestionId) {
+ // 🔥 KIỂM TRA NẾU MODAL ĐÃ TỒN TẠI
+    if (document.getElementById('comparisonModal')) {
+        console.log('⚠️ Modal so sánh đã mở rồi');
+        return;
+    }
     try {
         const response = await fetch(`/api/accounts/food-plan/suggestion-detail/${suggestionId}/`);
         const data = await response.json();
