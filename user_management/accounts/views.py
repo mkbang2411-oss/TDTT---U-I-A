@@ -34,7 +34,9 @@ from .models import Notification
 from .utils import (
     create_friend_request_notification,
     create_shared_plan_notification,
-    create_suggestion_notification
+    create_suggestion_notification,
+    create_suggestion_approved_notification,  # ✅ THÊM DÒNG NÀY
+    create_suggestion_rejected_notification   # ✅ THÊM DÒNG NÀY
 )
 import time
 import queue
@@ -43,7 +45,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .signals import sse_connections
-from .utils import create_suggestion_approved_notification
 import platform
 from pathlib import Path
 if platform.system() == 'Windows':
@@ -2970,17 +2971,29 @@ def approve_suggestion_api(request, suggestion_id):
         )
         
         # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
+        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC CHO CÙNG PLAN
         other_pending_suggestions = PlanEditSuggestion.objects.filter(
             shared_plan__food_plan=plan,
             status='pending'
-        ).exclude(id=suggestion_id)
-        
+        ).exclude(id=suggestion_id).select_related('suggested_by', 'shared_plan__food_plan')
+
         rejected_count = 0
         for other_sug in other_pending_suggestions:
             other_sug.status = 'rejected'
             other_sug.reviewed_at = timezone.now()
             other_sug.save()
             rejected_count += 1
+            
+            # ✅ TẠO NOTIFICATION CHO NGƯỜI BỊ TỪ CHỐI TỰ ĐỘNG
+            create_suggestion_rejected_notification(
+                user=other_sug.suggested_by,
+                owner_username=request.user.username,
+                plan_id=plan.id,
+                plan_name=plan.name,
+                suggestion_id=other_sug.id
+            )
+            
+            print(f"🔔 Đã tạo notification từ chối tự động cho {other_sug.suggested_by.username}")
         
         message = 'Đã chấp nhận đề xuất thành công'
         if rejected_count > 0:

@@ -3107,6 +3107,155 @@ input.time-input[type="number"] {
   border: 0;
 }
 
+/* ===== Radius card (planner) ===== */
+.planner-radius-card{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:14px 16px; margin: 0 0 16px;
+  background:#fff; border:1px solid #FFE5D9; border-radius:16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06);
+}
+
+.planner-radius-meta{ flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.planner-radius-title-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.planner-radius-icon{ font-size:16px; line-height:1; }
+.planner-radius-title{ font-size:14px; font-weight:900; color:#1f2937; }
+.planner-radius-badge{
+  font-size:12px; font-weight:800; color:#B45309;
+  background:#FFF7ED; border:1px solid #FED7AA;
+  padding:2px 8px; border-radius:999px; white-space:nowrap;
+}
+
+.planner-radius-hint{ font-size:12px; color:#6b7280; line-height:1.3; }
+.planner-radius-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+.planner-radius-value{ font-size:22px; font-weight:950; color:#FF6B35; line-height:1; }
+.planner-radius-value span{ font-size:14px; font-weight:900; margin-left:4px; color:#FB923C; }
+.planner-radius-btn{
+  border:none; cursor:pointer; white-space:nowrap;
+  padding:10px 12px; border-radius:12px;
+  font-size:13px; font-weight:900; color:#fff;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
+  box-shadow: 0 6px 16px rgba(255, 107, 53, .25);
+}
+
+.planner-radius-btn:active{ transform: translateY(1px); }
+
+.planner-budget-card{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:14px 16px; margin: 0 0 16px; /* full width */
+  background: linear-gradient(135deg, rgba(255,107,53,.10) 0%, rgba(255,142,83,.08) 100%);
+  border:1px solid #FFE5D9;
+  border-radius:16px;
+  box-shadow: 0 6px 18px rgba(255,107,53,.10);
+}
+
+.planner-budget-value .budget-unit{
+  font-size:14px;
+  font-weight:900;
+  margin-left:4px;
+  color:#FB923C; /* giống km */
+}
+
+.planner-budget-left{ display:flex; align-items:center; gap:12px; min-width:0; }
+.planner-budget-icon{
+  width:36px; height:36px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(255,107,53,.14);
+  border: 1px solid rgba(255,107,53,.18);
+  font-size:18px; line-height:1;
+}
+
+.planner-budget-meta{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.planner-budget-title{ font-size:14px; font-weight:900; color:#1f2937; line-height:1.1; }
+.planner-budget-hint{ font-size:12px; color:#6b7280; line-height:1.2; }
+
+.planner-budget-right{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.planner-budget-value{ font-size:22px; font-weight:950; color:#FF6B35; line-height:1; white-space:nowrap; }
+
+.planner-budget-pill,
+.planner-budget-note{
+  font-size:12px; font-weight:800; color:#B45309;
+  background:#FFF7ED; border:1px solid #FED7AA;
+  padding:2px 8px; border-radius:999px; white-space:nowrap;
+}
+.planner-budget-pill{ margin-right:8px; font-weight:900; }
+
+@media (max-width: 420px){
+  .planner-budget-card{ align-items:flex-start; }
+  .planner-budget-right{ align-items:flex-start; }
+}
+
+/* ========== SUGGESTIONS PANEL STYLES ========== */
+.suggestion-card-item:hover {
+    transform: translateY(-2px);
+    border-color: #FFB084;
+    box-shadow: 0 8px 24px rgba(255, 126, 75, 0.25);
+}
+
+.sug-btn-detail:hover {
+    background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(255, 126, 75, 0.7);
+}
+
+.sug-btn-approve:hover {
+    background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(76, 175, 80, 0.5);
+}
+
+.sug-btn-reject:hover {
+    background: linear-gradient(135deg, #F87171 0%, #EF4444 100%) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5);
+}
+
+/* ========== SUGGESTIONS CARD ANIMATION ========== */
+.suggestion-card-item {
+    opacity: 0;
+    transform: translateX(-100%);
+    animation: slideInFromLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes slideInFromLeft {
+    0% {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.suggestion-card-item:hover {
+    transform: translateY(-2px);
+    border-color: #FFB084;
+    box-shadow: 0 8px 24px rgba(255, 126, 75, 0.25);
+}
+
+.sug-btn-detail:hover {
+    background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(255, 126, 75, 0.7);
+}
+
+.sug-btn-approve:hover {
+    background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(76, 175, 80, 0.5);
+}
+
+.sug-btn-reject:hover {
+    background: linear-gradient(135deg, #F87171 0%, #EF4444 100%) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5);
+}
 
 </style>
 
@@ -4389,7 +4538,6 @@ function updateSuggestedCard(themeType, place) {
                         box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
                         transition: all 0.3s ease;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';">
-                        <span style="font-size: 18px;">🔄</span>
                         <span>Đổi quán khác</span>
                     </button>
                     
@@ -4410,14 +4558,13 @@ function updateSuggestedCard(themeType, place) {
                         box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
                         transition: all 0.3s ease;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';">
-                        <span style="font-size: 18px;">➕</span>
                         <span>Thêm vào lịch</span>
                     </button>
                 </div>
                 
                 <!-- FOOTER -->
                 <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
-                    👆 Nhấn vào card để xem trên bản đồ
+                    Nhấn vào card để xem trên bản đồ
                 </div>
             </div>
         </div>
@@ -4448,7 +4595,7 @@ async function randomFoodStreet() {
         alert('⚠️ Không tìm thấy khu ẩm thực khác trong bán kính này');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<span style="font-size: 18px;">🔄</span> Đổi quán khác';
+            btn.innerHTML = '<span>Đổi quán khác</span>';
         }
     }
 }
@@ -4507,7 +4654,7 @@ async function randomMichelin() {
         alert('⚠️ Không tìm thấy nhà hàng Michelin khác');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<span style="font-size: 18px;">🔄</span> Đổi quán khác';
+            btn.innerHTML = '<span>Đổi quán khác</span>';
         }
     }
 }
@@ -4904,14 +5051,16 @@ function calculateTotalBudget(plan) {
 }
 
 function formatMoney(value) {
-    if (value >= 1000000) {
-        return (value / 1000000).toFixed(1).replace('.0', '') + ' triệu ₫';
-    } else if (value >= 1000) {
-        return (value / 1000).toFixed(0) + '.000 ₫';
-    } else {
-        return value + ' ₫';
-    }
+  const cur = '<span class="budget-unit">₫</span>'; // hoặc đổi thành 'đ' nếu bạn thích
+  if (value >= 1000000) {
+    return (value / 1000000).toFixed(1).replace('.0', '') + ' triệu ' + cur;
+  } else if (value >= 1000) {
+    return (value / 1000).toFixed(0) + '.000 ' + cur;
+  } else {
+    return value + ' ' + cur;
+  }
 }
+
 // ========== SHARE PLAN LOGIC ==========
 let isSharedPlan = false;
 let sharedPlanOwnerId = null;
@@ -5768,79 +5917,45 @@ if (filtersWrapper) {
     }
 
     // 📍 Bán Kính Tìm Kiếm - CHỈ HIỆN KHI TẠO MỚI
-    if (!window.loadedFromSavedPlan) {
-        html += `
-        <div style="
-            background: linear-gradient(135deg, #FFF9E6 0%, #FFE5B3 100%);
-            border: 2px solid #FFB84D;
-            border-radius: 16px;
-            padding: 16px 20px;
-            margin: 24px 20px 16px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 4px 12px rgba(255, 184, 77, 0.2);
-        ">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 28px;">📍</span>
-                <div>
-                    <div style="font-size: 13px; color: #8B6914; font-weight: 600; margin-bottom: 4px;">
-                        Bán kính tìm kiếm
-                        <span style="
-                            display: inline-block;
-                            background: rgba(255, 107, 53, 0.15);
-                            color: #FF6B35;
-                            padding: 2px 8px;
-                            border-radius: 12px;
-                            font-size: 11px;
-                            font-weight: 700;
-                            margin-left: 8px;
-                            border: 1px solid rgba(255, 107, 53, 0.3);
-                        ">Thay đổi bán kính<br>ở thanh lọc bán kính</span>
-                    </div>
-                    <div style="font-size: 20px; font-weight: 700; color: #6B5410;">
-                        ${window.currentRadius || '10'} km
-                    </div>
-                </div>
-            </div>
-            <div style="
-                background: rgba(255, 184, 77, 0.2);
-                padding: 10px 16px;
-                border-radius: 10px;
-                font-size: 12px;
-                color: #8B6914;
-                font-weight: 600;
-                text-align: center;
-                line-height: 1.5;
-                min-width: 140px;
-            ">
-                ℹ️ Bán kính mặc định: 10km
-            </div>
-        </div>
-        `;
-    }
-    // 💰 Tổng Kinh Phí
     html += `
-    <div style="
-        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-        border: 2px solid #4caf50;
-        border-radius: 16px;
-        padding: 16px 20px;
-        margin: 16px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
-    ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 28px;">💰</span>
-            <div>
-                <div style="font-size: 13px; color: #2e7d32; font-weight: 600; margin-bottom: 4px;">Tổng kinh phí dự kiến</div>
-                <div style="font-size: 20px; font-weight: 700; color: #1b5e20;">
-                    ${budget.hasOverPrice ? 'Trên ' : ''}${formatMoney(budget.total)}
-                    ${budget.unknown > 0 ? `<span style="font-size: 13px; font-weight: 500; color: #666; margin-left: 8px;">(Không tính ${budget.unknown} quán)</span>` : ''}
-                </div>
-            </div>
+    <div class="planner-radius-card" role="group" aria-label="Bán kính tìm kiếm">
+        <div class="planner-radius-meta">
+        <div class="planner-radius-title-row">
+            <div class="planner-radius-title">Bán kính tìm kiếm</div>
+        </div>
+        <div class="planner-radius-hint">Nhấn “Đổi bán kính” để mở bộ lọc bán kính trên bản đồ.</div>
+        </div>
+
+        <div class="planner-radius-actions">
+        <div class="planner-radius-value" id="plannerRadiusValue">
+            ${window.currentRadius || '10'}<span>km</span>
+        </div>
+        <button type="button" class="planner-radius-btn" onclick="openRadiusPickerFromPlanner()">
+            Đổi bán kính
+        </button>
+        </div>
+    </div>
+    `;
+        
+    // 💰 Tổng Kinh Phí (NEW UI - cam chủ đạo, full width như radius card)
+    html += `
+    <div class="planner-budget-card" role="group" aria-label="Tổng kinh phí dự kiến">
+        <div class="planner-budget-left">
+        <div class="planner-budget-icon" aria-hidden="true">💰</div>
+
+        <div class="planner-budget-meta">
+            <div class="planner-budget-title">Tổng kinh phí dự kiến</div>
+            <div class="planner-budget-hint">Ước tính theo giá trung bình</div>
+        </div>
+        </div>
+
+        <div class="planner-budget-right">
+        <div class="planner-budget-value">
+            ${budget.hasOverPrice ? '<span class="planner-budget-pill">Trên</span>' : ''}
+            ${formatMoney(budget.total)}
+        </div>
+
+        ${budget.unknown > 0 ? `<div class="planner-budget-note">Không tính ${budget.unknown} quán</div>` : ''}
         </div>
     </div>
     `;
@@ -5986,7 +6101,6 @@ if (shouldShowMichelinSuggestion) {
                         box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
                         transition: all 0.3s ease;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';">
-                        <span style="font-size: 18px;">🔄</span>
                         <span>Đổi quán khác</span>
                     </button>
                     
@@ -6007,14 +6121,13 @@ if (shouldShowMichelinSuggestion) {
                         box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
                         transition: all 0.3s ease;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';">
-                        <span style="font-size: 18px;">➕</span>
                         <span>Thêm vào lịch</span>
                     </button>
                 </div>
                 
                 <!-- FOOTER -->
                 <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
-                    👆 Nhấn vào card để xem trên bản đồ
+                    Nhấn vào card để xem trên bản đồ
                 </div>
             </div>
         </div>
@@ -6152,7 +6265,6 @@ if (shouldShowFoodStreetSuggestion) {
                         box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
                         transition: all 0.3s ease;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)';">
-                        <span style="font-size: 18px;">🔄</span>
                         <span>Đổi quán khác</span>
                     </button>
                     
@@ -6173,14 +6285,13 @@ if (shouldShowFoodStreetSuggestion) {
                         box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
                         transition: all 0.3s ease;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(255, 107, 53, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(255, 107, 53, 0.3)';">
-                        <span style="font-size: 18px;">➕</span>
                         <span>Thêm vào lịch</span>
                     </button>
                 </div>
                 
                 <!-- FOOTER -->
                 <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #8B6914; font-weight: 600;">
-                    👆 Nhấn vào card để xem trên bản đồ
+                    Nhấn vào card để xem trên bản đồ
                 </div>
             </div>
         </div>
@@ -7295,6 +7406,29 @@ function flyToPlace(lat, lon, placeId, placeName) {
     }
 }
 
+// ===== Radius flow: close planner -> open radius filter -> reopen planner =====
+window.__reopenPlannerAfterRadiusChange = false;
+window.__plannerReturnPlan = null;
+
+function openRadiusPickerFromPlanner() {
+  window.__reopenPlannerAfterRadiusChange = true;
+  window.__plannerReturnPlan = currentPlan || null;
+
+  // 1) Đóng Food Planner
+  if (typeof closeFoodPlanner === 'function') closeFoodPlanner();
+
+  // 2) Mở dropdown Search Radius trên map
+  setTimeout(() => {
+    const radiusBtn = document.getElementById('radiusBtn');
+    if (radiusBtn) {
+      radiusBtn.click();
+    } else {
+      console.warn('⚠️ Không tìm thấy #radiusBtn để mở Search Radius.');
+    }
+  }, 150);
+}
+window.openRadiusPickerFromPlanner = openRadiusPickerFromPlanner;
+
 // ========== EXPOSE FUNCTIONS TO WINDOW ==========
 window.foodPlannerState = {
     isEditMode: () => {
@@ -7532,6 +7666,25 @@ document.addEventListener('DOMContentLoaded', function() {
             const hiddenInput = document.getElementById('radius');
             if (hiddenInput) {
                 hiddenInput.value = radiusValue;
+            }
+
+            // cập nhật số km trên card nếu panel đang mở
+            const radiusValueEl = document.getElementById('plannerRadiusValue');
+            if (radiusValueEl) radiusValueEl.innerHTML = `${radiusValue}<span>km</span>`;
+
+            // 🔁 Nếu vừa bấm "Đổi bán kính" từ planner -> mở lại planner
+            if (window.__reopenPlannerAfterRadiusChange) {
+            window.__reopenPlannerAfterRadiusChange = false;
+
+            const planToShow = window.__plannerReturnPlan || currentPlan;
+
+            setTimeout(() => {
+                const panel = document.getElementById('foodPlannerPanel');
+                const btn = document.getElementById('foodPlannerBtn');
+                if (panel && !panel.classList.contains('active')) btn?.click();
+
+                if (planToShow) displayPlanVertical(planToShow, isEditMode);
+            }, 150);
             }
             
             console.log('✅ Đã cập nhật bán kính:', radiusValue + ' km');
@@ -7845,40 +7998,206 @@ async function openSuggestionsPanel() {
             return;
         }
         
-        // Tạo HTML cho danh sách đề xuất
+        // 🔥 TẠO HTML CHO MỖI ĐỀ XUẤT - MỖI NGƯỜI 1 CARD
         const suggestionsHTML = suggestions.map((sug, index) => {
             return `
-                <div style="
+                <div class="suggestion-card-item" style="
+                    animation-delay: ${index * 0.1}s;
                     background: #FFFFFF;
-                    border-radius: 20px;
+                    border-radius: 18px;
                     margin-bottom: 14px;
                     font-family: 'Montserrat', sans-serif;
                     position: relative;
                     box-shadow: 0 4px 16px rgba(255, 126, 75, 0.15);
                     overflow: hidden;
+                    border: 1px solid #FFE5D9;
+                    padding: 16px 20px;
                 ">
-                    <!-- Header CAM NHẠT TRẢI DÀI -->
+                    <!-- Header -->
+                    <div class="suggestion-item-title" style="
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #1f2933;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        letter-spacing: -0.01em;
+                        margin-bottom: 8px;
+                    ">
+                        <span style="font-size: 16px;">👤</span>
+                        ${sug.suggested_by_username}
+                        
+                        <span class="notification-status-badge" style="
+                            margin-left: auto;
+                            font-size: 10px;
+                            font-weight: 700;
+                            padding: 3px 8px;
+                            border-radius: 12px;
+                            background: linear-gradient(135deg, #FFB084, #FF8E53);
+                            color: #ffffff;
+                            box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);
+                        ">
+                            Mới
+                        </span>
+                    </div>
+                    
+                    <!-- Time -->
                     <div style="
-                        background: linear-gradient(135deg, #FFD4B8 0%, #FFBC94 100%);
-                        color: #ffffff;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        font-size: 11px;
+                        color: #6b7280;
+                        margin-bottom: 10px;
+                        font-weight: 500;
+                    ">
+                        <span>🕐</span>
+                        <span>${new Date(sug.created_at).toLocaleString('vi-VN')}</span>
+                    </div>
+                    
+                    <!-- Message -->
+                    ${sug.message ? `
+                        <div class="notification-item-message" style="
+                            font-size: 13px;
+                            color: #555555;
+                            line-height: 1.5;
+                            margin-bottom: 12px;
+                            background: #FFF5F0;
+                            padding: 10px;
+                            border-radius: 10px;
+                            border-left: 3px solid #FFB084;
+                        ">
+                            ${sug.message}
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="sug-btn-detail" onclick="viewSuggestionComparison(${sug.id})" style="
+                            flex: 1;
+                            border: none;
+                            padding: 10px 18px;
+                            border-radius: 25px;
+                            background: #FFFFFF;
+                            color: #FF8E53;
+                            font-size: 13px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            font-family: 'Montserrat', sans-serif;
+                            border: 1px solid #FFE5D9;
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                        " onmouseenter="this.style.background='linear-gradient(135deg, #FFB084 0%, #FF8E53 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(255, 126, 75, 0.7)'"
+                        onmouseleave="this.style.background='#FFFFFF'; this.style.color='#FF8E53'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
+                            Xem chi tiết
+                        </button>
+                        
+                        <button class="sug-btn-approve" onclick="approveSuggestion(${sug.id})" style="
+                            flex: 1;
+                            border: none;
+                            padding: 10px 18px;
+                            border-radius: 25px;
+                            background: #FFFFFF;
+                            color: #4CAF50;
+                            font-size: 13px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            font-family: 'Montserrat', sans-serif;
+                            border: 1px solid #E8F5E9;
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                        " onmouseenter="this.style.background='linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(76, 175, 80, 0.5)'"
+                        onmouseleave="this.style.background='#FFFFFF'; this.style.color='#4CAF50'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
+                            Chấp nhận
+                        </button>
+                        
+                        <button class="sug-btn-reject" onclick="rejectSuggestion(${sug.id})" style="
+                            flex: 1;
+                            border: none;
+                            padding: 10px 18px;
+                            border-radius: 25px;
+                            background: #FFFFFF;
+                            color: #EF4444;
+                            font-size: 13px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            font-family: 'Montserrat', sans-serif;
+                            border: 1px solid #FFEBEE;
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                        " onmouseenter="this.style.background='linear-gradient(135deg, #F87171 0%, #EF4444 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(239, 68, 68, 0.5)'"
+                        onmouseleave="this.style.background='#FFFFFF'; this.style.color='#EF4444'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
+                            Từ chối
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // 🔥 TẠO MODAL VỚI HEADER GIỐNG NOTIFICATION
+        const modalHTML = `
+            <div id="suggestionsModal" style="
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(4px);
+                z-index: 99999999999999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="
+                    background: rgba(255, 255, 255, 0.96);
+                    backdrop-filter: blur(26px) saturate(180%);
+                    border-radius: 28px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 85vh;
+                    border: 1px solid #FFE5D9;
+                    box-shadow: 0 10px 35px rgba(148, 85, 45, 0.25), 0 24px 60px rgba(203, 92, 37, 0.18);
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    font-family: 'Montserrat', sans-serif;
+                ">
+                    <!-- Header giống notification -->
+                    <div style="
+                        position: relative;
+                        padding: 18px 24px 14px;
+                        background: linear-gradient(135deg, rgba(255, 107, 53, 0.14) 0%, rgba(255, 142, 83, 0.10) 100%);
+                        color: #1f2933;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        padding: 16px 20px;
+                        border-bottom: 1px solid #FFE5D9;
                     ">
                         <div style="
                             display: flex;
                             align-items: center;
                             gap: 10px;
                             font-weight: 700;
-                            font-size: 16px;
+                            font-size: 18px;
                             letter-spacing: -0.02em;
+                            background: linear-gradient(135deg, #FFB084 0%, #FF8E53 100%);
+                            -webkit-background-clip: text;
+                            -webkit-text-fill-color: transparent;
                         ">
+                            <span style="font-size: 20px; -webkit-text-fill-color: initial;">🔔</span>
                             Đề xuất chỉnh sửa
                         </div>
                         
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <!-- Khung đếm số lượng đề xuất -->
                             <div style="
                                 background: #FFFFFF;
                                 border: 2px solid #FF8E53;
@@ -7887,21 +8206,17 @@ async function openSuggestionsPanel() {
                                 font-size: 13px;
                                 font-weight: 700;
                                 color: #FF8E53;
-                                display: flex;
-                                align-items: center;
-                                gap: 4px;
                             ">
-                                <span>${suggestions.length}</span>
+                                ${suggestions.length}
                             </div>
                             
-                            <!-- Nút X nền trắng -->
                             <button onclick="closeSuggestionsModal()" style="
-                                background: #FFFFFF;
+                                background: rgba(255, 255, 255, 0.9);
                                 border: 1px solid #FFE5D9;
                                 color: #94a3b8;
-                                font-size: 18px;
-                                width: 28px;
-                                height: 28px;
+                                font-size: 20px;
+                                width: 32px;
+                                height: 32px;
                                 border-radius: 50%;
                                 cursor: pointer;
                                 display: inline-flex;
@@ -7909,174 +8224,22 @@ async function openSuggestionsPanel() {
                                 justify-content: center;
                                 transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
                                 font-weight: 300;
-                                line-height: 1;
-                                padding: 0;
                             " onmouseenter="this.style.background='#FF8E53'; this.style.color='#ffffff'; this.style.transform='rotate(90deg)'; this.style.borderColor='#FF8E53'"
-                            onmouseleave="this.style.background='#FFFFFF'; this.style.color='#94a3b8'; this.style.transform='rotate(0deg)'; this.style.borderColor='#FFE5D9'">
+                            onmouseleave="this.style.background='rgba(255, 255, 255, 0.9)'; this.style.color='#94a3b8'; this.style.transform='rotate(0deg)'; this.style.borderColor='#FFE5D9'">
                                 ×
                             </button>
                         </div>
                     </div>
                     
-                    <!-- Content bên dưới -->
-                    <div style="padding: 20px; background: #FFF5F0;">
-                        <!-- User Info -->
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                            <div style="flex: 1;">
-                                <div style="
-                                    font-size: 14px;
-                                    font-weight: 600;
-                                    color: #1f2933;
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 6px;
-                                    letter-spacing: -0.01em;
-                                    margin-bottom: 4px;
-                                ">
-                                    <span style="font-size: 16px;">👤</span>
-                                    ${sug.suggested_by_username}
-                                </div>
-                                <div style="
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 8px;
-                                    font-size: 11px;
-                                    color: #6b7280;
-                                    margin-top: 2px;
-                                    font-weight: 500;
-                                ">
-                                    <span style="font-size: 12px;">🕐</span>
-                                    ${new Date(sug.created_at).toLocaleString('vi-VN')}
-                                </div>
-                            </div>
-                            <span style="
-                                font-size: 10px;
-                                font-weight: 700;
-                                padding: 3px 8px;
-                                border-radius: 12px;
-                                flex-shrink: 0;
-                                white-space: nowrap;
-                                ${sug.status === 'pending' ? 
-                                    'background: linear-gradient(135deg, #FFB084, #FF8E53); color: #ffffff; box-shadow: 0 2px 6px rgba(255, 126, 75, 0.4);' : 
-                                sug.status === 'approved' ? 
-                                    'background: #e0e0e0; color: #888888;' : 
-                                    'background: #e0e0e0; color: #888888;'}
-                            ">
-                                ${sug.status === 'pending' ? 'Mới' : 
-                                sug.status === 'approved' ? 'Đã duyệt' : 
-                                'Đã từ chối'}
-                            </span>
-                        </div>
-                        
-                        <!-- Message Section -->
-                        ${sug.message ? `
-                            <div style="
-                                font-size: 13px;
-                                color: #555555;
-                                line-height: 1.5;
-                                margin-bottom: 12px;
-                            ">
-                                ${sug.message}
-                            </div>
-                        ` : ''}
-                        
-                        <!-- Action Buttons -->
-                        <div style="display: flex; gap: 8px; margin-top: 12px;">
-                            <button onclick="viewSuggestionComparison(${sug.id})" style="
-                                flex: 1;
-                                border: none;
-                                padding: 10px 18px;
-                                border-radius: 25px;
-                                background: #FFFFFF;
-                                color: #FF8E53;
-                                font-size: 13px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                font-family: 'Montserrat', sans-serif;
-                                border: 1px solid #FFE5D9;
-                                display: inline-flex;
-                                align-items: center;
-                                justify-content: center;
-                                gap: 6px;
-                                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-                            " onmouseenter="this.style.background='linear-gradient(135deg, #FFB084 0%, #FF8E53 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(255, 126, 75, 0.7)'"
-                            onmouseleave="this.style.background='#FFFFFF'; this.style.color='#FF8E53'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
-                                Xem chi tiết
-                            </button>
-                            
-                            ${sug.status === 'pending' ? `
-                                <button onclick="approveSuggestion(${sug.id})" style="
-                                    flex: 1;
-                                    border: none;
-                                    padding: 10px 18px;
-                                    border-radius: 25px;
-                                    background: #FFFFFF;
-                                    color: #4CAF50;
-                                    font-size: 13px;
-                                    font-weight: 600;
-                                    cursor: pointer;
-                                    font-family: 'Montserrat', sans-serif;
-                                    border: 1px solid #E8F5E9;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    gap: 6px;
-                                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-                                " onmouseenter="this.style.background='linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(76, 175, 80, 0.5)'"
-                                onmouseleave="this.style.background='#FFFFFF'; this.style.color='#4CAF50'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
-                                    Chấp nhận
-                                </button>
-                                
-                                <button onclick="rejectSuggestion(${sug.id})" style="
-                                    flex: 1;
-                                    border: none;
-                                    padding: 10px 18px;
-                                    border-radius: 25px;
-                                    background: #FFFFFF;
-                                    color: #EF4444;
-                                    font-size: 13px;
-                                    font-weight: 600;
-                                    cursor: pointer;
-                                    font-family: 'Montserrat', sans-serif;
-                                    border: 1px solid #FFEBEE;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    gap: 6px;
-                                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-                                " onmouseenter="this.style.background='linear-gradient(135deg, #F87171 0%, #EF4444 100%)'; this.style.color='#ffffff'; this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 8px 24px rgba(239, 68, 68, 0.5)'"
-                                onmouseleave="this.style.background='#FFFFFF'; this.style.color='#EF4444'; this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='none'">
-                                    Từ chối
-                                </button>
-                            ` : ''}
-                        </div>
+                    <!-- Danh sách đề xuất - scroll như notification -->
+                    <div style="
+                        padding: 12px 16px;
+                        overflow-y: auto;
+                        max-height: 65vh;
+                        background: #FFF5F0;
+                    " class="notification-list">
+                        ${suggestionsHTML}
                     </div>
-                </div>
-            `;
-        }).join('');
-        
-        // Tạo modal - CHỈ CÓ BACKGROUND ĐEN MỜ VÀ CÁC CARD
-        const modalHTML = `
-            <div id="suggestionsModal" style="
-                position: fixed;
-                inset: 0;
-                background: rgba(0,0,0,0.35);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-                z-index: 2147483647;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-                animation: fadeIn 0.3s ease;
-                overflow-y: auto;
-            ">
-                <div style="
-                    max-width: 600px;
-                    width: 90%;
-                    padding: 10px;
-                ">
-                    ${suggestionsHTML}
                 </div>
             </div>
         `;
@@ -8349,7 +8512,7 @@ function ensureComparisonStyles() {
 #comparisonModal .cmp-tag{
   position:absolute;
   top:10px;
-  left:10px;
+  right:10px;
   padding:4px 10px;
   border-radius:999px;
   font-size:11px;
