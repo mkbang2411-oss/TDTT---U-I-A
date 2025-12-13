@@ -169,13 +169,19 @@ if (!document.getElementById('custom-alert-style')) {
 // =========================
 const icons = {
   default: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/icon.png",
+    iconUrl: "icons/normal.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
   }),
   michelin: L.icon({
-    iconUrl: "https://res.cloudinary.com/dbmq2hme4/image/upload/icons/star.png",
+    iconUrl: "icons/michelin.png",
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    className: 'fixed-size-icon'  
+  }),
+  khuamthuc: L.icon({
+    iconUrl: "icons/khuamthuc.png",
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     className: 'fixed-size-icon'  
@@ -185,8 +191,20 @@ const icons = {
 // =========================
 // 🧠 XÁC ĐỊNH LOẠI QUÁN
 // =========================
-function detectCategory(name = "") {
-  // Tất cả quán đều dùng icon mặc định
+function detectCategory(name = "", moTa = "") {
+  const normalizedMoTa = (moTa || "").toLowerCase();
+  
+  // Kiểm tra Michelin trước
+  if (normalizedMoTa.includes("michelin")) {
+    return "michelin";
+  }
+  
+  // Kiểm tra khu ẩm thực
+  if (normalizedMoTa.includes("khu ẩm thực")) {
+    return "khuamthuc";
+  }
+  
+  // Mặc định
   return "default";
 }
 
@@ -796,13 +814,17 @@ function loadMarkersInViewport() {
 
 // =========================
 function createMarker(p, lat, lon) {
-  // 🎯 Chọn icon phù hợp
+// 🎯 Chọn icon phù hợp
 let icon;
 
-if (p.mo_ta && p.mo_ta.toLowerCase().includes("michelin")) {
-  icon = icons.michelin;  // ⭐ Chỉ quán Michelin dùng icon sao
+const moTaLower = (p.mo_ta || "").toLowerCase();
+
+if (moTaLower.includes("michelin")) {
+  icon = icons.michelin;  // ⭐ Quán Michelin
+} else if (moTaLower.includes("khu ẩm thực")) {
+  icon = icons.khuamthuc;  // 🏙️ Khu ẩm thực
 } else {
-  icon = icons.default;   // 🍽️ Tất cả quán khác dùng icon chung
+  icon = icons.default;   // 🍽️ Quán bình thường
 }
 
   // 🎯 Tạo marker (KHÔNG dùng .addTo(map) nữa)
@@ -1657,33 +1679,58 @@ function distance(lat1, lon1, lat2, lon2) {
   return R * c; // km
 }
 function clearAllMarkers() {
-    // ✅ Xóa toàn bộ markers NHƯNG GIỮ LẠI marker GPS
-    map.eachLayer(layer => {
-        if (layer instanceof L.Marker) {
-            // 🔥 KHÔNG XÓA marker GPS (startMarker)
-            if (window.startMarker && layer === window.startMarker) {
-                console.log('🔒 Giữ lại marker GPS');
-                return;
-            }
-            map.removeLayer(layer);
-        }
+  // ✅ Marker số 1,2,3,4,5 của Food Plan (divIcon có class route-number-marker)
+  const isFoodPlanNumberMarker = (m) => {
+    const cls = m?.options?.icon?.options?.className || "";
+    return cls.includes("route-number-marker");
+  };
+
+  // ✅ Xóa marker trên map nhưng GIỮ GPS + GIỮ marker số Food Plan
+  map.eachLayer((layer) => {
+    if (!(layer instanceof L.Marker)) return;
+
+    // Giữ marker GPS
+    if (window.startMarker && layer === window.startMarker) return;
+
+    // Giữ marker số Food Plan
+    if (isFoodPlanNumberMarker(layer)) return;
+
+    map.removeLayer(layer);
+  });
+
+  // ✅ Nếu marker thường nằm trong cluster thì xóa phần cluster, nhưng vẫn giữ marker số Food Plan
+  const clearClusterKeepPlanNumbers = (cg) => {
+    if (!cg) return;
+
+    const toRemove = [];
+    cg.eachLayer((layer) => {
+      if (layer instanceof L.Marker && isFoodPlanNumberMarker(layer)) return;
+      toRemove.push(layer);
     });
+    toRemove.forEach((l) => cg.removeLayer(l));
+  };
 
-    // Xóa tất cả cluster (dù là biến nào)
-    if (markerClusterGroup) markerClusterGroup.clearLayers();
-    if (window.markerClusterGroup) window.markerClusterGroup.clearLayers();
+  clearClusterKeepPlanNumbers(markerClusterGroup);
+  clearClusterKeepPlanNumbers(window.markerClusterGroup);
 
-    // Reset data
-    markers = [];
-    visibleMarkers.clear();
-    window.placeMarkersById = {};
+  // Reset list marker thường
+  markers = [];
+  visibleMarkers.clear();
+
+  // (tuỳ chọn) dọn mapping marker thường, không đụng marker số Food Plan nếu lỡ có lưu trong đây
+  if (!window.placeMarkersById) window.placeMarkersById = {};
+  Object.keys(window.placeMarkersById).forEach((id) => {
+    const mk = window.placeMarkersById[id];
+    if (mk && isFoodPlanNumberMarker(mk)) return;
+    if (!mk || !map.hasLayer(mk)) delete window.placeMarkersById[id];
+  });
 }
+
 
 
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU (FIXED VERSION)
 // =======================================================
-
 async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", shouldZoom = true) {
   try {
     // 🔥 THÊM ĐOẠN NÀY Ở ĐẦU HÀM
@@ -1708,18 +1755,16 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
     const res = await fetch("/api/places");
     let data = await res.json();
 
-
-    // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH (chỉ bỏ dấu phụ như ă, ơ, ê)
+    // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH
     function normalizeKeepTone(str) {
       return str
         .toLowerCase()
         .trim()
-        // Chỉ chuẩn hóa đ → d
         .replace(/đ/g, "d")
         .replace(/Đ/g, "D");
     }
 
-    // ⭐ NORMALIZE BỎ HOÀN TOÀN DẤU (dùng cho fuzzy search)
+    // ⭐ NORMALIZE BỎ HOÀN TOÀN DẤU
     function normalizeRemoveAll(str) {
       return str
         .normalize("NFD")
@@ -1730,125 +1775,138 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
         .trim();
     }
 
-    // ⭐ ESCAPE REGEX đặc biệt characters
-    function escapeRegex(str) {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // 🆕 HÀM KIỂM TRA MATCH CHÍNH XÁC TOÀN BỘ TỪ (WORD EXACT MATCH)
+    function matchesExactWord(text, queryWord) {
+      // Tách text thành các từ (tách bằng space, dấu câu, v.v.)
+      const words = text.split(/[\s\-_,\.\/\(\)\[\]]+/).filter(Boolean);
+      
+      // Kiểm tra xem có từ nào KHỚP CHÍNH XÁC với queryWord không
+      return words.some(word => word === queryWord);
     }
 
-     let filtered = data;
+    // 🆕 HÀM KIỂM TRA TẤT CẢ CÁC TỪ TRONG QUERY ĐỀU MATCH CHÍNH XÁC
+    function matchesAllWordsExactly(text, queryWords) {
+      return queryWords.every(qWord => matchesExactWord(text, qWord));
+    }
 
-    // ========== 1️⃣ Tìm theo tên HOẶC mô tả (có rút ngắn dần) ==========
-    if (query) {
+    // 🆕 HÀM KIỂM TRA CỤM TỪ LIỀN NHAU (PHRASE MATCH) - CHỈ MATCH TỪ ĐẦY ĐỦ
+    function matchesPhraseWithWordBoundary(text, phrase) {
+      // Escape các ký tự đặc biệt trong regex
+      const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      // Tạo regex với word boundary: \b phrase \b
+      // \b đảm bảo trước và sau phrase là ranh giới từ (space, dấu câu, đầu/cuối chuỗi)
+      const regex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
+      
+      return regex.test(text);
+    }
+
+    // 🆕 HÀM TÌM KIẾM THÔNG MINH (MATCH CHÍNH XÁC TỪ)
+    function smartSearch(places, query) {
       const queryKeepTone = normalizeKeepTone(query);
       const queryNoTone = normalizeRemoveAll(query);
-
-      // --- Bước 1: thử exact-match với chuỗi đầy đủ (giữ dấu thanh) ---
-      // ✅ TÌM TRONG TÊN QUÁN + MÔ TẢ
-      const exactMatches = data.filter((p) => {
+      
+      // Tách query thành các từ
+      const queryWordsNoTone = queryNoTone.split(/\s+/).filter(Boolean);
+      
+      // 🎯 LEVEL 1: Exact phrase match với word boundary (giữ dấu thanh)
+      let results = places.filter((p) => {
         const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
         const moTaKeepTone = normalizeKeepTone(p.mo_ta || "");
-        return nameKeepTone.includes(queryKeepTone) || moTaKeepTone.includes(queryKeepTone);
+        
+        return matchesPhraseWithWordBoundary(nameKeepTone, queryKeepTone) || 
+               matchesPhraseWithWordBoundary(moTaKeepTone, queryKeepTone);
       });
-
-      if (exactMatches.length > 0) {
-        filtered = exactMatches;
-        console.log("✅ Exact match found:", exactMatches.length);
-      } else {
-        // --- Chuẩn bị query không dấu + xử lý trường hợp người dùng gõ liền chữ ---
-        let normalizedQuery = queryNoTone;
-
-        // Giữ logic cũ: tự chèn khoảng trắng nếu user gõ liền (vd: "bundaubac")
-        if (!normalizedQuery.includes(" ")) {
-          const possibleMatches = data.map((p) =>
-            normalizeRemoveAll(p.ten_quan || "")
-          );
-          const splitVariants = [];
-
-          for (let i = 1; i < normalizedQuery.length; i++) {
-            splitVariants.push(
-              normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
-            );
-          }
-          for (const variant of splitVariants) {
-            if (possibleMatches.some((name) => name.includes(variant))) {
-              normalizedQuery = variant;
-              break;
-            }
-          }
-        }
-
-        // Chuẩn bị dữ liệu cho Fuse chỉ 1 lần
-         const fuse = new Fuse(
-          data.map((p) => ({
-            ...p,
-            ten_quan_no_dau: normalizeRemoveAll(p.ten_quan || ""),
-            mo_ta_no_dau: normalizeRemoveAll(p.mo_ta || "")
-          })),
-          {
-            keys: ["ten_quan_no_dau", "mo_ta_no_dau"], // ✅ TÌM TRONG CẢ 2 TRƯỜNG
-            threshold: 0.35,   // khá strict
-            ignoreLocation: true,
-            includeScore: true,
-          }
-        );
-
-        // Hàm chạy fuzzy + lọc cho 1 câu query đã normalize (không dấu)
-        function runFuzzy(normQ) {
-          const fuzzyResults = fuse.search(normQ);
-          const queryWords = normQ.split(" ").filter(Boolean);
-
-          return fuzzyResults
-            .map((r) => r.item)
-            .filter((p) => {
-              const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
-              const moTaNoTone = normalizeRemoveAll(p.mo_ta || ""); // ✅ THÊM MÔ TẢ
-              
-              const hasPhrase = nameNoTone.includes(normQ) || moTaNoTone.includes(normQ); // ✅ CHECK CẢ 2
-              const hasAllWords = queryWords.every((w) =>
-                nameNoTone.includes(w) || moTaNoTone.includes(w) // ✅ CHECK CẢ 2
-              );
-
-              // Query nhiều từ: cho pass nếu chứa cụm hoặc đủ các từ
-              if (queryWords.length >= 2) {
-                return hasPhrase || hasAllWords;
-              }
-              // Query 1 từ: chỉ cần chứa từ đó
-              return hasPhrase;
-            });
-        }
-
-        // --- Bước 2: thử với chuỗi đầy đủ ---
-        let currentNorm = normalizedQuery;
-        let currentWords = currentNorm.split(" ").filter(Boolean);
-        let results = runFuzzy(currentNorm);
-        console.log(
-          `🔍 Fuzzy với "${currentNorm}" =>`,
-          results.length,
-          "kết quả"
-        );
-
-        // --- Bước 3: nếu không ra kết quả thì rút bớt từ cuối dần ---
-        // VD: "bun thit nuong cha gio" -> "bun thit nuong cha" -> "bun thit nuong" -> ...
-        while (results.length === 0 && currentWords.length > 1) {
-          currentWords.pop(); // bỏ bớt 1 từ cuối
-          currentNorm = currentWords.join(" ");
-          results = runFuzzy(currentNorm);
-          console.log(
-            `🔁 Thử lại với "${currentNorm}" =>`,
-            results.length,
-            "kết quả"
-          );
-        }
-
-        filtered = results;
-        console.log(
-          "✅ Query cuối cùng dùng để filter:",
-          `"${currentNorm}"`,
-          "=>",
-          filtered.length,
-          "kết quả"
-        );
+      
+      if (results.length > 0) {
+        console.log("✅ Found with exact phrase match (keep tone):", results.length);
+        return results;
       }
+      
+      // 🎯 LEVEL 2: Exact phrase match với word boundary (bỏ dấu)
+      results = places.filter((p) => {
+        const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+        const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+        
+        return matchesPhraseWithWordBoundary(nameNoTone, queryNoTone) || 
+               matchesPhraseWithWordBoundary(moTaNoTone, queryNoTone);
+      });
+      
+      if (results.length > 0) {
+        console.log("✅ Found with exact phrase match (no tone):", results.length);
+        return results;
+      }
+      
+      // 🎯 LEVEL 3: Tất cả các từ đều match chính xác (bỏ dấu)
+      if (queryWordsNoTone.length >= 2) {
+        results = places.filter((p) => {
+          const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+          const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+          
+          return matchesAllWordsExactly(nameNoTone, queryWordsNoTone) || 
+                 matchesAllWordsExactly(moTaNoTone, queryWordsNoTone);
+        });
+        
+        if (results.length > 0) {
+          console.log("✅ Found with all words exact match:", results.length);
+          return results;
+        }
+      }
+      
+      // 🎯 LEVEL 4: Rút dần từ cuối + match chính xác
+      return reduceAndSearchExact(places, queryWordsNoTone);
+    }
+
+    // 🆕 HÀM RÚT DẦN + MATCH CHÍNH XÁC
+    function reduceAndSearchExact(places, queryWords) {
+      let words = [...queryWords]; // Copy mảng
+      
+      while (words.length > 0) {
+        const currentQuery = words.join(" ");
+        console.log(`🔍 Trying: "${currentQuery}"`);
+        
+        // Thử match phrase đầy đủ với word boundary
+        let results = places.filter((p) => {
+          const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+          const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+          
+          return matchesPhraseWithWordBoundary(nameNoTone, currentQuery) || 
+                 matchesPhraseWithWordBoundary(moTaNoTone, currentQuery);
+        });
+        
+        if (results.length > 0) {
+          console.log(`✅ Found with phrase: "${currentQuery}" =>`, results.length);
+          return results;
+        }
+        
+        // Thử match từng từ chính xác
+        results = places.filter((p) => {
+          const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+          const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+          
+          return matchesAllWordsExactly(nameNoTone, words) || 
+                 matchesAllWordsExactly(moTaNoTone, words);
+        });
+        
+        if (results.length > 0) {
+          console.log(`✅ Found with exact words: "${currentQuery}" =>`, results.length);
+          return results;
+        }
+        
+        // ❌ Không tìm thấy → Rút bớt 1 từ cuối
+        words.pop();
+        console.log(`🔁 Reducing to: "${words.join(" ")}"`);
+      }
+      
+      console.log("❌ No results found after reduction");
+      return [];
+    }
+
+    let filtered = data;
+
+    // ========== 1️⃣ Tìm theo tên HOẶC mô tả (MATCH CHÍNH XÁC TỪ) ==========
+    if (query) {
+      filtered = smartSearch(data, query);
     }
 
     // ========== 2️⃣ Lọc khẩu vị ==========
@@ -1881,48 +1939,43 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
       });
     }
 
-// ========== 4️⃣ Lọc bán kính ==========
-// 🔥 CHỈ LỌC BÁN KÍNH KHI USER ĐÃ TỰ CHỌN (radio được check)
-if (radius && radius !== "" && radius !== "all") {
-  const r = parseFloat(radius);
-  
-  // ✅ Kiểm tra bán kính hợp lệ
-  if (isNaN(r) || r <= 0) {
-    console.warn('⚠️ Bán kính không hợp lệ, bỏ qua filter');
-  } else {
-    // ✅ CHỈ BẮT NHẬP GPS KHI ĐÃ CHỌN BÁN KÍNH
-    if (
-      !window.currentUserCoords ||
-      !window.currentUserCoords.lat ||
-      !window.currentUserCoords.lon
-    ) {
-      showCustomAlert(
-        "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
-      );
-      return false;
+    // ========== 4️⃣ Lọc bán kính ==========
+    if (radius && radius !== "" && radius !== "all") {
+      const r = parseFloat(radius);
+      
+      if (isNaN(r) || r <= 0) {
+        console.warn('⚠️ Bán kính không hợp lệ, bỏ qua filter');
+      } else {
+        if (
+          !window.currentUserCoords ||
+          !window.currentUserCoords.lat ||
+          !window.currentUserCoords.lon
+        ) {
+          showCustomAlert(
+            "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
+          );
+          return false;
+        }
+
+        const userLat = parseFloat(window.currentUserCoords.lat);
+        const userLon = parseFloat(window.currentUserCoords.lon);
+
+        filtered = filtered.filter((p) => {
+          if (!p.lat || !p.lon) return false;
+
+          const plat = parseFloat(p.lat.toString().replace(",", "."));
+          const plon = parseFloat(p.lon.toString().replace(",", "."));
+          if (isNaN(plat) || isNaN(plon)) return false;
+
+          const d = distance(userLat, userLon, plat, plon);
+          return d <= r;
+        });
+        
+        console.log(`✅ Đã lọc theo bán kính ${r}km, còn ${filtered.length} quán`);
+      }
+    } else {
+      console.log('ℹ️ Không lọc bán kính, hiển thị tất cả kết quả');
     }
-
-    const userLat = parseFloat(window.currentUserCoords.lat);
-    const userLon = parseFloat(window.currentUserCoords.lon);
-
-    // 🔍 Lọc quán theo bán kính
-    filtered = filtered.filter((p) => {
-      if (!p.lat || !p.lon) return false;
-
-      const plat = parseFloat(p.lat.toString().replace(",", "."));
-      const plon = parseFloat(p.lon.toString().replace(",", "."));
-      if (isNaN(plat) || isNaN(plon)) return false;
-
-      const d = distance(userLat, userLon, plat, plon);
-      return d <= r;
-    });
-    
-    console.log(`✅ Đã lọc theo bán kính ${r}km, còn ${filtered.length} quán`);
-  }
-} else {
-  // 🔥 QUAN TRỌNG: Nếu KHÔNG CHỌN bán kính → KHÔNG CHECK GPS
-  console.log('ℹ️ Không lọc bán kính, hiển thị tất cả kết quả');
-}
 
     const ok = displayPlaces(filtered, shouldZoom);
     return ok;
@@ -3058,8 +3111,21 @@ window.flyToPlaceFromPlanner = function(lat, lon, placeId, placeName) {
 
   // ✅ HÀM TÌM DATA QUÁN
   function findPlaceData() {
-    console.log('🔍 Tìm data quán trong allPlacesData...');
-    
+    console.log('🔍 Tìm data quán (ưu tiên cache của planner trước).');
+
+    const pid = (placeId !== undefined && placeId !== null) ? String(placeId) : null;
+
+    // 0️⃣ Ưu tiên lấy từ cache của plan (KHÔNG phụ thuộc allPlacesData)
+    if (pid && window.plannerPlacesById && window.plannerPlacesById[pid]) {
+      console.log('✅ Tìm thấy data trong plannerPlacesById theo ID:', pid);
+      return window.plannerPlacesById[pid];
+    }
+    if (placeName && window.plannerPlacesById && window.plannerPlacesById[String(placeName)]) {
+      console.log('✅ Tìm thấy data trong plannerPlacesById theo tên:', placeName);
+      return window.plannerPlacesById[String(placeName)];
+    }
+
+    // 1️⃣ Fallback: tìm trong allPlacesData (danh sách search hiện tại)
     if (typeof allPlacesData === 'undefined' || !allPlacesData || allPlacesData.length === 0) {
       console.error('❌ allPlacesData không tồn tại hoặc rỗng');
       return null;
@@ -3067,41 +3133,38 @@ window.flyToPlaceFromPlanner = function(lat, lon, placeId, placeName) {
 
     let foundPlace = null;
 
-    // Tìm theo ID
-    if (placeId) {
-      foundPlace = allPlacesData.find(p => p.data_id === placeId);
+    // Tìm theo ID (so sánh string để khỏi lỗi number vs string)
+    if (pid) {
+      foundPlace = allPlacesData.find(p => String(p.data_id) === pid);
       if (foundPlace) {
-        console.log('✅ Tìm thấy data theo ID:', placeId);
+        console.log('✅ Tìm thấy data theo ID trong allPlacesData:', pid);
         return foundPlace;
       }
     }
 
     // Tìm theo tên
     if (placeName) {
-      foundPlace = allPlacesData.find(p => p.ten_quan === placeName);
+      foundPlace = allPlacesData.find(p => String(p.ten_quan) === String(placeName));
       if (foundPlace) {
-        console.log('✅ Tìm thấy data theo tên:', placeName);
+        console.log('✅ Tìm thấy data theo tên trong allPlacesData:', placeName);
         return foundPlace;
       }
     }
 
-    // Tìm theo tọa độ
+    // (GIỮ NGUYÊN đoạn tìm theo tọa độ của bạn ở dưới)
     foundPlace = allPlacesData.find(p => {
       const pLat = parseFloat(p.lat);
       const pLon = parseFloat(p.lon);
       if (isNaN(pLat) || isNaN(pLon)) return false;
-      
+
       const dist = Math.sqrt(
-        Math.pow(pLat - lat, 2) + 
+        Math.pow(pLat - lat, 2) +
         Math.pow(pLon - lon, 2)
       );
       return dist < 0.00001;
     });
 
-    if (foundPlace) {
-      console.log('✅ Tìm thấy data theo tọa độ');
-    }
-
+    if (foundPlace) console.log('✅ Tìm thấy data theo tọa độ');
     return foundPlace;
   }
 
@@ -3258,6 +3321,17 @@ showMarkersForPlaceIds = function (plan) {
       placesInPlan.push({ id, place });
     }
 
+    // ✅ Cache data quán của plan để click card vẫn có data dù search làm mất marker
+    if (!window.plannerPlacesById) window.plannerPlacesById = {};
+    placesInPlan.forEach(({ id, place }) => {
+      if (!place) return;
+
+      // key theo id / data_id / tên (đều stringify cho chắc)
+      if (id) window.plannerPlacesById[String(id)] = place;
+      if (place.data_id) window.plannerPlacesById[String(place.data_id)] = place;
+      if (place.ten_quan) window.plannerPlacesById[String(place.ten_quan)] = place;
+    });
+    
     if (placesInPlan.length === 0) {
       console.log("⚠️ Plan không có quán nào để vẽ marker.");
       return;

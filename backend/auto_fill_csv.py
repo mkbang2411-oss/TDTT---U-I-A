@@ -1,8 +1,8 @@
 import csv
 
 # ===== TÙY CHỈNH Ở ĐÂY =====
-START_ROW = 1601  # Dòng bắt đầu (không tính header)
-END_ROW = 1700    # Dòng kết thúc (không tính header)
+START_ROW = 901  # Dòng bắt đầu (không tính header)
+END_ROW = 1000    # Dòng kết thúc (không tính header)
 CSV_FILE = "Data_with_flavor.csv"   # Tên file CSV cần chỉnh sửa
 # ============================
 

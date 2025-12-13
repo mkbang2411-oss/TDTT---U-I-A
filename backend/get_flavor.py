@@ -30,17 +30,17 @@ END_ROW   = 2548      # ví dụ: 20
 rules = {
     "cay": [
         "sa tế", "lẩu thái", "kim chi", "curry", "cà ri",
-        "ớt hiểm", "hạt tiêu", "mì cay","mỳ cay",
+        "ớt hiểm", "hạt tiêu", "mì cay","mỳ cay","jollibee","texas",
         "ớt", "huế", "spicy", "chili"
     ],
     "mặn": [
         "bánh canh", "bánh mì", "cơm tấm", "bò kho","sủi cảo","há cảo","dimsum","bánh xèo","gà rán",
-        "trứng muối", "mặn", "phở", "sườn", "bún", "lẩu","hủ tiếu",
+        "trứng muối", "mặn", "phở", "sườn", "bún", "lẩu","hủ tiếu","jollibee","texas",
         "fish sauce", "soy sauce","cháy tỏi","chay toi","rang muối","rang muoi"
     ],
     "ngọt": [
         "bánh ngọt", "trà sữa", "sữa chua", "sữa tươi","sủi cảo","há cảo","dimsum","gà rán",
-        "bánh flan", "ngọt", "bánh", "cake", "chè", "kem",
+        "bánh flan", "ngọt", "bánh", "cake", "chè", "kem","jollibee","texas",
         "matcha", "kẹo", "bakery", "caramel", "sweet","bánh xèo",
         "chocolate", "crème brûlée", "creme brulee"
     ],

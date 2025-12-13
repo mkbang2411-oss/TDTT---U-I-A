@@ -14,8 +14,8 @@ PROJECT_ROOT = os.path.dirname(BASE_DIR)
 REVIEWS_FILE = os.path.join(PROJECT_ROOT, "user_management", "user_reviews.json")
 
 # 🎯 Tự chỉnh start / end ngay tại đây
-START_ROW = 2367
-END_ROW = 2457
+START_ROW = 2457
+END_ROW = 2463
 
 # 🔒 Sử dụng đúng 16 review (chuẩn Option B)
 MAX_REVIEWS = 16
