@@ -1731,7 +1731,6 @@ function clearAllMarkers() {
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU (FIXED VERSION)
 // =======================================================
-
 async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", shouldZoom = true) {
   try {
     // 🔥 THÊM ĐOẠN NÀY Ở ĐẦU HÀM
@@ -1756,18 +1755,16 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
     const res = await fetch("/api/places");
     let data = await res.json();
 
-
-    // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH (chỉ bỏ dấu phụ như ă, ơ, ê)
+    // ⭐ NORMALIZE GIỮNGUYÊN DẤU THANH
     function normalizeKeepTone(str) {
       return str
         .toLowerCase()
         .trim()
-        // Chỉ chuẩn hóa đ → d
         .replace(/đ/g, "d")
         .replace(/Đ/g, "D");
     }
 
-    // ⭐ NORMALIZE BỎ HOÀN TOÀN DẤU (dùng cho fuzzy search)
+    // ⭐ NORMALIZE BỎ HOÀN TOÀN DẤU
     function normalizeRemoveAll(str) {
       return str
         .normalize("NFD")
@@ -1778,125 +1775,138 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
         .trim();
     }
 
-    // ⭐ ESCAPE REGEX đặc biệt characters
-    function escapeRegex(str) {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // 🆕 HÀM KIỂM TRA MATCH CHÍNH XÁC TOÀN BỘ TỪ (WORD EXACT MATCH)
+    function matchesExactWord(text, queryWord) {
+      // Tách text thành các từ (tách bằng space, dấu câu, v.v.)
+      const words = text.split(/[\s\-_,\.\/\(\)\[\]]+/).filter(Boolean);
+      
+      // Kiểm tra xem có từ nào KHỚP CHÍNH XÁC với queryWord không
+      return words.some(word => word === queryWord);
     }
 
-     let filtered = data;
+    // 🆕 HÀM KIỂM TRA TẤT CẢ CÁC TỪ TRONG QUERY ĐỀU MATCH CHÍNH XÁC
+    function matchesAllWordsExactly(text, queryWords) {
+      return queryWords.every(qWord => matchesExactWord(text, qWord));
+    }
 
-    // ========== 1️⃣ Tìm theo tên HOẶC mô tả (có rút ngắn dần) ==========
-    if (query) {
+    // 🆕 HÀM KIỂM TRA CỤM TỪ LIỀN NHAU (PHRASE MATCH) - CHỈ MATCH TỪ ĐẦY ĐỦ
+    function matchesPhraseWithWordBoundary(text, phrase) {
+      // Escape các ký tự đặc biệt trong regex
+      const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      // Tạo regex với word boundary: \b phrase \b
+      // \b đảm bảo trước và sau phrase là ranh giới từ (space, dấu câu, đầu/cuối chuỗi)
+      const regex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
+      
+      return regex.test(text);
+    }
+
+    // 🆕 HÀM TÌM KIẾM THÔNG MINH (MATCH CHÍNH XÁC TỪ)
+    function smartSearch(places, query) {
       const queryKeepTone = normalizeKeepTone(query);
       const queryNoTone = normalizeRemoveAll(query);
-
-      // --- Bước 1: thử exact-match với chuỗi đầy đủ (giữ dấu thanh) ---
-      // ✅ TÌM TRONG TÊN QUÁN + MÔ TẢ
-      const exactMatches = data.filter((p) => {
+      
+      // Tách query thành các từ
+      const queryWordsNoTone = queryNoTone.split(/\s+/).filter(Boolean);
+      
+      // 🎯 LEVEL 1: Exact phrase match với word boundary (giữ dấu thanh)
+      let results = places.filter((p) => {
         const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
         const moTaKeepTone = normalizeKeepTone(p.mo_ta || "");
-        return nameKeepTone.includes(queryKeepTone) || moTaKeepTone.includes(queryKeepTone);
+        
+        return matchesPhraseWithWordBoundary(nameKeepTone, queryKeepTone) || 
+               matchesPhraseWithWordBoundary(moTaKeepTone, queryKeepTone);
       });
-
-      if (exactMatches.length > 0) {
-        filtered = exactMatches;
-        console.log("✅ Exact match found:", exactMatches.length);
-      } else {
-        // --- Chuẩn bị query không dấu + xử lý trường hợp người dùng gõ liền chữ ---
-        let normalizedQuery = queryNoTone;
-
-        // Giữ logic cũ: tự chèn khoảng trắng nếu user gõ liền (vd: "bundaubac")
-        if (!normalizedQuery.includes(" ")) {
-          const possibleMatches = data.map((p) =>
-            normalizeRemoveAll(p.ten_quan || "")
-          );
-          const splitVariants = [];
-
-          for (let i = 1; i < normalizedQuery.length; i++) {
-            splitVariants.push(
-              normalizedQuery.slice(0, i) + " " + normalizedQuery.slice(i)
-            );
-          }
-          for (const variant of splitVariants) {
-            if (possibleMatches.some((name) => name.includes(variant))) {
-              normalizedQuery = variant;
-              break;
-            }
-          }
-        }
-
-        // Chuẩn bị dữ liệu cho Fuse chỉ 1 lần
-         const fuse = new Fuse(
-          data.map((p) => ({
-            ...p,
-            ten_quan_no_dau: normalizeRemoveAll(p.ten_quan || ""),
-            mo_ta_no_dau: normalizeRemoveAll(p.mo_ta || "")
-          })),
-          {
-            keys: ["ten_quan_no_dau", "mo_ta_no_dau"], // ✅ TÌM TRONG CẢ 2 TRƯỜNG
-            threshold: 0.35,   // khá strict
-            ignoreLocation: true,
-            includeScore: true,
-          }
-        );
-
-        // Hàm chạy fuzzy + lọc cho 1 câu query đã normalize (không dấu)
-        function runFuzzy(normQ) {
-          const fuzzyResults = fuse.search(normQ);
-          const queryWords = normQ.split(" ").filter(Boolean);
-
-          return fuzzyResults
-            .map((r) => r.item)
-            .filter((p) => {
-              const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
-              const moTaNoTone = normalizeRemoveAll(p.mo_ta || ""); // ✅ THÊM MÔ TẢ
-              
-              const hasPhrase = nameNoTone.includes(normQ) || moTaNoTone.includes(normQ); // ✅ CHECK CẢ 2
-              const hasAllWords = queryWords.every((w) =>
-                nameNoTone.includes(w) || moTaNoTone.includes(w) // ✅ CHECK CẢ 2
-              );
-
-              // Query nhiều từ: cho pass nếu chứa cụm hoặc đủ các từ
-              if (queryWords.length >= 2) {
-                return hasPhrase || hasAllWords;
-              }
-              // Query 1 từ: chỉ cần chứa từ đó
-              return hasPhrase;
-            });
-        }
-
-        // --- Bước 2: thử với chuỗi đầy đủ ---
-        let currentNorm = normalizedQuery;
-        let currentWords = currentNorm.split(" ").filter(Boolean);
-        let results = runFuzzy(currentNorm);
-        console.log(
-          `🔍 Fuzzy với "${currentNorm}" =>`,
-          results.length,
-          "kết quả"
-        );
-
-        // --- Bước 3: nếu không ra kết quả thì rút bớt từ cuối dần ---
-        // VD: "bun thit nuong cha gio" -> "bun thit nuong cha" -> "bun thit nuong" -> ...
-        while (results.length === 0 && currentWords.length > 1) {
-          currentWords.pop(); // bỏ bớt 1 từ cuối
-          currentNorm = currentWords.join(" ");
-          results = runFuzzy(currentNorm);
-          console.log(
-            `🔁 Thử lại với "${currentNorm}" =>`,
-            results.length,
-            "kết quả"
-          );
-        }
-
-        filtered = results;
-        console.log(
-          "✅ Query cuối cùng dùng để filter:",
-          `"${currentNorm}"`,
-          "=>",
-          filtered.length,
-          "kết quả"
-        );
+      
+      if (results.length > 0) {
+        console.log("✅ Found with exact phrase match (keep tone):", results.length);
+        return results;
       }
+      
+      // 🎯 LEVEL 2: Exact phrase match với word boundary (bỏ dấu)
+      results = places.filter((p) => {
+        const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+        const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+        
+        return matchesPhraseWithWordBoundary(nameNoTone, queryNoTone) || 
+               matchesPhraseWithWordBoundary(moTaNoTone, queryNoTone);
+      });
+      
+      if (results.length > 0) {
+        console.log("✅ Found with exact phrase match (no tone):", results.length);
+        return results;
+      }
+      
+      // 🎯 LEVEL 3: Tất cả các từ đều match chính xác (bỏ dấu)
+      if (queryWordsNoTone.length >= 2) {
+        results = places.filter((p) => {
+          const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+          const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+          
+          return matchesAllWordsExactly(nameNoTone, queryWordsNoTone) || 
+                 matchesAllWordsExactly(moTaNoTone, queryWordsNoTone);
+        });
+        
+        if (results.length > 0) {
+          console.log("✅ Found with all words exact match:", results.length);
+          return results;
+        }
+      }
+      
+      // 🎯 LEVEL 4: Rút dần từ cuối + match chính xác
+      return reduceAndSearchExact(places, queryWordsNoTone);
+    }
+
+    // 🆕 HÀM RÚT DẦN + MATCH CHÍNH XÁC
+    function reduceAndSearchExact(places, queryWords) {
+      let words = [...queryWords]; // Copy mảng
+      
+      while (words.length > 0) {
+        const currentQuery = words.join(" ");
+        console.log(`🔍 Trying: "${currentQuery}"`);
+        
+        // Thử match phrase đầy đủ với word boundary
+        let results = places.filter((p) => {
+          const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+          const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+          
+          return matchesPhraseWithWordBoundary(nameNoTone, currentQuery) || 
+                 matchesPhraseWithWordBoundary(moTaNoTone, currentQuery);
+        });
+        
+        if (results.length > 0) {
+          console.log(`✅ Found with phrase: "${currentQuery}" =>`, results.length);
+          return results;
+        }
+        
+        // Thử match từng từ chính xác
+        results = places.filter((p) => {
+          const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+          const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+          
+          return matchesAllWordsExactly(nameNoTone, words) || 
+                 matchesAllWordsExactly(moTaNoTone, words);
+        });
+        
+        if (results.length > 0) {
+          console.log(`✅ Found with exact words: "${currentQuery}" =>`, results.length);
+          return results;
+        }
+        
+        // ❌ Không tìm thấy → Rút bớt 1 từ cuối
+        words.pop();
+        console.log(`🔁 Reducing to: "${words.join(" ")}"`);
+      }
+      
+      console.log("❌ No results found after reduction");
+      return [];
+    }
+
+    let filtered = data;
+
+    // ========== 1️⃣ Tìm theo tên HOẶC mô tả (MATCH CHÍNH XÁC TỪ) ==========
+    if (query) {
+      filtered = smartSearch(data, query);
     }
 
     // ========== 2️⃣ Lọc khẩu vị ==========
@@ -1929,48 +1939,43 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
       });
     }
 
-// ========== 4️⃣ Lọc bán kính ==========
-// 🔥 CHỈ LỌC BÁN KÍNH KHI USER ĐÃ TỰ CHỌN (radio được check)
-if (radius && radius !== "" && radius !== "all") {
-  const r = parseFloat(radius);
-  
-  // ✅ Kiểm tra bán kính hợp lệ
-  if (isNaN(r) || r <= 0) {
-    console.warn('⚠️ Bán kính không hợp lệ, bỏ qua filter');
-  } else {
-    // ✅ CHỈ BẮT NHẬP GPS KHI ĐÃ CHỌN BÁN KÍNH
-    if (
-      !window.currentUserCoords ||
-      !window.currentUserCoords.lat ||
-      !window.currentUserCoords.lon
-    ) {
-      showCustomAlert(
-        "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
-      );
-      return false;
+    // ========== 4️⃣ Lọc bán kính ==========
+    if (radius && radius !== "" && radius !== "all") {
+      const r = parseFloat(radius);
+      
+      if (isNaN(r) || r <= 0) {
+        console.warn('⚠️ Bán kính không hợp lệ, bỏ qua filter');
+      } else {
+        if (
+          !window.currentUserCoords ||
+          !window.currentUserCoords.lat ||
+          !window.currentUserCoords.lon
+        ) {
+          showCustomAlert(
+            "Vui lòng chọn vị trí xuất phát (GPS hoặc nhập địa chỉ) trước khi lọc bán kính!"
+          );
+          return false;
+        }
+
+        const userLat = parseFloat(window.currentUserCoords.lat);
+        const userLon = parseFloat(window.currentUserCoords.lon);
+
+        filtered = filtered.filter((p) => {
+          if (!p.lat || !p.lon) return false;
+
+          const plat = parseFloat(p.lat.toString().replace(",", "."));
+          const plon = parseFloat(p.lon.toString().replace(",", "."));
+          if (isNaN(plat) || isNaN(plon)) return false;
+
+          const d = distance(userLat, userLon, plat, plon);
+          return d <= r;
+        });
+        
+        console.log(`✅ Đã lọc theo bán kính ${r}km, còn ${filtered.length} quán`);
+      }
+    } else {
+      console.log('ℹ️ Không lọc bán kính, hiển thị tất cả kết quả');
     }
-
-    const userLat = parseFloat(window.currentUserCoords.lat);
-    const userLon = parseFloat(window.currentUserCoords.lon);
-
-    // 🔍 Lọc quán theo bán kính
-    filtered = filtered.filter((p) => {
-      if (!p.lat || !p.lon) return false;
-
-      const plat = parseFloat(p.lat.toString().replace(",", "."));
-      const plon = parseFloat(p.lon.toString().replace(",", "."));
-      if (isNaN(plat) || isNaN(plon)) return false;
-
-      const d = distance(userLat, userLon, plat, plon);
-      return d <= r;
-    });
-    
-    console.log(`✅ Đã lọc theo bán kính ${r}km, còn ${filtered.length} quán`);
-  }
-} else {
-  // 🔥 QUAN TRỌNG: Nếu KHÔNG CHỌN bán kính → KHÔNG CHECK GPS
-  console.log('ℹ️ Không lọc bán kính, hiển thị tất cả kết quả');
-}
 
     const ok = displayPlaces(filtered, shouldZoom);
     return ok;
