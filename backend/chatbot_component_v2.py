@@ -5159,7 +5159,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - NEVER write "Cà phê (đá)" - this is nonsense
             - ALWAYS write "Cà phê đá" when user speaks Vietnamese
             
-            - CRITICAL NAMING RULES - READ CAREFULLY:
+            CRITICAL NAMING RULES - READ CAREFULLY:
 
             RULE 1: Dish names - LANGUAGE PRIORITY
             - ALWAYS write dish name in the USER'S LANGUAGE first
@@ -5167,18 +5167,29 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             Examples based on user language:
 
-            If user speaks ENGLISH:
+            **If user speaks ENGLISH:**
+            CORRECT FORMAT: "English Name (Tên Việt)"
             - "Cơm tấm" → "Broken Rice (Cơm tấm)"
+            - "Trà đào" → "Peach Tea (Trà đào)"
+            - "Phở bò" → "Beef Noodle Soup (Phở bò)"
             - "Pizza" → "Pizza" (no Vietnamese needed - already English)
 
             **If user speaks VIETNAMESE:**
-            → CRITICAL: Use ONLY Vietnamese names, NO parentheses, NO translations
-            → The Vietnamese name IS the dish name, don't add anything extra
-            → Format: "Cà phê đá" NOT "Cà phê (đá)" or "Coffee (Cà phê)"
+            CORRECT FORMAT: Just Vietnamese name, NO parentheses
+            - "Cơm tấm" → "Cơm tấm" (NOT "Cơm tấm (Broken Rice)")
+            - "Trà đào" → "Trà đào" (NOT "Trà đào (Peach Tea)")
+            - "Pizza" → "Pizza"
 
-            CORRECT examples:
-            - "Cà phê đá" ← Just Vietnamese, clean and simple
-            - "Phở bò" ← No translation needed
+            **If user speaks CHINESE:**
+            - "咖啡" → "咖啡 (Vietnamese Coffee)"
+
+            **If user speaks JAPANESE:**
+            - "コーヒー" → "コーヒー (Vietnamese Coffee)"
+
+            IMPORTANT DETECTION:
+            - Detect user's language from their message
+            - Match the language style consistently throughout response
+            - Keep dish descriptions also in user's language
 
             IMPORTANT DETECTION:
             - Detect user's language from their message
@@ -5615,14 +5626,18 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         console.log('📁 [CLICK DISH] Đã đóng sidebar lịch sử');
                     }}
                     
-                    // ✅ Trích xuất TÊN TIẾNG VIỆT từ format "Tên nước ngoài (Tên Việt)"
                     let vietnameseName = dishText;
-                    
+
                     // Nếu có dấu ngoặc → lấy phần trong ngoặc
                     const match = dishText.match(/\(([^)]+)\)/);
                     if (match && match[1]) {{
                         vietnameseName = match[1].trim();
                         console.log('✅ Extracted Vietnamese name:', vietnameseName);
+                    }} else {{
+                        // ⚠️ THÊM: Nếu KHÔNG có ngoặc, kiểm tra xem có phải tên Việt không
+                        // Nếu toàn chữ Latin không dấu → có thể là tên tiếng Anh
+                        // → Không làm gì, để nguyên
+                        console.log('⚠️ No parentheses found, using original:', vietnameseName);
                     }}
                     
                     // ✅ Gọi hàm search của map (trong script.js)

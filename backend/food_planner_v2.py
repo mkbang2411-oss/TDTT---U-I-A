@@ -8928,11 +8928,11 @@ function renderChangesWithActions(changes, suggestionId) {
                         <div class="cmp-actions">
                             <button class="cmp-btn cmp-btn-approve"
                                 onclick="approveChange(${suggestionId}, ${index}, 'added', '${change.key}')">
-                                ✅ Chấp nhận
+                                Chấp nhận
                             </button>
                             <button class="cmp-btn cmp-btn-reject"
                                 onclick="rejectChange(${suggestionId}, ${index}, 'added', '${change.key}')">
-                                ❌ Từ chối
+                                Từ chối
                             </button>
                         </div>
                     </div>
@@ -8999,7 +8999,7 @@ function renderChangesWithActions(changes, suggestionId) {
                             </div>
                         </div>
 
-                        <div class="cmp-arrow">⬇️</div>
+                        <div class="cmp-arrow">\n</div>
 
                         <div class="cmp-compare-block" style="border-color: rgba(255,176,132,0.9);">
                             <div class="cmp-compare-label">Sau</div>
@@ -9402,7 +9402,7 @@ async function approveAllChanges(suggestionId) {
             }
             
             // Xác nhận cuối cùng
-            const confirmMsg = `📊 Tổng kết:\n✅ Chấp nhận: ${approvedCount} thay đổi\n❌ Từ chối: ${rejectedCount} thay đổi\n\nXác nhận áp dụng các thay đổi đã chọn?`;
+            const confirmMsg = `📊 Tổng kết:\nChấp nhận: ${approvedCount} thay đổi\nTừ chối: ${rejectedCount} thay đổi\n\nXác nhận áp dụng các thay đổi đã chọn?`;
             
             if (!confirm(confirmMsg)) return;
         }

@@ -858,6 +858,45 @@
             return; // ✅ Dừng ở đây, không chạy tiếp code bên dưới
         }
 
+        // 🔥 THÊM: Xử lý thông báo đề xuất đã được xem xét
+        if (item.type === 'suggestion_reviewed') {
+            closeOverlay();
+            
+            // Đợi popup đóng hoàn toàn trước khi mở Food Planner
+            setTimeout(function() {
+                // Mở Food Planner
+                var plannerBtn = document.getElementById('foodPlannerBtn');
+                if (plannerBtn) {
+                    plannerBtn.click();
+                }
+
+                // Load plan
+                if (item.related_id && typeof loadSavedPlans === 'function') {
+                    setTimeout(function () {
+                        try {
+                            loadSavedPlans(item.related_id, true);
+                            
+                            // Reload suggestions để cập nhật UI
+                            setTimeout(function() {
+                                if (typeof checkPendingSuggestions === 'function') {
+                                    checkPendingSuggestions(item.related_id);
+
+                                    if (typeof checkPendingSuggestion === 'function') {
+                                        checkPendingSuggestion(item.related_id);
+                                    }
+                                }
+                            }, 1500);
+
+                        } catch (e) {
+                            console.error('Lỗi loadSavedPlans', e);
+                        }
+                    }, 350);
+                }
+            }, 100);
+            
+            return; // ✅ Dừng ở đây, không chạy tiếp code bên dưới
+        }
+
         // ✅ CHỜ 300MS ĐỂ POPUP ĐÓNG HOÀN TOÀN TRƯỚC KHI MỞ FOOD PLANNER
         setTimeout(function() {
             // 🌟 3. Mở bubble Food Planner

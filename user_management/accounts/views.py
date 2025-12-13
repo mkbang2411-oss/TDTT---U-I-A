@@ -35,8 +35,9 @@ from .utils import (
     create_friend_request_notification,
     create_shared_plan_notification,
     create_suggestion_notification,
-    create_suggestion_approved_notification,  # ✅ THÊM DÒNG NÀY
-    create_suggestion_rejected_notification   # ✅ THÊM DÒNG NÀY
+    create_suggestion_approved_notification,
+    create_suggestion_rejected_notification,
+    create_suggestion_reviewed_notification
 )
 import time
 import queue
@@ -3312,6 +3313,7 @@ def suggestion_approve_single(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
 @csrf_exempt
 @require_POST
 @login_required
@@ -3380,16 +3382,16 @@ def approve_all_changes_api(request):
         plan.plan_data = current_data
         plan.save()
         
-        # 🔥 QUAN TRỌNG: CẬP NHẬT STATUS SUGGESTION
+        # 🔥 CẬP NHẬT STATUS SUGGESTION
         suggestion.status = 'accepted'
         suggestion.reviewed_at = timezone.now()
         suggestion.save()
         
-        # 🔥 MỚI: TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
+        # 🔥 TỰ ĐỘNG TỪ CHỐI TẤT CẢ ĐỀ XUẤT PENDING KHÁC
         other_pending_suggestions = PlanEditSuggestion.objects.filter(
             shared_plan__food_plan=plan,
             status='pending'
-        ).exclude(id=suggestion_id)
+        ).exclude(id=suggestion_id).select_related('suggested_by')
         
         rejected_count = 0
         for other_sug in other_pending_suggestions:
@@ -3397,11 +3399,74 @@ def approve_all_changes_api(request):
             other_sug.reviewed_at = timezone.now()
             other_sug.save()
             rejected_count += 1
+            
+            # Gửi notification cho người bị từ chối tự động
+            create_suggestion_rejected_notification(
+                user=other_sug.suggested_by,
+                owner_username=request.user.username,
+                plan_id=plan.id,
+                plan_name=plan.name,
+                suggestion_id=other_sug.id
+            )
         
-        print(f"✅ [APPROVE ALL] Updated suggestion {suggestion_id} to 'accepted'")
+        # 🆕 TÍNH TỔNG SỐ THAY ĐỔI CỦA ĐỀ XUẤT (không phải số thay đổi user chọn)
+        # So sánh suggested_data với original_data để đếm tổng số thay đổi
+        original_data = suggestion.original_data
+        
+        # Đếm thay đổi thực tế của đề xuất
+        original_keys = {item['key'] for item in original_data}
+        suggested_keys = {item['key'] for item in suggested_data}
+        
+        added_count = len(suggested_keys - original_keys)  # Key mới
+        removed_count = len(original_keys - suggested_keys)  # Key bị xóa
+        
+        # Đếm modified (cùng key nhưng nội dung khác)
+        modified_count = 0
+        for suggested_item in suggested_data:
+            original_item = next((item for item in original_data if item['key'] == suggested_item['key']), None)
+            if original_item and suggested_item != original_item:
+                modified_count += 1
+        
+        total_suggestion_changes = added_count + removed_count + modified_count
+        
+        print(f"📊 [APPROVE ALL] Suggestion changes: {total_suggestion_changes} (added={added_count}, removed={removed_count}, modified={modified_count})")
+        print(f"📊 [APPROVE ALL] User selected: {len(approved_changes)} changes")
+        print(f"📊 [APPROVE ALL] Successfully applied: {success_count} changes")
+        
+        # 🆕 QUYẾT ĐỊNH GỬI NOTIFICATION NÀO
+        if success_count == total_suggestion_changes and total_suggestion_changes > 0:
+            # ✅ ÁP DỤNG HẾT TẤT CẢ THAY ĐỔI CỦA ĐỀ XUẤT → "approved"
+            create_suggestion_approved_notification(
+                user=suggestion.suggested_by,
+                owner_username=request.user.username,
+                plan_id=plan.id,
+                plan_name=plan.name,
+                suggestion_id=suggestion.id
+            )
+            print(f"✅ [APPROVE ALL] Sent 'approved' notification (ALL {success_count}/{total_suggestion_changes} changes applied)")
+            
+        else:
+            # ⚠️ CHỈ ÁP DỤNG MỘT PHẦN HOẶC KHÔNG ÁP DỤNG → "reviewed"
+            create_suggestion_reviewed_notification(
+                user=suggestion.suggested_by,
+                owner_username=request.user.username,
+                plan_id=plan.id,
+                plan_name=plan.name,
+                suggestion_id=suggestion.id,
+                changes_applied_count=success_count
+            )
+            print(f"✅ [APPROVE ALL] Sent 'reviewed' notification ({success_count}/{total_suggestion_changes} changes applied)")
+        
         print(f"🔥 Auto-rejected {rejected_count} other pending suggestions")
         
-        message = f'Đã áp dụng {success_count} thay đổi'
+        # Message cho response
+        if success_count == total_suggestion_changes and total_suggestion_changes > 0:
+            message = f'Đã áp dụng tất cả {success_count} thay đổi'
+        elif success_count > 0:
+            message = f'Đã áp dụng {success_count}/{total_suggestion_changes} thay đổi'
+        else:
+            message = f'Đã xem xét đề xuất (không áp dụng thay đổi nào)'
+        
         if rejected_count > 0:
             message += f' (Đã tự động từ chối {rejected_count} đề xuất khác)'
         
@@ -3409,6 +3474,7 @@ def approve_all_changes_api(request):
             'status': 'success',
             'message': message,
             'applied_count': success_count,
+            'total_suggestion_changes': total_suggestion_changes,
             'rejected_count': rejected_count
         })
         
@@ -3423,7 +3489,7 @@ def approve_all_changes_api(request):
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        }, status=500)    
+        }, status=500) 
 
 @login_required
 @require_http_methods(["GET"])

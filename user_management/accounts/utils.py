@@ -712,7 +712,7 @@ def create_suggestion_approved_notification(user, owner_username, plan_id, plan_
         }
     )
     
-    # Push SSE
+    # ✅ PUSH SSE VỚI FORMAT ĐÚNG
     if user.id in sse_connections:
         try:
             notification_data = {
@@ -722,6 +722,7 @@ def create_suggestion_approved_notification(user, owner_username, plan_id, plan_
                 'message': notification.message,
                 'is_read': notification.is_read,
                 'created_at': notification.created_at.isoformat(),
+                'read_at': notification.read_at.isoformat() if notification.read_at else None,  # ✅ THÊM
                 'related_id': notification.related_id,
                 'metadata': notification.metadata
             }
@@ -729,6 +730,10 @@ def create_suggestion_approved_notification(user, owner_username, plan_id, plan_
             print(f"✅ Pushed suggestion_approved notification to user {user.username}")
         except queue.Full:
             print(f"⚠️ Queue full for user {user.id}")
+        except Exception as e:
+            print(f"❌ Error pushing SSE: {e}")
+    else:
+        print(f"⚠️ User {user.username} (ID: {user.id}) not in SSE connections")
     
     return notification
 
@@ -756,6 +761,60 @@ def create_suggestion_rejected_notification(user, owner_username, plan_id, plan_
         }
     )
     
+    # ✅ PUSH SSE VỚI FORMAT ĐÚNG
+    if user.id in sse_connections:
+        try:
+            notification_data = {
+                'id': notification.id,
+                'type': notification.notification_type,
+                'title': notification.title,
+                'message': notification.message,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'read_at': notification.read_at.isoformat() if notification.read_at else None,  # ✅ THÊM
+                'related_id': notification.related_id,
+                'metadata': notification.metadata
+            }
+            sse_connections[user.id].put(notification_data)
+            print(f"✅ Pushed suggestion_rejected notification to user {user.username}")
+        except queue.Full:
+            print(f"⚠️ Queue full for user {user.id}")
+        except Exception as e:
+            print(f"❌ Error pushing SSE: {e}")
+    else:
+        print(f"⚠️ User {user.username} (ID: {user.id}) not in SSE connections")
+    
+    return notification
+
+def create_suggestion_reviewed_notification(user, owner_username, plan_id, plan_name, suggestion_id, changes_applied_count=0):
+    """
+    Tạo thông báo khi owner đã xem xét đề xuất (apply một phần hoặc không apply)
+    
+    Args:
+        user: User nhận thông báo (người đã đề xuất)
+        owner_username: Tên chủ sở hữu plan
+        plan_id: ID của plan
+        plan_name: Tên plan
+        suggestion_id: ID của suggestion
+        changes_applied_count: Số lượng thay đổi được áp dụng (optional)
+    """
+    
+    # Tạo message dựa vào số lượng thay đổi
+    message = f'{owner_username} đã xem xét đề xuất của bạn cho plan "{plan_name}"'
+    
+    notification = Notification.objects.create(
+        user=user,
+        notification_type='suggestion_reviewed',  # 🆕 Type mới
+        title='Đề xuất đã được xem xét',
+        message=message,
+        related_id=plan_id,
+        metadata={
+            'suggestion_id': suggestion_id,
+            'owner_username': owner_username,
+            'changes_applied': changes_applied_count
+        }
+    )
+    
     # Push SSE
     if user.id in sse_connections:
         try:
@@ -766,12 +825,17 @@ def create_suggestion_rejected_notification(user, owner_username, plan_id, plan_
                 'message': notification.message,
                 'is_read': notification.is_read,
                 'created_at': notification.created_at.isoformat(),
+                'read_at': notification.read_at.isoformat() if notification.read_at else None,
                 'related_id': notification.related_id,
                 'metadata': notification.metadata
             }
             sse_connections[user.id].put(notification_data)
-            print(f"✅ Pushed suggestion_rejected notification to user {user.username}")
+            print(f"✅ Pushed suggestion_reviewed notification to user {user.username}")
         except queue.Full:
             print(f"⚠️ Queue full for user {user.id}")
+        except Exception as e:
+            print(f"❌ Error pushing SSE: {e}")
+    else:
+        print(f"⚠️ User {user.username} (ID: {user.id}) not in SSE connections")
     
     return notification
