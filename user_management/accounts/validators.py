@@ -3,15 +3,13 @@ from django.utils.translation import gettext as _
 import re
 
 
-# ✅ Danh sách ký tự đặc biệt được phép
-# LƯU Ý: Dấu - PHẢI ĐẶT Ở CUỐI để tránh bị hiểu là range trong regex
-ALLOWED_SPECIAL_CHARS = r'.?_@*&$#!~-'
-SPECIAL_CHARS_DISPLAY = '. - ? _ @ * & $ # ! ~'
+# ✅ Danh sách ký tự đặc biệt được phép (10 ký tự)
+ALLOWED_SPECIAL_CHARS = r'.?_@*&$#!~'
+SPECIAL_CHARS_DISPLAY = '. ? _ @ * & $ # ! ~'
 
 # ✅ Regex pattern cho mật khẩu hợp lệ
 # Chỉ cho phép: chữ cái (a-z, A-Z), chữ số (0-9), và các ký tự đặc biệt được liệt kê
-# LƯU Ý: Dấu - ở cuối character class
-PASSWORD_PATTERN = re.compile(r'^[a-zA-Z0-9.?_@*&$#!~-]+$')
+PASSWORD_PATTERN = re.compile(r'^[a-zA-Z0-9.?_@*&$#!~]+$')
 
 # ✅ Giới hạn độ dài
 MIN_PASSWORD_LENGTH = 6
@@ -61,8 +59,7 @@ def validate_password_format(password):
         return False, 'Mật khẩu phải chứa ít nhất 1 chữ số (0-9)'
     
     # 8. Kiểm tra phải có ít nhất 1 ký tự đặc biệt
-    # LƯU Ý: Dấu - đặt ở cuối để tránh bị hiểu là range
-    special_chars_pattern = r'[.?_@*&$#!~-]'
+    special_chars_pattern = r'[.?_@*&$#!~]'
     if not re.search(special_chars_pattern, password):
         return False, f'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt: {SPECIAL_CHARS_DISPLAY}'
     
@@ -174,12 +171,11 @@ class DigitPasswordValidator:
 class SpecialCharacterPasswordValidator:
     """
     Validator kiểm tra mật khẩu phải chứa ít nhất 1 ký tự đặc biệt
-    Ký tự được phép: . - ? _ @ * & $ # ! ~
+    Ký tự được phép: . ? _ @ * & $ # ! ~
     """
     
     def validate(self, password, user=None):
-        # LƯU Ý: Dấu - đặt ở cuối để tránh bị hiểu là range
-        special_chars_pattern = r'[.?_@*&$#!~-]'
+        special_chars_pattern = r'[.?_@*&$#!~]'
         if not re.search(special_chars_pattern, password):
             raise ValidationError(
                 _(f"Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt: {SPECIAL_CHARS_DISPLAY}"),
