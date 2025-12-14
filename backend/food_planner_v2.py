@@ -5917,25 +5917,27 @@ if (filtersWrapper) {
     }
 
     // 📍 Bán Kính Tìm Kiếm - CHỈ HIỆN KHI TẠO MỚI
-    html += `
-    <div class="planner-radius-card" role="group" aria-label="Bán kính tìm kiếm">
-        <div class="planner-radius-meta">
-        <div class="planner-radius-title-row">
-            <div class="planner-radius-title">Bán kính tìm kiếm</div>
-        </div>
-        <div class="planner-radius-hint">Nhấn “Đổi bán kính” để mở bộ lọc bán kính trên bản đồ.</div>
-        </div>
+    if (!window.loadedFromSavedPlan && !isViewingSharedPlan) {
+        html += `
+        <div class="planner-radius-card" role="group" aria-label="Bán kính tìm kiếm">
+            <div class="planner-radius-meta">
+            <div class="planner-radius-title-row">
+                <div class="planner-radius-title">Bán kính tìm kiếm</div>
+            </div>
+            <div class="planner-radius-hint">Nhấn “Đổi bán kính” để mở bộ lọc bán kính trên bản đồ.</div>
+            </div>
 
-        <div class="planner-radius-actions">
-        <div class="planner-radius-value" id="plannerRadiusValue">
-            ${window.currentRadius || '10'}<span>km</span>
+            <div class="planner-radius-actions">
+            <div class="planner-radius-value" id="plannerRadiusValue">
+                ${window.currentRadius || '10'}<span>km</span>
+            </div>
+            <button type="button" class="planner-radius-btn" onclick="openRadiusPickerFromPlanner()">
+                Đổi bán kính
+            </button>
+            </div>
         </div>
-        <button type="button" class="planner-radius-btn" onclick="openRadiusPickerFromPlanner()">
-            Đổi bán kính
-        </button>
-        </div>
-    </div>
-    `;
+        `;
+    }
         
     // 💰 Tổng Kinh Phí (NEW UI - cam chủ đạo, full width như radius card)
     html += `

@@ -94,19 +94,34 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'OPTIONS': {
+            'min_length': 6,
+        }
     },
     {
         'NAME': 'accounts.validators.NoSpacePasswordValidator',  # ✅ Không cho phép dấu cách
+    },
+    {
+        'NAME': 'accounts.validators.MaxLengthPasswordValidator',  # ✅ Tối đa 32 ký tự
+        'OPTIONS': {
+            'max_length': 32,
+        }
+    },
+    {
+        'NAME': 'accounts.validators.AllowedCharactersPasswordValidator',  # ✅ Chỉ cho phép ký tự hợp lệ
+    },
+    {
+        'NAME': 'accounts.validators.LowercasePasswordValidator',  # ✅ Ít nhất 1 chữ thường
+    },
+    {
+        'NAME': 'accounts.validators.UppercasePasswordValidator',  # ✅ Ít nhất 1 chữ in hoa
+    },
+    {
+        'NAME': 'accounts.validators.DigitPasswordValidator',  # ✅ Ít nhất 1 chữ số
+    },
+    {
+        'NAME': 'accounts.validators.SpecialCharacterPasswordValidator',  # ✅ Ít nhất 1 ký tự đặc biệt
     },
 ]
 
