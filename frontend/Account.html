@@ -1894,9 +1894,9 @@ async function cancelFriendRequest(receiverId, buttonElement) {
         // Người này đã gửi cho mình → Hiện nút Chấp nhận
         buttonHTML = `
           <button 
-            class="btn-accept" 
-            onclick="acceptRequestFromSearch(${user.id})">
-            ✓ Chấp nhận
+            class="btn-vieww" 
+            onclick="showPage('Friend_Page'); switchTab('requests')">
+            👀 Hiển thị
           </button>`;
       } else {
         // Chưa có quan hệ → Hiện nút Kết bạn
