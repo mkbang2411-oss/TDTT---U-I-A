@@ -318,7 +318,7 @@ def reviews_api(request, place_id):
             
             # 🔥 KIỂM TRA NỘI DUNG VỚI GEMINI (nếu có)
             # Uncomment phần này nếu bạn có hàm check_review_content
-            """
+           
             print(f"🤖 [GEMINI] Bắt đầu kiểm tra nội dung...")
             
             try:
@@ -352,7 +352,7 @@ def reviews_api(request, place_id):
                 import traceback
                 traceback.print_exc()
                 print(f"   → Cho phép gửi review (fail-safe mode)\n")
-            """
+            
             
         except json.JSONDecodeError:
             print(f"❌ [ERROR] Lỗi parse JSON\n")
