@@ -2029,7 +2029,11 @@ async function cancelFriendRequest(receiverId, buttonElement) {
               <div class="friend-avatar">👤</div>
               <div>
                 <div class="friend-name">${req.sender_username}</div>
-                <div class="friend-email" data-translate="sent_at">Gửi lúc: ${req.created_at}</div>
+                <div class="friend-email">
+                  <span data-translate="sent_at">Gửi lúc</span>
+                  <span class="sent-time"> ${formatVietnamTime(req.created_at)}</span>
+                </div>
+
               </div>
             </div>
             <div class="btn-group">
@@ -2046,6 +2050,20 @@ async function cancelFriendRequest(receiverId, buttonElement) {
         window.LanguageToggle.applyTranslations();
       }
     }
+
+    function formatVietnamTime(utcTime) {
+      const date = new Date(utcTime + "Z"); // ÉP UTC
+      return date.toLocaleString("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    }
+
+
 
     function renderRequestsPagination() {
       const totalPages = Math.ceil(allFriendRequests.length / FRIENDS_PER_PAGE);
@@ -2429,23 +2447,6 @@ async function cancelFriendRequest(receiverId, buttonElement) {
       }
     });
 
-  
-    document.addEventListener("DOMContentLoaded", () => {
-        // Load language key dùng chung giữa các trang
-        const lang = localStorage.getItem("language") || "vi";
-
-        function applyLangWhenReady() {
-            if (window.LanguageToggle && typeof window.LanguageToggle.setLanguage === "function") {
-                console.log("🌐 LanguageToggle ready → applying:", lang);
-                window.LanguageToggle.setLanguage(lang);
-            } else {
-                console.log("⏳ Waiting for LanguageToggle...");
-                setTimeout(applyLangWhenReady, 80);
-            }
-        }
-
-        applyLangWhenReady();
-    });
     // ✅ Chấp nhận lời mời từ màn hình tìm kiếm
 async function acceptRequestFromSearch(senderId) {
   try {

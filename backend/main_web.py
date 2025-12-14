@@ -5,7 +5,7 @@ from datetime import datetime
 import os, json
 from food_planner_v2 import generate_food_plan, get_food_planner_html
 from music_player_component import get_music_player_html
-from language_toggle_component import get_language_toggle_html 
+from language_toggle_component import get_language_toggle_html, get_language_script_only
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/")
 
@@ -31,9 +31,145 @@ REVIEWS_FILE = os.path.join(BASE_DIR, "reviews.json")
 
 WEB_FILE = os.path.join(BASE_DIR,"../frontend/main_web.html")
 INDEX_FILE = os.path.join(BASE_DIR, "../frontend/index.html")
-ACCOUNT_FILE = os.path.join(BASE_DIR, "../frontend/Account.html")  # ✅ THÊM
+ACCOUNT_FILE = os.path.join(BASE_DIR, "../frontend/Account.html")
 
 LANGUAGES_FILE = os.path.join(BASE_DIR, "languages.json") 
+
+# ============================
+# ✨ TỰ ĐỘNG INJECT LANGUAGE TOGGLE VÀO MỌI HTML
+# ============================
+def inject_language_toggle(html_content):
+    """
+    Tự động inject Language Toggle vào bất kỳ HTML nào
+    ✅ XÓA SẠCH CODE CŨ trước khi inject
+    """
+    import re
+    
+    print("\n🔍 Checking for old language code...")
+    
+    # ============================
+    # 🗑️ XÓA CODE CŨ
+    # ============================
+    
+    # 1️⃣ Xóa localStorage.setItem("selectedLanguage", ...)
+    patterns_to_remove = [
+        r'localStorage\.setItem\s*\(\s*["\']selectedLanguage["\']\s*,.*?\);?',
+        r'localStorage\.getItem\s*\(\s*["\']selectedLanguage["\']\s*\)',
+        r'const\s+savedLang\s*=\s*localStorage\.getItem\(["\']selectedLanguage["\']\).*?;',
+        r'let\s+savedLang\s*=\s*localStorage\.getItem\(["\']selectedLanguage["\']\).*?;',
+        r'var\s+savedLang\s*=\s*localStorage\.getItem\(["\']selectedLanguage["\']\).*?;',
+    ]
+    
+    for pattern in patterns_to_remove:
+        matches = re.findall(pattern, html_content, re.DOTALL)
+        if matches:
+            print(f"   🗑️ Found old code: {pattern[:50]}...")
+            html_content = re.sub(pattern, '', html_content)
+    
+    # 2️⃣ Xóa function syncToggleWithLanguage() HOÀN TOÀN
+    sync_function_pattern = r'function\s+syncToggleWithLanguage\s*\(\s*\)\s*\{[^}]*\}'
+    if re.search(sync_function_pattern, html_content):
+        print("   🗑️ Removing function syncToggleWithLanguage()")
+        html_content = re.sub(sync_function_pattern, '', html_content, flags=re.DOTALL)
+    
+    # 3️⃣ Xóa các dòng gọi syncToggleWithLanguage()
+    sync_call_pattern = r'syncToggleWithLanguage\s*\(\s*\)\s*;?'
+    if re.search(sync_call_pattern, html_content):
+        print("   🗑️ Removing calls to syncToggleWithLanguage()")
+        html_content = re.sub(sync_call_pattern, '', html_content)
+    
+    # 4️⃣ Xóa old checkbox với id="language-toggle"
+    old_checkbox_pattern = r'<input[^>]*id\s*=\s*["\']language-toggle["\'][^>]*>'
+    if re.search(old_checkbox_pattern, html_content):
+        print("   🗑️ Removing old language-toggle checkbox")
+        html_content = re.sub(old_checkbox_pattern, '', html_content)
+    
+    # 5️⃣ Xóa function changeLanguage() cũ (nếu có)
+    change_lang_pattern = r'function\s+changeLanguage\s*\([^)]*\)\s*\{[^}]*localStorage\.setItem\(["\']selectedLanguage["\'][^}]*\}'
+    if re.search(change_lang_pattern, html_content, re.DOTALL):
+        print("   🗑️ Removing old changeLanguage() function")
+        html_content = re.sub(change_lang_pattern, '', html_content, flags=re.DOTALL)
+    
+    # 6️⃣ Xóa event listener cho toggle cũ
+    toggle_listener_pattern = r'document\.getElementById\(["\']language-toggle["\']\)\.addEventListener\([^)]*\)[^;]*;'
+    if re.search(toggle_listener_pattern, html_content):
+        print("   🗑️ Removing old toggle event listener")
+        html_content = re.sub(toggle_listener_pattern, '', html_content)
+    
+    # 7️⃣ 🔥 XÓA CODE LẤY NGÔN NGỮ TỪ TRÌNH DUYỆT (CRITICAL!)
+    browser_lang_patterns = [
+        r'navigator\.language',
+        r'navigator\.languages\[0\]',
+        r'window\.navigator\.language',
+        r'const\s+browserLang\s*=\s*navigator\.language[^;]*;',
+        r'let\s+browserLang\s*=\s*navigator\.language[^;]*;',
+        r'var\s+browserLang\s*=\s*navigator\.language[^;]*;',
+        # Pattern phức tạp: const lang = navigator.language.split('-')[0];
+        r'(const|let|var)\s+\w+\s*=\s*navigator\.language\.split\([^)]*\)\[0\]\s*;',
+    ]
+    
+    for pattern in browser_lang_patterns:
+        if re.search(pattern, html_content):
+            print(f"   🔥 CRITICAL: Found browser language detection! Removing...")
+            html_content = re.sub(pattern, '', html_content)
+    
+    # 8️⃣ Tìm và cảnh báo nếu có code set language từ navigator
+    if 'navigator.language' in html_content or 'navigator.languages' in html_content:
+        print("   ⚠️⚠️⚠️ WARNING: Still found navigator.language in HTML!")
+        print("   ⚠️⚠️⚠️ This may cause auto-switching to browser language!")
+        print("   ⚠️⚠️⚠️ Please manually remove it from the HTML file!")
+    
+    # ============================
+    # ✅ INJECT CODE MỚI
+    # ============================
+    
+    has_toggle_container = 'language-toggle-container' in html_content
+    is_main_web = 'main_web' in html_content.lower() or 'id="map"' in html_content
+    
+    if is_main_web:
+        # ✅ MAIN_WEB.HTML: Inject FULL component (có nút toggle)
+        if has_toggle_container:
+            print("   ℹ️ Language toggle already exists, skipping inject")
+            return html_content
+        
+        from language_toggle_component import get_language_toggle_html
+        language_toggle_html = get_language_toggle_html()
+        
+        if '<body>' in html_content:
+            html_content = html_content.replace(
+                '<body>',
+                f'<body>\n{language_toggle_html}\n',
+                1
+            )
+            print("   ✅ Language toggle injected (main_web.html)")
+        elif '</body>' in html_content:
+            html_content = html_content.replace(
+                '</body>',
+                f'{language_toggle_html}\n</body>',
+                1
+            )
+            print("   ✅ Language toggle injected (fallback)")
+    
+    else:
+        # ✅ CÁC TRANG KHÁC: Chỉ inject SCRIPT (không có nút)
+        if has_toggle_container:
+            print("   🗑️ Removing language toggle container from secondary page")
+            # Xóa toàn bộ div#language-toggle-container
+            pattern = r'<div id="language-toggle-container">.*?</div>\s*<style>.*?</style>\s*<script>.*?</script>\s*<!-- .*? -->'
+            html_content = re.sub(pattern, '', html_content, flags=re.DOTALL)
+        
+        from language_toggle_component import get_language_script_only
+        script_only = get_language_script_only()
+        
+        if '</body>' in html_content:
+            html_content = html_content.replace(
+                '</body>',
+                f'{script_only}\n</body>',
+                1
+            )
+            print("   ✅ Language script injected (secondary page - no UI)")
+    
+    return html_content
 
 # ============================
 # 🌐 API: SERVE FILE NGÔN NGỮ
@@ -190,10 +326,14 @@ def get_food_plan():
 @app.route("/")
 def serve_index():
     """Serve trang chính với chatbot + food planner tích hợp"""
-    # Đọc file HTML gốc
+    print("\n📄 Serving: main_web.html")
+    
     with open(WEB_FILE, "r", encoding="utf-8") as f:
         html_content = f.read()
     
+    # ✅ Inject Language Toggle TRƯỚC (ở đầu <body>)
+    html_content = inject_language_toggle(html_content)
+
     # Lấy chatbot HTML
     chatbot_html = get_chatbot_html(GEMINI_API_KEY)
     
@@ -201,19 +341,17 @@ def serve_index():
     food_planner_html = get_food_planner_html()
 
     music_player_html = get_music_player_html()
-
-    language_toggle_html = get_language_toggle_html()
     
-    # Inject vào div#insert-chatbot-and-map thay vì </body>
+    # Inject vào div#insert-chatbot-and-map
     insert_point = '<div id="insert-chatbot-and-map">'
     if insert_point in html_content:
         html_content = html_content.replace(
             insert_point,
-            f'{insert_point}\n{chatbot_html}\n{food_planner_html}\n{music_player_html}\n{language_toggle_html}'
+            f'{insert_point}\n{chatbot_html}\n{food_planner_html}\n{music_player_html}'
         )
     else:
         # Fallback: inject trước </body> nếu không tìm thấy
-        html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}\n{music_player_html}\n{language_toggle_html}</body>")
+        html_content = html_content.replace("</body>", f"{chatbot_html}\n{food_planner_html}\n{music_player_html}</body>")
     
     return html_content
 
@@ -221,33 +359,65 @@ def serve_index():
 @app.route("/Account.html")
 def serve_account():
     """Serve trang account với language toggle"""
+    print("\n📄 Serving: Account.html")
+    
     try:
-        with open("../frontend/Account.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
+        # ✅ KIỂM TRA FILE TỒN TẠI TRƯỚC
         if not os.path.exists(ACCOUNT_FILE):
             print(f"❌ Không tìm thấy Account.html tại: {ACCOUNT_FILE}")
             return "Account page not found", 404
         
-        # Thêm language toggle vào trang account
-        language_toggle_html = get_language_toggle_html()
-        # Tìm vị trí inject tốt nhất (sau <body> tag)
-        if '<body>' in html_content:
-            html_content = html_content.replace(
-                '<body>',
-                f'<body>\n{language_toggle_html}\n',
-                1  # Chỉ replace lần đầu tiên
-            )
-        else:
-            # Fallback: inject trước </body>
-            html_content = html_content.replace("</body>", f"{language_toggle_html}</body>")
+        # ✅ SAU ĐÓ MỚI MỞ FILE
+        with open(ACCOUNT_FILE, "r", encoding="utf-8") as f:
+            html_content = f.read()
         
-        print("✅ Language toggle injected vào Account.html")
+        # ✅ Inject Language Toggle
+        html_content = inject_language_toggle(html_content)
+
         return html_content
+        
     except FileNotFoundError:
         return "Account page not found", 404
 
+# ============================
+# ✨ SERVE CÁC FILE HTML TRONG user_management/templates
+# ============================
+@app.route("/accounts/<path:filename>")
+def serve_user_management_html(filename):
+    """
+    Tự động serve và inject language toggle vào tất cả HTML trong user_management
+    Ví dụ: /accounts/login/, /accounts/signup/, etc.
+    """
+    print(f"\n📄 Serving: user_management/templates/{filename}")
+    
+    # Đường dẫn đến file
+    template_path = os.path.join(BASE_DIR, "user_management", "templates", filename)
+    
+    # Nếu không có extension, thử thêm .html
+    if not os.path.exists(template_path) and not filename.endswith('.html'):
+        template_path = os.path.join(BASE_DIR, "user_management", "templates", f"{filename}.html")
+    
+    if not os.path.exists(template_path):
+        return "Page not found", 404
+    
+    try:
+        with open(template_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        
+        # ✅ Tự động inject Language Toggle nếu là file HTML
+        if template_path.endswith('.html'):
+            html_content = inject_language_toggle(html_content)
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"❌ Lỗi đọc file: {e}")
+        return f"Error loading page: {str(e)}", 500
+
+# ✅ CHỈ GIỮ 1 ROUTE serve_static_files
 @app.route("/<path:path>")
 def serve_static_files(path):
+    """Serve các file static khác (CSS, JS, images, etc.)"""
     return send_from_directory("../frontend", path)
 
 # ============================
@@ -257,25 +427,28 @@ if __name__ == "__main__":
     print(f"📂 Đang chạy Flask tại: {os.path.abspath(BASE_DIR)}")
     print(f"📄 File CSV: {os.path.exists(CSV_FILE)}")
     print(f"📄 File reviews.json: {os.path.exists(REVIEWS_FILE)}")
-    print(f"🤖 Chatbot đã được tích hợp!")
-    print(f"🍽️ Food Planner đã được tích hợp!")
-    print(f"🎵 Music player đã được tích hợp!")
     print(f"📄 Languages File: {'✅ Found' if os.path.exists(LANGUAGES_FILE) else '⚠️ Not Found (using defaults)'}")
     print("=" * 60)
     print("🎉 COMPONENTS LOADED:")
     print("   ✅ Chatbot Component")
     print("   ✅ Food Planner Component")
     print("   ✅ Music Player Component")
-    print("   ✅ Language Toggle Component")
+    print("   ✅ Language Toggle Component (V2 - Real-time Sync) 🆕")
     print("=" * 60)
     print("🌐 API ENDPOINTS:")
-    print("   • GET  /                    → Main page")
+    print("   • GET  /                    → Main page (main_web.html)")
     print("   • GET  /account             → Account page")
+    print("   • GET  /accounts/<file>     → User management pages")
     print("   • GET  /api/places          → Get restaurant list")
     print("   • GET  /api/reviews/<id>    → Get reviews")
     print("   • GET  /api/food-plan       → Generate food plan")
     print("   • GET  /languages.json      → Get translations")
     print("=" * 60)
+    print("✨ AUTO-INJECT FEATURES:")
+    print("   • Language Toggle → All HTML pages")
+    print("   • Real-time sync → Between all tabs")
+    print("   • Auto cleanup → Remove old scripts")
+    print("=" * 60)
     print("🔥 Server running at: http://localhost:5000")
     print("=" * 60)
-    app.run(host='0.0.0.0', port=5000, debug=False)  # ← Tắt debug
+    app.run(host='0.0.0.0', port=5000, debug=False)
