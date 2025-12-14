@@ -180,7 +180,7 @@ class JigsawPuzzle {
     const resetBtn = document.createElement('button');
     resetBtn.id = 'btnResetProgress';
     resetBtn.className = 'btn-shuffle';
-    resetBtn.innerHTML = '🔄 Chơi lại';
+    resetBtn.innerHTML = 'Chơi lại';
     resetBtn.style.background = '#ef4444';
     
     resetBtn.addEventListener('click', () => this.resetProgress());
@@ -750,7 +750,7 @@ async showFoodStoryModal(mapName) {
     
     // Tạo HTML Variants
     const variantsHTML = story.variants.map(variant => 
-      `<span class="variant-tag">${variant}</span>`
+      `<span class="variant-tag" data-search="${variant}" style="cursor:pointer;">${variant}</span>`
     ).join('');
     
     modal.innerHTML = `
@@ -761,7 +761,19 @@ async showFoodStoryModal(mapName) {
           <img src="${story.image_url}" alt="${story.title}" />
           <div class="story-title-section">
             <h2>${story.title}</h2>
-            <p class="story-origin">📍 ${story.origin_region}</p>
+            <p class="story-origin">${story.origin_region}</p>
+            
+            ${story.video_url ? `
+              <div class="story-video-frame">
+                <iframe 
+                  src="${story.video_url}" 
+                  title="${story.title} Video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowfullscreen>
+                </iframe>
+              </div>
+            ` : ''}
+            
             ${story.unesco_recognized ? `
               <div class="unesco-badge">
                 🏆 ${story.recognition_text}
@@ -772,32 +784,23 @@ async showFoodStoryModal(mapName) {
         
         <div class="story-body">
           <section class="story-section">
-            <h3>📜 Lịch Sử Hình Thành</h3>
+            <h3>Lịch Sử Hình Thành</h3>
             <p class="story-text">${story.history.trim()}</p>
           </section>
           
           <section class="story-section">
-            <h3>💡 Fun Facts</h3>
+            <h3>Fun Facts</h3>
             <ul class="fun-facts-list">
               ${funFactsHTML}
             </ul>
           </section>
           
           <section class="story-section">
-            <h3>🍽️ Các Biến Thể Phổ Biến</h3>
+            <h3>Các Biến Thể Phổ Biến</h3>
             <div class="variants-container">
               ${variantsHTML}
             </div>
           </section>
-          
-          ${story.video_url ? `
-            <section class="story-section">
-              <h3>🎥 Video Giới Thiệu</h3>
-              <a href="${story.video_url}" target="_blank" class="btn-watch-video">
-                Xem video →
-              </a>
-            </section>
-          ` : ''}
         </div>
       </div>
     `;
@@ -807,6 +810,37 @@ async showFoodStoryModal(mapName) {
     // Event đóng modal
     const closeBtn = modal.querySelector('.story-close-btn');
     closeBtn.addEventListener('click', () => modal.remove());
+
+    // ✅ Event click vào variant tags
+    const variantTags = modal.querySelectorAll('.variant-tag');
+    variantTags.forEach(tag => {
+      tag.addEventListener('click', () => {
+        const searchText = tag.dataset.search;
+        
+        // Đóng modal Food Story
+        modal.remove();
+        
+        // Đóng Mini Game overlay
+        const miniGameOverlay = document.getElementById('miniGameOverlay');
+        if (miniGameOverlay) {
+          miniGameOverlay.classList.add('hidden');
+        }
+        
+        // Điền vào ô search
+        const searchInput = document.getElementById('query');
+        if (searchInput) {
+          searchInput.value = searchText;
+        }
+        
+        // Tự động click nút tìm kiếm
+        setTimeout(() => {
+          const btnSearch = document.getElementById('btnSearch');
+          if (btnSearch) {
+            btnSearch.click();
+          }
+        }, 300);
+      });
+    });
     
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.remove();

@@ -9,7 +9,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
   z-index: 10000000;
   display: flex;
   align-items: center;
@@ -23,16 +24,20 @@
   opacity: 0;
 }
 
-/* Wrapper chính */
+/* Wrapper chính - Gradient cam nhạt hơn */
 .mini-game-wrapper {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 20px;
-  padding: 20px;
+  background: linear-gradient(135deg, #FFD4B8 0%, #FFBC94 100%);
+  border-radius: 28px;
+  padding: 24px;
   max-width: 95%;
   max-height: 95%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 
+    0 20px 60px rgba(255, 150, 100, 0.35),
+    0 10px 35px rgba(180, 120, 80, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 235, 220, 0.5);
 }
 
 /* Header mini game */
@@ -40,38 +45,51 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .mini-game-home-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   background: rgba(255, 255, 255, 0.95);
-  border: none;
-  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 235, 220, 0.6);
+  border-radius: 14px;
   font-size: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .mini-game-home-btn:hover {
-  background: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  background: #FFFFFF;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 8px 25px rgba(255, 150, 100, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border-color: #FFBC94;
+}
+
+.mini-game-home-btn:active {
+  transform: translateY(-1px) scale(1.02);
 }
 
 .mini-game-title {
   color: white;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
   margin: 0;
   flex: 1;
   text-align: center;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 4px 12px rgba(180, 120, 80, 0.25);
+  letter-spacing: -0.02em;
 }
 
 /* Content area */
@@ -81,7 +99,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  gap: 20px; /* Khoảng cách giữa map selector và board */
+  gap: 20px;
 }
 
 /* Game container */
@@ -94,64 +112,83 @@
 
 /* Game header (timer, moves) */
 .mini-game-overlay .game-header {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 15px 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px);
+  padding: 16px 32px;
+  border-radius: 20px;
+  box-shadow: 
+    0 4px 20px rgba(255, 150, 100, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   display: flex;
-  gap: 30px;
+  gap: 35px;
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
+  border: 1px solid rgba(255, 235, 220, 0.6);
 }
 
 .mini-game-overlay .timer,
 .mini-game-overlay .moves {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: #333;
+  color: #1f2933;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .mini-game-overlay .timer span,
 .mini-game-overlay .moves span {
-  color: #667eea;
-  font-size: 24px;
-  margin-left: 8px;
+  background: linear-gradient(135deg, #FFBC94 0%, #FFA366 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 26px;
+  font-weight: 700;
+  margin-left: 0;
 }
 
 .mini-game-overlay .btn-shuffle {
-  padding: 10px 24px;
-  background: #667eea;
+  padding: 11px 26px;
+  background: linear-gradient(135deg, #FFBC94 0%, #FFA366 100%);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 16px rgba(255, 150, 100, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .mini-game-overlay .btn-shuffle:hover {
-  background: #5568d3;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 8px 28px rgba(255, 150, 100, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .mini-game-overlay .btn-shuffle:active {
-  transform: translateY(0);
+  transform: translateY(-1px) scale(1.02);
 }
 
 /* Board */
 .mini-game-overlay #board {
   width: 857px;
   height: 600px;
-  background: #e2c49a;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  background: #FFF9F5;
+  border-radius: 24px;
+  box-shadow: 
+    0 12px 45px rgba(180, 120, 80, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   overflow: hidden;
   position: relative;
   max-width: 90vw;
   max-height: 60vh;
+  border: 2px solid rgba(255, 235, 220, 0.7);
 }
 
 .mini-game-overlay svg {
@@ -191,19 +228,21 @@
 
 .mini-game-overlay .piece.dragging {
   cursor: grabbing;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 8px 16px rgba(255, 150, 100, 0.35));
   opacity: 0.9;
 }
 
+/* ✅ THAY ĐỔI: Đổi sang màu vàng cam khi hoàn thành (biến thể cam) */
 .mini-game-overlay .piece.correct {
   cursor: default;
   pointer-events: none;
-  filter: brightness(1.05);
+  filter: brightness(1.03) drop-shadow(0 2px 8px rgba(255, 183, 77, 0.4));
 }
 
 .mini-game-overlay .piece.correct use:last-child {
-  stroke: #4ade80;
+  stroke: #FFB74D;
   stroke-width: 3;
+  filter: drop-shadow(0 0 4px rgba(255, 193, 107, 0.6));
 }
 
 /* Completion animation */
@@ -223,11 +262,12 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 10000001;
   animation: fadeIn 0.3s ease;
 }
 
@@ -236,50 +276,78 @@
 }
 
 .mini-game-overlay .modal-content {
-  background: white;
-  padding: 40px;
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(26px) saturate(180%);
+  padding: 45px;
+  border-radius: 28px;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.4s ease;
+  box-shadow: 
+    0 24px 70px rgba(180, 120, 80, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 235, 220, 0.7);
+  position: relative;
+  z-index: 10000002;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .mini-game-overlay .modal-content h2 {
-  font-size: 36px;
-  color: #667eea;
-  margin: 0 0 20px 0;
+  font-size: 38px;
+  background: linear-gradient(135deg, #FFBC94 0%, #FFA366 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 24px 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .mini-game-overlay .modal-content p {
-  font-size: 18px;
-  color: #666;
-  margin: 10px 0;
+  font-size: 17px;
+  color: #555555;
+  margin: 12px 0;
+  font-weight: 500;
 }
 
 .mini-game-overlay .modal-content .stats {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
-  color: #333;
-  margin: 20px 0;
+  color: #1f2933;
+  margin: 24px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 188, 148, 0.15), rgba(255, 163, 102, 0.1));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 235, 220, 0.5);
 }
 
 .mini-game-overlay .btn-play-again {
-  margin-top: 20px;
-  padding: 12px 32px;
-  background: #667eea;
+  margin-top: 24px;
+  padding: 14px 36px;
+  background: linear-gradient(135deg, #FFBC94 0%, #FFA366 100%);
   color: white;
   border: none;
-  border-radius: 10px;
-  font-size: 18px;
-  font-weight: 600;
+  border-radius: 18px;
+  font-size: 17px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 6px 24px rgba(255, 150, 100, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .mini-game-overlay .btn-play-again:hover {
-  background: #5568d3;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 10px 35px rgba(255, 150, 100, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.mini-game-overlay .btn-play-again:active {
+  transform: translateY(-1px) scale(1.02);
 }
 
 /* Animations */
@@ -319,10 +387,10 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
-  animation: music-pulse 2s ease-in-out infinite;
+  animation: puzzle-pulse 2s ease-in-out infinite;
 }
 
-/* 🔥 ANIMATION NHẤP NHÁY VÒNG SÁNG */
+/* 🔥 ANIMATION NHẤP NHÁY VÒNG SÓNG */
 @keyframes puzzle-pulse {
     0%, 100% {
         box-shadow: 
@@ -334,11 +402,6 @@
             0 8px 32px rgba(255, 107, 53, 0.45),
             0 0 0 12px rgba(255, 107, 53, 0);
     }
-}
-
-@keyframes shine {
-    0% { transform: translate(-100%, -100%) rotate(45deg); }
-    100% { transform: translate(100%, 100%) rotate(45deg); }
 }
 
 /* 🧩 ICON TRẮNG */
@@ -375,60 +438,103 @@
     transform: translateY(-2px) scale(1.02);
 }
 
-/* 🗺️ MAP SELECTOR */
-/* 🗺️ MAP SELECTOR VÀ ACHIEVEMENTS */
+/* 🗺️ MAP SELECTOR CONTAINER - ✅ CHỈ ÁP DỤNG CHO SIDEBAR */
 .map-selector {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
   justify-content: flex-start;
-  align-items: center;
-  width: 140px; /* Tăng width để chứa tab */
+  align-items: stretch;
+  width: 260px;
+  flex-shrink: 0;
+  padding: 0;
+  overflow: visible;
 }
 
-/* 🆕 TAB SWITCHER */
-.mini-game-overlay .tab-switcher {
+/* 🆕 TAB SWITCHER - ✅ RIÊNG BIỆT CHO SIDEBAR - PERFECT FIT */
+.mini-game-overlay .map-selector .tab-switcher {
   display: flex;
-  gap: 5px;
+  gap: 8px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 6px;
+  border: 2px solid rgba(255, 235, 220, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  position: relative;
 }
 
-.mini-game-overlay .tab-btn {
+/* ✨ SLIDING INDICATOR - PERFECT ALIGNMENT */
+.mini-game-overlay .map-selector .tab-switcher::before {
+  content: '';
+  position: absolute;
+  width: calc((100% - 20px) / 2);
+  height: calc(100% - 12px);
+  background: white;
+  border-radius: 12px;
+  top: 6px;
+  left: 6px;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 
+    0 4px 12px rgba(255, 150, 100, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 235, 220, 0.6);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.mini-game-overlay .map-selector .tab-switcher:has(.tab-btn:last-child.active)::before {
+  transform: translateX(calc(100% + 8px));
+}
+
+/* TAB BUTTONS - PERFECT SIZE */
+.mini-game-overlay .map-selector .tab-btn {
   flex: 1;
-  padding: 8px 10px;
+  padding: 11px 14px;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 12px;
+  font-size: 13.5px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(80, 50, 30, 0.7);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease;
+  position: relative;
+  white-space: nowrap;
+  overflow: visible;
+  text-align: center;
+  line-height: 1.4;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
 }
 
-.mini-game-overlay .tab-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+.mini-game-overlay .map-selector .tab-btn:hover {
+  color: rgba(80, 50, 30, 0.9);
 }
 
-.mini-game-overlay .tab-btn.active {
-  background: white;
-  color: #667eea;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+.mini-game-overlay .map-selector .tab-btn.active {
+  background: transparent;
+  color: #FFA366;
+  box-shadow: none;
+  border: none;
 }
 
-/* 🆕 TAB CONTENT */
+/* 🆕 TAB CONTENT - ✅ Cố định chiều cao */
 .mini-game-overlay .tab-content {
   display: none;
   width: 100%;
   flex-direction: column;
-  gap: 15px;
-  max-height: 500px; /* Giới hạn chiều cao */
-  overflow-y: auto; /* Scroll nếu quá dài */
+  gap: 12px;
+  flex: 1;
+  overflow-y: auto;
   padding-right: 5px;
+  min-height: 0;
 }
 
 .mini-game-overlay .tab-content.active {
@@ -437,70 +543,95 @@
 
 /* Scrollbar styling */
 .mini-game-overlay .tab-content::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 
 .mini-game-overlay .tab-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 235, 220, 0.3);
   border-radius: 10px;
 }
 
 .mini-game-overlay .tab-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #FFBC94, #FFA366);
   border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .mini-game-overlay .tab-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, #FFA366, #FFBC94);
+  background-clip: padding-box;
 }
 
-/* MAP OPTIONS (giữ nguyên style cũ) */
+/* MAP OPTIONS - ✅ CHỈ ẢNH CÓ HIỆU ỨNG, KHUNG ĐỨNG YÊN */
 .mini-game-overlay .map-option {
-  background: rgba(255, 255, 255, 0.9);
-  border: 3px solid transparent;
-  border-radius: 12px;
-  padding: 10px 15px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 3px solid rgba(255, 235, 220, 0.5);
+  border-radius: 18px;
+  padding: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
+  box-shadow: 0 4px 12px rgba(180, 120, 80, 0.1);
+  position: relative;
 }
 
 .mini-game-overlay .map-option img {
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   object-fit: cover;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 14px;
+  box-shadow: 
+    0 4px 12px rgba(180, 120, 80, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 2px solid rgba(255, 235, 220, 0.6);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .mini-game-overlay .map-option span {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: #1f2933;
+  letter-spacing: -0.01em;
+  transition: all 0.3s ease;
 }
 
 .mini-game-overlay .map-option:hover {
-  transform: translateX(-3px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
-  border-color: #667eea;
+  border-color: #FFBC94;
+  background: white;
+  box-shadow: 0 6px 20px rgba(255, 150, 100, 0.2);
+}
+
+.mini-game-overlay .map-option:hover img {
+  transform: scale(1.1) rotate(-3deg);
+  box-shadow: 
+    0 8px 24px rgba(255, 150, 100, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .mini-game-overlay .map-option.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  background: linear-gradient(135deg, #FFD54F 0%, #FFB74D 100%);
+  border-color: #FFB74D;
+  box-shadow: 
+    0 6px 24px rgba(255, 183, 77, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .mini-game-overlay .map-option.active span {
   color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .mini-game-overlay .map-option.active img {
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 8px 28px rgba(255, 255, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
 /* 🆕 ACHIEVEMENTS CONTAINER */
@@ -513,55 +644,69 @@
 
 .loading-achievements {
   text-align: center;
-  color: white;
+  color: rgba(80, 50, 30, 0.8);
   font-size: 14px;
   padding: 20px;
 }
 
-/* 🆕 ACHIEVEMENT CARD */
 .achievement-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  padding: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-radius: 18px;
+  padding: 14px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 3px solid transparent;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  border: 3px solid rgba(255, 235, 220, 0.5);
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  min-height: 140px; /* Chiều cao cố định */
+  gap: 10px;
+  min-height: 140px;
+  box-shadow: 0 4px 12px rgba(180, 120, 80, 0.1);
 }
 
 .achievement-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
-  border-color: #667eea;
+  box-shadow: 
+    0 6px 20px rgba(255, 150, 100, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-color: #FFBC94;
 }
 
 .achievement-card.locked {
-  opacity: 0.6;
+  opacity: 0.65;
   cursor: not-allowed;
-  background: rgba(200, 200, 200, 0.5);
+  background: rgba(230, 230, 230, 0.6);
+  border-color: #e0e0e0;
 }
 
 .achievement-card.locked:hover {
   transform: none;
-  box-shadow: none;
-  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(180, 120, 80, 0.1);
+  border-color: #e0e0e0;
 }
+
 .achievement-card-header {
  display: none;
 }
 
 .achievement-icon {
-  width: 70px;
-  height: 70px;
-  border-radius: 12px;
+  width: 75px;
+  height: 75px;
+  border-radius: 16px;
   object-fit: cover;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  border: 3px solid white;
+  box-shadow: 
+    0 6px 18px rgba(180, 120, 80, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 3px solid rgba(255, 235, 220, 0.7);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.achievement-card:hover .achievement-icon {
+  transform: scale(1.1) rotate(-3deg);
+  box-shadow: 
+    0 10px 28px rgba(255, 150, 100, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .achievement-info {
@@ -571,15 +716,17 @@
 .achievement-title {
   font-size: 15px;
   font-weight: 700;
-  color: #333;
+  color: #1f2933;
   margin: 0;
   text-align: center;
-}
-.achievement-card.unlocked .achievement-title {
-  color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.01em;
+  transition: all 0.3s ease;
 }
 
+.achievement-card.unlocked .achievement-title {
+  color: white;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
 
 .achievement-desc {
   display: none;
@@ -587,30 +734,30 @@
 
 .achievement-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  background: #ffd700;
-  color: #333;
-  padding: 4px 10px;
-  border-radius: 12px;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #1f2933;
+  padding: 5px 11px;
+  border-radius: 14px;
   font-size: 11px;
   font-weight: bold;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 
+    0 3px 10px rgba(255, 215, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  display: none;
 }
 
 .achievement-card.locked .achievement-badge {
   background: #94a3b8;
-  color: rgb(189, 38, 38);
+  color: #64748b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid #cbd5e1;
 }
 
 .achievement-stats {
   display: none;
-}
-
-.achievement-stats span {
-  background: rgba(102, 126, 234, 0.1);
-  padding: 3px 8px;
-  border-radius: 8px;
 }
 
 /* 🔒 LOCKED OVERLAY */
@@ -620,16 +767,16 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 40px;
-  opacity: 0.6;
+  font-size: 42px;
+  opacity: 0.7;
   pointer-events: none;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
-
 
 /* Empty state */
 .empty-achievements {
   text-align: center;
-  color: white;
+  color: rgba(80, 50, 30, 0.8);
   padding: 30px 20px;
 }
 
@@ -642,72 +789,93 @@
   font-size: 14px;
   opacity: 0.9;
 }
+
 /* ========================================
    📖 FOOD STORY MODAL - THÊM MỚI
    ======================================== */
 
 /* 📖 FOOD STORY UNLOCK SECTION (trong completion modal) */
 .story-unlock-section {
-  margin-top: 20px;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 15px;
+  margin-top: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, #FFBC94 0%, #FFA366 100%);
+  border-radius: 20px;
   color: white;
   text-align: left;
+  box-shadow: 
+    0 6px 20px rgba(255, 150, 100, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .unlock-badge {
   display: inline-block;
-  background: #ffd700;
-  color: #333;
-  padding: 5px 15px;
-  border-radius: 20px;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #1f2933;
+  padding: 6px 18px;
+  border-radius: 25px;
   font-weight: bold;
-  font-size: 12px;
-  margin-bottom: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  box-shadow: 
+    0 3px 12px rgba(255, 215, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .story-unlock-section h3 {
-  margin: 10px 0;
-  font-size: 18px;
+  margin: 12px 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .story-desc {
   font-size: 14px;
   opacity: 0.95;
-  margin: 10px 0;
+  margin: 12px 0;
+  line-height: 1.6;
 }
 
 .story-stats {
   display: flex;
   gap: 15px;
-  margin: 15px 0;
+  margin: 18px 0;
   font-size: 13px;
   flex-wrap: wrap;
 }
 
 .story-stats span {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 5px 12px;
-  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  padding: 6px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .btn-view-story {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   background: white;
-  color: #667eea;
+  color: #FFA366;
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
   font-weight: bold;
+  font-size: 15px;
   cursor: pointer;
-  transition: all 0.3s;
-  margin-top: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 12px;
+  box-shadow: 
+    0 4px 16px rgba(255, 255, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .btn-view-story:hover {
-  background: #f0f0f0;
-  transform: translateY(-2px);
+  background: #FFF9F5;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 6px 24px rgba(255, 255, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 /* 📖 FOOD STORY FULL MODAL */
@@ -717,11 +885,12 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000001; /* ✅ Cao hơn overlay chính */
+  z-index: 10000001;
   opacity: 0;
   transition: opacity 0.3s;
   overflow-y: auto;
@@ -734,127 +903,184 @@
 
 .story-modal-content {
   background: white;
-  border-radius: 20px;
+  border-radius: 28px;
   max-width: 800px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  z-index: 10000002; /* ✅ Content ở trên cùng */
+  box-shadow: 
+    0 24px 70px rgba(180, 120, 80, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  z-index: 10000002;
+  border: 1px solid rgba(255, 235, 220, 0.6);
+  padding: 0;
 }
 
-/* Scrollbar cho story modal */
+/* ✅ SCROLLBAR FIXED - KHỚP VỚI PANEL */
 .story-modal-content::-webkit-scrollbar {
   width: 8px;
 }
 
 .story-modal-content::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgba(255, 235, 220, 0.2);
   border-radius: 10px;
+  margin: 28px 4px 28px 4px;
 }
 
 .story-modal-content::-webkit-scrollbar-thumb {
-  background: #667eea;
+  background: linear-gradient(135deg, #FFBC94, #FFA366);
   border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .story-modal-content::-webkit-scrollbar-thumb:hover {
-  background: #5568d3;
+  background: linear-gradient(135deg, #FFA366, #FF8E53);
+  background-clip: padding-box;
 }
 
 .story-close-btn {
-  position: sticky;
-  top: 10px;
-  right: 10px;
-  float: right;
-  width: 40px;
-  height: 40px;
-  background: #ff4757;
-  color: white;
-  border: none;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  color: #94a3b8;
+  border: 2px solid rgba(255, 235, 220, 0.6);
   border-radius: 50%;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
   z-index: 10;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 
+    0 4px 16px rgba(180, 120, 80, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .story-close-btn:hover {
-  background: #ff3838;
-  transform: rotate(90deg);
+  background: #FFFFFF;
+  color: #FFBC94;
+  transform: rotate(90deg) scale(1.1);
+  border-color: #FFBC94;
+  box-shadow: 
+    0 6px 24px rgba(255, 150, 100, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .story-header {
   position: relative;
   overflow: hidden;
-  border-radius: 20px 20px 0 0;
+  border-radius: 28px 28px 0 0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .story-header img {
-  width: 100%;
-  height: 300px;
-  object-fit: cover;
-  display: block;
+  display: none !important;
 }
 
 .story-title-section {
-  padding: 30px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.9));
+  padding: 32px;
+  background: transparent;
   color: white;
-  position: absolute;
-  bottom: 0;
+  position: relative;
   width: 100%;
   box-sizing: border-box;
+  text-align: center;
 }
 
 .story-title-section h2 {
-  margin: 0 0 10px 0;
-  font-size: 28px;
+  margin: 0 0 12px 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #FF6B35;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* ✅ ĐỊA ĐIỂM MÀU XÁM NHẠT */
 .story-origin {
-  margin: 5px 0;
+  margin: 6px 0 8px 0; /* ✅ Thêm margin-bottom nhỏ */
   font-size: 16px;
-  opacity: 0.9;
+  opacity: 0.75;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+/* 🎬 VIDEO FRAME - KHUNG CAM */
+.story-video-frame {
+  margin: 12px 0 0 0; /* ✅ Giảm margin top, bỏ margin bottom */
+  padding: 16px; /* ✅ Giảm padding từ 20px xuống 16px */
+  background: linear-gradient(135deg, rgba(255, 188, 148, 0.2), rgba(255, 163, 102, 0.15));
+  border: 3px solid #FFBC94;
+  border-radius: 18px;
+  box-shadow: 
+    0 4px 16px rgba(255, 150, 100, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.story-video-frame iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .unesco-badge {
   display: inline-block;
-  background: #ffd700;
-  color: #333;
-  padding: 8px 15px;
-  border-radius: 20px;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #1f2933;
+  padding: 8px 16px;
+  border-radius: 22px;
   font-size: 13px;
   font-weight: bold;
-  margin-top: 10px;
+  margin-top: 12px;
+  box-shadow: 
+    0 3px 12px rgba(255, 215, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .story-body {
-  padding: 30px;
+  padding: 32px;
 }
 
 .story-section {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .story-section h3 {
   font-size: 22px;
-  color: #333;
-  margin-bottom: 15px;
-  border-left: 4px solid #667eea;
-  padding-left: 15px;
+  color: #1f2933;
+  margin-bottom: 16px;
+  border-left: 4px solid #FFA366;
+  padding-left: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .story-text {
   line-height: 1.8;
-  color: #555;
+  color: #555555;
   font-size: 15px;
   text-align: justify;
-  white-space: pre-line;
+  white-space: normal;
+  text-justify: inter-word;
+  word-spacing: normal;
+  hyphens: auto;
 }
 
 .fun-facts-list {
@@ -864,55 +1090,70 @@
 }
 
 .fun-facts-list li {
-  background: #f8f9fa;
-  padding: 12px 15px;
-  margin-bottom: 10px;
-  border-radius: 10px;
-  border-left: 4px solid #667eea;
-  transition: all 0.3s;
+  background: #FFF5F0;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  border-left: 4px solid #FFBC94;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(180, 120, 80, 0.1);
 }
 
 .fun-facts-list li:hover {
-  background: #e9ecef;
-  transform: translateX(5px);
+  background: #FFE5D9;
+  transform: translateX(6px);
+  box-shadow: 0 4px 16px rgba(255, 150, 100, 0.2);
 }
 
 .variants-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
 }
 
 .variant-tag {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #FFBC94 0%, #FFA366 100%);
   color: white;
-  padding: 8px 15px;
-  border-radius: 20px;
+  padding: 10px 18px;
+  border-radius: 22px;
   font-size: 14px;
-  transition: all 0.3s;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: default;
+  box-shadow: 
+    0 3px 12px rgba(255, 150, 100, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .variant-tag:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 6px 20px rgba(255, 150, 100, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .btn-watch-video {
   display: inline-block;
-  padding: 12px 25px;
-  background: #ff4757;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #FFBC94 0%, #FFA366 100%);
   color: white;
   text-decoration: none;
   border-radius: 25px;
   font-weight: bold;
-  transition: all 0.3s;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 16px rgba(255, 150, 100, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-watch-video:hover {
-  background: #ff3838;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 8px 28px rgba(255, 150, 100, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 /* ========================================
@@ -933,26 +1174,27 @@
   }
   
   .mini-game-title {
-    font-size: 18px;
+    font-size: 20px;
   }
   
   .map-selector {
-    width: 120px;
+    width: 140px;
     gap: 10px;
+    height: auto;
   }
   
   .mini-game-overlay .tab-btn {
     font-size: 11px;
-    padding: 6px 8px;
+    padding: 8px 6px;
   }
   
   .mini-game-overlay .map-option {
-    padding: 8px 12px;
+    padding: 10px 14px;
   }
   
   .mini-game-overlay .map-option img {
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
   }
   
   .mini-game-overlay .map-option span {
@@ -961,34 +1203,26 @@
   
   /* Achievement cards responsive */
   .achievement-card {
-    padding: 10px;
+    padding: 12px;
+    min-height: 120px;
   }
   
   .achievement-icon {
-    width: 40px;
-    height: 40px;
+    width: 60px;
+    height: 60px;
   }
   
   .achievement-title {
-    font-size: 12px;
+    font-size: 13px;
   }
   
-  .achievement-desc {
-    font-size: 10px;
-  }
-  
-  .achievement-stats {
-    font-size: 10px;
-  }
-  
-  /* Food Story Modal responsive */
   .story-modal-content {
     max-width: 95%;
-    max-height: 95vh;
+    max-height: 92vh;
   }
   
-  .story-header img {
-    height: 200px;
+  .story-header {
+    min-height: 160px;
   }
   
   .story-title-section {
@@ -996,7 +1230,7 @@
   }
   
   .story-title-section h2 {
-    font-size: 22px;
+    font-size: 24px;
   }
   
   .story-body {
@@ -1018,15 +1252,15 @@
   
   .variant-tag {
     font-size: 12px;
-    padding: 6px 12px;
+    padding: 8px 14px;
   }
   
   .story-unlock-section {
-    padding: 15px;
+    padding: 18px;
   }
   
   .story-unlock-section h3 {
-    font-size: 16px;
+    font-size: 17px;
   }
   
   .story-desc {
@@ -1037,61 +1271,27 @@
     font-size: 12px;
     gap: 10px;
   }
+
+  .mini-game-wrapper {
+    padding: 18px;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .mini-game-overlay .modal-content {
+    padding: 32px;
+    max-width: 95%;
+  }
+
+  .mini-game-overlay .modal-content h2 {
+    font-size: 32px;
+  }
 }
 
 /* ========================================
    🎨 ADDITIONAL FIXES
    ======================================== */
 
-/* Fix completion modal z-index */
-.mini-game-overlay .completion-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000001; /* ✅ Cao hơn overlay */
-  animation: fadeIn 0.3s ease;
-}
-
-.mini-game-overlay .modal-content {
-  background: white;
-  padding: 40px;
-  border-radius: 20px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  animation: slideUp 0.4s ease;
-  position: relative;
-  z-index: 10000002;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-/* Smooth animations */
-@keyframes fadeInModal {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.food-story-modal.show .story-modal-content {
-  animation: fadeInModal 0.4s ease;
-}
-
-/* ========================================
-   ⏳ LOADING STATE KHI ĐỔI MAP
-   ======================================== */
-
+/* ⏳ LOADING STATE KHI ĐỔI MAP */
 .map-loading {
   position: fixed;
   top: 50%;
@@ -1100,12 +1300,16 @@
   display: none;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
-  z-index: 10000002; /* Cao hơn overlay */
-  background: rgba(0, 0, 0, 0.85);
-  padding: 30px 50px;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  gap: 18px;
+  z-index: 10000002;
+  background: rgba(0, 0, 0, 0.90);
+  backdrop-filter: blur(10px);
+  padding: 35px 55px;
+  border-radius: 24px;
+  box-shadow: 
+    0 24px 70px rgba(180, 120, 80, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 235, 220, 0.2);
 }
 
 .map-loading.show {
@@ -1113,10 +1317,10 @@
 }
 
 .map-loading .spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid rgba(255, 255, 255, 0.2);
-  border-top: 5px solid #4ade80;
+  width: 54px;
+  height: 54px;
+  border: 5px solid rgba(255, 235, 220, 0.2);
+  border-top: 5px solid #FFBC94;
   border-radius: 50%;
   animation: spinner-rotate 0.8s linear infinite;
 }
@@ -1137,12 +1341,12 @@
 /* Responsive loading */
 @media (max-width: 900px) {
   .map-loading {
-    padding: 25px 40px;
+    padding: 28px 45px;
   }
   
   .map-loading .spinner {
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
     border-width: 4px;
   }
   
@@ -1155,11 +1359,11 @@
 #imageModal.image-modal{
   position: fixed !important;
   inset: 0;
-  display: none;              /* JS sẽ set flex khi mở */
+  display: none;
   align-items: center;
   justify-content: center;
   background: rgba(0,0,0,0.85);
-  z-index: 99999999999999 !important; /* cao hơn sidebar/foodplan */
+  z-index: 99999999999999 !important;
 }
 
 #imageModal #modalImg{
@@ -1179,4 +1383,20 @@
   cursor: pointer;
   z-index: 99999999999999;
   user-select: none;
+}
+
+/* Smooth animations for modal */
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.food-story-modal.show .story-modal-content {
+  animation: fadeInModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
