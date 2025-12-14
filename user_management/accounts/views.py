@@ -25,6 +25,7 @@ import requests
 from django.db import models
 from .gemini_utils import check_review_content
 from .models import UserPreference
+from .models import ReviewHistory
 from .models import (
     FoodPlan, 
     SharedFoodPlan,
@@ -173,8 +174,65 @@ def save_user_reviews(data):
     with open('user_reviews.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
+def check_review_cooldown(user, place_id):
+    """
+    Kiểm tra cooldown cho review
+    Returns: {
+        'can_review': bool,
+        'reason': str,
+        'wait_until': datetime (nếu bị chặn)
+    }
+    """
+    now = timezone.now()
+    thirty_days_ago = now - timedelta(days=30)
+    
+    # ✅ KIỂM TRA 1: Đã review quán này trong 30 ngày chưa?
+    last_review_this_place = ReviewHistory.objects.filter(
+        user=user,
+        place_id=place_id,
+        review_date__gte=thirty_days_ago
+    ).order_by('-review_date').first()
+    
+    if last_review_this_place:
+        wait_until = last_review_this_place.review_date + timedelta(days=30)
+        days_left = (wait_until - now).days + 1
+        
+        return {
+            'can_review': False,
+            'reason': f'Bạn đã đánh giá quán này. Vui lòng chờ {days_left} ngày nữa.',
+            'wait_until': wait_until
+        }
+    
+    # ✅ KIỂM TRA 2: Đã dùng hết 15 credits trong 30 ngày chưa?
+    total_reviews_30days = ReviewHistory.objects.filter(
+        user=user,
+        review_date__gte=thirty_days_ago
+    ).count()
+    
+    if total_reviews_30days >= 15:
+        oldest_review = ReviewHistory.objects.filter(
+            user=user,
+            review_date__gte=thirty_days_ago
+        ).order_by('review_date').first()
+        
+        wait_until = oldest_review.review_date + timedelta(days=30)
+        days_left = (wait_until - now).days + 1
+        
+        return {
+            'can_review': False,
+            'reason': f'Bạn đã dùng hết 15 lượt đánh giá trong tháng. Chờ {days_left} ngày nữa.',
+            'wait_until': wait_until,
+            'credits_used': total_reviews_30days
+        }
+    
+    # ✅ CÓ THỂ REVIEW
+    return {
+        'can_review': True,
+        'credits_left': 15 - total_reviews_30days
+    }
+
 @csrf_exempt
-def reviews_api(request: HttpRequest, place_id: str):
+def reviews_api(request, place_id):
     
     # === 1. GET REVIEW ===
     if request.method == 'GET':
@@ -191,6 +249,7 @@ def reviews_api(request: HttpRequest, place_id: str):
         # === LẤY THÔNG TIN USER ===
         user_info = {'is_logged_in': False}
         is_favorite = False
+        
         if request.user.is_authenticated:
             avatar_url = get_user_avatar(request.user) 
 
@@ -222,6 +281,21 @@ def reviews_api(request: HttpRequest, place_id: str):
                 "message": "Bạn cần đăng nhập"
             }, status=403)
         
+        # 🔥 KIỂM TRA COOLDOWN NGAY ĐẦU
+        cooldown_check = check_review_cooldown(request.user, place_id)
+        
+        if not cooldown_check['can_review']:
+            print(f"🚫 [COOLDOWN] {request.user.username} bị chặn: {cooldown_check['reason']}")
+            
+            return JsonResponse({
+                "success": False,
+                "message": cooldown_check['reason'],
+                "blocked": True,
+                "wait_until": cooldown_check.get('wait_until').isoformat() if cooldown_check.get('wait_until') else None
+            }, status=429)  # 429 = Too Many Requests
+        
+        print(f"✅ [COOLDOWN] {request.user.username} có {cooldown_check.get('credits_left', '?')} credits còn lại")
+        
         avatar_nguoi_dung = get_user_avatar(request.user)
 
         try:
@@ -242,7 +316,9 @@ def reviews_api(request: HttpRequest, place_id: str):
                     "message": "Thiếu thông tin"
                 }, status=400)
             
-            # 🔥 KIỂM TRA NỘI DUNG VỚI GEMINI
+            # 🔥 KIỂM TRA NỘI DUNG VỚI GEMINI (nếu có)
+            # Uncomment phần này nếu bạn có hàm check_review_content
+            """
             print(f"🤖 [GEMINI] Bắt đầu kiểm tra nội dung...")
             
             try:
@@ -262,7 +338,6 @@ def reviews_api(request: HttpRequest, place_id: str):
                         "message": f"❌ Nội dung không phù hợp: {validation['reason']}"
                     }
                     
-                    # Nếu có gợi ý nội dung tốt hơn
                     if validation.get('suggested_content'):
                         response_data['suggested_content'] = validation['suggested_content']
                         response_data['message'] += f"\n\n💡 Gợi ý: {validation['suggested_content']}"
@@ -272,12 +347,12 @@ def reviews_api(request: HttpRequest, place_id: str):
                 print(f"✅ [GEMINI] CHO PHÉP GỬI REVIEW\n")
             
             except Exception as gemini_error:
-                # Nếu Gemini lỗi, vẫn cho phép gửi review (fail-safe)
                 print(f"⚠️ [GEMINI] LỖI KHI GỌI API:")
                 print(f"   Error: {gemini_error}")
                 import traceback
                 traceback.print_exc()
                 print(f"   → Cho phép gửi review (fail-safe mode)\n")
+            """
             
         except json.JSONDecodeError:
             print(f"❌ [ERROR] Lỗi parse JSON\n")
@@ -326,12 +401,21 @@ def reviews_api(request: HttpRequest, place_id: str):
             all_reviews[place_id]["user"].append(new_review)
             save_user_reviews(all_reviews)
             
-            print(f"✅ [SAVE] Lưu thành công!")
+            # 🔥 LƯU VÀO DATABASE ĐỂ THEO DÕI COOLDOWN
+            ReviewHistory.objects.create(
+                user=request.user,
+                place_id=place_id,
+                rating=rating,
+                comment=comment
+            )
+            
+            print(f"✅ [SAVE] Lưu thành công vào JSON và Database!")
             print(f"{'='*60}\n")
             
             return JsonResponse({
                 "success": True, 
-                "message": "✅ Đánh giá thành công!"
+                "message": "✅ Đánh giá thành công!",
+                "credits_left": cooldown_check.get('credits_left', 0) - 1
             })
         
         except Exception as save_error:
@@ -350,6 +434,28 @@ def reviews_api(request: HttpRequest, place_id: str):
         "success": False, 
         "message": "Method not allowed"
     }, status=405)
+@csrf_exempt
+def review_status_api(request):
+    """
+    GET /api/review-status/<place_id>/
+    Trả về thông tin cooldown và credits còn lại
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'is_logged_in': False
+        })
+    
+    place_id = request.GET.get('place_id')
+    
+    cooldown = check_review_cooldown(request.user, place_id)
+    
+    return JsonResponse({
+        'is_logged_in': True,
+        'can_review': cooldown['can_review'],
+        'reason': cooldown.get('reason', ''),
+        'credits_left': cooldown.get('credits_left', 0),
+        'wait_until': cooldown.get('wait_until').isoformat() if cooldown.get('wait_until') else None
+    })
 
 # ==========================================================
 # 🗑️ API XÓA ĐÁNH GIÁ CỦA USER
@@ -418,18 +524,29 @@ def delete_review_api(request, place_id, review_index):
                 'message': 'Bạn chỉ có thể xóa đánh giá của chính mình'
             }, status=403)
         
-        # 5. XÓA REVIEW
+        # 5. XÓA REVIEW KHỎI JSON
         deleted_review = user_reviews.pop(review_index)
         
-        print(f"✅ [DELETE] Removed review:")
+        print(f"✅ [DELETE] Removed review from JSON:")
         print(f"   User: {deleted_review.get('ten')}")
         print(f"   Comment: {deleted_review.get('comment', '')[:50]}")
         
-        # 6. LƯU LẠI FILE
+        # 6. LƯU LẠI FILE JSON
         all_reviews[place_id]['user'] = user_reviews
         save_user_reviews(all_reviews)
         
-        print(f"💾 [DELETE] Saved. Remaining reviews: {len(user_reviews)}")
+        # 7. XÓA KHỎI DATABASE (ReviewHistory)
+        try:
+            ReviewHistory.objects.filter(
+                user=request.user,
+                place_id=place_id,
+                comment=deleted_review.get('comment')
+            ).delete()
+            print(f"🗑️ [DELETE] Đã xóa khỏi ReviewHistory Database")
+        except Exception as db_error:
+            print(f"⚠️ [DELETE] Không xóa được khỏi DB: {db_error}")
+        
+        print(f"💾 [DELETE] Saved. Remaining reviews: {len(user_reviews)}\n")
         
         return JsonResponse({
             'success': True,
