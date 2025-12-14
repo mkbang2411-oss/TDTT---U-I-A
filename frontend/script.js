@@ -96,14 +96,17 @@ function showCustomAlert(message, type = 'info') {
 
   const popup = document.createElement('div');
   popup.style.cssText = `
-    background: #fff5f0;
-    border-radius: 20px;
-    padding: 30px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    animation: slideDown 0.3s ease;
-    position: relative;
+  background: #fff5f0;
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: scaleIn 0.25s ease;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   `;
 
   let icon = '🔔';
@@ -143,10 +146,11 @@ function showCustomAlert(message, type = 'info') {
   okBtn.addEventListener('mouseleave', () => { okBtn.style.transform = 'scale(1)'; });
 
   const closePopup = () => {
-    overlay.style.animation = 'fadeOut 0.3s ease';
-    popup.style.animation = 'slideUp 0.3s ease';
-    setTimeout(() => overlay.remove(), 300);
-  };
+  popup.style.animation = 'scaleOut 0.25s ease';
+  overlay.style.animation = 'fadeOut 0.25s ease';
+  setTimeout(() => overlay.remove(), 250);
+};
+
 
   closeBtn.addEventListener('click', closePopup);
   okBtn.addEventListener('click', closePopup);
@@ -157,11 +161,39 @@ if (!document.getElementById('custom-alert-style')) {
   const style = document.createElement('style');
   style.id = 'custom-alert-style';
   style.textContent = `
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-    @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    @keyframes slideUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-50px); opacity: 0; } }
-  `;
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
+  @keyframes scaleOut {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+  }
+`;
+
   document.head.appendChild(style);
 }
 // =========================
