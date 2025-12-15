@@ -55,6 +55,14 @@ else:
     import fcntl
 # ------------------------SOCIAL ACCOUNT HANDLER--------------------------
 
+def social_login_cancelled(request):
+    """
+    Xử lý khi người dùng nhấn "Huỷ" trên trang xác nhận Google OAuth
+    Chuyển hướng về trang đăng nhập
+    """
+    return redirect('/accounts/login/')
+
+
 def social_account_already_exists(request):
     """
     Trang thông báo khi email đã tồn tại trong hệ thống

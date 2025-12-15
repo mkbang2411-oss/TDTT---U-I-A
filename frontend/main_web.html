@@ -482,7 +482,9 @@
     const listEl = document.getElementById('notificationList');
     const markAllBtn = document.getElementById('markAllAsReadBtn');
 
+    // ✅ CHECK: Nếu không có nút notification thì không chạy tiếp
     if (!notificationBtn || !overlay) {
+        console.log('⚠️ User chưa đăng nhập - SKIP SSE');
         return;
     }
 
@@ -519,7 +521,6 @@
             const errorMsg = window.LanguageToggle ? 
                 window.LanguageToggle.getTranslation('delete_notification_error') : 
                 'Lỗi khi xóa thông báo';
-            showToast('Lỗi khi xóa thông báo', 'error');
         }
     }
 
@@ -788,7 +789,6 @@
                 }
             } catch (err) {
                 console.error('❌ Lỗi xóa tất cả notifications:', err);
-                showToast('❌ Lỗi kết nối', 'error');
             }
         });
     }
@@ -1053,6 +1053,13 @@
     const RECONNECT_DELAY = 5000; // 5 giây
 
     function connectSSE() {
+
+        // ✅ CHECK AGAIN: Đảm bảo user đã đăng nhập
+        if (!notificationBtn) {
+            console.log('⚠️ Notification button not found - User not logged in');
+            return;
+        }
+
         // Đóng connection cũ nếu có
         if (eventSource) {
             eventSource.close();
@@ -1124,6 +1131,20 @@
             console.error('   Status:', error.status || 'unknown');
             
             eventSource.close();
+
+            if (notificationBtn && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                const delay = RECONNECT_DELAY * reconnectAttempts;
+                
+                console.log(`🔄 Reconnecting (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay/1000}s...`);
+                
+                setTimeout(connectSSE, delay);
+            } else if (!notificationBtn) {
+                console.log('⚠️ User logged out - STOP reconnecting');
+            } else {
+                console.error('❌ Max reconnection attempts reached. Please refresh page.');
+            }
+
             
             // ✅ RECONNECT LOGIC với exponential backoff
             if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
@@ -1142,7 +1163,6 @@
                 const toastMsg = window.LanguageToggle ? 
                     window.LanguageToggle.getTranslation('connection_lost_message') : 
                     '⚠️ Mất kết nối thông báo. Vui lòng tải lại trang.';
-                showToast(toastMsg, 'error');
             }
         };
     }
@@ -1177,35 +1197,6 @@
             });
         }
     }
-
-    // ================================
-    // 📢 INIT
-    // ================================
-
-    // Load thông báo ban đầu
-    loadNotifications();
-
-    // Kết nối SSE cho real-time updates
-    connectSSE();
-
-    // Yêu cầu quyền thông báo
-    requestNotificationPermission();
-
-    // Cleanup khi tắt trang
-    window.addEventListener('beforeunload', function() {
-        if (eventSource) {
-            console.log('🔌 Closing SSE connection...');
-            eventSource.close();
-        }
-    });
-
-    // ✅ CHECK CONNECTION STATUS mỗi 30 giây
-    setInterval(function() {
-        if (eventSource && eventSource.readyState !== EventSource.OPEN) {
-            console.warn('⚠️ SSE connection lost. Reconnecting...');
-            connectSSE();
-        }
-    }, 30000); // 30 seconds
 
     // ================================
     // 🔔 MARK AS READ
@@ -1257,15 +1248,51 @@
     // ================================
     // 🔔 INIT
     // ================================
-    
-    // Load thông báo ban đầu
-    loadNotifications();
-    
-    // Kết nối SSE cho real-time updates
-    connectSSE();
-    
-    // Yêu cầu quyền thông báo
-    requestNotificationPermission();
+
+    // ✅ KIỂM TRA ĐĂNG NHẬP TRƯỚC KHI INIT
+    fetch('/api/check-auth/', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('🔐 Auth check:', data);
+        
+        if (data.is_authenticated) {
+            console.log('✅ User logged in - STARTING SSE');
+            
+            // Load thông báo ban đầu
+            loadNotifications();
+            
+            // Kết nối SSE cho real-time updates
+            connectSSE();
+            
+            // Yêu cầu quyền thông báo
+            requestNotificationPermission();
+        } else {
+            console.log('⚠️ User NOT logged in - SKIP SSE');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Auth check failed:', error);
+    });
+
+    // ✅ CHECK CONNECTION STATUS mỗi 30 giây
+    setInterval(function() {
+        // CHỈ check nếu user vẫn đăng nhập
+        if (notificationBtn && eventSource && eventSource.readyState !== EventSource.OPEN) {
+            console.warn('⚠️ SSE connection lost. Reconnecting...');
+            connectSSE();
+        }
+    }, 30000);
+
+    // Cleanup khi tắt trang
+    window.addEventListener('beforeunload', function() {
+        if (eventSource) {
+            console.log('🔌 Closing SSE connection...');
+            eventSource.close();
+        }
+    });
 
     window.renderList = renderList;
     
