@@ -460,3 +460,20 @@ class StreakPopupLog(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.popup_type} popup at {self.shown_at}"
+
+class ReviewHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    place_id = models.CharField(max_length=255)
+    review_date = models.DateTimeField(default=timezone.now)
+    rating = models.IntegerField()
+    comment = models.TextField()
+    
+    class Meta:
+        db_table = 'review_history'
+        indexes = [
+            models.Index(fields=['user', 'place_id']),
+            models.Index(fields=['user', 'review_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.place_id} - {self.review_date}"    

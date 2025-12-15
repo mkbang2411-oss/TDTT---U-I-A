@@ -2190,6 +2190,24 @@ body {
 .review-header > div:nth-child(2) {
   flex: 1;
 }
+.credits-info {
+  background: #e3f2fd;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  color: #1976d2;
+  border-left: 4px solid #2196f3;
+}
+
+.credits-info i {
+  margin-right: 5px;
+}
+
+.credits-info strong {
+  color: #0d47a1;
+  font-weight: 600;
+}
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,
 button,

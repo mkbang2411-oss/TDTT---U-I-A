@@ -429,53 +429,53 @@ function convertToMinutes(h, m) {
   return h * 60 + m;
 }
 
-function getRealtimeStatus(hoursStr) {
-  if (!hoursStr) return "Không rõ";
-
-  hoursStr = hoursStr.toLowerCase().trim();
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-  // ✅ 24h
-  if (hoursStr.includes("mở cả ngày")) {
-    return "✅ Đang mở cửa (24h)";
-  }
-
-  // ✅ "Đang mở cửa ⋅ Đóng cửa lúc XX:XX"
-  if (hoursStr.includes("đang mở cửa")) {
-    const match = hoursStr.match(/đóng cửa lúc\s*(\d{1,2}):(\d{2})/);
-    if (match) {
-      const h = parseInt(match[1]);
-      const m = parseInt(match[2]);
-      const closeMinutes = convertToMinutes(h, m);
-      const closeFormatted = formatVietnamTime(h, m);
-
-      if (currentMinutes < closeMinutes) {
-        return `✅ Đang mở cửa (Đóng lúc ${closeFormatted})`;
-      } else {
-        return `❌ Đã đóng cửa (Đóng lúc ${closeFormatted})`;
-      }
+// Kiểm tra trạng thái review khi load trang
+async function checkReviewStatus(placeId) {
+  try {
+    const res = await fetch(`/api/review-status/?place_id=${placeId}`);
+    const data = await res.json();
+    
+    if (!data.is_logged_in) {
+      return { canReview: false, reason: "Vui lòng đăng nhập" };
     }
-  }
-
-  // ✅ "Đóng cửa ⋅ Mở cửa lúc XX:XX"
-  if (hoursStr.includes("đóng cửa")) {
-    const match = hoursStr.match(/mở cửa lúc\s*(\d{1,2}):(\d{2})/);
-    if (match) {
-      const h = parseInt(match[1]);
-      const m = parseInt(match[2]);
-      const openMinutes = convertToMinutes(h, m);
-      const openFormatted = formatVietnamTime(h, m);
-
-      if (currentMinutes >= openMinutes) {
-        return `✅ Đang mở cửa (Mở lúc ${openFormatted})`;
-      } else {
-        return `❌ Đã đóng cửa (Mở lúc ${openFormatted})`;
-      }
+    
+    if (!data.can_review) {
+      return { 
+        canReview: false, 
+        reason: data.reason,
+        creditsLeft: 0
+      };
     }
+    
+    return { 
+      canReview: true, 
+      creditsLeft: data.credits_left 
+    };
+    
+  } catch (err) {
+    console.error("Error checking review status:", err);
+    return { canReview: true, creditsLeft: 15 }; // Fail-safe
   }
+}
 
-  return hoursStr;
+// Hiển thị credits trong form
+function showReviewForm(placeId) {
+  checkReviewStatus(placeId).then(status => {
+    if (!status.canReview) {
+      alert(status.reason);
+      return;
+    }
+    
+    // Hiển thị form với thông báo credits
+    const form = document.getElementById('review-form');
+    const creditsInfo = document.createElement('div');
+    creditsInfo.className = 'credits-info';
+    creditsInfo.innerHTML = `
+      <i class="fa-solid fa-circle-info"></i> 
+      Bạn còn <strong>${status.creditsLeft}</strong> lượt đánh giá trong tháng này
+    `;
+    form.prepend(creditsInfo);
+  });
 }
 
 // =========================
@@ -1212,8 +1212,8 @@ if (placeId) {
       });
     });
 
-    // 📤 GỬI ĐÁNH GIÁ
-    const submitBtn = document.getElementById("submitReview");
+  // 📤 GỬI ĐÁNH GIÁ 
+const submitBtn = document.getElementById("submitReview");
 if (submitBtn) {
   submitBtn.addEventListener("click", async () => {
     const review = {
@@ -1231,7 +1231,7 @@ if (submitBtn) {
     submitBtn.textContent = "🔄 Đang kiểm tra...";
 
     try {
-      const response = await fetch(`/api/reviews/${place_id}/`, {  // ← THÊM DẤU /
+      const response = await fetch(`/api/reviews/${place_id}/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1244,24 +1244,37 @@ if (submitBtn) {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        showCustomAlert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
-        marker.fire("click");
+        // ✅ THÀNH CÔNG - HIỂN THỊ CREDITS CÒN LẠI
+        let successMsg = result.message || "✅ Cảm ơn bạn đã gửi đánh giá!";
+        
+        // 🔥 THÊM THÔNG BÁO CREDITS
+        if (result.credits_left !== undefined) {
+          successMsg += `\n\n💳 Bạn còn ${result.credits_left} lượt đánh giá trong tháng này`;
+        }
+        
+        showCustomAlert(successMsg);
+        
+        // Reload lại reviews
+        setTimeout(() => {
+          marker.fire("click");
+        }, 1000);
+        
+      } else if (response.status === 429 && result.blocked) {
+        // 🚫 BỊ CHẶN DO COOLDOWN
+        showCustomAlert(`🚫 ${result.message}`);
+        
       } else {
-        // ❌ Nội dung không hợp lệ
+        // ❌ LỖI KHÁC (Gemini chặn, thiếu thông tin, v.v.)
         let errorMsg = result.message || "Lỗi khi gửi đánh giá";
         
-        // Nếu có gợi ý nội dung tốt hơn
-        if (response.ok && result.success) {
-        showCustomAlert(result.message || "✅ Cảm ơn bạn đã gửi đánh giá!");
-        marker.fire("click");
-      } else {
-        // ❌ Nội dung không hợp lệ
-        let errorMsg = result.message || "Lỗi khi gửi đánh giá";
-        alert(errorMsg);
-      }
+        // Nếu có gợi ý nội dung từ Gemini
+        if (result.suggested_content) {
+          errorMsg += `\n\n💡 Gợi ý: ${result.suggested_content}`;
+        }
         
-        alert(errorMsg);
+        showCustomAlert(errorMsg);
       }
+      
     } catch (err) {
       console.error("Lỗi fetch API:", err);
       showCustomAlert("Lỗi kết nối. Không thể gửi đánh giá.");
