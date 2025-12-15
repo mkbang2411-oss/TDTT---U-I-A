@@ -1846,61 +1846,85 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
       return regex.test(text);
     }
 
-    // 🆕 HÀM TÌM KIẾM THÔNG MINH (MATCH CHÍNH XÁC TỪ)
-    function smartSearch(places, query) {
-      const queryKeepTone = normalizeKeepTone(query);
-      const queryNoTone = normalizeRemoveAll(query);
+   // 🆕 HÀM TÌM KIẾM THÔNG MINH (ƯU TIÊN MATCH CHÍNH XÁC DẤU THANH)
+function smartSearch(places, query) {
+  const queryKeepTone = normalizeKeepTone(query);
+  const queryNoTone = normalizeRemoveAll(query);
+  
+  // Tách query thành các từ
+  const queryWordsKeepTone = queryKeepTone.split(/\s+/).filter(Boolean);
+  const queryWordsNoTone = queryNoTone.split(/\s+/).filter(Boolean);
+  
+  console.log('🔍 Search query:', {
+    original: query,
+    keepTone: queryKeepTone,
+    noTone: queryNoTone
+  });
+  
+  // 🎯 LEVEL 1: Exact phrase match GIỮ NGUYÊN DẤU (ưu tiên cao nhất)
+  let results = places.filter((p) => {
+    const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
+    const moTaKeepTone = normalizeKeepTone(p.mo_ta || "");
+    
+    return matchesPhraseWithWordBoundary(nameKeepTone, queryKeepTone) || 
+           matchesPhraseWithWordBoundary(moTaKeepTone, queryKeepTone);
+  });
+  
+  if (results.length > 0) {
+    console.log("✅ Level 1: Found with EXACT TONE phrase match:", results.length);
+    return results;
+  }
+  
+  // 🎯 LEVEL 2: Tất cả từ match CHÍNH XÁC (giữ dấu)
+  if (queryWordsKeepTone.length >= 1) {
+    results = places.filter((p) => {
+      const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
+      const moTaKeepTone = normalizeKeepTone(p.mo_ta || "");
       
-      // Tách query thành các từ
-      const queryWordsNoTone = queryNoTone.split(/\s+/).filter(Boolean);
-      
-      // 🎯 LEVEL 1: Exact phrase match với word boundary (giữ dấu thanh)
-      let results = places.filter((p) => {
-        const nameKeepTone = normalizeKeepTone(p.ten_quan || "");
-        const moTaKeepTone = normalizeKeepTone(p.mo_ta || "");
-        
-        return matchesPhraseWithWordBoundary(nameKeepTone, queryKeepTone) || 
-               matchesPhraseWithWordBoundary(moTaKeepTone, queryKeepTone);
-      });
-      
-      if (results.length > 0) {
-        console.log("✅ Found with exact phrase match (keep tone):", results.length);
-        return results;
-      }
-      
-      // 🎯 LEVEL 2: Exact phrase match với word boundary (bỏ dấu)
-      results = places.filter((p) => {
-        const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
-        const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
-        
-        return matchesPhraseWithWordBoundary(nameNoTone, queryNoTone) || 
-               matchesPhraseWithWordBoundary(moTaNoTone, queryNoTone);
-      });
-      
-      if (results.length > 0) {
-        console.log("✅ Found with exact phrase match (no tone):", results.length);
-        return results;
-      }
-      
-      // 🎯 LEVEL 3: Tất cả các từ đều match chính xác (bỏ dấu)
-      if (queryWordsNoTone.length >= 2) {
-        results = places.filter((p) => {
-          const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
-          const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
-          
-          return matchesAllWordsExactly(nameNoTone, queryWordsNoTone) || 
-                 matchesAllWordsExactly(moTaNoTone, queryWordsNoTone);
-        });
-        
-        if (results.length > 0) {
-          console.log("✅ Found with all words exact match:", results.length);
-          return results;
-        }
-      }
-      
-      // 🎯 LEVEL 4: Rút dần từ cuối + match chính xác
-      return reduceAndSearchExact(places, queryWordsNoTone);
+      return matchesAllWordsExactly(nameKeepTone, queryWordsKeepTone) || 
+             matchesAllWordsExactly(moTaKeepTone, queryWordsKeepTone);
+    });
+    
+    if (results.length > 0) {
+      console.log("✅ Level 2: Found with EXACT TONE word match:", results.length);
+      return results;
     }
+  }
+  
+  // 🎯 LEVEL 3: Exact phrase match BỎ DẤU (chỉ khi không tìm thấy kết quả giữ dấu)
+  results = places.filter((p) => {
+    const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+    const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+    
+    return matchesPhraseWithWordBoundary(nameNoTone, queryNoTone) || 
+           matchesPhraseWithWordBoundary(moTaNoTone, queryNoTone);
+  });
+  
+  if (results.length > 0) {
+    console.log("✅ Level 3: Found with NO TONE phrase match:", results.length);
+    return results;
+  }
+  
+  // 🎯 LEVEL 4: Tất cả từ match chính xác (bỏ dấu)
+  if (queryWordsNoTone.length >= 1) {
+    results = places.filter((p) => {
+      const nameNoTone = normalizeRemoveAll(p.ten_quan || "");
+      const moTaNoTone = normalizeRemoveAll(p.mo_ta || "");
+      
+      return matchesAllWordsExactly(nameNoTone, queryWordsNoTone) || 
+             matchesAllWordsExactly(moTaNoTone, queryWordsNoTone);
+    });
+    
+    if (results.length > 0) {
+      console.log("✅ Level 4: Found with NO TONE word match:", results.length);
+      return results;
+    }
+  }
+  
+  // 🎯 LEVEL 5: Rút dần từ cuối (bỏ dấu) - chỉ dùng khi thực sự không tìm thấy gì
+  console.log("⚠️ Level 5: Trying reduction search...");
+  return reduceAndSearchExact(places, queryWordsNoTone);
+}
 
     // 🆕 HÀM RÚT DẦN + MATCH CHÍNH XÁC
     function reduceAndSearchExact(places, queryWords) {
@@ -1954,14 +1978,16 @@ async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", s
       filtered = smartSearch(data, query);
     }
 
-    // ========== 2️⃣ Lọc khẩu vị ==========
-    if (flavors.length > 0) {
-      filtered = filtered.filter((p) => {
-        if (!p.khau_vi) return false;
-        const norm = normalizeRemoveAll(p.khau_vi);
-        return flavors.some((f) => norm.includes(normalizeRemoveAll(f)));
-      });
-    }
+    // ========== 2️⃣ Lọc khẩu vị (AND logic - phải có TẤT CẢ khẩu vị được chọn) ==========
+if (flavors.length > 0) {
+  filtered = filtered.filter((p) => {
+    if (!p.khau_vi) return false;
+    const norm = normalizeRemoveAll(p.khau_vi);
+    
+    // ✅ Kiểm tra TẤT CẢ khẩu vị được chọn đều có trong khau_vi của quán
+    return flavors.every((f) => norm.includes(normalizeRemoveAll(f)));
+  });
+}
 
     // ========== 3️⃣ Lọc giá ==========
     if (budget !== "") {
@@ -2156,7 +2182,6 @@ result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
   // Nếu là filter-only search → không đụng tới notFoundCount
 });
 
-
 // ✅ NÚT YÊU THÍCH Ở HEADER (ICON TRÁI TIM)
 const favoriteModeBtnHeader = document.getElementById("favoriteModeBtnHeader");
 
@@ -2189,18 +2214,45 @@ if (favoriteModeBtnHeader) {
       isFavoriteMode = false;
       favoriteModeBtnHeader.classList.remove("active");
 
-      // ✅ TẮT lazy load cũ trước
+      // 🔥🔥🔥 THÊM ĐOẠN NÀY: XÓA TEXT TRONG Ô SEARCH 🔥🔥🔥
+      const searchInput = document.getElementById("query");
+      if (searchInput) {
+        searchInput.value = "";
+        console.log('🧹 Cleared search input');
+      }
+      
+      // 🔥 XÓA GỢI Ý (SUGGESTIONS) NẾU ĐANG HIỂN THỊ
+      const suggestionsEl = document.getElementById("suggestions");
+      if (suggestionsEl) {
+        suggestionsEl.classList.remove("show");
+        suggestionsEl.innerHTML = "";
+      }
+
+      // 🔥 XÓA SẠCH MARKER CŨ TRƯỚC
+      clearAllMarkers();
+      
+      // 🔥 RESET LẠI BIẾN TOÀN CỤC
+      allPlacesData = [];
+      visibleMarkers.clear();
+      markers = [];
+      window.placeMarkersById = {};
+      
+      // 🔥 TẮT lazy load cũ
       map.off("moveend", loadMarkersInViewport);
       
-      await fetchPlaces(
-        lastSearchParams.query,
-        lastSearchParams.flavors,
-        lastSearchParams.budget,
-        lastSearchParams.radius,
-        true
-      );
+      // 🔥 RESET lastSearchParams VỀ RỖNG (QUAN TRỌNG!)
+      lastSearchParams = {
+        query: "",
+        flavors: [],
+        budget: "",
+        radius: ""
+      };
       
-      console.log('🟢 [FAVORITE BTN] Restored to last search');
+      // 🔥 LOAD TẤT CẢ QUÁN MẶC ĐỊNH (KHÔNG CÓ FILTER)
+      console.log('📍 Loading all default places without any filters');
+      await fetchPlaces("", [], "", "", false);
+      
+      console.log('🟢 [FAVORITE BTN] Restored to normal view with all places');
     }
   });
 }
@@ -2692,6 +2744,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // 2. Nếu tìm thấy tên quán
     if (searchName) {
         console.log("🌍 Đang tự động tìm quán:", searchName);
+        
+        // 🔥 XÓA PARAMETER KHỎI URL NGAY LẬP TỨC (trước khi search)
+        const newUrl = window.location.pathname; // Chỉ giữ lại path, không có ?search=...
+        window.history.replaceState({}, '', newUrl);
+        console.log('🧹 Đã xóa parameter khỏi URL');
         
         const searchInput = document.getElementById("query");
         const searchBtn = document.getElementById("btnSearch");

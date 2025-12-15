@@ -24,6 +24,9 @@ urlpatterns = [
     path('accounts/verify-otp/', account_views.verify_otp_page, name='verify_otp'),  # Step 2: OTP verification page
     path('accounts/signup-form/', account_views.signup_form_page, name='signup_form'),  # Step 3: Password form (after OTP verified)
     
+    # Xử lý khi người dùng huỷ đăng nhập Google
+    path('accounts/3rdparty/login/cancelled/', account_views.social_login_cancelled, name='social_login_cancelled'),
+    
     # Include allauth URLs (login, logout, password reset, social auth, etc.)
     path('accounts/', include('allauth.urls')),
     
