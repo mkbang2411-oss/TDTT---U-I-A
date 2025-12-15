@@ -2205,8 +2205,12 @@ body {
 }
 
 .credits-info strong {
-  color: #0d47a1;
+  color: #d79529;
   font-weight: 600;
+}
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(10px); }
 }
 /*CÁI NÀY BẮT BUỘC PHẢI Ở CUỐI FILE, CÓ THÊM THÌ THÊM Ở TRÊN*/
 input,
