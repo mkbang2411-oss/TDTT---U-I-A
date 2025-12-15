@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng ký - UIA Food</title>
+    <title id="page-title">Đăng ký - UIA Food</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -315,8 +315,8 @@
                 <div class="icon-wrapper">
                     📧
                 </div>
-                <h1>Bắt đầu đăng ký</h1>
-                <p>Nhập email để nhận mã xác thực</p>
+                <h1 data-translate="create_account_heading">Bắt đầu đăng ký</h1>
+                <p data-translate="receive_verification_code">Nhập email để nhận mã xác thực</p>
             </div>
         </div>
         
@@ -328,25 +328,30 @@
             </div>
             
             <div class="info-box">
-                <strong>📝 Quy trình đăng ký:</strong>
-                Bước 1: Nhập email → Bước 2: Xác thực OTP → Bước 3: Tạo mật khẩu
-            </div>
+                <strong data-translate="registration_process_title">📝 Quy trình đăng ký:</strong>
+                <span data-translate="registration_process_steps">
+                    Bước 1: Nhập email → Bước 2: Xác thực OTP → Bước 3: Tạo mật khẩu
+                </span>
+                </div>
             
             <div id="error-message" class="validation-message error" style="display: none;"></div>
             
             <form id="email-form">
                 {% csrf_token %}
                 <div class="form-group">
-                    <label for="email">Email của bạn</label>
+                    <label for="email" data-translate="your_email">Email của bạn</label>
                     <input type="email" id="email" name="email" placeholder="example@email.com" required autofocus>
                     <div id="email-validation" class="validation-message"></div>
                 </div>
                 
-                <button type="submit" class="btn-next" id="btn-submit">Gửi mã xác thực</button>
+                <button type="submit" class="btn-next" id="btn-submit" data-translate="send_verification_code">Gửi mã xác thực</button>
             </form>
             
             <div class="footer-text">
-                Đã có tài khoản? <a href="{% url 'account_login' %}">Đăng nhập ngay</a>
+                <span data-translate="already_account">
+                    Đã có tài khoản? 
+                </span>
+                <a href="{% url 'account_login' %}" data-translate="login_now">Đăng nhập ngay</a>
             </div>
         </div>
     </div>
@@ -404,9 +409,9 @@
             if (email === '') {
                 hideValidation();
             } else if (!validateEmail(email)) {
-                showValidation('❌ Email không hợp lệ', 'error');
+                showValidation(t('email_invalid'), 'error');
             } else {
-                showValidation('✓ Email hợp lệ', 'success');
+                showValidation(t('email_valid'), 'success');
             }
         });
         
@@ -418,17 +423,17 @@
             const email = emailInput.value.trim();
             
             if (!email) {
-                showError('Vui lòng nhập địa chỉ email');
+                showError(t('error_email_required'));
                 return;
             }
             
             if (!validateEmail(email)) {
-                showError('Email không hợp lệ. Vui lòng kiểm tra lại');
+                showError(t('error_email_invalid'));
                 return;
             }
             
             btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<span class="loading"></span> Đang gửi...';
+            btnSubmit.innerHTML = '<span class="loading"></span> ' + t('sending_request');
             
             try {
                 const response = await fetch('/api/send-otp/', {
@@ -448,12 +453,27 @@
                 } else {
                     showError(data.message);
                     btnSubmit.disabled = false;
-                    btnSubmit.textContent = 'Gửi mã xác thực';
+                    btnSubmit.textContent = t('send_verification_code')
                 }
             } catch (error) {
-                showError('Có lỗi xảy ra. Vui lòng thử lại.');
+                showError(t('generic_error'));
                 btnSubmit.disabled = false;
-                btnSubmit.textContent = 'Gửi mã xác thực';
+                btnSubmit.textContent = t('send_verification_code');
+            }
+        });
+        function t(key) {
+            if (
+            window.LanguageToggle &&
+            typeof window.LanguageToggle.translateByKey === "function"
+            ) {
+            return LanguageToggle.translateByKey(key);
+            }
+            return key;
+        }
+        document.addEventListener("DOMContentLoaded", function () {
+            const titleEl = document.getElementById("page-title");
+            if (titleEl) {
+            document.title = t("sign_up_title");
             }
         });
     </script>

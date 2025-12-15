@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng ký - UIA Food</title>
+    <title id="page-title">Đăng ký - UIA Food</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -377,8 +377,8 @@
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                     </svg>
                 </div>
-                <h1>Tạo tài khoản</h1>
-                <p>Tham gia cùng UIA Food ngay! 🍜</p>
+                <h1 data-translate="signup_title">Tạo tài khoản</h1>
+                <p data-translate="signup_subtitle">Tham gia cùng UIA Food ngay! 🍜</p>
             </div>
         </div>
         
@@ -401,8 +401,10 @@
                            readonly 
                            style="background-color: #f0f0f0; cursor: not-allowed;"
                            required>
-                    <div id="email-validation" class="validation-message success" style="display: block;">
-                        ✓ Email đã được xác thực OTP
+                    <div id="email-validation" class="validation-message success" style="display: block;" >
+                        <span data-translate="email_verified_success">
+                            ✓ Email đã được xác thực OTP
+                        </span>
                     </div>
                     {% if form.email.errors %}
                         <div class="django-error" style="margin-top: 8px; margin-bottom: 0;">
@@ -412,10 +414,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.password1.id_for_label }}">Mật khẩu</label>
+                    <label for="{{ form.password1.id_for_label }}" data-translate="password_label">Mật khẩu</label>
                     <div class="password-wrapper">
                         {{ form.password1 }}
-                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password1.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu">
+                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password1.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu" data-translate-title="toggle_password">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-open">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
@@ -435,10 +437,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.password2.id_for_label }}">Xác nhận mật khẩu</label>
+                    <label for="{{ form.password2.id_for_label }}" data-translate="confirm_password_label">Xác nhận mật khẩu</label>
                     <div class="password-wrapper">
                         {{ form.password2 }}
-                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password2.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu">
+                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password2.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu" data-translate-title="toggle_password">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-open">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
@@ -457,11 +459,11 @@
                     {% endif %}
                 </div>
 
-                <button type="submit" class="btn-submit">Đăng ký ngay </button>
+                <button type="submit" class="btn-submit" data-translate="sign_up_now">Đăng ký ngay </button>
             </form>
             
             <div class="footer-text">
-                Đã có tài khoản? <a href="{% url 'account_login' %}">Đăng nhập ngay</a>
+                Đã có tài khoản? <a href="{% url 'account_login' %}"data-translate="login_now">Đăng nhập ngay</a>
             </div>
         </div>
     </div>
@@ -504,16 +506,16 @@
             let messages = [];
             
             if (password.length >= 8) strength++;
-            else messages.push('ít nhất 8 ký tự');
+            else messages.push(t('password_requirement_length'))
             
             if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-            else messages.push('chữ hoa và chữ thường');
+            else messages.push(t('password_upper_lower'));
             
             if (/[0-9]/.test(password)) strength++;
-            else messages.push('số');
+            else messages.push(t('number'));
             
             if (/[^a-zA-Z0-9]/.test(password)) strength++;
-            else messages.push('ký tự đặc biệt');
+            else messages.push(t('password_special_char'));
             
             return { strength, messages };
         }
@@ -567,11 +569,23 @@
                         const { strength, messages } = checkPasswordStrength(password);
                         
                         if (strength < 2) {
-                            showValidation('password1-validation', `❌ Mật khẩu yếu. Cần: ${messages.join(', ')}`, 'error');
+                            showValidation(
+                                'password1-validation',
+                                `${t('password_weak')} ${messages.join(', ')}`,
+                                'error'
+                            );
                         } else if (strength < 3) {
-                            showValidation('password1-validation', `⚠️ Mật khẩu trung bình. Nên thêm: ${messages.join(', ')}`, 'warning');
+                            showValidation(
+                                'password1-validation',
+                                `${t('password_medium')} ${messages.join(', ')}`,
+                                'warning'
+                            );
                         } else {
-                            showValidation('password1-validation', '✓ Mật khẩu mạnh', 'success');
+                            showValidation(
+                                'password1-validation',
+                                t('password_strong'),
+                                'success'
+                            );
                         }
                     }
                     
@@ -579,9 +593,9 @@
                     const password2Field = document.getElementById('{{ form.password2.id_for_label }}');
                     if (password2Field && password2Field.value !== '' && password2Touched) {
                         if (password === password2Field.value) {
-                            showValidation('password2-validation', '✓ Mật khẩu khớp', 'success');
+                            showValidation('password2-validation', t('password_match'), 'success');
                         } else {
-                            showValidation('password2-validation', '❌ Mật khẩu không khớp', 'error');
+                            showValidation('password2-validation', t('password_not_match'), 'error');
                         }
                     }
                 });
@@ -608,9 +622,9 @@
                     if (password2 === '') {
                         hideValidation('password2-validation');
                     } else if (password2 !== password1) {
-                        showValidation('password2-validation', '❌ Mật khẩu không khớp với mật khẩu đã nhập ở trên', 'error');
+                        showValidation('password2-validation', t('password_not_match_above'), 'error');
                     } else {
-                        showValidation('password2-validation', '✓ Mật khẩu khớp', 'success');
+                        showValidation('password2-validation', t('password_match'), 'success');
                     }
                 });
                 
@@ -618,6 +632,21 @@
                     // Ẩn validation khi blur ra ngoài
                     hideValidation('password2-validation');
                 });
+            }
+        });
+        function t(key) {
+            if (
+            window.LanguageToggle &&
+            typeof window.LanguageToggle.translateByKey === "function"
+            ) {
+            return LanguageToggle.translateByKey(key);
+            }
+            return key;
+        }
+        document.addEventListener("DOMContentLoaded", function () {
+            const titleEl = document.getElementById("page-title");
+            if (titleEl) {
+            document.title = t("sign_up_title");
             }
         });
     </script>

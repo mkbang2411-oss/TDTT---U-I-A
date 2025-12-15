@@ -382,8 +382,8 @@
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                     </svg>
                 </div>
-                <h1>Đăng nhập</h1>
-                <p>Chào mừng trở lại! 🎉</p>
+                <h1 data-translate="login_title">Đăng nhập</h1>
+                <p data-translate="login_welcom">Chào mừng trở lại! 🎉</p>
             </div>
         </div>
         
@@ -421,11 +421,11 @@
                     <div class="validation-message error" style="display: block; margin-bottom: 20px;">
                         {% for error in form.non_field_errors %}
                             {% if 'password' in error|lower or 'mật khẩu' in error|lower %}
-                                ❌ Mật khẩu sai
+                                ❌<span data-translate="error_wrong_password"> Mật khẩu sai</span>
                             {% elif 'not correct' in error|lower or 'incorrect' in error|lower or 'are not correct' in error|lower %}
-                                ❌ Mật khẩu sai
+                                ❌<span data-translate="error_wrong_password"> Mật khẩu sai</span>
                             {% elif 'email' in error|lower and 'not' in error|lower %}
-                                ❌ Không tìm thấy người dùng với email này
+                                ❌<span data-translate="error_email_not_found"> Không tìm thấy người dùng với email này</span>
                             {% else %}
                                 ❌ {{ error }}
                             {% endif %}
@@ -443,6 +443,7 @@
                         placeholder="example@email.com" 
                         required
                         aria-label="Địa chỉ email"
+                        data-translate-aria-label="email_aria_label"
                         aria-required="true"
                     >
                 </div>
@@ -455,11 +456,13 @@
                             id="{{ form.password.id_for_label }}" 
                             name="password" 
                             placeholder="Nhập mật khẩu" 
+                            data-translate-placeholder="password_placeholder"
                             required
                             aria-label="Mật khẩu"
+                            data-translate-placeholder="password_label"
                             aria-required="true"
                         >
-                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu" aria-label="Hiện/Ẩn mật khẩu">
+                        <button type="button" class="toggle-password" onclick="togglePassword('{{ form.password.id_for_label }}', this)" title="Hiện/Ẩn mật khẩu" data-translate-title="toggle_password" aria-label="Hiện/Ẩn mật khẩu" data-translate-aria-label="toggle_password">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-open">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
@@ -472,22 +475,22 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit" id="login-btn">Đăng nhập ngay</button>
+                <button type="submit" class="btn-submit" id="login-btn" data-translate="login_now">Đăng nhập ngay</button>
             </form>
             
             <div style="text-align: center; margin: 16px 0;">
-                <a href="{% url 'password_reset_request' %}" style="color: #BC2A12; font-size: 14px; text-decoration: none; font-weight: 500;">Quên mật khẩu?</a>
+                <a href="{% url 'password_reset_request' %}" style="color: #BC2A12; font-size: 14px; text-decoration: none; font-weight: 500;"data-translate="forgot_password">Quên mật khẩu?</a>
             </div>
             
-            <div class="divider">Hoặc đăng nhập với</div>
+            <div class="divider"data-translate="or_login_with">Hoặc đăng nhập với</div>
             
             <a href="{% provider_login_url 'google' %}" class="btn-google">
                 <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google">
-                <span>Tiếp tục với Google</span>
+                <span data-translate="continue_with_google">Tiếp tục với Google</span>
             </a>
             
             <div class="footer-text">
-                Chưa có tài khoản? <a href="{% url 'account_signup' %}">Đăng ký ngay</a>
+                <span data-translate="no_account">Chưa có tài khoản?</span> <a href="{% url 'account_signup' %}" data-translate="sign_up_now">Đăng ký ngay</a>
             </div>
         </div>
     </div>
@@ -570,17 +573,26 @@
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailRegex.test(email)) {
                         e.preventDefault();
-                        showError('❌ Email không đúng định dạng. Vui lòng nhập đúng định dạng (vd: example@email.com)');
+                        showError(t('invalid_email_format'));
                         return false;
                     }
                     
                     // Nếu email hợp lệ, cho phép form submit bình thường
                     // Django sẽ xử lý việc kiểm tra user tồn tại và mật khẩu
                     loginBtn.disabled = true;
-                    loginBtn.textContent = 'Đang đăng nhập...';
+                    loginBtn.textContent =t('loggin_in'),
                 });
             }
         });
+         function t(key) {
+            if (
+            window.LanguageToggle &&
+            typeof window.LanguageToggle.translateByKey === "function"
+            ) {
+            return LanguageToggle.translateByKey(key);
+            }
+            return key;
+        }
     </script>
 </body>
 </html>
