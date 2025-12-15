@@ -1299,7 +1299,7 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
     if places_found == 0:
         return {
             'error': True,
-            'message': f'Không tìm thấy quán nào trong bán kính {{radius_km}} km'
+            'message': f'Không tìm thấy quán nào trong bán kính {radius_km} km'
         }
     
     return plan

@@ -1306,24 +1306,6 @@
     // Làm gì đó khi đổi ngôn ngữ (reload data, update UI, etc.)
     </script>
 
-    <script>
-    function syncToggleWithLanguage() {
-        const lang = localStorage.getItem("user_language") || "vi";
-
-        // Đợi cho tới khi LanguageToggle script load xong
-        function wait() {
-            if (window.LanguageToggle) {
-                window.LanguageToggle.setLanguage(lang);
-            } else {
-                setTimeout(wait, 30);
-            }
-        }
-        wait();
-    }
-
-    // Khi quay lại main_web, script này chạy lại
-    syncToggleWithLanguage();
-    </script>
 
 </body>
 </html>

@@ -1,11 +1,13 @@
 def get_language_toggle_html():
     """
     Component toggle ngôn ngữ VI/EN với CSS đẹp
-    Cục tròn trắng có text VN/EN bên trong và trượt qua trượt lại
-    Lưu trạng thái vào localStorage để giữ khi chuyển trang
+    ✨ V3: FIX LƯU TRỮ - Không tự chuyển về English
+    - Lưu vào CẢLOCALstorage + COOKIE (double backup)
+    - Mặc định: Tiếng Việt nếu chưa có lựa chọn
+    - Không bao giờ tự reset về English
     """
     return """
-<!-- ==================== LANGUAGE TOGGLE COMPONENT ==================== -->
+<!-- ==================== LANGUAGE TOGGLE COMPONENT V3 (FIXED) ==================== -->
 <div id="language-toggle-container">
     <div class="lang-toggle-wrapper">
         <label class="lang-switch">
@@ -36,10 +38,8 @@ def get_language_toggle_html():
 .lang-toggle-wrapper {
     display: flex;
     align-items: center;
-    
 }
 
-/* Toggle Switch - SMALLER SIZE */
 .lang-switch {
     position: relative;
     display: inline-block;
@@ -68,7 +68,6 @@ def get_language_toggle_html():
         inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
-/* Text VN bên trái */
 .lang-text-left {
     position: absolute;
     left: 10px;
@@ -82,7 +81,6 @@ def get_language_toggle_html():
     z-index: 1;
 }
 
-/* Text EN bên phải */
 .lang-text-right {
     position: absolute;
     right: 5px;
@@ -96,7 +94,6 @@ def get_language_toggle_html():
     z-index: 1;
 }
 
-/* Cục tròn trắng với text bên trong */
 .lang-thumb {
     position: absolute;
     height: 24px;
@@ -112,8 +109,6 @@ def get_language_toggle_html():
         inset 0 1px 0 rgba(255, 255, 255, 0.5);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    
-    /* Text styling */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -121,12 +116,9 @@ def get_language_toggle_html():
     font-size: 9px;
     color: white;
     z-index: 2;
-    backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(32px);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Khi checked (EN) */
 input:checked + .lang-slider {
     background: #FFF5E6;
 }
@@ -149,7 +141,6 @@ input:checked + .lang-slider .lang-text-right {
     color: rgba(0, 0, 0, 0.6);
 }
 
-/* Khi không checked (VN) */
 input:not(:checked) + .lang-slider .lang-text-left {
     color: rgba(0, 0, 0, 0.6);
 }
@@ -162,7 +153,6 @@ input:not(:checked) + .lang-slider .lang-text-right {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     #language-toggle-container {
         top: 10px;
@@ -189,83 +179,220 @@ input:not(:checked) + .lang-slider .lang-text-right {
         transform: translateX(30px);
     }
 }
+
+@keyframes sync-pulse {
+    0%, 100% { 
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    }
+    50% { 
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8),
+                    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    }
+}
+
+.lang-slider.syncing {
+    animation: sync-pulse 0.6s ease-in-out;
+}
 </style>
 
 <script>
-// ==================== LANGUAGE TOGGLE LOGIC ====================
+// ==================== LANGUAGE TOGGLE LOGIC V3 (FIXED) ====================
 (function() {
     const STORAGE_KEY = 'user_language';
+    const COOKIE_NAME = 'user_lang';
+    const CHANNEL_NAME = 'language-sync-channel';
+    const DEFAULT_LANGUAGE = 'vi'; // ✅ MẶC ĐỊNH LÀ TIẾNG VIỆT
+    
     const checkbox = document.getElementById('lang-toggle-checkbox');
     const langThumb = document.getElementById('lang-thumb');
+    const langSlider = document.querySelector('.lang-slider');
     
-    // Load translations (sẽ fetch từ file JSON)
     let translations = {};
+    let broadcastChannel = null;
     
-    // Load file ngôn ngữ
+    // ==================== COOKIE HELPERS ====================
+    function setCookie(name, value, days = 365) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        const expires = "expires=" + date.toUTCString();
+        document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Lax";
+        console.log(`🍪 Cookie set: ${name}=${value}`);
+    }
+    
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) {
+                const value = c.substring(nameEQ.length, c.length);
+                console.log(`🍪 Cookie read: ${name}=${value}`);
+                return value;
+            }
+        }
+        console.log(`🍪 Cookie not found: ${name}`);
+        return null;
+    }
+    
+    // ==================== BROADCAST CHANNEL ====================
+    if ('BroadcastChannel' in window) {
+        try {
+            broadcastChannel = new BroadcastChannel(CHANNEL_NAME);
+            console.log('✅ BroadcastChannel initialized');
+        } catch (e) {
+            console.warn('⚠️ BroadcastChannel failed:', e);
+        }
+    }
+    
+    // ==================== LOAD TRANSLATIONS ====================
     async function loadTranslations() {
         try {
             const response = await fetch('/languages.json');
             if (response.ok) {
                 translations = await response.json();
-                console.log('✅ Đã load translations:', translations);
+                console.log('✅ Loaded translations');
             } else {
-                console.warn('⚠️ Không tìm thấy languages.json, sử dụng bản dịch mặc định');
-                // Fallback translations
+                // Fallback
                 translations = {
-                    vi: {
-                        title: "Trang chủ",
-                        greeting: "Xin chào!",
-                        instruction: "Chọn ngôn ngữ ở góc trên bên phải"
-                    },
-                    en: {
-                        title: "Home",
-                        greeting: "Hello!",
-                        instruction: "Select language at top right corner"
-                    }
+                    vi: { title: "Trang chủ", greeting: "Xin chào!" },
+                    en: { title: "Home", greeting: "Hello!" }
                 };
             }
         } catch (error) {
-            console.error('❌ Error loading translations:', error);
+            console.error('❌ Translation load error:', error);
+            translations = {
+                vi: { title: "Trang chủ", greeting: "Xin chào!" },
+                en: { title: "Home", greeting: "Hello!" }
+            };
         }
     }
     
-    // Lấy ngôn ngữ hiện tại
+    // ==================== GET CURRENT LANGUAGE (FIXED V3 - IGNORE BROWSER) ====================
     function getCurrentLanguage() {
-        return localStorage.getItem(STORAGE_KEY) || 'vi';
+        // ⚠️ CRITICAL: NEVER use navigator.language - it causes auto-switching!
+        // Priority: localStorage > Cookie > Default (NEVER browser language)
+        
+        let lang = null;
+        
+        // 1. Check localStorage FIRST
+        try {
+            lang = localStorage.getItem(STORAGE_KEY);
+            if (lang && (lang === 'vi' || lang === 'en')) {
+                console.log(`📦 Language from localStorage: ${lang}`);
+                return lang;
+            }
+            
+            // ⚠️ Clear invalid values
+            if (lang) {
+                console.warn(`⚠️ Invalid language in localStorage: "${lang}", clearing...`);
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        } catch (e) {
+            console.warn('⚠️ localStorage read failed:', e);
+        }
+        
+        // 2. Check Cookie
+        lang = getCookie(COOKIE_NAME);
+        if (lang && (lang === 'vi' || lang === 'en')) {
+            console.log(`🍪 Language from cookie: ${lang}`);
+            // Sync back to localStorage
+            try {
+                localStorage.setItem(STORAGE_KEY, lang);
+            } catch (e) {}
+            return lang;
+        }
+        
+        // ⚠️ Clear invalid cookie
+        if (lang) {
+            console.warn(`⚠️ Invalid language in cookie: "${lang}", clearing...`);
+            document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+        
+        // 3. Default - ALWAYS Vietnamese, NEVER use browser language
+        console.log(`🌍 First visit - Setting default: ${DEFAULT_LANGUAGE} (ignoring browser: ${navigator.language})`);
+        try {
+            localStorage.setItem(STORAGE_KEY, DEFAULT_LANGUAGE);
+            setCookie(COOKIE_NAME, DEFAULT_LANGUAGE, 365);
+        } catch (e) {
+            console.warn('⚠️ Cannot save default language:', e);
+        }
+        return DEFAULT_LANGUAGE;
     }
     
-    // Lưu ngôn ngữ
-    function setLanguage(lang) {
-        localStorage.setItem(STORAGE_KEY, lang);
-        updateUI(lang);
+    // ==================== SET LANGUAGE (FIXED) ====================
+    function setLanguage(lang, isFromBroadcast = false) {
+        const oldLang = getCurrentLanguage();
+        
+        if (oldLang === lang) {
+            console.log(`✅ Language already set to: ${lang}`);
+            return;
+        }
+        
+        console.log(`🔄 Changing language: ${oldLang} → ${lang}`);
+        
+        // ✅ LƯU VÀO CẢ 2 NƠI (localStorage + Cookie)
+        try {
+            localStorage.setItem(STORAGE_KEY, lang);
+            console.log(`✅ Saved to localStorage: ${lang}`);
+        } catch (e) {
+            console.error('❌ localStorage save failed:', e);
+        }
+        
+        setCookie(COOKIE_NAME, lang, 365); // Lưu 1 năm
+        
+        updateUI(lang, isFromBroadcast);
         applyTranslations(lang);
         
-        // Dispatch event để các component khác biết
+        // Broadcast to other tabs
+        if (!isFromBroadcast && broadcastChannel) {
+            try {
+                broadcastChannel.postMessage({
+                    type: 'LANGUAGE_CHANGED',
+                    language: lang,
+                    timestamp: Date.now()
+                });
+                console.log(`📡 Broadcast sent: ${lang}`);
+            } catch (e) {
+                console.error('❌ Broadcast failed:', e);
+            }
+        }
+        
+        // Dispatch event
         window.dispatchEvent(new CustomEvent('languageChanged', { 
-            detail: { language: lang } 
+            detail: { language: lang, isFromBroadcast } 
         }));
         
-        console.log(`🌐 Language changed to: ${lang}`);
+        console.log(`✅ Language set to: ${lang}`);
     }
     
-    // Update UI
-    function updateUI(lang) {
+    // ==================== UPDATE UI ====================
+    function updateUI(lang, isFromBroadcast = false) {
         const isEnglish = lang === 'en';
-        checkbox.checked = isEnglish;
         
-        // Update text trong cục tròn
+        // ✅ CRITICAL FIX: Đảm bảo checkbox luôn sync với language
+        if (checkbox) {
+            checkbox.checked = isEnglish;
+            console.log(`🎚️ Checkbox updated: ${isEnglish ? 'EN' : 'VI'}`);
+        }
+        
         if (langThumb) {
             langThumb.textContent = isEnglish ? 'EN' : 'VN';
         }
+        
+        if (isFromBroadcast && langSlider) {
+            langSlider.classList.add('syncing');
+            setTimeout(() => langSlider.classList.remove('syncing'), 600);
+        }
     }
     
-    // Áp dụng bản dịch cho trang
+    // ==================== APPLY TRANSLATIONS ====================
     function applyTranslations(lang) {
         if (!translations[lang]) return;
         
         const langData = translations[lang];
         
-        // Tìm và thay thế các element có data-translate
         document.querySelectorAll('[data-translate]').forEach(el => {
             const key = el.getAttribute('data-translate');
             if (langData[key]) {
@@ -277,54 +404,276 @@ input:not(:checked) + .lang-slider .lang-text-right {
             }
         });
         
-        // Xử lý placeholder riêng
         document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
             const key = el.getAttribute('data-translate-placeholder');
-            if (langData[key]) {
-                el.placeholder = langData[key];
-            }
+            if (langData[key]) el.placeholder = langData[key];
         });
         
-        // Xử lý title/tooltip
         document.querySelectorAll('[data-translate-title]').forEach(el => {
             const key = el.getAttribute('data-translate-title');
-            if (langData[key]) {
-                el.title = langData[key];
-            }
+            if (langData[key]) el.title = langData[key];
         });
     }
     
-    // Event listeners
+    // ==================== BROADCAST LISTENER ====================
+    if (broadcastChannel) {
+        broadcastChannel.onmessage = (event) => {
+            const { type, language } = event.data;
+            if (type === 'LANGUAGE_CHANGED') {
+                console.log(`📩 Received from other tab: ${language}`);
+                setLanguage(language, true);
+            }
+        };
+        
+        window.addEventListener('beforeunload', () => {
+            if (broadcastChannel) broadcastChannel.close();
+        });
+    }
+    
+    // ==================== STORAGE EVENT (FALLBACK) ====================
+    window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY && e.newValue !== null) {
+            console.log(`📦 Storage event: ${e.newValue}`);
+            setLanguage(e.newValue, true);
+        }
+    });
+    
+    // ==================== CHECKBOX EVENT ====================
     if (checkbox) {
         checkbox.addEventListener('change', function() {
             const newLang = this.checked ? 'en' : 'vi';
-            setLanguage(newLang);
+            console.log(`👆 User clicked: ${newLang}`);
+            setLanguage(newLang, false);
         });
     }
     
-    // Initialize
+    // ==================== INITIALIZE ====================
     async function init() {
+        console.log('🚀 Language Toggle V3 initializing...');
+        
         await loadTranslations();
+        
+        // ✅ CRITICAL: Đọc language TRƯỚC
         const currentLang = getCurrentLanguage();
-        updateUI(currentLang);
+        console.log(`🌍 Initial language: ${currentLang}`);
+        
+        // ✅ CRITICAL: Update UI NGAY (đảm bảo checkbox đúng)
+        updateUI(currentLang, false);
+        
+        // ✅ SAU ĐÓ mới apply translations
         applyTranslations(currentLang);
+        
+        console.log('✅ Language Toggle V3 ready');
+        console.log(`   📍 Checkbox state: ${checkbox ? checkbox.checked : 'N/A'}`);
+        console.log(`   📍 Language: ${currentLang}`);
     }
     
-    // Chạy khi trang load
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
     
-// Export functions cho global scope
+    // ==================== GLOBAL API ====================
     window.LanguageToggle = {
         getCurrentLanguage,
-        setLanguage,
-        applyTranslations: () => {
-            const currentLang = getCurrentLanguage();
-            applyTranslations(currentLang);
+        setLanguage: (lang) => setLanguage(lang, false),
+        applyTranslations: () => applyTranslations(getCurrentLanguage()),
+        getTranslation: (key) => {
+            const lang = getCurrentLanguage();
+            return translations[lang]?.[key] || key;
         },
+        broadcastCurrentLanguage: () => {
+            if (broadcastChannel) {
+                const lang = getCurrentLanguage();
+                broadcastChannel.postMessage({
+                    type: 'LANGUAGE_CHANGED',
+                    language: lang,
+                    timestamp: Date.now()
+                });
+            }
+        }
+    };
+})();
+</script>
+<!-- ==================== END LANGUAGE TOGGLE V3 ==================== -->
+"""
+
+
+def get_language_script_only():
+    """
+    Script DỊCH trang - KHÔNG CÓ NÚT (cho Account, Login, etc.)
+    ✨ V3: FIX - Không tự chuyển về English
+    """
+    return """
+<script>
+// ==================== LANGUAGE LOGIC V3 (NO UI - FIXED) ====================
+(function() {
+    const STORAGE_KEY = 'user_language';
+    const COOKIE_NAME = 'user_lang';
+    const CHANNEL_NAME = 'language-sync-channel';
+    const DEFAULT_LANGUAGE = 'vi'; // ✅ MẶC ĐỊNH TIẾNG VIỆT
+    
+    let translations = {};
+    let broadcastChannel = null;
+    
+    // ==================== COOKIE HELPERS ====================
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1);
+            if (c.indexOf(nameEQ) === 0) {
+                return c.substring(nameEQ.length);
+            }
+        }
+        return null;
+    }
+    
+    // ==================== BROADCAST CHANNEL ====================
+    if ('BroadcastChannel' in window) {
+        try {
+            broadcastChannel = new BroadcastChannel(CHANNEL_NAME);
+            console.log('✅ BroadcastChannel ready (no UI)');
+        } catch (e) {
+            console.warn('⚠️ BroadcastChannel failed:', e);
+        }
+    }
+    
+    // ==================== LOAD TRANSLATIONS ====================
+    async function loadTranslations() {
+        try {
+            const response = await fetch('/languages.json');
+            if (response.ok) {
+                translations = await response.json();
+                console.log('✅ Translations loaded (no UI)');
+            } else {
+                translations = {
+                    vi: { title: "Tài khoản", greeting: "Xin chào!" },
+                    en: { title: "Account", greeting: "Hello!" }
+                };
+            }
+        } catch (error) {
+            console.error('❌ Translation error:', error);
+            translations = {
+                vi: { title: "Tài khoản", greeting: "Xin chào!" },
+                en: { title: "Account", greeting: "Hello!" }
+            };
+        }
+    }
+    
+    // ==================== GET LANGUAGE (FIXED) ====================
+    function getCurrentLanguage() {
+        // Priority: localStorage > Cookie > Default
+        let lang = null;
+        
+        try {
+            lang = localStorage.getItem(STORAGE_KEY);
+            if (lang && (lang === 'vi' || lang === 'en')) {
+                return lang;
+            }
+        } catch (e) {}
+        
+        lang = getCookie(COOKIE_NAME);
+        if (lang && (lang === 'vi' || lang === 'en')) {
+            try {
+                localStorage.setItem(STORAGE_KEY, lang);
+            } catch (e) {}
+            return lang;
+        }
+        
+        // ✅ LƯU DEFAULT NGAY
+        try {
+            localStorage.setItem(STORAGE_KEY, DEFAULT_LANGUAGE);
+        } catch (e) {}
+        
+        return DEFAULT_LANGUAGE;
+    }
+    
+    // ==================== APPLY TRANSLATIONS ====================
+    function applyTranslations(lang) {
+        if (!lang) lang = getCurrentLanguage();
+        if (!translations[lang]) return;
+        
+        const langData = translations[lang];
+        
+        document.querySelectorAll('[data-translate]').forEach(el => {
+            const key = el.getAttribute('data-translate');
+            if (langData[key]) {
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    el.placeholder = langData[key];
+                } else {
+                    el.textContent = langData[key];
+                }
+            }
+        });
+        
+        document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-translate-placeholder');
+            if (langData[key]) el.placeholder = langData[key];
+        });
+        
+        document.querySelectorAll('[data-translate-title]').forEach(el => {
+            const key = el.getAttribute('data-translate-title');
+            if (langData[key]) el.title = langData[key];
+        });
+        
+        console.log(`🌍 Applied: ${lang} (no UI)`);
+    }
+    
+    // ==================== BROADCAST LISTENER ====================
+    if (broadcastChannel) {
+        broadcastChannel.onmessage = (event) => {
+            const { type, language } = event.data;
+            if (type === 'LANGUAGE_CHANGED') {
+                console.log(`📩 Sync from main: ${language}`);
+                localStorage.setItem(STORAGE_KEY, language);
+                applyTranslations(language);
+                
+                window.dispatchEvent(new CustomEvent('languageChanged', { 
+                    detail: { language, isFromBroadcast: true } 
+                }));
+            }
+        };
+        
+        window.addEventListener('beforeunload', () => {
+            if (broadcastChannel) broadcastChannel.close();
+        });
+    }
+    
+    // ==================== STORAGE EVENT ====================
+    window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY && e.newValue !== null) {
+            console.log(`📦 Storage sync: ${e.newValue}`);
+            applyTranslations(e.newValue);
+        }
+    });
+    
+    // ==================== INITIALIZE ====================
+    async function init() {
+        console.log('🚀 Language Script V3 (no UI) init...');
+        
+        await loadTranslations();
+        
+        const currentLang = getCurrentLanguage();
+        console.log(`🌍 Language: ${currentLang}`);
+        
+        applyTranslations(currentLang);
+        
+        console.log('✅ Ready');
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    
+    // ==================== GLOBAL API ====================
+    window.LanguageToggle = {
+        getCurrentLanguage,
+        applyTranslations: () => applyTranslations(getCurrentLanguage()),
         getTranslation: (key) => {
             const lang = getCurrentLanguage();
             return translations[lang]?.[key] || key;
@@ -332,5 +681,4 @@ input:not(:checked) + .lang-slider .lang-text-right {
     };
 })();
 </script>
-<!-- ==================== END LANGUAGE TOGGLE COMPONENT ==================== -->
 """

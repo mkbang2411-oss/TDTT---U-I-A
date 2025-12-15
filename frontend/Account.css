@@ -566,7 +566,8 @@ body {
 .btn-add,
 .btn-accept,
 .btn-reject,
-.btn-chat {
+.btn-chat,
+.btn-vieww {
   padding: 10px 20px;
   border: none;
   border-radius: 20px;
@@ -590,6 +591,15 @@ body {
 .btn-accept {
   background: #4caf50;
   color: white;
+}
+
+.btn-vieww {
+  background: #bc723c;
+  color: white;
+}
+
+.btn-vieww:hover {
+  background: #3c4b3d;
 }
 
 .btn-accept:hover {
