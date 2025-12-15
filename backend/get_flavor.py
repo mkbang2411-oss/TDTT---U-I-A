@@ -21,44 +21,43 @@ CSV_FILE = os.path.join(BASE_DIR, "Data_with_flavor.csv")
 #      - Tính từ 1, không tính dòng header
 #      - Để None nếu muốn từ đầu / đến cuối
 # ======================================================
-START_ROW = 901      # ví dụ: 2
-END_ROW   = 2548      # ví dụ: 20
+START_ROW = 1000      # ví dụ: 2
+END_ROW   = 2458    # ví dụ: 20
 
 # ======================================================
-# 🔹 2. Bảng từ khóa khẩu vị
+# 🔹 2. Bảng từ khóa khẩu vị (CHỈ VIẾT THƯỜNG)
 # ======================================================
 rules = {
     "cay": [
-        "sa tế", "lẩu thái", "kim chi", "curry", "cà ri",
-        "ớt hiểm", "hạt tiêu", "mì cay","mỳ cay","jollibee","texas",
-        "ớt", "huế", "spicy", "chili"
+        "sa tế", "lẩu thái", "kim chi", "curry", "cà ri", "hotpot",
+        "ớt hiểm", "hạt tiêu", "mì cay", "mỳ cay", "jollibee", "texas",
+        "ớt", "huế", "spicy", "chili", "pizza",
     ],
     "mặn": [
-        "bánh canh", "bánh mì", "cơm tấm", "bò kho","sủi cảo","há cảo","dimsum","bánh xèo","gà rán",
-        "trứng muối", "mặn", "phở", "sườn", "bún", "lẩu","hủ tiếu","jollibee","texas",
-        "fish sauce", "soy sauce","cháy tỏi","chay toi","rang muối","rang muoi"
+        "bánh canh", "bánh mì", "cơm tấm", "bò kho", "sủi cảo", "há cảo", "dimsum", "bánh xèo", "gà rán", "lẩu cá", "lẩu mắm", "bò nướng","bún cá",
+        "trứng muối", "mặn", "phở", "sườn", "bún riêu", "hủ tiếu", "jollibee", "texas", "xá xíu", "bún", "pizza","vịt quay","gà nướng","cơm gà",
+        "fish sauce", "soy sauce", "cháy tỏi", "chay toi", "rang muối", "rang muoi", "lẩu gà", "lẩu bò", "lẩu ếch", "lẩu dê", "lẩu hải sản", "lẩu cua", "lẩu thập cẩm",
     ],
     "ngọt": [
-        "bánh ngọt", "trà sữa", "sữa chua", "sữa tươi","sủi cảo","há cảo","dimsum","gà rán",
-        "bánh flan", "ngọt", "bánh", "cake", "chè", "kem","jollibee","texas",
-        "matcha", "kẹo", "bakery", "caramel", "sweet","bánh xèo",
+        "bánh ngọt", "trà sữa", "sữa chua", "sữa tươi", "sủi cảo", "há cảo", "dimsum", "gà rán",
+        "bánh flan", "ngọt", "bánh", "cake", "chè", "kem", "jollibee", "texas", "pizza",
+        "matcha", "kẹo", "bakery", "caramel", "sweet", "bánh xèo",
         "chocolate", "crème brûlée", "creme brulee"
     ],
     "chua": [
-        "canh chua", "chua", "me", "chanh", "tắc", "dấm","bưởi",
+        "canh chua", "chua", "me", "chanh", "tắc", "dấm", "bưởi",
         "giấm", "thái", "nước cam", "tamarind", "lemon", "kim chi",
         "lime", "passion fruit"
     ],
     "đắng": [
-        "ca cao", "socola", "coffe", "coffee", "đắng","gà ác",
-        "trà", "matcha", "cacao"
+        "ca cao", "socola", "coffe", "coffee", "đắng", "gà ác", "cà phê", "cafe","matcha", "cacao"
     ],
     "tanh": [
         "sushi", "sashimi",
     ],
     "thanh": [
-        "thanh mát", "thanh mat", "nước dừa", "nuoc dua","gà ác","chay",
-        "coconut water", "detox","rau",
+        "thanh mát", "thanh mat", "nước dừa", "nuoc dua", "gà ác", "chay",
+        "coconut water", "detox", "rau", "nấm", "lẩu nấm",
         "salad", "rau trộn", "rau tron",
         "gỏi rau", "goi rau",
         "fresh herbs", "herbal",
@@ -96,42 +95,25 @@ def ocr_menu_images(menu_field: str) -> str:
     return "\n".join(texts)
 
 # ======================================================
-# 🔹 4. Hàm nhận diện khẩu vị theo text (tên quán / menu)
+# 🔹 4. Hàm nhận diện khẩu vị theo text (CASE-INSENSITIVE)
 # ======================================================
 def detect_flavor_from_text(text: str) -> str:
     text_lower = text.lower()
     matched_flavors = []
-    matched_positions = {}
 
     for flavor, keywords in rules.items():
         for kw in keywords:
+            # 🔥 Dùng re.IGNORECASE để khớp cả HOA và thường
             pattern = rf"\b{re.escape(kw)}\b"
-            matches = list(re.finditer(pattern, text_lower))
-
-            for match in matches:
-                start, end = match.span()
-
-                overlapped = False
-                for saved_flavor, (saved_start, saved_end) in matched_positions.items():
-                    if start >= saved_start and end <= saved_end:
-                        overlapped = True
-                        break
-                    elif start <= saved_start and end >= saved_end:
-                        if saved_flavor in matched_flavors:
-                            matched_flavors.remove(saved_flavor)
-                        del matched_positions[saved_flavor]
-                        break
-
-                if not overlapped:
-                    if flavor not in matched_flavors:
-                        matched_flavors.append(flavor)
-                    matched_positions[flavor] = (start, end)
-                    break
+            
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                if flavor not in matched_flavors:
+                    matched_flavors.append(flavor)
+                break  # Đã tìm thấy 1 từ khóa cho khẩu vị này, chuyển sang khẩu vị tiếp theo
 
     if not matched_flavors:
         return "không xác định"
 
-    matched_flavors = list(dict.fromkeys(matched_flavors))
     return ", ".join(matched_flavors)
 
 # ======================================================

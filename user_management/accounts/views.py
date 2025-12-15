@@ -2951,30 +2951,55 @@ def get_plan_suggestions_api(request, plan_id):
     """
     Owner xem các suggestion cho plan của mình
     GET /api/accounts/food-plan/suggestions/<plan_id>/
+    
+    🔥 CẬP NHẬT: Cho phép cả shared user xem (nhưng chỉ thấy suggestions của người khác)
     """
     try:
-        # Kiểm tra user có phải owner không
-        plan = FoodPlan.objects.get(id=plan_id, user=request.user)
+        # ✅ KIỂM TRA: User có phải OWNER không?
+        is_owner = FoodPlan.objects.filter(id=plan_id, user=request.user).exists()
         
-        # ✅ LẤY TẤT CẢ SUGGESTIONS (không chỉ pending)
+        # ✅ KIỂM TRA: User có được SHARE plan này không?
+        is_shared_user = SharedFoodPlan.objects.filter(
+            food_plan_id=plan_id,
+            shared_with=request.user,
+            is_active=True
+        ).exists()
+        
+        # ❌ Nếu KHÔNG phải owner VÀ không được share → 403
+        if not is_owner and not is_shared_user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xem lịch trình này'
+            }, status=403)
+        
+        # ✅ LẤY PLAN
+        plan = FoodPlan.objects.get(id=plan_id)
+        
+        # ✅ LẤY TẤT CẢ SUGGESTIONS
         suggestions = PlanEditSuggestion.objects.filter(
             shared_plan__food_plan=plan
         ).select_related('suggested_by', 'shared_plan').order_by('-created_at')
         
         suggestions_data = []
         for suggestion in suggestions:
+            # 🔥 NẾU LÀ SHARED USER → CHỈ THẤY SUGGESTIONS CỦA MÌNH
+            if is_shared_user and not is_owner:
+                if suggestion.suggested_by != request.user:
+                    continue  # Skip suggestions của người khác
+            
             suggestions_data.append({
                 'id': suggestion.id,
-                'suggested_by_username': suggestion.suggested_by.username,  # ✅ FIX: thêm _username
+                'suggested_by_username': suggestion.suggested_by.username,
                 'suggested_by_id': suggestion.suggested_by.id,
                 'message': suggestion.message,
-                'status': suggestion.status,  # ✅ THÊM status
+                'status': suggestion.status,
                 'created_at': suggestion.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
         
         return JsonResponse({
             'status': 'success',
-            'suggestions': suggestions_data
+            'suggestions': suggestions_data,
+            'is_owner': is_owner  # ✅ Để frontend biết user có phải owner không
         })
         
     except FoodPlan.DoesNotExist:
@@ -2983,10 +3008,13 @@ def get_plan_suggestions_api(request, plan_id):
             'message': 'Không tìm thấy lịch trình'
         }, status=404)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
         }, status=500)
+
     
 @login_required
 @require_http_methods(["GET"])
