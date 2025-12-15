@@ -59,4 +59,6 @@ urlpatterns = [
 
     path('get-current-api-key/', views.get_current_api_key, name='get_current_api_key'),
     path('switch-api-key/', views.switch_api_key, name='switch_api_key'),
+
+    path('check_auth_status/', views.check_auth_status, name='check_auth_status'),
 ]
