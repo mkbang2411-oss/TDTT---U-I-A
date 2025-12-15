@@ -2161,8 +2161,15 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             // ===== LOAD USER PREFERENCES TỪ SERVER =====
             async function loadUserPreferences() {{
+            
+                // ✅ THÊM: KIỂM TRA LOGIN TRƯỚC KHI GỌI API
+                if (!isUserLoggedIn) {{
+                    console.log('⏭️ [LOAD PREFERENCES] User chưa login, skip');
+                    return;
+                }}
+
                 try {{
-                    const response = await fetch(`${{API_BASE_URL}}/accounts/preferences/`, {{
+                    const response = await fetch(`${{API_BASE_URL}}/preferences/`, {{
                         method: 'GET',
                         credentials: 'include'
                     }});
@@ -3431,11 +3438,59 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             let hasShownFrozenPopup = false; 
             let hasShownMilestonePopup = false;
 
-            // Lấy thông tin streak khi mở chatbot
+            async function checkUserLoginStatus() {{
+                try {{
+                    console.log('🔐 [AUTH CHECK] Checking if user is logged in...');
+                    
+                    const response = await fetch(`${{API_BASE_URL}}/accounts/check_auth_status/`, {{
+                        method: 'GET',
+                        credentials: 'include'
+                    }});
+                    
+                    console.log('📊 [AUTH CHECK] Response status:', response.status);
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        console.log('📦 [AUTH CHECK] Response data:', data);
+                        
+                        isUserLoggedIn = data.is_authenticated === true;
+                        console.log('✅ [AUTH CHECK] User logged in:', isUserLoggedIn);
+                        return isUserLoggedIn;
+                    }} else {{
+                        console.log('⚠️ [AUTH CHECK] Response not OK, assuming not logged in');
+                        isUserLoggedIn = false;
+                        return false;
+                    }}
+                }} catch (error) {{
+                    console.error('❌ [AUTH CHECK] Error:', error);
+                    isUserLoggedIn = false;
+                    return false;
+                }}
+            }}
+
+            // ✅ UPDATED: Load streak chỉ khi user đã login
             async function loadStreakData() {{
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 console.log('🔵 [LOAD STREAK] Bắt đầu tải streak data...');
                 
+                // ✅ CHECK LOGIN TRƯỚC
+                const isLoggedIn = await checkUserLoginStatus();
+                
+                if (!isLoggedIn) {{
+                    console.log('⚠️ [LOAD STREAK] User chưa đăng nhập → SKIP loading streak');
+                    isUserLoggedIn = false;
+                    currentStreak = 0;
+                    isStreakFrozen = false;
+                    
+                    // ✅ Cập nhật UI với giá trị mặc định
+                    updateStreakUI();
+                    updateBubbleTextBasedOnStreak();
+                    
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+                    return;
+                }}
+                
+                // ✅ User đã login → tiếp tục load streak bình thường
                 try {{
                     const response = await fetch(`${{API_BASE_URL}}/streak/`, {{
                         method: 'GET',
@@ -3452,12 +3507,12 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             currentStreak = data.streak;
                             isStreakFrozen = data.is_frozen;
                             isUserLoggedIn = true;
-                            hasShownFrozenPopup = data.has_shown_frozen_popup;  // 🆕 ĐỌC TỪ SERVER
+                            hasShownFrozenPopup = data.has_shown_frozen_popup;
                             hasShownMilestonePopup = data.has_shown_milestone_popup;
                             
                             console.log('✅ [LOAD STREAK] Current streak:', currentStreak);
                             console.log('✅ [LOAD STREAK] Is frozen:', isStreakFrozen);
-                            console.log('✅ [LOAD STREAK] Has shown popup:', hasShownFrozenPopup);  // 🆕 LOG
+                            console.log('✅ [LOAD STREAK] Has shown popup:', hasShownFrozenPopup);
                             
                             updateStreakUI();
                             updateBubbleTextBasedOnStreak();
@@ -3467,7 +3522,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                 setTimeout(async () => {{
                                     showStreakNotification('freeze', 0);
                                     
-                                    // 🆕 GỌI API LOG POPUP ĐÃ HIỆN
+                                    // 🆕 Gọi API LOG POPUP ĐÃ HIỆN
                                     await logStreakPopup('frozen', 0);
                                     hasShownFrozenPopup = true;
                                 }}, 1500);
@@ -3482,7 +3537,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     isUserLoggedIn = false;
                 }}
                 
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
             }}
 
             async function logStreakPopup(popupType, streakValue) {{
@@ -4506,21 +4561,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 const lines = normalized.split('\\n');
 
                 // ✅ FORMAT TÊN MÓN - CHỈ HIGHLIGHT LẦN ĐẦU (SAU SỐ THỨ TỰ)
-                const formattedLines = lines.map(line => {{
-                    // Tìm pattern: "1. Tên món: mô tả..."
-                    const match = line.match(/^(\d+\.)\s+([^:]+):/);
-                    if (match) {{
-                        const num = match[1];           // "1."
-                        const dishName = match[2].trim(); // "Phở bò"
-                        const colonIndex = line.indexOf(':', match[0].length);
-                        const rest = line.substring(colonIndex + 1); // " Nước dùng thơm ngon..."
-                        
-                        // ✅ CHỈ WRAP TÊN MÓN, KHÔNG WRAP CÁC LẦN XUẤT HIỆN SAU
-                        return `${{num}} <span class="dish-name">${{dishName}}</span>:${{rest}}`;
-                    }}
-                    return line;
-                }});
-
                 let htmlParts = [];
                 let inOl = false;
 
@@ -4692,6 +4732,32 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     ? `\nCác món ĐÃ GỢI Ý (KHÔNG được gợi ý lại): ${{suggestedDishes.join(', ')}}`
                     : '';
 
+                // 🆕 TẠO CẢNH BÁO Y TẾ RIÊNG
+                let medicalWarning = '';
+                if (userPreferences.medicalconditions.length > 0) {{
+                    medicalWarning = `
+
+                🚨🚨🚨 CRITICAL MEDICAL SAFETY PROTOCOL 🚨🚨🚨
+
+                USER HAS MEDICAL CONDITIONS: ${{userPreferences.medicalconditions.join(', ')}}
+
+                YOU MUST INCLUDE THIS EXACT MESSAGE IN EVERY RESPONSE:
+
+                "⚠️ LƯU Ý Y TẾ: Bạn đã chia sẻ về tình trạng sức khỏe (${{userPreferences.medicalconditions.join(', ')}}). 
+                Những gợi ý của mình chỉ mang tính tham khảo. 
+                Bạn NÊN THAM KHẢO Ý KIẾN BÁC SĨ ĐIỀU TRỊ về chế độ ăn uống phù hợp nhé! 🩺💙"
+
+                RULES:
+                1. ALWAYS include this message at the END of your response
+                2. Suggest ONLY 2-3 dishes (NOT 5) to ensure maximum safety
+                3. Add ⚠️ warnings for ANY dish that might be risky
+                4. When in doubt → DON'T suggest, or suggest with STRONG warning
+                5. NEVER claim dishes are "completely safe" - always add "nên hỏi bác sĩ"
+
+                REMEMBER: You are NOT a doctor. User's health is PRIORITY #1.
+                `;
+                }}
+                    
                 const preferencesContext = `
                 ===USER PREFERENCES - CRITICAL RULES===
 
@@ -4701,6 +4767,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 - ALLERGIES: ${{userPreferences.allergies.length > 0 ? userPreferences.allergies.join(', ') : 'Not learned yet'}}
                 - MEDICAL CONDITIONS: ${{userPreferences.medicalconditions.length > 0 ? userPreferences.medicalconditions.join(', ') : 'Not learned yet'}}
                 ⚠️ CRITICAL: Medical conditions take HIGHEST PRIORITY - even above allergies!
+                
+                ${{medicalWarning}}
 
                 LEARNING USER PREFERENCES (ADDING)
 
@@ -4744,6 +4812,32 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 - English: 
                 * "have [disease]", "diagnosed with [disease]"
                 * "need to avoid [food] because of [disease]"
+
+                🚨 CRITICAL FOR MEDICAL CONDITIONS:
+                When you detect and save a medical condition, YOU MUST:
+
+                1. Add marker: [PREFERENCE_ADD:medicalcondition:tên_bệnh]
+                2. IMMEDIATELY add this medical disclaimer in your response:
+
+                "⚠️ LƯU Ý Y TẾ: Bạn đã chia sẻ về tình trạng sức khỏe ([tên_bệnh]). 
+                Những gợi ý của mình chỉ mang tính tham khảo. 
+                Bạn NÊN THAM KHẢO Ý KIẾN BÁC SĨ ĐIỀU TRỊ về chế độ ăn uống phù hợp nhé! 🩺💙"
+
+                3. Suggest ONLY 2-3 safe dishes (not 5)
+                4. Add ⚠️ warnings for risky dishes
+
+                Example:
+                User: "Tôi bị tiểu đường, phải hạn chế đồ ngọt"
+                Bot: "Mình hiểu rồi! Cảm ơn bạn đã chia sẻ 🏥
+                [PREFERENCE_ADD:medicalcondition:tiểu đường]
+
+                ⚠️ LƯU Ý Y TẾ: Bạn đã chia sẻ về tình trạng sức khỏe (tiểu đường). 
+                Những gợi ý của mình chỉ mang tính tham khảo. 
+                Bạn NÊN THAM KHẢO Ý KIẾN BÁC SĨ ĐIỀU TRỊ về chế độ ăn uống phù hợp nhé! 🩺💙
+
+                Mình sẽ gợi ý những món ít đường cho bạn..."
+
+                REMEMBER: Medical disclaimer is MANDATORY when saving new medical condition!
 
                 Examples:
                 - "Tôi bị tiểu đường type 2" → Detect: tiểu đường type 2
@@ -5197,6 +5291,20 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - Provide variety: different types (soup, rice, noodles, snacks, drinks)
             - Number them clearly (1. Dish Name, 2. Dish Name, etc.)
             - Give brief description for each dish (1-2 sentences)
+
+            === VEGETARIAN / VEGAN RULES ===
+
+            When user asks for "chay" / "vegetarian" / "vegan":
+            - ONLY suggest MAIN DISHES (rice, noodles, soup) - NOT drinks/desserts
+            - Check ingredients: NO fish sauce, shrimp paste, oyster sauce
+            - "Chay thường" = can have eggs/milk
+            - "Thuần chay / Chay trường" = 100% plant-based, NO eggs/milk
+            - Add reminder: "💚 Nhớ dặn quán làm chay thuần (không trứng/sữa) nhé!"
+
+            Example:
+            User: "Gợi ý món chay"
+            ✅ Correct: Cơm chay rau củ, Bún chay nấm, Phở chay
+            ❌ Wrong: Trà sữa, Cà phê, Nước ép
 
             === AVAILABLE MENU DATABASE ===
 
@@ -5875,9 +5983,15 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             // ========================================
             async function initializeApp() {{ 
                 console.log("🚀 Đang khởi động ứng dụng...");
-                
+
                 // 🔥 THÊM: Load API key TRƯỚC KHI LÀM GÌ KHÁC
                 const keyLoaded = await loadAPIKey();
+                if (!keyLoaded) {{
+                    console.error('❌ Không thể load API key - Chatbot sẽ không hoạt động');
+                    return;
+                }}
+                
+                // 🔥 THÊM: Load API key TRƯỚC KHI LÀM GÌ KHÁC
                 if (!keyLoaded) {{
                     console.error('❌ Không thể load API key - Chatbot sẽ không hoạt động');
                     // Hiển thị thông báo cho user

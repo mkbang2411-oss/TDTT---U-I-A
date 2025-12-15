@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác thực OTP - UIA Food</title>
+    <title id="page-title">Xác thực OTP - UIA Food</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -334,14 +334,14 @@
                 <div class="icon-wrapper">
                     🔐
                 </div>
-                <h1>Xác thực OTP</h1>
-                <p>Vui lòng nhập mã OTP đã gửi về email</p>
+                <h1 data-translate="otp_verification_heading">Xác thực OTP</h1>
+                <p data-translate="otp_enter_instruction">Vui lòng nhập mã OTP đã gửi về email</p>
             </div>
         </div>
         
         <div class="content">
             <div class="email-display">
-                <p style="margin-bottom: 8px; color: #666; font-size: 14px;">Mã OTP đã được gửi đến:</p>
+                <p style="margin-bottom: 8px; color: #666; font-size: 14px;" data-translate="otp_sent_to">Mã OTP đã được gửi đến:</p>
                 <strong id="email-display">{{ email }}</strong>
             </div>
             
@@ -349,7 +349,7 @@
             <div id="success-message" class="success-message"></div>
             
             <div class="form-group">
-                <label>Nhập mã OTP (6 số)</label>
+                <label data-translate="otp_input_label">Nhập mã OTP (6 số)</label>
                 <div class="otp-input-container">
                     <input type="text" class="otp-digit" maxlength="1" id="otp-1" autofocus>
                     <input type="text" class="otp-digit" maxlength="1" id="otp-2">
@@ -360,15 +360,15 @@
                 </div>
             </div>
             
-            <div class="timer" id="timer">Mã OTP có hiệu lực: <strong id="countdown">5:00</strong></div>
+            <div class="timer" id="timer" data-translate="otp_valid_time">Mã OTP có hiệu lực: <strong id="countdown">5:00</strong></div>
             
-            <button type="button" class="btn-verify" id="btn-verify">Xác thực</button>
-            <button type="button" class="btn-resend" id="btn-resend" disabled>
+            <button type="button" class="btn-verify" id="btn-verify" data-translate="verify_button">Xác thực</button>
+            <button type="button" class="btn-resend" id="btn-resend" disabled data-translate="resend_otp">
                 Gửi lại mã OTP (<span id="resend-timer">60</span>s)
             </button>
             
             <div class="footer-text">
-                <a href="{% url 'account_login' %}">← Quay lại đăng nhập</a>
+                <a href="{% url 'account_login' %}" data-translate="back_to_login">← Quay lại đăng nhập</a>
             </div>
         </div>
     </div>
@@ -420,7 +420,7 @@
             
             if (timeLeft <= 0) {
                 clearInterval(countdown);
-                showError('Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.');
+                showError(t('otp_verification_paragraph'));
                 btnVerify.disabled = true;
             }
         }, 1000);
@@ -436,7 +436,7 @@
             if (resendTimeLeft <= 0) {
                 clearInterval(resendCountdown);
                 btnResend.disabled = false;
-                btnResend.innerHTML = 'Gửi lại mã OTP';
+                btnResend.innerHTML = t('resend_otp');
             }
         }, 1000);
         
@@ -445,12 +445,13 @@
             const otp = Array.from(otpInputs).map(input => input.value).join('');
             
             if (otp.length !== 6) {
-                showError('Vui lòng nhập đầy đủ 6 số OTP');
+                showError(t('6otp_incomplete'))
                 return;
             }
             
             btnVerify.disabled = true;
-            btnVerify.innerHTML = '<span class="loading"></span> Đang xác thực...';
+            btnVerify.innerHTML = `<span class="loading"></span> ${t('verifying_otp')}`;
+
             
             try {
                 const response = await fetch('/api/verify-otp/', {
@@ -472,23 +473,24 @@
                 } else {
                     showError(data.message);
                     btnVerify.disabled = false;
-                    btnVerify.textContent = 'Xác thực';
+                    btnVerify.textContent = t('verify_button');
                     
                     // Clear inputs on error
                     otpInputs.forEach(input => input.value = '');
                     otpInputs[0].focus();
                 }
             } catch (error) {
-                showError('Có lỗi xảy ra. Vui lòng thử lại.');
+                showError(t('generic_error'));
                 btnVerify.disabled = false;
-                btnVerify.textContent = 'Xác thực';
+                btnVerify.textContent = t('verify_button');
             }
         });
         
         // Resend OTP
         btnResend.addEventListener('click', async () => {
             btnResend.disabled = true;
-            btnResend.innerHTML = '<span class="loading"></span> Đang gửi...';
+            btnResend.innerHTML = `<span class="loading"></span> ${t('sending_request')}`;
+
             
             try {
                 const response = await fetch('/api/resend-otp/', {
@@ -503,7 +505,7 @@
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    showSuccess('Mã OTP mới đã được gửi!');
+                    showSuccess(t('otp_resent_success'));
                     
                     // Reset timers
                     timeLeft = 300;
@@ -511,7 +513,8 @@
                     timerEl.classList.remove('warning');
                     
                     // Restart countdown
-                    btnResend.innerHTML = 'Gửi lại mã OTP (<span id="resend-timer">60</span>s)';
+                    btnResend.innerHTML = `${t('resend_otp_timer')} (<span id="resend-timer">60</span>s)`;
+
                     const newResendTimerEl = document.getElementById('resend-timer');
                     
                     const newResendCountdown = setInterval(() => {
@@ -521,7 +524,7 @@
                         if (resendTimeLeft <= 0) {
                             clearInterval(newResendCountdown);
                             btnResend.disabled = false;
-                            btnResend.innerHTML = 'Gửi lại mã OTP';
+                            btnResend.innerHTML = t('resend_otp_timer');
                         }
                     }, 1000);
                 } else {
@@ -529,14 +532,14 @@
                     if (data.wait_time) {
                         setTimeout(() => {
                             btnResend.disabled = false;
-                            btnResend.textContent = 'Gửi lại mã OTP';
+                            btnResend.textContent = t('resend_otp_timer');
                         }, data.wait_time * 1000);
                     }
                 }
             } catch (error) {
-                showError('Có lỗi xảy ra. Vui lòng thử lại.');
+                showError(t('generic_error'));
                 btnResend.disabled = false;
-                btnResend.textContent = 'Gửi lại mã OTP';
+                btnResend.textContent = t('resend_otp_timer');
             }
         });
         
@@ -566,6 +569,21 @@
             }
             return cookieValue;
         }
+        function t(key) {
+            if (
+            window.LanguageToggle &&
+            typeof window.LanguageToggle.translateByKey === "function"
+            ) {
+            return LanguageToggle.translateByKey(key);
+            }
+            return key;
+        }
+        document.addEventListener("DOMContentLoaded", function () {
+            const titleEl = document.getElementById("page-title");
+            if (titleEl) {
+            document.title = t("otp_verification_title");
+            }
+        });
     </script>
 </body>
 </html>

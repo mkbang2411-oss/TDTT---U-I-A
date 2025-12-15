@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tài khoản đã tồn tại</title>
+  <title id="page-title">Tài khoản đã tồn tại</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
@@ -234,8 +234,8 @@
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
           </svg>
         </div>
-        <h1>Tài khoản đã được đăng ký</h1>
-        <p>Email đã tồn tại trong hệ thống</p>
+        <h1 data-translate="account_exists_heading">Tài khoản đã được đăng ký</h1>
+        <p data-translate="account-exists_subtitle">Email đã tồn tại trong hệ thống</p>
       </div>
     </div>
     
@@ -244,18 +244,41 @@
         <p>{{ message }}</p>
       </div>
       <p class="info-text">
-        💡 <strong>Gợi ý:</strong> Nếu bạn quên mật khẩu, vui lòng sử dụng chức năng "Quên mật khẩu" trên trang đăng nhập.
+        💡 <strong data-translate="hint_label">Gợi ý:</strong>
+              <span data-translate="forgot_password_hint">Nếu bạn quên mật khẩu, vui lòng sử dụng chức năng "Quên mật khẩu" trên trang đăng nhập.</span>
       </p>
     </div>
     
     <div class="actions">
-      <a class="btn btn-primary" href="{{ login_url }}">
+      <a class="btn btn-primary" href="{{ login_url }}"
+          data-translate="login_now"
+      >
         🔐 Đăng nhập ngay
       </a>
-      <a class="btn btn-secondary" href="/">
+      <a class="btn btn-secondary" href="/"
+        data-translate="go_home"
+      >
         🏠 Về trang chủ
       </a>
     </div>
   </div>
+  <script>
+  function t(key) {
+    if (
+      window.LanguageToggle &&
+      typeof window.LanguageToggle.translateByKey === "function"
+    ) {
+      return LanguageToggle.translateByKey(key);
+    }
+    return key;
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    const titleEl = document.getElementById("page-title");
+    if (titleEl) {
+      document.title = t("account_exists_title");
+    }
+  });
+</script>
+
 </body>
 </html>

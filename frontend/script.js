@@ -841,6 +841,8 @@ function loadMarkersInViewport() {
   
   isLoadingMarkers = false;
   console.log(`✅ Đã load ${loadedCount} markers`);
+  // 🔥 THÊM DÒNG NÀY
+  updateUICounters();
 }
 
 
@@ -1595,6 +1597,8 @@ async function showFavoritePlaces() {
       showCustomAlert("Bạn chưa lưu quán nào vào danh sách quán yêu thích.");
       return false;
     }
+    // 🔥 THÊM DÒNG NÀY - ẨN COUNTER VÀ BUTTON KHI Ở CHẾ ĐỘ YÊU THÍCH
+    hideUICounters();
 
     console.log('🍕 [SHOW FAVORITES] Step 4: Calling displayPlaces()...');
     
@@ -2049,6 +2053,8 @@ if (flavors.length > 0) {
     }
 
     const ok = displayPlaces(filtered, shouldZoom);
+    // 🔥 THÊM DÒNG NÀY
+    updateUICounters();
     return ok;
   } catch (err) {
     console.error("❌ Lỗi khi tải dữ liệu:", err);
@@ -2210,7 +2216,8 @@ if (favoriteModeBtnHeader) {
     else {
       // ✅ TẮT FAVORITE MODE
       console.log('🟢 [FAVORITE BTN] Turning OFF favorite mode');
-      
+      showUICounters();
+
       isFavoriteMode = false;
       favoriteModeBtnHeader.classList.remove("active");
 
@@ -2995,6 +3002,9 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     } else {
         console.log('ℹ️ Not in friend favorites view mode');
+        setTimeout(() => {
+            showUICounters();
+        }, 1000);
     }
 });
 // Hàm toast
@@ -3615,3 +3625,177 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
+// ==========================================================
+// 📊 COUNTER BADGE - Hiển thị số quán đã load / tổng số
+// ==========================================================
+function updatePlaceCounter() {
+  const total = allPlacesData.length;
+  const loaded = visibleMarkers.size;
+  
+  let counterEl = document.getElementById('place-counter');
+  
+ if (!counterEl) {
+    counterEl = document.createElement('div');
+    counterEl.id = 'place-counter';
+    counterEl.style.cssText = `
+      position: fixed;
+      top: 90px; 
+      left: 15px;
+      background: linear-gradient(135deg, #FFB88C 0%, #FF9966 100%);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 25px;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(255, 153, 102, 0.4);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    `;
+    document.body.appendChild(counterEl);
+  }
+  
+  counterEl.innerHTML = `
+    <i class="fa-solid fa-map-marker-alt"></i>
+    <span>Đã hiển thị: <strong>${loaded}</strong> / ${total} quán</span>
+  `;
+}
+
+
+
+// ==========================================================
+// 🔄 HÀM TỔNG HỢP - Gọi cả 2 hàm update
+// ==========================================================
+function updateUICounters() {
+  updatePlaceCounter();    // Hiển thị counter badge
+
+}
+
+// ==========================================================
+// ⚠️ ẨN COUNTER KHI Ở CHẾ ĐỘ ĐẶC BIỆT
+// ==========================================================
+function hideUICounters() {
+  const counter = document.getElementById('place-counter');
+  
+  if (counter) counter.style.display = 'none';
+}
+
+function showUICounters() {
+  const counter = document.getElementById('place-counter');
+
+  
+  if (counter) counter.style.display = 'flex';
+;
+}
+// ==========================================================
+// 🔍 DEBUG - TÌM 9 QUÁN BỊ THIẾU
+// ==========================================================
+window.findMissingPlaces = async function() {
+  console.log('🔍 Bắt đầu tìm quán bị thiếu...');
+  
+  const res = await fetch("/api/places");
+  const allData = await res.json();
+  
+  console.log('📊 Total from API:', allData.length);
+  
+  // Kiểm tra từng điều kiện
+  const results = {
+    total: allData.length,
+    invalidCoords: [],
+    outOfBounds: [],
+    duplicateIds: [],
+    valid: []
+  };
+  
+  const seenIds = new Set();
+  const vietnamBounds = {
+    minLat: 8.179066,
+    maxLat: 23.393395,
+    minLon: 102.14441,
+    maxLon: 109.46972
+  };
+  
+  allData.forEach((p, index) => {
+    const lat = parseFloat(p.lat?.toString().replace(",", "."));
+    const lon = parseFloat(p.lon?.toString().replace(",", "."));
+    const id = p.data_id || p.ten_quan;
+    
+    // 1. Kiểm tra tọa độ không hợp lệ
+    if (isNaN(lat) || isNaN(lon)) {
+      results.invalidCoords.push({
+        index,
+        ten: p.ten_quan,
+        lat: p.lat,
+        lon: p.lon,
+        dia_chi: p.dia_chi
+      });
+      return;
+    }
+    
+    // 2. Kiểm tra nằm ngoài bounds
+    if (lat < vietnamBounds.minLat || lat > vietnamBounds.maxLat ||
+        lon < vietnamBounds.minLon || lon > vietnamBounds.maxLon) {
+      results.outOfBounds.push({
+        index,
+        ten: p.ten_quan,
+        lat,
+        lon,
+        dia_chi: p.dia_chi
+      });
+      return;
+    }
+    
+    // 3. Kiểm tra trùng lặp ID
+    if (seenIds.has(id)) {
+      results.duplicateIds.push({
+        index,
+        id,
+        ten: p.ten_quan
+      });
+      return;
+    }
+    
+    seenIds.add(id);
+    results.valid.push(id);
+  });
+  
+  // In kết quả
+  console.log('📊 KẾT QUẢ PHÂN TÍCH:');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('✅ Quán hợp lệ:', results.valid.length);
+  console.log('❌ Tọa độ không hợp lệ:', results.invalidCoords.length);
+  console.log('🗺️ Nằm ngoài Việt Nam:', results.outOfBounds.length);
+  console.log('🔄 Trùng lặp ID:', results.duplicateIds.length);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🧮 Tổng:', 
+    results.valid.length + 
+    results.invalidCoords.length + 
+    results.outOfBounds.length + 
+    results.duplicateIds.length
+  );
+  
+  // In chi tiết
+  if (results.invalidCoords.length > 0) {
+    console.log('\n❌ CHI TIẾT QUÁN CÓ TỌA ĐỘ KHÔNG HỢP LỆ:');
+    console.table(results.invalidCoords);
+  }
+  
+  if (results.outOfBounds.length > 0) {
+    console.log('\n🗺️ CHI TIẾT QUÁN NẰM NGOÀI VIỆT NAM:');
+    console.table(results.outOfBounds);
+  }
+  
+  if (results.duplicateIds.length > 0) {
+    console.log('\n🔄 CHI TIẾT QUÁN TRÙNG LẶP:');
+    console.table(results.duplicateIds);
+  }
+  
+  return results;
+};
+
+// Tự động chạy khi load trang để debug
+setTimeout(() => {
+  console.log('💡 Gõ window.findMissingPlaces() vào console để tìm quán bị thiếu');
+}, 2000);
