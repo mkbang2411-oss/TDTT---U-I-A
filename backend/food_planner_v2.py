@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import json
 import pandas as pd
 import math
@@ -1371,7 +1371,7 @@ def get_food_planner_html():
     height: calc(100% - 160px);
     max-height: calc(100vh - 60px);
     background: white;
-    z-index: 9999999999999 !important;
+    z-index: 100000000 !important;
     transition: right 0.3s ease;
     display: flex;
     flex-direction: column;
@@ -2882,7 +2882,7 @@ input.time-input[type="number"] {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 99999999999;
+    z-index: 100000001;
     box-shadow: none;
     transition: right 0.3s ease, transform 0.3s ease, width 0.3s ease, box-shadow 0.3s ease, background 0.3s ease; /* ✅ CHỈ GIỮ TRANSITION CẦN THIẾT */
     overflow: hidden;
@@ -3366,6 +3366,323 @@ window.currentPlanName = null;
 window.loadedFromSavedPlan = false;
 let cachedPendingSuggestionsCount = 0; // Lưu số lượng suggestions pending
 
+// ========== CUSTOM SWEETALERT2 FUNCTIONS ==========
+// Màu sắc theme phù hợp với website
+const UIA_COLORS = {
+    primary: '#FF6B35',      // Cam chủ đạo
+    success: '#4CAF50',      // Xanh lá - thành công
+    warning: '#FF9800',      // Cam vàng - cảnh báo
+    error: '#F44336',        // Đỏ - lỗi
+    info: '#2196F3',         // Xanh dương - thông tin
+    purple: '#9C27B0',       // Tím - đặc biệt
+    background: '#FFF5F0',   // Nền kem nhạt
+    text: '#333333'          // Chữ đậm
+};
+
+// 🔥 HELPER: Tạm disable backdrop-filter để SweetAlert2 hiển thị đúng z-index
+// 🔥 HELPER: Tạm ẩn các modal để SweetAlert2 hiển thị đúng
+function hideModalsForSwal() {
+    const modalSelectors = '#suggestionsModal, #mySuggestionsModal, #comparisonModal, #shareModal, .cmp-overlay, .cmp-modal';
+    const modals = document.querySelectorAll(modalSelectors);
+    
+    modals.forEach(modal => {
+        if (modal && modal.style.display !== 'none') {
+            // Lưu z-index cũ và set thấp hơn SweetAlert2
+            modal.dataset.prevZIndex = modal.style.zIndex || '';
+            modal.dataset.prevOpacity = modal.style.opacity || '';
+            modal.style.zIndex = '1';
+            modal.style.opacity = '0.3';
+        }
+    });
+}
+
+function restoreModalsAfterSwal() {
+    const modalSelectors = '#suggestionsModal, #mySuggestionsModal, #comparisonModal, #shareModal, .cmp-overlay, .cmp-modal';
+    const modals = document.querySelectorAll(modalSelectors);
+    
+    modals.forEach(modal => {
+        if (modal && modal.dataset.prevZIndex !== undefined) {
+            modal.style.zIndex = modal.dataset.prevZIndex || '99999999';
+            modal.style.opacity = modal.dataset.prevOpacity || '1';
+            delete modal.dataset.prevZIndex;
+            delete modal.dataset.prevOpacity;
+        }
+    });
+}
+
+// 🔔 Custom Alert - Thay thế alert()
+function showFoodPlanAlert(message, type = 'info') {
+    let icon, iconColor, title;
+    
+    switch(type) {
+        case 'success':
+            icon = 'success';
+            iconColor = UIA_COLORS.success;
+            title = 'Thành công!';
+            break;
+        case 'error':
+            icon = 'error';
+            iconColor = UIA_COLORS.error;
+            title = 'Lỗi!';
+            break;
+        case 'warning':
+            icon = 'warning';
+            iconColor = UIA_COLORS.warning;
+            title = 'Cảnh báo!';
+            break;
+        default:
+            icon = 'info';
+            iconColor = UIA_COLORS.info;
+            title = 'Thông báo';
+    }
+    
+    // Tạm ẩn modal để SweetAlert2 hiển thị đúng
+    hideModalsForSwal();
+    
+    return Swal.fire({
+        title: title,
+        html: `<p style="font-size: 15px; color: #333; line-height: 1.6;">${message}</p>`,
+        icon: icon,
+        iconColor: iconColor,
+        confirmButtonText: 'OK',
+        confirmButtonColor: iconColor,
+        background: UIA_COLORS.background,
+        customClass: {
+            popup: 'uia-swal-popup',
+            title: 'uia-swal-title',
+            confirmButton: 'uia-swal-confirm-btn'
+        },
+        showClass: {
+            popup: 'animate__animated animate__fadeInDown animate__faster'
+        },
+        hideClass: {
+            popup: 'animate__animated animate__fadeOutUp animate__faster'
+        }
+    }).finally(() => {
+        // Restore modal sau khi đóng SweetAlert2
+        restoreModalsAfterSwal();
+    });
+}
+
+// ✅ Custom Confirm - Thay thế confirm()
+async function showFoodPlanConfirm(message, options = {}) {
+    console.log('🔔 showFoodPlanConfirm called:', message, options);
+    
+    const {
+        title = 'Xác nhận',
+        confirmText = 'OK',
+        cancelText = 'Huỷ',
+        type = 'question',
+        confirmColor = UIA_COLORS.primary,
+        icon = null
+    } = options;
+    
+    let swalIcon = icon || (type === 'danger' ? 'warning' : 'question');
+    let iconColor = type === 'danger' ? UIA_COLORS.error : UIA_COLORS.primary;
+    
+    // Tạm ẩn modal để SweetAlert2 hiển thị đúng
+    hideModalsForSwal();
+    console.log('🔔 Modals hidden, calling Swal.fire...');
+    
+    try {
+        const result = await Swal.fire({
+            title: title,
+            html: `<p style="font-size: 15px; color: #333; line-height: 1.6;">${message}</p>`,
+            icon: swalIcon,
+            iconColor: iconColor,
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: cancelText,
+            confirmButtonColor: type === 'danger' ? UIA_COLORS.error : confirmColor,
+            cancelButtonColor: '#9E9E9E',
+            background: UIA_COLORS.background,
+            reverseButtons: true,
+            customClass: {
+                popup: 'uia-swal-popup',
+                title: 'uia-swal-title',
+                confirmButton: 'uia-swal-confirm-btn',
+                cancelButton: 'uia-swal-cancel-btn'
+            },
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown animate__faster'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp animate__faster'
+            }
+        });
+        return result.isConfirmed;
+    } finally {
+        // Restore modal sau khi đóng SweetAlert2
+        restoreModalsAfterSwal();
+    }
+}
+
+// 📝 Custom Prompt - Thay thế prompt()
+async function showFoodPlanPrompt(message, defaultValue = '', options = {}) {
+    const {
+        title = 'Nhập thông tin',
+        confirmText = 'OK',
+        cancelText = 'Huỷ',
+        placeholder = '',
+        inputType = 'text'
+    } = options;
+    
+    // Tạm ẩn modal để SweetAlert2 hiển thị đúng
+    hideModalsForSwal();
+    
+    try {
+        const result = await Swal.fire({
+            title: title,
+            html: `<p style="font-size: 14px; color: #666; margin-bottom: 10px;">${message}</p>`,
+            input: inputType,
+            inputValue: defaultValue,
+            inputPlaceholder: placeholder,
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: cancelText,
+            confirmButtonColor: UIA_COLORS.primary,
+            cancelButtonColor: '#9E9E9E',
+            background: UIA_COLORS.background,
+            reverseButtons: true,
+            inputAttributes: {
+                style: 'border: 2px solid #FFE0D0; border-radius: 10px; padding: 12px; font-size: 15px;'
+            },
+            customClass: {
+                popup: 'uia-swal-popup',
+                title: 'uia-swal-title',
+                input: 'uia-swal-input',
+                confirmButton: 'uia-swal-confirm-btn',
+                cancelButton: 'uia-swal-cancel-btn'
+            },
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown animate__faster'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp animate__faster'
+            },
+            preConfirm: (value) => {
+                return value;
+            }
+        });
+        
+        if (result.isConfirmed) {
+            return result.value;
+        }
+        return null;
+    } finally {
+        // Restore modal sau khi đóng SweetAlert2
+        restoreModalsAfterSwal();
+    }
+}
+
+// 🎨 Thêm CSS cho SweetAlert2 custom
+(function addSwalStyles() {
+    if (document.getElementById('uia-swal-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'uia-swal-styles';
+    style.textContent = `
+        /* 🔥 FORCE SweetAlert2 lên trên TẤT CẢ mọi thứ */
+        .swal2-container {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            z-index: 2147483647 !important;
+            isolation: isolate !important;
+        }
+        
+        .swal2-popup {
+            z-index: 2147483647 !important;
+            position: relative !important;
+        }
+        
+        .swal2-backdrop-show {
+            z-index: 2147483646 !important;
+        }
+        
+        .uia-swal-popup {
+            border-radius: 20px !important;
+            padding: 25px !important;
+            box-shadow: 0 15px 50px rgba(255, 107, 53, 0.25) !important;
+            z-index: 2147483647 !important;
+        }
+        
+        .uia-swal-title {
+            color: #FF6B35 !important;
+            font-weight: 600 !important;
+            font-size: 22px !important;
+        }
+        
+        .uia-swal-confirm-btn {
+            border-radius: 12px !important;
+            padding: 12px 30px !important;
+            font-weight: 600 !important;
+            font-size: 15px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        .uia-swal-confirm-btn:hover {
+            transform: scale(1.02) !important;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2) !important;
+        }
+        
+        .uia-swal-cancel-btn {
+            border-radius: 12px !important;
+            padding: 12px 30px !important;
+            font-weight: 500 !important;
+            font-size: 15px !important;
+            background: #E0E0E0 !important;
+            color: #666 !important;
+        }
+        
+        .uia-swal-cancel-btn:hover {
+            background: #BDBDBD !important;
+        }
+        
+        .uia-swal-input {
+            border: 2px solid #FFE0D0 !important;
+            border-radius: 10px !important;
+        }
+        
+        .uia-swal-input:focus {
+            border-color: #FF6B35 !important;
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15) !important;
+        }
+        
+        .swal2-icon.swal2-success {
+            border-color: #4CAF50 !important;
+            color: #4CAF50 !important;
+        }
+        
+        .swal2-icon.swal2-success .swal2-success-ring {
+            border-color: rgba(76, 175, 80, 0.3) !important;
+        }
+        
+        .swal2-icon.swal2-warning {
+            border-color: #FF9800 !important;
+            color: #FF9800 !important;
+        }
+        
+        .swal2-icon.swal2-error {
+            border-color: #F44336 !important;
+            color: #F44336 !important;
+        }
+        
+        .swal2-icon.swal2-info {
+            border-color: #2196F3 !important;
+            color: #2196F3 !important;
+        }
+        
+        .swal2-icon.swal2-question {
+            border-color: #FF6B35 !important;
+            color: #FF6B35 !important;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
 const ICON_PENCIL = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
   <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
@@ -3670,7 +3987,7 @@ async function savePlan() {
     const authData = await checkAuth.json();
     
     if (!authData.is_logged_in) {
-        alert('⚠️ Bạn cần đăng nhập để lưu lịch trình!');
+        await showFoodPlanAlert('Bạn cần đăng nhập để lưu lịch trình!', 'warning');
         window.location.href = '/accounts/login/';
         return;
     }
@@ -3707,7 +4024,7 @@ async function savePlan() {
 
     // ✅ KIỂM TRA PLAN CÓ DỮ LIỆU KHÔNG
     if (planArray.length === 0) {
-        alert('⚠️ Lịch trình trống! Hãy thêm ít nhất 1 quán trước khi lưu.');
+        showFoodPlanAlert('Lịch trình trống! Hãy thêm ít nhất 1 quán trước khi lưu.', 'warning');
         return;
     }
 
@@ -3723,9 +4040,12 @@ async function savePlan() {
     
     // ✅ XỬ LÝ TÊN PLAN
     if (!currentDisplayName || currentDisplayName === 'Lịch trình của bạn') {
-        currentDisplayName = prompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`);
+        currentDisplayName = await showFoodPlanPrompt('Đặt tên cho kế hoạch:', `Kế hoạch ${new Date().toLocaleDateString('vi-VN')}`, {
+            title: '📝 Đặt tên lịch trình',
+            placeholder: 'Nhập tên kế hoạch...'
+        });
         if (!currentDisplayName || currentDisplayName.trim() === '') {
-            alert('⚠️ Bạn phải đặt tên để lưu lịch trình!');
+            showFoodPlanAlert('Bạn phải đặt tên để lưu lịch trình!', 'warning');
             return;
         }
         currentDisplayName = currentDisplayName.trim();
@@ -3747,7 +4067,7 @@ async function savePlan() {
                 const result = await response.json();
 
         if (result.status === 'success') {
-            alert('✅ Đã lưu kế hoạch thành công!');
+            showFoodPlanAlert('Đã lưu kế hoạch thành công!', 'success');
             window.currentPlanName = currentDisplayName;
             
             // ✅ TẮT EDIT MODE SAU KHI LƯU
@@ -3777,11 +4097,11 @@ async function savePlan() {
             }
 
         } else {
-            alert('❌ Lỗi: ' + result.message);
+            showFoodPlanAlert('Lỗi: ' + result.message, 'error');
         }
     } catch (error) {
         console.error('Error saving plan:', error);
-        alert('❌ Không thể lưu lịch trình!');
+        showFoodPlanAlert('Không thể lưu lịch trình!', 'error');
     }
 }
 
@@ -3999,7 +4319,13 @@ function formatDateTimeWithTimezone(datetimeString) {
 }
 // ========== DELETE PLAN - Xóa từ Database Django ==========
 async function deleteSavedPlan(planId) {
-    if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
+    const confirmed = await showFoodPlanConfirm('Bạn có chắc muốn xóa kế hoạch này?', {
+        title: '🗑️ Xóa kế hoạch',
+        confirmText: 'Xóa',
+        cancelText: 'Hủy',
+        type: 'danger'
+    });
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`/api/accounts/food-plan/delete/${planId}/`, {
@@ -4012,7 +4338,7 @@ async function deleteSavedPlan(planId) {
         const result = await response.json();
 
         if (result.status === 'success') {
-            alert('✅ Đã xóa kế hoạch!');
+            showFoodPlanAlert('Đã xóa kế hoạch!', 'success');
             
             if (currentPlanId === planId) {
                 currentPlanId = null;
@@ -4023,16 +4349,22 @@ async function deleteSavedPlan(planId) {
             
             await loadSavedPlans();
         } else {
-            alert('❌ Lỗi: ' + result.message);
+            showFoodPlanAlert('Lỗi: ' + result.message, 'error');
         }
     } catch (error) {
         console.error('Error deleting plan:', error);
-        alert('❌ Không thể xóa lịch trình!');
+        showFoodPlanAlert('Không thể xóa lịch trình!', 'error');
     }
 }
 // ========== DELETE PLAN - Xóa từ Database Django ==========
 async function deleteSavedPlan(planId) {
-    if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
+    const confirmed = await showFoodPlanConfirm('Bạn có chắc muốn xóa kế hoạch này?', {
+        title: '🗑️ Xóa kế hoạch',
+        confirmText: 'Xóa',
+        cancelText: 'Hủy',
+        type: 'danger'
+    });
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`/api/accounts/food-plan/delete/${planId}/`, {
@@ -4045,7 +4377,7 @@ async function deleteSavedPlan(planId) {
         const result = await response.json();
 
         if (result.status === 'success') {
-            alert('✅ Đã xóa kế hoạch!');
+            showFoodPlanAlert('Đã xóa kế hoạch!', 'success');
             
             if (currentPlanId === planId) {
                 currentPlanId = null;
@@ -4056,17 +4388,23 @@ async function deleteSavedPlan(planId) {
             
             await loadSavedPlans();
         } else {
-            alert('❌ Lỗi: ' + result.message);
+            showFoodPlanAlert('Lỗi: ' + result.message, 'error');
         }
     } catch (error) {
         console.error('Error deleting plan:', error);
-        alert('❌ Không thể xóa lịch trình!');
+        showFoodPlanAlert('Không thể xóa lịch trình!', 'error');
     }
 }
 
 // ========== LEAVE SHARED PLAN ==========
 async function leaveSharedPlan(planId) {
-    if (!confirm('Bạn có chắc muốn ngừng xem lịch trình này? Lịch trình sẽ biến mất khỏi danh sách của bạn')) return;
+    const confirmed = await showFoodPlanConfirm('Bạn có chắc muốn ngừng xem lịch trình này? Lịch trình sẽ biến mất khỏi danh sách của bạn', {
+        title: '🚪 Rời lịch trình',
+        confirmText: 'Rời đi',
+        cancelText: 'Hủy',
+        type: 'warning'
+    });
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`/api/accounts/food-plan/leave-shared/${planId}/`, {
@@ -4079,7 +4417,7 @@ async function leaveSharedPlan(planId) {
         const result = await response.json();
 
         if (result.status === 'success') {
-            alert('✅ Đã ngừng xem lịch trình!');
+            showFoodPlanAlert('Đã ngừng xem lịch trình!', 'success');
             
             if (currentPlanId === planId) {
                 currentPlanId = null;
@@ -4091,19 +4429,22 @@ async function leaveSharedPlan(planId) {
             
             await loadSavedPlans();
         } else {
-            alert('❌ Lỗi: ' + result.message);
+            showFoodPlanAlert('Lỗi: ' + result.message, 'error');
         }
     } catch (error) {
         console.error('Error leaving shared plan:', error);
-        alert('❌ Không thể rời khỏi lịch trình!');
+        showFoodPlanAlert('Không thể rời khỏi lịch trình!', 'error');
     }
 }
 // ========== TẠO LỊCH TRÌNH TRỐNG MỚI ==========
-function createNewEmptyPlan() {
+async function createNewEmptyPlan() {
     isViewingSharedPlan = false;
     const now = new Date();
     const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-    const planName = prompt('Đặt tên cho lịch trình:', `Lịch trình ngày ${dateStr}`);
+    const planName = await showFoodPlanPrompt('Đặt tên cho lịch trình:', `Lịch trình ngày ${dateStr}`, {
+        title: '📝 Tạo lịch trình mới',
+        placeholder: 'Nhập tên lịch trình...'
+    });
     
     if (!planName) return; // User cancel
     
@@ -4592,7 +4933,7 @@ async function randomFoodStreet() {
         // ✅ CHỈ CẬP NHẬT CARD GỢI Ý - KHÔNG RENDER LẠI TOÀN BỘ
         updateSuggestedCard('food_street', newPlace);
     } else {
-        alert('⚠️ Không tìm thấy khu ẩm thực khác trong bán kính này');
+        showFoodPlanAlert('Không tìm thấy khu ẩm thực khác trong bán kính này', 'warning');
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<span>Đổi quán khác</span>';
@@ -4651,7 +4992,7 @@ async function randomMichelin() {
         suggestedMichelin = newPlace;
         updateSuggestedCard('michelin', newPlace);
     } else {
-        alert('⚠️ Không tìm thấy nhà hàng Michelin khác');
+        showFoodPlanAlert('Không tìm thấy nhà hàng Michelin khác', 'warning');
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<span>Đổi quán khác</span>';
@@ -4755,7 +5096,7 @@ function addSuggestedToSchedule(suggestedPlace, themeType) {
         }
     }, 100);
     
-    alert('✅ Đã thêm quán vào lịch trình!');
+    showFoodPlanAlert('Đã thêm quán vào lịch trình!', 'success');
 }
 
 // ========== TÌM KHU ẨM THỰC GỢI Ý (18:00 - 02:00) ==========
@@ -5143,7 +5484,7 @@ async function sharePlan() {
         return;
     }
     if (!currentPlan || !currentPlanId) {
-        alert('⚠️ Chưa có lịch trình để chia sẻ');
+        showFoodPlanAlert('Chưa có lịch trình để chia sẻ', 'warning');
         return;
     }
 
@@ -5166,7 +5507,7 @@ async function sharePlan() {
         const data = await response.json();
         
         if (!data.friends || data.friends.length === 0) {
-            alert('Bạn chưa có bạn bè nào để chia sẻ');
+            showFoodPlanAlert('Bạn chưa có bạn bè nào để chia sẻ', 'info');
             return;
         }
         
@@ -5184,7 +5525,7 @@ async function sharePlan() {
                 inset: 0;
                 background: rgba(0, 0, 0, 0.5);
                 backdrop-filter: blur(4px);
-                z-index: 2147483647;
+                z-index: 99999999;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -5430,7 +5771,7 @@ async function sharePlan() {
         
     } catch (error) {
         console.error('Error loading friends:', error);
-        alert('Không thể tải danh sách bạn bè');
+        showFoodPlanAlert('Không thể tải danh sách bạn bè', 'error');
     }
 }
 
@@ -5458,7 +5799,7 @@ async function confirmShare() {
     const friend_ids = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
     
     if (friend_ids.length === 0) {
-        alert('Vui lòng chọn ít nhất 1 bạn bè');
+        showFoodPlanAlert('Vui lòng chọn ít nhất 1 bạn bè', 'warning');
         return;
     }
     
@@ -5475,15 +5816,15 @@ async function confirmShare() {
         const result = await response.json();
         
         if (result.status === 'success') {
-            alert('✅ ' + result.message);
+            showFoodPlanAlert(result.message, 'success');
             closeShareModal();
         } else {
-            alert('❌ ' + result.message);
+            showFoodPlanAlert(result.message, 'error');
         }
         
     } catch (error) {
         console.error('Error sharing plan:', error);
-        alert('Không thể chia sẻ lịch trình');
+        showFoodPlanAlert('Không thể chia sẻ lịch trình', 'error');
     }
 }
 
@@ -6825,10 +7166,17 @@ function drawRouteOnMap(plan) {
 }
 
 // ========== DELETE MEAL SLOT ==========
-function deleteMealSlot(mealKey) {
+async function deleteMealSlot(mealKey) {
     if (!currentPlan) return;
     
-    if (confirm('Bạn có chắc muốn xóa bữa ăn này?')) {
+    const confirmed = await showFoodPlanConfirm('Bạn có chắc muốn xóa bữa ăn này?', {
+        title: '🗑️ Xóa bữa ăn',
+        confirmText: 'Xóa',
+        cancelText: 'Huỷ',
+        type: 'danger'
+    });
+    
+    if (confirmed) {
         delete currentPlan[mealKey];
         
         // Reset waiting state nếu đang chờ chọn quán cho slot này
@@ -7404,7 +7752,7 @@ function flyToPlace(lat, lon, placeId, placeName) {
         window.flyToPlaceFromPlanner(lat, lon, placeId, placeName);
     } else {
         console.error('❌ Hàm flyToPlaceFromPlanner chưa được load từ script.js');
-        alert('Có lỗi khi mở quán. Vui lòng thử lại!');
+        showFoodPlanAlert('Có lỗi khi mở quán. Vui lòng thử lại!', 'error');
     }
 }
 
@@ -7705,17 +8053,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ========== DELETE ALL MEALS ==========
-function deleteAllMeals() {
+async function deleteAllMeals() {
     if (!currentPlan) return;
     
     const mealCount = Object.keys(currentPlan).filter(k => k !== '_order').length;
     
     if (mealCount === 0) {
-        alert('⚠️ Lịch trình đã trống rồi!');
+        showFoodPlanAlert('Lịch trình đã trống rồi!', 'warning');
         return;
     }
     
-    if (!confirm(`🗑️ Bạn có chắc muốn xóa tất cả ${mealCount} quán trong lịch trình?`)) {
+    const confirmed = await showFoodPlanConfirm(`Bạn có chắc muốn xóa tất cả ${mealCount} quán trong lịch trình?`, {
+        title: '🗑️ Xóa tất cả',
+        confirmText: 'Xóa tất cả',
+        cancelText: 'Huỷ',
+        type: 'danger'
+    });
+    
+    if (!confirmed) {
         return;
     }
     
@@ -7735,7 +8090,7 @@ function deleteAllMeals() {
     // Render lại
     displayPlanVertical(currentPlan, isEditMode);
     
-    alert('✅ Đã xóa tất cả quán!');
+    showFoodPlanAlert('Đã xóa tất cả quán!', 'success');
 }
 // ========== CHECK PENDING SUGGESTION ==========
 async function checkPendingSuggestion(planId) {
@@ -7793,13 +8148,13 @@ function updateSubmitSuggestionButton() {
 }
 async function submitSuggestion() {
     if (!currentPlan || !currentPlanId) {
-        alert('⚠️ Không có thay đổi để gửi');
+        showFoodPlanAlert('Không có thay đổi để gửi', 'warning');
         return;
     }
     
     // 🔥 THÊM: Kiểm tra pending
     if (hasPendingSuggestion) {
-        alert('⚠️ Bạn đã có 1 đề xuất đang chờ duyệt. Vui lòng đợi chủ sở hữu xử lý trước khi gửi đề xuất mới.');
+        showFoodPlanAlert('Bạn đã có 1 đề xuất đang chờ duyệt. Vui lòng đợi chủ sở hữu xử lý trước khi gửi đề xuất mới.', 'warning');
         return;
     }
     
@@ -7831,14 +8186,19 @@ async function submitSuggestion() {
         const hasChanges = !comparePlanData(currentPlan, window.originalSharedPlanData);
         
         if (!hasChanges) {
-            alert('⚠️ Bạn chưa thực hiện thay đổi nào so với lịch trình gốc!');
+            showFoodPlanAlert('Bạn chưa thực hiện thay đổi nào so với lịch trình gốc!', 'warning');
             return;
         }
         
         console.log('✅ Phát hiện có thay đổi, cho phép gửi đề xuất');
     }
     
-    const message = prompt('Nhập lời nhắn kèm theo đề xuất (tùy chọn):');
+    const message = await showFoodPlanPrompt('Nhập lời nhắn kèm theo đề xuất (tùy chọn):', '', {
+        title: '📝 Gửi đề xuất chỉnh sửa',
+        placeholder: 'Lời nhắn cho chủ sở hữu...',
+        confirmText: 'Gửi đề xuất',
+        cancelText: 'Huỷ'
+    });
     if (message === null) return; // User clicked Cancel
     
     try {
@@ -7889,7 +8249,7 @@ async function submitSuggestion() {
         const result = await response.json();
         
         if (result.status === 'success') {
-            alert('✅ Đã gửi đề xuất chỉnh sửa! Chờ chủ sở hữu phê duyệt.');
+            showFoodPlanAlert('Đã gửi đề xuất chỉnh sửa! Chờ chủ sở hữu phê duyệt.', 'success');
             
             // 🔥 THÊM: Đánh dấu đã có pending
             hasPendingSuggestion = true;
@@ -7900,12 +8260,12 @@ async function submitSuggestion() {
                 toggleEditMode();
             }
         } else {
-            alert('❌ ' + result.message);
+            showFoodPlanAlert(result.message, 'error');
         }
         
     } catch (error) {
         console.error('Error submitting suggestion:', error);
-        alert('Không thể gửi đề xuất');
+        showFoodPlanAlert('Không thể gửi đề xuất', 'error');
     }
 }
 // ========== CHECK PENDING SUGGESTIONS ==========
@@ -7966,7 +8326,7 @@ async function openSuggestionsPanel() {
     }
     
     if (!currentPlanId) {
-        alert('⚠️ Không có lịch trình đang mở');
+        showFoodPlanAlert('Không có lịch trình đang mở', 'warning');
         return;
     }
 
@@ -7988,7 +8348,7 @@ async function openSuggestionsPanel() {
         const data = await response.json();
         
         if (data.status !== 'success' || !data.suggestions || data.suggestions.length === 0) {
-            alert('ℹ️ Không có đề xuất nào');
+            showFoodPlanAlert('Không có đề xuất nào', 'info');
             return;
         }
         
@@ -7996,7 +8356,7 @@ async function openSuggestionsPanel() {
         const suggestions = data.suggestions.filter(s => s.status === 'pending');
         
         if (suggestions.length === 0) {
-            alert('ℹ️ Không còn đề xuất pending nào');
+            showFoodPlanAlert('Không còn đề xuất pending nào', 'info');
             return;
         }
         
@@ -8152,7 +8512,7 @@ async function openSuggestionsPanel() {
                 inset: 0;
                 background: rgba(0,0,0,0.5);
                 backdrop-filter: blur(4px);
-                z-index: 99999999999999;
+                z-index: 99999999;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -8250,7 +8610,7 @@ async function openSuggestionsPanel() {
         
     } catch (error) {
         console.error('Error loading suggestions:', error);
-        alert('Không thể tải đề xuất');
+        showFoodPlanAlert('Không thể tải đề xuất', 'error');
     }
 }
 
@@ -8302,7 +8662,7 @@ function ensureComparisonStyles() {
   display:flex;
   align-items:center;
   justify-content:center;
-  z-index:2147483647;
+  z-index:99999999;
   padding:20px;
   animation: cmpFadeIn 0.22s ease;
 }
@@ -8744,7 +9104,7 @@ async function viewSuggestionComparison(suggestionId) {
         const data = await response.json();
 
         if (data.status !== 'success') {
-            alert('❌ ' + data.message);
+            showFoodPlanAlert(data.message, 'error');
             return;
         }
 
@@ -8806,7 +9166,7 @@ async function viewSuggestionComparison(suggestionId) {
 
     } catch (error) {
         console.error('Error loading comparison:', error);
-        alert('Không thể tải chi tiết');
+        showFoodPlanAlert('Không thể tải chi tiết', 'error');
     }
 }
 
@@ -9089,7 +9449,13 @@ function closeComparisonModal() {
 
 
 async function approveSuggestion(suggestionId) {
-    if (!confirm('✅ Xác nhận chấp nhận đề xuất này?')) return;
+    const confirmed = await showFoodPlanConfirm('Xác nhận chấp nhận đề xuất này?', {
+        title: '✅ Chấp nhận đề xuất',
+        confirmText: 'Chấp nhận',
+        cancelText: 'Huỷ',
+        type: 'question'
+    });
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`/api/accounts/food-plan/suggestion-approve/${suggestionId}/`, {
@@ -9101,11 +9467,11 @@ async function approveSuggestion(suggestionId) {
         
         if (result.status === 'success') {
             // 🔥 HIỂN THỊ THÔNG BÁO VỀ SỐ ĐỀ XUẤT BỊ TỪ CHỐI
-            let alertMsg = '✅ Đã chấp nhận đề xuất!';
+            let alertMsg = 'Đã chấp nhận đề xuất!';
             if (result.rejected_count && result.rejected_count > 0) {
-                alertMsg += `\n\n🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
+                alertMsg += ` Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
             }
-            alert(alertMsg);
+            showFoodPlanAlert(alertMsg, 'success');
             
             // Đóng tất cả modal
             closeComparisonModal();
@@ -9117,15 +9483,21 @@ async function approveSuggestion(suggestionId) {
                 await loadSavedPlans(currentPlanId);
             }
         } else {
-            alert('❌ ' + result.message);
+            showFoodPlanAlert(result.message, 'error');
         }
     } catch (error) {
         console.error('Error approving suggestion:', error);
-        alert('Không thể chấp nhận đề xuất');
+        showFoodPlanAlert('Không thể chấp nhận đề xuất', 'error');
     }
 }
 async function rejectSuggestion(suggestionId) {
-    if (!confirm('❌ Xác nhận từ chối TOÀN BỘ đề xuất này?')) return;
+    const confirmed = await showFoodPlanConfirm('Xác nhận từ chối TOÀN BỘ đề xuất này?', {
+        title: '❌ Từ chối đề xuất',
+        confirmText: 'Từ chối',
+        cancelText: 'Huỷ',
+        type: 'danger'
+    });
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`/api/accounts/food-plan/suggestion-reject/${suggestionId}/`, {
@@ -9139,7 +9511,7 @@ async function rejectSuggestion(suggestionId) {
             // 🔥 XÓA TRẠNG THÁI TẠM
             delete pendingApprovals[suggestionId];
             
-            alert('✅ Đã từ chối toàn bộ đề xuất!');
+            showFoodPlanAlert('Đã từ chối toàn bộ đề xuất!', 'success');
             
             closeComparisonModal();
             closeSuggestionsModal();
@@ -9153,17 +9525,23 @@ async function rejectSuggestion(suggestionId) {
                 updateSubmitSuggestionButton();
             }
         } else {
-            alert('❌ ' + result.message);
+            showFoodPlanAlert(result.message, 'error');
         }
     } catch (error) {
         console.error('Error rejecting suggestion:', error);
-        alert('Không thể từ chối đề xuất');
+        showFoodPlanAlert('Không thể từ chối đề xuất', 'error');
     }
 }
 
 // ========== EXIT SHARED PLAN VIEW ==========
-function exitSharedPlanView() {
-    if (!confirm('Bạn có chắc muốn thoát chế độ xem shared plan?')) return;
+async function exitSharedPlanView() {
+    const confirmed = await showFoodPlanConfirm('Bạn có chắc muốn thoát chế độ xem shared plan?', {
+        title: '🚪 Thoát chế độ xem',
+        confirmText: 'Thoát',
+        cancelText: 'Huỷ',
+        type: 'question'
+    });
+    if (!confirmed) return;
     
     // Reset tất cả trạng thái
     isViewingSharedPlan = false;
@@ -9205,7 +9583,13 @@ function exitSharedPlanView() {
 
 // ========== APPROVE SINGLE CHANGE - CHỈ LƯU TRẠNG THÁI TẠM ==========
 async function approveChange(suggestionId, changeIndex, changeType, changeKey) {
-    if (!confirm('✅ Xác nhận chấp nhận thay đổi này?')) return;
+    const confirmed = await showFoodPlanConfirm('Xác nhận chấp nhận thay đổi này?', {
+        title: '✅ Chấp nhận thay đổi',
+        confirmText: 'Chấp nhận',
+        cancelText: 'Huỷ',
+        type: 'question'
+    });
+    if (!confirmed) return;
     
     // 🔥 KHỞI TẠO NẾU CHƯA CÓ
     if (!pendingApprovals[suggestionId]) {
@@ -9252,7 +9636,13 @@ async function approveChange(suggestionId, changeIndex, changeType, changeKey) {
 
 // ========== REJECT SINGLE CHANGE - CHỈ LƯU TRẠNG THÁI TẠM ==========
 async function rejectChange(suggestionId, changeIndex, changeType, changeKey) {
-    if (!confirm('❌ Xác nhận từ chối thay đổi này?')) return;
+    const confirmed = await showFoodPlanConfirm('Xác nhận từ chối thay đổi này?', {
+        title: '❌ Từ chối thay đổi',
+        confirmText: 'Từ chối',
+        cancelText: 'Huỷ',
+        type: 'danger'
+    });
+    if (!confirmed) return;
     
     // 🔥 KHỞI TẠO NẾU CHƯA CÓ
     if (!pendingApprovals[suggestionId]) {
@@ -9307,7 +9697,7 @@ async function approveAllChanges(suggestionId) {
         const data = await response.json();
         
         if (data.status !== 'success') {
-            alert('❌ ' + data.message);
+            showFoodPlanAlert(data.message, 'error');
             return;
         }
         
@@ -9317,7 +9707,15 @@ async function approveAllChanges(suggestionId) {
         
         // 🔥 CASE 1: Không đánh dấu gì cả → Chấp nhận TẤT CẢ
         if (!pending || (!pending.approvedChanges.length && !pending.rejectedChanges.length)) {
-            if (!confirm(`Bạn chưa xử lý bất kỳ thay đổi nào.\n\n✅ Xác nhận chấp nhận TẤT CẢ ${totalChanges} thay đổi?`)) {
+            const confirmAcceptAll = await showFoodPlanConfirm(
+                `Bạn chưa xử lý bất kỳ thay đổi nào.<br><br>Xác nhận chấp nhận TẤT CẢ ${totalChanges} thay đổi?`,
+                {
+                    confirmButtonText: 'Chấp nhận tất cả',
+                    cancelButtonText: 'Hủy',
+                    icon: 'question'
+                }
+            );
+            if (!confirmAcceptAll) {
                 return;
             }
             
@@ -9348,17 +9746,28 @@ async function approveAllChanges(suggestionId) {
             // Nếu chưa xử lý hết → BẮT BUỘC phải xử lý hết
             if (processedCount < totalChanges) {
                 const remainingCount = totalChanges - processedCount;
-                alert(`⚠️ Bạn còn ${remainingCount} thay đổi chưa xử lý!\n\n` +
-                      `📊 Tổng: ${totalChanges} thay đổi\n` +
-                      `✅ Đã chấp nhận: ${approvedCount}\n` +
-                      `❌ Đã từ chối: ${rejectedCount}\n\n` +
-                      `Vui lòng xử lý HẾT các thay đổi còn lại trước khi lưu.`);
+                showFoodPlanAlert(
+                    `Bạn còn ${remainingCount} thay đổi chưa xử lý!<br><br>` +
+                    `📊 Tổng: ${totalChanges} thay đổi<br>` +
+                    `✅ Đã chấp nhận: ${approvedCount}<br>` +
+                    `❌ Đã từ chối: ${rejectedCount}<br><br>` +
+                    `Vui lòng xử lý HẾT các thay đổi còn lại trước khi lưu.`,
+                    'warning'
+                );
                 return;
             }
             
                // 🔥 CASE ĐẶC BIỆT: Nếu TẤT CẢ đều bị từ chối → Gọi API reject toàn bộ suggestion
             if (approvedCount === 0 && rejectedCount === totalChanges) {
-                if (!confirm(`⚠️ Bạn đã từ chối TẤT CẢ ${totalChanges} thay đổi.\n\nXác nhận từ chối toàn bộ đề xuất này?`)) {
+                const confirmRejectAll = await showFoodPlanConfirm(
+                    `Bạn đã từ chối TẤT CẢ ${totalChanges} thay đổi.<br><br>Xác nhận từ chối toàn bộ đề xuất này?`,
+                    {
+                        confirmButtonText: 'Xác nhận từ chối',
+                        cancelButtonText: 'Hủy',
+                        icon: 'warning'
+                    }
+                );
+                if (!confirmRejectAll) {
                     return;
                 }
                 
@@ -9372,7 +9781,7 @@ async function approveAllChanges(suggestionId) {
                     const result = await response.json();
                     
                     if (result.status === 'success') {
-                        alert('✅ Đã từ chối toàn bộ đề xuất!');
+                        showFoodPlanAlert('Đã từ chối toàn bộ đề xuất!', 'success');
                         
                         // Xóa trạng thái tạm
                         delete pendingApprovals[suggestionId];
@@ -9392,26 +9801,33 @@ async function approveAllChanges(suggestionId) {
                             updateSubmitSuggestionButton();
                         }
                     } else {
-                        alert('❌ ' + result.message);
+                        showFoodPlanAlert(result.message, 'error');
                     }
                     
                 } catch (error) {
                     console.error('Error rejecting suggestion:', error);
-                    alert('Không thể từ chối đề xuất');
+                    showFoodPlanAlert('Không thể từ chối đề xuất', 'error');
                 }
                 
                 return; // Dừng hàm, không chạy tiếp phần approve
             }
             
             // Xác nhận cuối cùng
-            const confirmMsg = `📊 Tổng kết:\nChấp nhận: ${approvedCount} thay đổi\nTừ chối: ${rejectedCount} thay đổi\n\nXác nhận áp dụng các thay đổi đã chọn?`;
+            const confirmApply = await showFoodPlanConfirm(
+                `📊 Tổng kết:<br>Chấp nhận: ${approvedCount} thay đổi<br>Từ chối: ${rejectedCount} thay đổi<br><br>Xác nhận áp dụng các thay đổi đã chọn?`,
+                {
+                    confirmButtonText: 'Áp dụng',
+                    cancelButtonText: 'Hủy',
+                    icon: 'question'
+                }
+            );
             
-            if (!confirm(confirmMsg)) return;
+            if (!confirmApply) return;
         }
         
     } catch (error) {
         console.error('Error loading suggestion:', error);
-        alert('⚠️ Không thể tải thông tin đề xuất');
+        showFoodPlanAlert('Không thể tải thông tin đề xuất', 'error');
         return;
     }
     
@@ -9432,11 +9848,11 @@ async function approveAllChanges(suggestionId) {
         const result = await response.json();
         
         if (result.status === 'success') {
-            let alertMsg = `✅ Đã áp dụng ${result.applied_count} thay đổi!`;
+            let alertMsg = `Đã áp dụng ${result.applied_count} thay đổi!`;
             if (result.rejected_count && result.rejected_count > 0) {
-                alertMsg += `\n\n🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
+                alertMsg += `<br><br>🔄 Đã tự động từ chối ${result.rejected_count} đề xuất khác.`;
             }
-            alert(alertMsg);
+            showFoodPlanAlert(alertMsg, 'success');
             
             delete pendingApprovals[suggestionId];
             
@@ -9452,12 +9868,12 @@ async function approveAllChanges(suggestionId) {
                 updateSubmitSuggestionButton();
             }
         } else {
-            alert('❌ ' + result.message);
+            showFoodPlanAlert(result.message, 'error');
         }
         
     } catch (error) {
         console.error('Error approving all changes:', error);
-        alert('Không thể áp dụng thay đổi');
+        showFoodPlanAlert('Không thể áp dụng thay đổi', 'error');
     }
 }
 
@@ -9470,7 +9886,7 @@ async function viewMySuggestions(planId) {
     }
     
     if (!planId) {
-        alert('⚠️ Không có lịch trình đang mở');
+        showFoodPlanAlert('Không có lịch trình đang mở', 'warning');
         return;
     }
     
@@ -9479,14 +9895,14 @@ async function viewMySuggestions(planId) {
         const data = await response.json();
         
         if (data.status !== 'success') {
-            alert('❌ ' + data.message);
+            showFoodPlanAlert(data.message, 'error');
             return;
         }
         
         const suggestions = data.suggestions || [];
         
         if (suggestions.length === 0) {
-            alert('ℹ️ Bạn chưa gửi đề xuất nào cho lịch trình này');
+            showFoodPlanAlert('Bạn chưa gửi đề xuất nào cho lịch trình này', 'info');
             return;
         }
         
@@ -9642,7 +10058,7 @@ async function viewMySuggestions(planId) {
                 inset: 0;
                 background: rgba(0, 0, 0, 0.5);
                 backdrop-filter: blur(4px);
-                z-index: 99999999999999;
+                z-index: 99999999;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -9940,7 +10356,7 @@ async function viewMySuggestions(planId) {
         
     } catch (error) {
         console.error('Error loading my suggestions:', error);
-        alert('Không thể tải đề xuất của bạn');
+        showFoodPlanAlert('Không thể tải đề xuất của bạn', 'error');
     }
 }
 

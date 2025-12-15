@@ -293,10 +293,57 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <!-- Emoji Picker Element (Google) -->
         <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js" type="module"></script>
+        <!-- SweetAlert2 for custom alerts -->
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <style>
             * {{
                 box-sizing: border-box;
             }}
+
+            /* ===== CUSTOM SWEETALERT2 STYLES FOR CHATBOT ===== */
+            .swal2-container {{
+                z-index: 9999999 !important;
+            }}
+            
+            .uia-chatbot-swal-popup {{
+                border-radius: 16px !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif !important;
+                border: 2px solid #FF6B35 !important;
+                box-shadow: 0 10px 40px rgba(255, 107, 53, 0.2) !important;
+            }}
+            
+            .uia-chatbot-swal-title {{
+                color: #1a1a1a !important;
+                font-weight: 700 !important;
+                font-size: 1.3em !important;
+            }}
+            
+            .uia-chatbot-swal-html {{
+                color: #333 !important;
+                font-size: 1em !important;
+                line-height: 1.6 !important;
+            }}
+            
+            .uia-chatbot-swal-confirm {{
+                border-radius: 25px !important;
+                font-weight: 600 !important;
+                padding: 12px 28px !important;
+                font-size: 0.95em !important;
+                transition: all 0.3s ease !important;
+            }}
+            
+            .uia-chatbot-swal-confirm:hover {{
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4) !important;
+            }}
+            
+            .uia-chatbot-swal-cancel {{
+                border-radius: 25px !important;
+                font-weight: 600 !important;
+                padding: 12px 28px !important;
+                font-size: 0.95em !important;
+            }}
+            /* ===== END CUSTOM SWEETALERT2 STYLES ===== */
 
             /* ===== HIỆU ỨNG LỬA CHO SỐ STREAK ===== */
             .speech-bubble-text {{
@@ -1831,6 +1878,79 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             const MAX_CONSECUTIVE_FAILURES = 3;  // Tối đa 3 lần fail thì đổi key
 
             const API_BASE_URL = '/api';
+
+            // ===== CUSTOM SWEETALERT2 FUNCTIONS FOR CHATBOT (UIA THEME) =====
+            const CHATBOT_COLORS = {{
+                primary: '#FF6B35',
+                secondary: '#FFF8F5',
+                success: '#4CAF50',
+                warning: '#FF9800',
+                error: '#F44336',
+                info: '#2196F3',
+                text: '#1a1a1a',
+                textLight: '#666'
+            }};
+
+            // Alert function với UIA theme
+            function showChatbotAlert(message, type = 'info') {{
+                const iconMap = {{
+                    'success': 'success',
+                    'error': 'error',
+                    'warning': 'warning',
+                    'info': 'info',
+                    'question': 'question'
+                }};
+                
+                const colorMap = {{
+                    'success': CHATBOT_COLORS.success,
+                    'error': CHATBOT_COLORS.error,
+                    'warning': CHATBOT_COLORS.warning,
+                    'info': CHATBOT_COLORS.info,
+                    'question': CHATBOT_COLORS.primary
+                }};
+                
+                return Swal.fire({{
+                    html: message,
+                    icon: iconMap[type] || 'info',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: colorMap[type] || CHATBOT_COLORS.primary,
+                    background: '#FFFAF8',
+                    color: CHATBOT_COLORS.text,
+                    customClass: {{
+                        popup: 'uia-chatbot-swal-popup',
+                        title: 'uia-chatbot-swal-title',
+                        htmlContainer: 'uia-chatbot-swal-html',
+                        confirmButton: 'uia-chatbot-swal-confirm'
+                    }}
+                }});
+            }}
+
+            // Confirm function với UIA theme
+            async function showChatbotConfirm(message, options = {{}}) {{
+                const result = await Swal.fire({{
+                    html: message,
+                    icon: options.icon || 'question',
+                    showCancelButton: true,
+                    confirmButtonText: options.confirmButtonText || 'Xác nhận',
+                    cancelButtonText: options.cancelButtonText || 'Hủy',
+                    confirmButtonColor: options.confirmColor || CHATBOT_COLORS.primary,
+                    cancelButtonColor: options.cancelColor || '#6c757d',
+                    background: '#FFFAF8',
+                    color: CHATBOT_COLORS.text,
+                    reverseButtons: true,
+                    customClass: {{
+                        popup: 'uia-chatbot-swal-popup',
+                        title: 'uia-chatbot-swal-title',
+                        htmlContainer: 'uia-chatbot-swal-html',
+                        confirmButton: 'uia-chatbot-swal-confirm',
+                        cancelButton: 'uia-chatbot-swal-cancel'
+                    }}
+                }});
+                
+                return result.isConfirmed;
+            }}
+            // ===== END CUSTOM SWEETALERT2 FUNCTIONS =====
+
             // ===== THÊM ĐOẠN NÀY =====
             const MENU_DATA = {menu_json};
             console.log('📋 Menu loaded:', MENU_DATA.dishes.length, 'món');
@@ -3679,10 +3799,10 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             // Click vào streak để xem thông tin
             document.getElementById('streakContainer')?.addEventListener('click', () => {{
                 const msg = isStreakFrozen 
-                    ? `Streak hiện tại: ${{currentStreak}} ngày Streak đã bị đóng băng vì bạn nghỉ 1 ngày! 🧊\\n\\nNhắn tin hôm nay để khởi động lại nhé! 💪`
-                    : `Streak hiện tại: ${{currentStreak}} ngày 🔥 Tiếp tục duy trì để đạt milestone mới nhé! ✨`;
+                    ? `<strong>Streak hiện tại: ${{currentStreak}} ngày</strong><br><br>🧊 Streak đã bị đóng băng vì bạn nghỉ 1 ngày!<br><br>Nhắn tin hôm nay để khởi động lại nhé! 💪`
+                    : `<strong>Streak hiện tại: ${{currentStreak}} ngày</strong> 🔥<br><br>Tiếp tục duy trì để đạt milestone mới nhé! ✨`;
                 
-                alert(msg);
+                showChatbotAlert(msg, isStreakFrozen ? 'info' : 'success');
             }});            
 
             // 4.1. Khi bấm nút mở Chatbot
@@ -3891,10 +4011,17 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         e.stopPropagation();
 
                         const confirmMsg = (currentConversationID && session.id == currentConversationID)
-                            ? 'Bạn đang xóa đoạn chat hiện tại. Xác nhận xóa?'
-                            : `Xóa đoạn chat "${{session.title}}"?`;
+                            ? '<strong>Bạn đang xóa đoạn chat hiện tại.</strong><br><br>Xác nhận xóa?'
+                            : `Xóa đoạn chat <strong>"${{session.title}}"</strong>?`;
 
-                        if (confirm(confirmMsg)) {{
+                        const confirmed = await showChatbotConfirm(confirmMsg, {{
+                            confirmButtonText: 'Xóa',
+                            cancelButtonText: 'Hủy',
+                            confirmColor: '#F44336',
+                            icon: 'warning'
+                        }});
+                        
+                        if (confirmed) {{
                             // Gọi API xóa (Xem hàm bên dưới)
                             await deleteChatAPI(session.id);
                         }}
