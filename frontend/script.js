@@ -3639,7 +3639,7 @@ function updatePlaceCounter() {
     counterEl.id = 'place-counter';
     counterEl.style.cssText = `
       position: fixed;
-      top: 90px; 
+      top: 200px; 
       left: 15px;
       background: linear-gradient(135deg, #FFB88C 0%, #FF9966 100%);
       color: white;
