@@ -2675,7 +2675,7 @@ async function geocodeAddress(address) {
     
   } catch (err) {
     console.error("Lỗi khi geocode:", err);
-    showCustomAlert("❌ Lỗi khi tìm địa điểm: " + err.message);
+    showCustomAlert("❌ Lỗi khi tìm địa điểm");
     return null;
   }
 }
