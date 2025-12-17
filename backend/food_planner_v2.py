@@ -4109,6 +4109,23 @@ async function savePlan() {
 async function loadSavedPlans(planId, forceReload = false) {
     try {
 
+        // 🔥 CHECK AUTHENTICATION TRƯỚC KHI LOAD
+        const authCheck = await fetch('/api/accounts/check_auth_status/');
+        const authData = await authCheck.json();
+        
+        // ❌ CHƯA ĐĂNG NHẬP → SKIP, KHÔNG LOAD
+        if (!authData.is_logged_in) {
+            console.log('⚠️ User chưa đăng nhập, skip load saved plans');
+            
+            // Ẩn section saved plans
+            const section = document.getElementById('savedPlansSection');
+            if (section) {
+                section.style.display = 'none';
+            }
+            
+            return; // 🔥 DỪNG NGAY, KHÔNG GỌI API
+        }
+
         // 🧹 ĐÓNG LỊCH TRÌNH NẾU BẤM LẠI CÙNG 1 PLAN ĐANG MỞ
         if (
             !forceReload &&                      // không phải load lại bắt buộc

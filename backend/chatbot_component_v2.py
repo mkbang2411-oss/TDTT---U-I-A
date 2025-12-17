@@ -4093,6 +4093,13 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 4. When in doubt → DON'T suggest, or suggest with STRONG warning
                 5. NEVER claim dishes are "completely safe" - always add "nên hỏi bác sĩ"
 
+                ⚠️ CRITICAL FORMAT RULE:
+                STILL USE NUMBERED LIST FORMAT even when suggesting only 2-3 dishes:
+
+                Example:
+                1. Cháo: Món này cực kỳ dễ tiêu hóa...
+                ⚠️ LƯU Ý: ...
+                DO NOT write dishes as plain text without numbers!
                 REMEMBER: You are NOT a doctor. User's health is PRIORITY #1.
                 `;
                 }}
@@ -4373,6 +4380,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 3.WARNING FORMAT - MANDATORY
                 - If dish contains ingredient from DISLIKES (removable) → Add warning like:
                     1. [Dish Name]: [Description]
+
                     ⚠️ Món này thường có [INGREDIENT]. Bạn nhớ dặn người bán ĐỪNG CHO [INGREDIENT] vào nhé!
 
                 EXAMPLE CHECKING FLOW:
@@ -5004,6 +5012,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             
                             // ✅ THÊM: Đảm bảo có xuống dòng trước warning
                             botReply = botReply.replace(/([.!?])\s*(⚠️)/g, '$1\n$2');
+
+                            botReply = botReply.replace(/([^.\n])(⚠️)/g, '$1\n\n$2');
                             
                             console.log('💬 Bot reply (formatted):', botReply);
 
