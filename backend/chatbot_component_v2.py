@@ -1154,39 +1154,22 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             /* Nút khi đang loading (countdown) */
             .send-button.loading {{
-                background: linear-gradient(135deg, #FF6B35 0%, #FF8C61 100%);
+                background: #FFF5EE; /* ← MÀU NỀN CAM NHẠT */
                 cursor: default;
-                pointer-events: all; /* 👈 ĐỔI none → all */
+                pointer-events: all;
             }}
 
-            /* Khi hover vào nút loading → hiện Cancel (đỏ) */
-            .send-button.loading:hover {{
-                background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
-                cursor: pointer;
-                transform: scale(1.05); /* 👈 THÊM hiệu ứng phóng to */
-            }}
-
-            /* Vòng tròn countdown SVG */
-            .countdown-ring {{
+            .loading-square {{
                 position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                transform: rotate(-90deg); /* Bắt đầu từ trên cùng */
-            }}
-
-            .countdown-ring circle {{
-                fill: none;
-                stroke: rgba(255, 255, 255, 0.3);
-                stroke-width: 3;
-            }}
-
-            .countdown-ring .progress {{
-                stroke: white;
-                stroke-width: 3;
-                stroke-linecap: round;
-                transition: stroke-dashoffset 0.1s linear;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) !important; /* ← THÊM !important */
+                width: 18px;  
+                height: 18px; 
+                background: #FF6B35;
+                border-radius: 3px;
+                display: block;
+                animation: none !important; /* ← CHẶN ANIMATION */
             }}
 
             /* Icon bên trong nút */
@@ -1194,21 +1177,25 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 position: relative;
                 z-index: 1;
                 transition: all 0.3s ease;
+                opacity: 1;
             }}
 
-            /* Icon khi hover vào loading button */
-            .send-button.loading:hover .send-button-icon {{
-                transform: scale(1.1);
+            /* ✅ KHI KHÔNG LOADING (trạng thái bình thường) */
+            .send-button:not(.loading) .send-button-icon {{
+                opacity: 1; /* ← ĐẢM BẢO HIỆN */
+                transform: none;
             }}
 
-            /* Animation xoay cho loading icon */
-            @keyframes spin {{
-                from {{ transform: rotate(0deg); }}
-                to {{ transform: rotate(360deg); }}
+            /* ✅ ẨN Ô VUÔNG KHI KHÔNG LOADING */
+            .send-button:not(.loading) .loading-square {{
+                display: none;
             }}
 
             .send-button.loading .send-button-icon.spinning {{
                 animation: spin 1s linear infinite;
+                opacity: 0; /* ← ẨN BẰNG opacity */
+                pointer-events: none;
+                cursor: pointer;
             }}
                         
             .send-button:hover {{
@@ -1836,11 +1823,9 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     <button class="emoji-button" id="emojiBtn"> 😊</button>
                 </div>
                 <button class="send-button" id="sendBtn">
-                    <!-- SVG Countdown Ring (ẩn mặc định) -->
-                    <svg class="countdown-ring" id="countdownRing" style="display: none;">
-                        <circle cx="21" cy="21" r="18"></circle>
-                        <circle class="progress" cx="21" cy="21" r="18" id="countdownProgress"></circle>
-                    </svg>
+                    <div class="loading-square" id="loadingSquare" style="display: none;">
+                        <div class="loading-bar"></div>
+                    </div>
                     
                     <!-- Icon bên trong nút -->
                     <div class="send-button-icon" id="sendBtnIcon">
@@ -1957,208 +1942,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             // ==========================
             console.log('🚀 Chatbot script loaded');
 
-            // ===== TÍNH NĂNG MỚI 1: DANH SÁCH TỪ TỤC TIỂU =====
-            const profanityWords = {{
-                vi: [
-                    // --- nhóm chửi tục tiếng Việt gốc ---
-                    'địt', 'đụ', 'đjt', 'djt', 'đmm', 'dm', 'đm', 'dmm', 'đcm', 'dcm', 'clgt',
-                    'vcl', 'vl', 'vãi', 'vãi lồn', 'vãi loz', 'vãi lon', 'vailon', 'vailoz',
-                    'cl', 'clm', 'clo', 'cln', 'clmm', 'cldm', 'cmm', 'cmn', 'ccmm', 'đéo', 'đếch',
-                    'đek', 'dek', 'đekm', 'dmj', 'dmz', 'vlz', 'vkl', 'vch', 'vđ', 'vđm', 'vđmm', 'địu má', 'đậu má',
-
-                    // --- nhóm xúc phạm, nhục mạ ---
-                    'ngu', 'ngu học', 'óc chó', 'não phẳng', 'não cá vàng', 'khùng', 'ngáo', 'điên',
-                    'khốn nạn', 'mất dạy', 'vô học', 'láo', 'bố láo', 'láo toét', 'chó má', 'súc vật',
-                    'thằng ngu', 'con ngu', 'đồ điên', 'đồ chó', 'rảnh háng', 'bố đời', 'đồ rẻ rách',
-
-                    // --- nhóm tục tả sinh lý ---
-                    'lồn', 'buồi', 'cu', 'chim to', 'chim nhỏ', 'bướm', 'nứng', 'cặc', 'đỉ',
-                    'đĩ', 'điếm', 'cave', 'gái gọi', 'đi khách', 'dâm', 'râm', 'râm dục', 'biến thái',
-                    'thủ dâm', 'dương vật', 'âm đạo', 'âm vật', 'hiếp', 'hiếp dâm', 'giao cấu',
-
-                    // --- nhóm chửi liên quan gia đình ---
-                    'mẹ mày', 'bố mày', 'cha mày', 'má mày', 'ông nội mày', 'bà nội mày',
-                    'tổ cha', 'tổ sư', 'con mẹ mày', 'con chó', 'đồ chó', 'con đĩ mẹ mày',
-
-                    // --- nhóm viết tắt & kiểu chat Việt hóa ---
-                    'vl', 'vkl', 'vcc', 'vklm', 'cmn', 'cmnr', 'cmnl', 'vcđ', 'vđc', 'vcml', 'lz',
-                    'dkm', 'vml', 'vclm', 'vcmm', 'dmnr', 'dcmj', 'dmj', 'ccmnr', 'vchz', 'vlz', 'cc', 'cái lồn',
-
-                    // --- nhóm không dấu / né lọc ---
-                    'dit', 'ditme', 'dit me', 'ditmemay', 'du', 'djtme', 'dmme', 'dmmay', 'vclon',
-                    'vai lon', 'vai loz', 'vai lonz', 'dmml', 'dcmm', 'dcmay', 'vlon', 'vailon',
-                    'vailoz', 'vailonzz', 'ditconme', 'dmconcho', 'cac', 'loz', 'lol', 'đụ má',
-
-                    // --- nhóm “tiếng Anh Việt hóa” mà người Việt hay dùng để chửi ---
-                    'fuck', 'fuk', 'fukk', 'fucc', 'fucck', 'fuking', 'fucking', 'fck', 'fcku', 'fcking',
-                    'phắc', 'phẹc', 'phâk', 'phúc kiu', 'phẹc kiu', 'phắc kiu', 'phuck',
-                    'sịt', 'sít', 'sịt mẹ', 'shit', 'shjt', 'sh1t', 'shet', 'sịt lờ',
-                    'bít', 'bitch', 'b1tch', 'btch', 'biatch', 'bich', 'bịt', 'bitchass',
-                    'đem', 'đem mờn', 'đem men', 'đem mai', 'damn', 'daemn', 'damm',
-                    'sặc', 'sắc', 'suck', 'sux', 'suk', 'suck my', 'suckyou', 'sucku',
-                    'wtf', 'wth', 'wtfff', 'wtfuk', 'wdf', 'omfg', 'omg', 'holyshit', 'holy fuck',
-                    'bullshit', 'bullshjt', 'bullsh1t', 'bulsit', 'bs', 'bsht', 'crap', 'crp',
-                    'hell', 'go to hell', 'dumbass', 'dipshit', 'moron', 'loser',
-                    'jerk', 'mf', 'mofo', 'motherfucker', 'sonofabitch', 'son of a bitch', 'retard', 'idiot',
-                    'porn', 'p0rn', 'sex', 'sexy', 'horny', 'nude', 'naked', 'gay', 'say get', 'sex', 'sẽ',
-                ],
-                en: [
-                    'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'dick', 'pussy', 'cock',
-                    'motherfucker', 'fck', 'wtf', 'stfu', 'bullshit', 'ass', 'piss', 'slut',
-                    'whore', 'retard', 'idiot', 'jerk', 'damn', 'fucking', 'moron',
-                    'fuk', 'fucc', 'phuc', 'fcku', 'fckn', 'fckoff', 'shjt', 'b1tch', 'btch',
-                    'azz', 'azzhole', 'a$$', 'd1ck', 'p0rn', 'porn', 'suck', 'sux', 'fux',
-                    'fuxk', 'phuk', 'phuck', 'mf', 'mofo', 'wtfff', 'omfg', 'fml', 'fk',
-                    'fkin', 'cum', 'cumming', 'orgasm', 'jerkoff', 'wank', 'nsfw',
-                    'horny', 'nude', 'sex', 'sexy', 'dumbass', 'dipshit', 'crap', 'hell', 'nigger',
-                ],
-                // 🇨🇳 Tiếng Trung (tục phổ biến, bao gồm Hán tự, pinyin, số viết tắt)
-                zh: [
-                    // --- Hán tự ---
-                    '他妈的', '他媽的', '操你妈', '操你', '你妈的', '你媽的', '去你妈的',
-                    '傻逼', '煞笔', '沙雕', '妈的', '媽的', '滚开', '滚蛋', '狗屎',
-                    '废物', '垃圾', '贱人', '王八蛋', '混蛋', '猪头', '变态', '禽兽',
-                    '他奶奶的', '日你妈', '日了狗', '傻屌', '脑残', '白痴', '蠢货', '废柴',
-
-                    // --- Pinyin / Latin ---
-                    'tamade', 'caonima', 'caoni', 'nimade', 'qunimade',
-                    'shabi', 'shapi', 'shadiao', 'mada', 'gunni', 'gundan',
-                    'feiw', 'laji', 'jianren', 'wangbad', 'hundan',
-                    'zhutou', 'biantai', 'qingshou', 'rinima', 'rilougou',
-                    'naocan', 'baichi', 'chunhuo', 'feichai',
-
-                    // --- Viết tắt / số hóa (Internet slang) ---
-                    'nmsl', 'wdnmd', 'tmd', 'cnm', 'nmd', 'mlgb', 'djb', 'rnm',
-                    'sb', '2b', '250', '25013', 'mdzz', 'nb', 'lj', 'fw', 'gdx',
-                    'nmb', 'nmgb', 'wdnm', 'wcnm', 'wcnmd'
-                ],
-                // 🇰🇷 Tiếng Hàn (tục & xúc phạm phổ biến + dạng Latin)
-                ko: [
-                    '씨발', '시발', '씹새끼', '썅', '병신', '미친놈', '미친년',
-                    '개새끼', '개년', '개자식', '좆같아', '좆나', '존나', '존나게',
-                    '지랄하네', '닥쳐라', '꺼져라', '죽어라', '씨팔', '씹할놈',
-                    '새끼야', '병신같이', '염병하네', '개같은', '개호로새끼',
-                    '호로새끼', '니미럴', '느금마', '니애미', '돌아이', '변태놈',
-                    '섹스중독자', '개변태', '매춘부',
-
-                    // --- Viết tắt & Latin ---
-                    'ssibal', 'sibal', 'siibal', 'ssiball', 'ssibaal', 'shibal',
-                    'byeongsin', 'byeongshin', 'gaesaekki', 'gaesekki', 'gaesekkiya',
-                    'jonna', 'jotnna', 'jotnagal', 'jiral', 'jjiral', 'dokchyeo',
-                    'ggeojyeo', 'negejug', 'niimi', 'nieomi', 'dolai', 'byuntae',
-                    'sex', 'byuntae', 'gaebyeongsin', 'niemi', 'neommaya'
-                ],
-                // 🇯🇵 Tiếng Nhật (tục & xúc phạm phổ biến)
-                ja: [
-                    // --- Kanji & Kana ---
-                    'くそ', 'クソ', 'ちくしょう', '畜生', 'ばか', 'バカ', 'あほ', 'アホ',
-                    'しね', '死ね', 'しねや', '死ねや', 'だまれ', '黙れ', 'うるさい', 'ウルサイ',
-                    'ブス', 'デブ', 'キモい', 'きもい', '変態', 'へんたい', 'ふざけんな', 'ざけんな',
-                    'くたばれ', '馬鹿野郎', 'ばかやろう', 'ドアホ', 'クズ', '最低', '最悪',
-                    'キチガイ', 'スケベ', 'いやらしい',
-
-                    // --- Latin / Romaji / Slang ---
-                    'kuso', 'baka', 'aho', 'shine', 'shineya', 'damare', 'urusai',
-                    'busu', 'debu', 'kimoi', 'hentai', 'fuzakenna', 'zakenna',
-                    'kutabare', 'bakayarou', 'doaho', 'kuzu', 'saitei', 'saiaku',
-                    'kichigai', 'sukebe', 'iyarashii', 'fakku', 'shitto', 'dame', 'yarou'
-                ]
-            }};
-
-            const warningMessages = {{
-                vi: [
-                    "Xin lỗi nha 🥺 Mình là chatbot AI thân thiện, nên mong bạn nói chuyện lịch sự một chút nè 💖\nHy vọng tụi mình sẽ có khoảng thời gian trò chuyện vui vẻ và tôn trọng nhau hơn nha~ Nếu bạn muốn mình gợi ý món ăn thì đừng chần chừ, hãy nhắn mình ngay nhé, mình sẽ hỗ trợ bạn hết mình!",
-                    "Ơ bạn ơi 😅 mình chỉ là chatbot thân thiện thôi, nên mong bạn nói chuyện nhẹ nhàng hơn nha 💕\nMình muốn cùng bạn trò chuyện vui vẻ và thoải mái nhất có thể đó~ Nếu bạn muốn mình gợi ý món ăn thì nhắn mình liền luôn nghen, UIAboss luôn sẵn sàng hỗ trợ bạn hết mình 🍜",
-                    "Xin lỗi bạn nghen 🥺 Mình không phản hồi được mấy từ hơi nhạy cảm đâu 😅\nNhưng mình vẫn ở đây nè, sẵn sàng gợi ý món ngon cho bạn bất cứ lúc nào~ Cứ nhắn mình liền nha, mình hỗ trợ bạn hết sức luôn!",
-                    "Hí hí 😄 mình hiểu bạn đang bực hay vui, nhưng mình là chatbot thân thiện nên mong mình cùng nói chuyện nhẹ nhàng thôi nè 💖\nÀ mà nếu bạn đang đói, mình gợi ý món ăn ngon liền luôn nha~",
-                    "Hehe 😅 lời nói vừa rồi nghe hơi mạnh đó bạn ơi~\nMình muốn chúng ta nói chuyện lịch sự và vui vẻ nha 💕 Nếu bạn muốn mình gợi ý món ăn thì đừng ngại, cứ nhắn mình ngay nè, mình hứa gợi ý món siêu ngon luôn 🍲",
-                    "Ơ kìa 😅 nói dị hơi gắt á bạn ơi~\nMình muốn giữ cuộc trò chuyện này thật vui và ấm áp thôi 💖 Nếu bạn muốn mình giúp tìm món ăn ngon thì nói mình nghe liền nha, mình ở đây vì bạn đó 💞",
-                    "Ui bạn ơi 😅 mấy từ đó nghe hơi nặng nề á~\nMình chỉ muốn cùng bạn nói chuyện thoải mái, thân thiện thôi mà 💞 Nếu bạn muốn gợi ý món ăn thì nhắn mình liền nè, mình giúp ngay luôn!",
-                    "Ơ xin lỗi nha 🥺 mình là chatbot thân thiện, nên không phản hồi mấy từ đó được đâu 😅\nNhưng nè~ bạn hỏi mình về món ăn đi, đảm bảo mình gợi ý ngon lành luôn 😋",
-                    "Nè bạn ơi 😄 mình nói chuyện vui thôi nha, nhẹ nhàng hơn chút xíu cho dễ thương hơn nè 💖\nNếu bạn đang muốn biết ăn gì, mình gợi ý liền luôn nha~",
-                    "Hi bạn 😅 mình chỉ muốn nói chuyện lịch sự và vui vẻ cùng bạn thôi~\nNếu bạn cần gợi ý món ăn, nhắn mình ngay nha, mình ở đây để hỗ trợ bạn hết mình 💫"
-                ],
-
-                en: [
-                    "Hey there 🥺 I’m a friendly AI chatbot, could we keep our chat polite and kind please? 💖\nI’m here to make our time together fun and respectful~ If you’d like me to suggest something yummy, don’t hesitate to message me — I’ll give it my best shot!",
-                    "Oops 😅 that sounded a bit strong~\nI’m your friendly chatbot, let’s keep our talk positive and kind, yeah? 💕 And hey, if you’d like me to recommend some food, just tell me — I’ve got you covered 🍜",
-                    "Hey 🥺 please keep our chat friendly 💖\nI want us to have a fun, cozy time together! Need food ideas? Don’t wait — I’ll suggest something delicious right away!",
-                    "Aww 😅 I can’t reply to words like that~\nLet’s stay kind and cheerful okay? 💞 If you’re hungry, just ask and I’ll find you something tasty right now!",
-                    "Hehe 😄 let’s talk nicely so our chat stays happy and fun! 💖\nIf you’d like some food suggestions, message me anytime — I’ll do my best for you 🍲",
-                    "Hey there 😅 I’m just a friendly chatbot!\nLet’s keep things sweet and light, deal? 💕 If you want me to recommend food, go ahead and ask — I’ll be happy to help!",
-                    "Hi 🥰 I’m here to chat with kindness and care~\nLet’s make it a good vibe only day 💫 Oh, and if you’re craving something, I can suggest dishes too!",
-                    "Whoops 😅 that’s a bit harsh! I know you didn’t mean it~\nLet’s start fresh and be nice 💖 And hey, if you’re thinking about food, I’m here for you 😋",
-                    "Hey 😄 I just want our chat to be kind and cheerful~ You’re awesome 💕\nIf you’d like me to find you something to eat, just ask anytime!",
-                    "Oops 😅 let’s tone it down a bit~ UIAboss is here to spread good vibes only 💞\nAnd if you’re hungry, tell me — I’ll recommend the best dishes for you 🍜"
-                ],
-
-                zh: [
-                    "哎呀～这句话里有点不太合适的词语哦 😅 我是一个友善的AI聊天机器人，希望我们能文明交流、开心聊天 💖\n如果你想让我推荐美食，不要犹豫哦～告诉我吧，我一定全力帮你！🍜",
-                    "嗯...这句话听起来有点激动 🥺 我们换种温柔的方式说好吗？✨\n如果你想我帮你推荐好吃的，直接告诉我吧～我超乐意帮你！💕",
-                    "不好意思呀～我不能回复带有不礼貌内容的信息 😔 但我很想继续和你愉快聊天～\n如果你想知道吃什么，就问我吧！我马上给你推荐！🍲",
-                    "嘿嘿 😄 别生气嘛～让我们保持轻松愉快的氛围吧 💖\n想让我推荐好吃的？直接说就行～我一定帮你挑到满意的！✨",
-                    "噢！这句话听起来有点不太好听 😅 没关系，我们换个轻松的话题吧～比如吃什么？😋\n我可以帮你推荐超棒的美食哦！",
-                    "诶呀～是不是打错字啦？🤔 没关系，我们重新聊聊也可以呀～\n如果你想我推荐吃的，告诉我就行 💕 我马上安排！🍜",
-                    "抱歉，这样的话我不能回复 😅 我们聊点别的吧～比如你现在饿了吗？\n让我推荐点好吃的给你呀 💖",
-                    "别生气啦 😄 我希望我们能轻松愉快地聊天～\n如果你想我推荐美食，尽管告诉我，我一定全力帮你！🍱",
-                    "嘿嘿 😅 用词温柔一点，我们的聊天会更舒服哦～\n如果你想知道吃什么，我随时帮你推荐美味的！💞",
-                    "请不要使用不礼貌的词汇哦 🙏 我希望我们能开心地聊聊天～\n如果你想我帮你推荐食物，马上告诉我吧，我随时待命！🍲"
-                ],
-
-                ko: [
-                    "앗! 그런 말은 조금 심해요 😅 저는 친절한 AI 챗봇이에요 💕\n우리 예쁘게 대화해요~ 혹시 음식 추천 받고 싶으면 바로 말해줘요! 제가 전심으로 도와드릴게요 🍜",
-                    "헉... 그 말은 조금 거칠어요 🥺 부드럽게 말해볼까요? 😄\n대신 제가 맛있는 음식 추천해드릴게요! 💖",
-                    "죄송하지만 그런 말엔 대답할 수 없어요 😔 그래도 괜찮아요~\n대신 뭐 먹을지 제가 도와드릴게요! 🍲",
-                    "오잉? 이건 좀 과격하네요 😅 우리 서로 예의 있게 얘기해요 💞\n혹시 뭐 먹을지 고민돼요? 제가 바로 추천해드릴게요!",
-                    "응? 😅 그런 단어보단 조금 더 부드럽게 말해요~\n대신 제가 맛있는 거 알려드릴까요? 😋",
-                    "앗! 이건 조금 안 좋은 표현이에요 😅\n대신 제가 맛있는 음식 추천해드릴게요! 💕",
-                    "미안하지만 욕설은 피해주세요 🙏 우리 즐겁게 얘기해요!\n대신 제가 뭐 먹을지 추천드릴게요 🍱",
-                    "음... 문장에 조금 심한 단어가 있네요 🤔 괜찮아요~\n대신 제가 맛있는 메뉴 하나 골라드릴게요 💖",
-                    "우리 싸우지 말고 😄 기분 좋게 얘기하자~\n그리고 제가 맛있는 음식 추천해줄게요 🍜",
-                    "말투 조금만 순하게 바꿔줘요 🥰 그러면 제가 더 잘 도와드릴 수 있어요 💖\n혹시 지금 배고파요? 제가 바로 추천해드릴게요!"
-                ],
-
-                ja: [
-                    "あっ！その言葉はちょっと強いですよ 😅 私はフレンドリーなAIチャットボットです 💕\nもっと優しく話しましょうね～ もし食べ物のおすすめが欲しいなら、すぐ教えてください！🍜",
-                    "えっ…その言い方は少しきついかも 🥺 穏やかに話してみましょうか？✨\n代わりにおいしいご飯をおすすめします！💕",
-                    "ごめんなさい 😔 そのような言葉には返事できませんが、\nそれでも楽しくお話ししたいです！「何を食べようかな？」と思ったら、私に聞いてね 🍲",
-                    "へへっ 😄 怒らないでね～楽しく話そう 💖\n食べたいものを教えてくれたら、すぐにおすすめします！✨",
-                    "あら…その言葉は少し強すぎますね 😅 でも大丈夫です！\n気分を変えて、おいしいものの話でもしませんか？😋",
-                    "もしかしてタイプミスですか？🤔 大丈夫ですよ～\n食べ物のおすすめが欲しいなら、気軽に聞いてください 💕 すぐに紹介します！🍜",
-                    "すみません 😅 そういう言葉には答えられませんが、\n別の話をしましょう～ たとえば今お腹すいてませんか？💖",
-                    "怒らないでくださいね 😄 私は楽しく話すのが好きなんです～\nもし食べ物のおすすめが欲しいなら、すぐお教えします！🍱",
-                    "えへへ 😅 もう少し優しい言葉で話しましょう～\nそのほうがもっと楽しいです 💞 何を食べようか迷っているなら、私に任せて！",
-                    "ごめんね 🙏 不適切な言葉は使わないようにしましょう 💖\n楽しく会話したいです～ もし食べ物のおすすめが欲しいなら、今すぐ教えてね 🍲"
-                ]
-            }};
-
-            function detectLanguage(text) {{
-                const vietnameseChars = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
-                const chineseChars = /[\u4E00-\u9FFF]/;
-                const koreanChars = /[\uAC00-\uD7AF]/;
-                const japaneseChars = /[\u3040-\u30FF\u31F0-\u31FF\uFF66-\uFF9F]/;
-
-                if (vietnameseChars.test(text)) return 'vi';
-                if (chineseChars.test(text)) return 'zh';
-                if (koreanChars.test(text)) return 'ko';
-                if (japaneseChars.test(text)) return 'ja';
-
-                // create and cache Vietnamese no-accent words (unchanged)
-                if (!window._cachedVietnameseNoAccentWords) {{
-                    window._cachedVietnameseNoAccentWords = [
-                        ...new Set((profanityWords.vi || []).map(w => normalizeText(w)))
-                    ];
-                }}
-
-                const normalized = normalizeText(text);
-                const vnNoAccentWords = window._cachedVietnameseNoAccentWords;
-                for (const word of vnNoAccentWords) {{
-                    if (normalized.includes(word)) return 'vi';
-                }}
-
-                return 'en';
-            }}
-
             // ===== LOAD USER PREFERENCES TỪ SERVER =====
             async function loadUserPreferences() {{
             
@@ -2184,423 +1967,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 }} catch (error) {{
                     console.error('❌ Error loading preferences:', error);
                 }}
-            }}            
-
-            function normalizeText(text) {{
-                if (!text) return '';
-                return text
-                    .normalize('NFC')
-                    .toLowerCase()
-                    // chỉ rút gọn khi lặp từ 3 ký tự trở lên
-                    .replace(/([a-z0-9à-ỹđ])\1{2,}/g, '$1$1')
-                    .trim();
-            }}
-
-            // 🆕 Hàm bỏ dấu tiếng Việt
-            function removeVietnameseTones(text) {{
-                if (!text) return '';
-                const toneMap = {{
-                    'à': 'a', 'á': 'a', 'ạ': 'a', 'ả': 'a', 'ã': 'a',
-                    'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ậ': 'a', 'ẩ': 'a', 'ẫ': 'a',
-                    'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ặ': 'a', 'ẳ': 'a', 'ẵ': 'a',
-                    'è': 'e', 'é': 'e', 'ẹ': 'e', 'ẻ': 'e', 'ẽ': 'e',
-                    'ê': 'e', 'ề': 'e', 'ế': 'e', 'ệ': 'e', 'ể': 'e', 'ễ': 'e',
-                    'ì': 'i', 'í': 'i', 'ị': 'i', 'ỉ': 'i', 'ĩ': 'i',
-                    'ò': 'o', 'ó': 'o', 'ọ': 'o', 'ỏ': 'o', 'õ': 'o',
-                    'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ộ': 'o', 'ổ': 'o', 'ỗ': 'o',
-                    'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ợ': 'o', 'ở': 'o', 'ỡ': 'o',
-                    'ù': 'u', 'ú': 'u', 'ụ': 'u', 'ủ': 'u', 'ũ': 'u',
-                    'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ự': 'u', 'ử': 'u', 'ữ': 'u',
-                    'ỳ': 'y', 'ý': 'y', 'ỵ': 'y', 'ỷ': 'y', 'ỹ': 'y',
-                    'đ': 'd'
-                }};
-                return text.toLowerCase().split('').map(c => toneMap[c] || c).join('');
-            }}
-
-            // ✅ Tạo bản không dấu + bỏ khoảng trắng cho toàn bộ từ tiếng Việt
-            profanityWords.vi = [
-                ...new Set([
-                    ...profanityWords.vi,
-                    ...profanityWords.vi.map(w => normalizeText(w)),
-                    ...profanityWords.vi.map(w => removeVietnameseTones(w)), // Bỏ dấu: "cái lồn" → "cai lon"
-                    ...profanityWords.vi.map(w => removeVietnameseTones(w).replace(/\s+/g, '')) // 🆕 Bỏ dấu + khoảng trắng: "cai lon" → "cailon"
-                ])
-            ];
-
-            // === Bộ hàm lọc từ tục tối ưu & tránh nhận nhầm tiếng Trung / Hàn ===
-            function escapeRegex(str) {{
-                return str.replace(/[.*+?^${{}}()|[\]\\]/g, '\\$&');
-            }}
-
-            function buildRegexFromList(words, opts = {{}}) {{
-                const {{ useWordBoundary = true, caseInsensitive = true, treatAsCJK = false }} = opts;
-                const cleaned = words
-                .map(w => (w || '').trim())
-                .filter(w => w.length >= 2); // tránh từ 1 ký tự bị false positive
-                if (cleaned.length === 0) return null;
-
-                const escaped = cleaned.map(w => escapeRegex(w));
-                const pattern = escaped.join('|');
-
-                let finalPattern = pattern;
-                if (useWordBoundary && !treatAsCJK) {{
-                    finalPattern = '\\b(?:' + pattern + ')\\b';
-                }} else {{
-                    finalPattern = '(?:' + pattern + ')';
-                }}
-
-                return new RegExp(finalPattern, caseInsensitive ? 'iu' : 'u');
-            }}
-
-            function prepareProfanityRegexCaches(profanityWords) {{
-                window._profanityRegexCache = window._profanityRegexCache || {{}};
-                if (!window._profanityRegexCache.vi) {{
-                    const viOrig = profanityWords.vi || [];
-                    const viNoAccent = viOrig.map(w => normalizeText(w)).filter(Boolean);
-                    const combined = Array.from(new Set([...viOrig, ...viNoAccent]));
-                    window._profanityRegexCache.vi = buildRegexFromList(combined, {{
-                        useWordBoundary: false, caseInsensitive: true, treatAsCJK: false
-                    }});
-                }}
-
-                if (!window._profanityRegexCache.en) {{
-                    const en = profanityWords.en || [];
-                    window._profanityRegexCache.en = buildRegexFromList(en, {{
-                        useWordBoundary: true, caseInsensitive: true, treatAsCJK: false
-                    }});
-                }}
-
-                if (!window._profanityRegexCache.zh) {{
-                    const zh = (profanityWords.zh || []).filter(w => w && w.trim().length >= 2);
-                    window._profanityRegexCache.zh = buildRegexFromList(zh, {{
-                        useWordBoundary: false, caseInsensitive: true, treatAsCJK: true
-                    }});
-                }}
-
-                if (!window._profanityRegexCache.ko) {{
-                    const ko = (profanityWords.ko || []).filter(w => w && w.trim().length >= 2);
-                    window._profanityRegexCache.ko = buildRegexFromList(ko, {{
-                        useWordBoundary: false, caseInsensitive: true, treatAsCJK: true
-                    }});
-                }}
-
-                // Japanese
-                if (!window._profanityRegexCache.ja) {{
-                    const ja = (profanityWords.ja || []).filter(w => w && w.trim().length >= 2);
-                    window._profanityRegexCache.ja = buildRegexFromList(ja, {{
-                        useWordBoundary: false, caseInsensitive: true, treatAsCJK: true
-                    }});
-                }}
-
-                // store readable patterns for debug
-                window._profanityRegexPatterns = {{
-                    vi: window._profanityRegexCache.vi ? window._profanityRegexCache.vi.source : null,
-                    en: window._profanityRegexCache.en ? window._profanityRegexCache.en.source : null,
-                    zh: window._profanityRegexCache.zh ? window._profanityRegexCache.zh.source : null,
-                    ko: window._profanityRegexCache.ko ? window._profanityRegexCache.ko.source : null,
-                    ja: window._profanityRegexCache.ja ? window._profanityRegexCache.ja.source : null
-                }};
-                console.log("🔧 Profanity regex patterns prepared:", window._profanityRegexPatterns);
-            }}
-
-            // ====== Prepare exact token sets for profanity checking (fast & exact) ======
-            function prepareProfanitySets(profanityWords) {{
-                window._profanitySets = window._profanitySets || {{}};
-
-                const normalizeToken = (t) => normalizeText(t || '');
-                const removeTonesToken = (t) => removeVietnameseTones(t || ''); // 🆕
-
-                ['vi','en','zh','ko','ja'].forEach(lang => {{
-                    if (window._profanitySets[lang]) return;
-
-                    const list = (profanityWords[lang] || []).map(w => (w || '').trim()).filter(Boolean);
-                    const set = new Set();
-
-                    list.forEach(w => {{
-                        set.add(w.toLowerCase());
-                        const norm = normalizeToken(w);
-                        if (norm && norm !== w.toLowerCase()) set.add(norm);
-                        
-                        // 🆕 ĐẶC BIỆT CHO TIẾNG VIỆT: Thêm cả bản không dấu + không khoảng trắng
-                        if (lang === 'vi') {{
-                            const noTone = removeTonesToken(w);
-                            if (noTone && noTone !== w.toLowerCase()) set.add(noTone);
-                            
-                            // 🆕 Thêm bản bỏ luôn khoảng trắng: "cai lon" → "cailon"
-                            const noToneNoSpace = noTone.replace(/\s+/g, '');
-                            if (noToneNoSpace && noToneNoSpace !== noTone) set.add(noToneNoSpace);
-                        }}
-                    }});
-
-                    window._profanitySets[lang] = set;
-                }});
-
-                console.log("🔧 Profanity token sets prepared:", {{
-                    viCount: window._profanitySets.vi ? window._profanitySets.vi.size : 0,
-                    enCount: window._profanitySets.en ? window._profanitySets.en.size : 0
-                }});
-            }}
-
-            function containsProfanity(text, langHint = null) {{
-                console.log('🔍 [PROFANITY CHECK] Input:', text);
-
-                if (!text || typeof text !== 'string')
-                    return {{ found: false, lang: null, match: null }};
-
-                const raw = text.trim();
-                if (raw.length === 0)
-                    return {{ found: false, lang: null, match: null }};
-
-                // ✅ THÊM WHITELIST MẠNH HƠN - Các từ thông dụng bị nhầm
-                const safeWordsWhitelist = [
-                    // Tiếng Anh
-                    'hello','hi','hey','hell','shell','yell','bell','spell','smell',
-                    'assess','asset','class','pass','grass','glass','mass','bass',
-                    'button','butter','shut','shuttle','cut','hut','nut','gut',
-                    'clock','flock','block','rock','shock','stock','lock','dock',
-                    'assume','assure','associate','passive','classic','massive',
-
-                    'credit', 'edit', 'audit', 'reddit', 'condition',
-                    'traditional', 'additional', 'conditional', 'expedit',
-
-                    'fukuoka', 'fukushima', 'fukuda', 'tofu',
-
-                    'shift', 'shirt', 'fashion', 'cushion', 'position',
-                    'transition', 'exhibition', 'tradition', 'fishing',
-
-                    'class', 'glass', 'pass', 'grass', 'mass', 'bass',
-                    'classic', 'passage', 'massage', 'ассэ', 'sassafras',
-                    'assist', 'assess', 'assign', 'assure', 'associate',
-                    'assume', 'cassette', 'passport', 'password',
-                    
-                    'document', 'cucumber', 'circumference', 'accumulate',
-                    'circumstance', 'cumulative', 'vacuum', 'succumb',
-
-                    'hello', 'hell', 'shell', 'yell', 'bell', 'spell', 'smell',
-                    'button', 'butter', 'shut', 'shuttle', 'cut', 'hut', 'nut',
-                    'clock', 'flock', 'block', 'rock', 'shock', 'stock',
-                    'passive', 'massive', 'asset', 'cassette', 'long',
-
-                    // Tiếng Việt - các từ có chứa "đ" nhưng không phải tục
-                    'địa điểm','đi đâu','đến đó','đây đó','đi chơi','đi ăn',
-                    'đi làm','đang đói','đang đi','đang ở','đúng đó',
-
-                    'ngay', 'ngày', 'ngày mai', 'ngày nay', 'ngay lập tức', 
-                    'ngay cả', 'ngay từ', 'ngay sau', 'ngay trước', 'ngay bên',
-                    'gay gắt', 'gay go', 'gay cấn', 'ngay thẳng', 'ngay thật', 'sắc',
-                    
-                    // --- Từ chứa "lồn/lon" nhưng không phải tục ---
-                    'lồng', 'lồng lộn', 'lồng tiếng', 'lồng ghép', 'cái lồng', 'vai', 'cuối',
-                    'salon', 'lớn', 'nguồn', 'ngày', 'gay go', 'long lanh', 'long trọng', 'long', 'người',
-
-                    // Tiếng Trung - chào hỏi
-                    '你好','您好','哈喽','嗨','早上好','下午好','晚上好',
-
-                    // Tiếng Nhật
-                    'こんにちは','こんばんは','おはよう','やあ','もしもし',
-
-                    // Tiếng Hàn
-                    '안녕하세요','안녕','여보세요','하이','헬로',
-
-                    // Tiếng Pháp/Tây Ban Nha/Đức/Ý
-                    'bonjour','salut','hola','ciao','hallo','buenos','buenas'
-                ];
-
-                const compact = raw.replace(/\s+/g, '').toLowerCase().trim();
-
-                // ✅ CHECK WHITELIST TRƯỚC - CHỈ exact match hoặc word boundary
-                const rawLower = raw.toLowerCase();
-                const isWhitelisted = safeWordsWhitelist.some(w => {{
-                    const wLower = w.toLowerCase();
-                    
-                    // Check exact match
-                    if (rawLower === wLower || compact === wLower.replace(/\s+/g, '')) {{
-                        return true;
-                    }}
-                    
-                    // Check word boundary (chỉ cho phép nếu từ đứng riêng)
-                    const regex = new RegExp('\\b' + wLower.replace(/\s+/g, '\\s+') + '\\b', 'i');
-                    return regex.test(rawLower);
-                }});
-
-                if (isWhitelisted) {{
-                    console.log('✅ [WHITELIST] Safe word detected → PASS');
-                    return {{ found: false, lang: detectLanguage(raw), match: null }};
-                }}
-
-                prepareProfanityRegexCaches(profanityWords);
-                prepareProfanitySets(profanityWords);
-
-                const detectedLang = langHint || detectLanguage(raw) || 'vi';
-                console.log('🌐 [LANG DETECT]', detectedLang);
-
-                const sets = window._profanitySets || {{}};
-                let langSet = sets[detectedLang] || sets.vi || new Set();
-                const detected = detectedLang.toLowerCase();
-
-                const normalizeToken = (t) => normalizeText(t || '').toLowerCase();
-
-                // ==============
-                // 🔸 TIẾNG VIỆT / ANH – GIỮ NGUYÊN DẤU CÂU, DÒ TỪ GỐC
-                // ==============
-                if (['vi','en'].includes(detected)) {{
-                    // tách từ dựa trên khoảng trắng và ký tự đặc biệt
-                    const words = raw.split(/(\s+|[,.!?;:'"()\[\]{{}}<>…~`@#%^&*\-_+=|\\\/]+)/g);
-                    console.log('📝 [WORD SPLIT]', words);
-
-                    for (const w of words) {{
-                        const norm = normalizeToken(w);
-                        console.log(`  🔎 Checking word: "${{w}}" → normalized: "${{norm}}"`);
-
-                        // chỉ xét nếu từ có ít nhất 2 ký tự chữ
-                        if (norm.length < 2) {{
-                            console.log(`    ⚠️  Too short → SKIP`);
-                            continue;
-                        }}
-
-                        // ✅ 1. CHECK EXACT MATCH TRƯỚC (Ưu tiên cao nhất)
-                        if (langSet.has(norm)) {{
-                            console.log(`    🎯 [EXACT MATCH] "${{norm}}" found in profanity set`);
-                            console.log(`    ❌ [PROFANITY DETECTED] Word: "${{w}}", Match: "${{norm}}"`);
-                            return {{ found: true, lang: detectedLang, match: w }};
-                        }}
-
-                        // ✅ 2. CHỈ CHECK SUBSTRING KHI:
-                        // - Từ ngắn (< 6 ký tự) HOẶC
-                        // - Có dấu hiệu viết tắt/né lọc (ký tự lặp lại, thiếu nguyên âm)
-                        const hasRepeatedChars = /(.)\1{{2,}}/.test(norm); // "fckkkk", "shiiit"
-                        const lacksVowels = !/[aeiouàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ]{{2}}/i.test(norm); // "dmkjsd"
-                        const isShort = norm.length < 6;
-
-                        const shouldCheckSubstring = hasRepeatedChars || lacksVowels || isShort;
-
-                        if (shouldCheckSubstring) {{
-                            console.log(`    🔬 [SUBSTRING CHECK] Checking substrings...`);
-                            // dò chuỗi con liên tục (để bắt đcmkajsd)
-                            // 🔧: tiếng Việt cho phép substring dài từ 2 ký tự (để bắt "dm", "du", "vl", ...)
-                            const minLen = (detected === 'vi') ? 2 : 3;
-                            const maxLen = Math.max(...Array.from(langSet, x => x.length));
-
-                            for (let i = 0; i < norm.length; i++) {{
-                                for (let j = i + minLen; j <= i + maxLen && j <= norm.length; j++) {{
-                                    const sub = norm.slice(i, j);
-                                    if (langSet.has(sub)) {{
-                                        console.log(`    🔥 [SUBSTRING MATCH] "${{sub}}" found in "${{norm}}"`);
-                                        console.log(`    ❌ [PROFANITY DETECTED] Word: "${{w}}", Substring: "${{sub}}"`);
-                                        return {{ found: true, lang: detectedLang, match: w }};
-                                    }}
-                                }}
-                            }}
-                        }} else {{
-                            console.log(`    ⭐️  Word looks normal → SKIP substring check`);
-                        }}
-
-                        console.log(`    ✅ Word "${{w}}" is clean`);
-                    }}
-
-                    // 3. CHECK STICKY - CHỈ CHECK TRÊN TỪNG TỪ RIÊNG LẺ
-                    console.log('🔍 [STICKY CHECK] Checking individual words...');
-
-                    // Tách text thành từng từ (ngăn cách bởi khoảng cách)
-                    const stickyWords = raw.split(/\s+/);  
-
-                    for (const word of stickyWords) {{
-                        // Bỏ qua từ quá ngắn
-                        if (word.length < 4) continue;
-                        
-                        const wordNorm = normalizeToken(word);
-                        const wordNoTone = removeVietnameseTones(word);
-                        
-                        console.log(`  🔎 Checking word: "${{word}}" → normalized: "${{wordNorm}}", no-tone: "${{wordNoTone}}"`);
-                        
-                        // Check trên cả 2 version (có dấu và không dấu)
-                        for (const testStr of [wordNorm, wordNoTone]) {{
-                            if (testStr.length < 4) continue;
-                            
-                            // Dò từng từ tục xem có nằm trong word này không
-                            for (const badWord of langSet) {{
-                                // Chỉ check từ tục >= 3 ký tự (tránh false positive)
-                                if (badWord.length >= 3) {{
-                                    const badWordNoTone = removeVietnameseTones(badWord);
-                                    
-                                    // Nếu testStr CHỨA badWord (có dấu hoặc không dấu)
-                                    if (testStr.includes(badWord) || testStr.includes(badWordNoTone)) {{
-                                        console.log(`    🔥 [STICKY MATCH] Found "${{badWord}}" inside word "${{word}}"`);
-                                        console.log(`    ❌ [PROFANITY DETECTED] Match: "${{badWord}}"`);
-                                        return {{ found: true, lang: detectedLang, match: word }};
-                                    }}
-                                }}
-                            }}
-                        }}
-                    }}
-
-                    console.log('    ✅ No sticky profanity found in individual words');
-
-                }}
-
-                // ==============
-                // 🔹 TRUNG / NHẬT / HÀN – GIỮ NGUYÊN LOGIC GỐC
-                // ==============
-                if (['zh','ko','ja'].includes(detected)) {{
-                    const rx = window._profanityRegexCache && window._profanityRegexCache[detected];
-                    if (rx) {{
-                        const mRaw = raw.match(rx);
-                        if (mRaw) {{
-                            const match = mRaw[0];
-                            console.log(`🎯 [CJK REGEX MATCH] "${{match}}"`);
-
-                            const idx = raw.indexOf(match);
-                            const before = raw[idx - 1] || '';
-                            const after = raw[idx + match.length] || '';
-                            const isIsolated =
-                                (!before || /[^\p{{L}}\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}\p{{Script=Hangul}}]/u.test(before)) &&
-                                (!after  || /[^\p{{L}}\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}\p{{Script=Hangul}}]/u.test(after));
-
-                            if (isIsolated) {{
-                                console.log(`❌ [PROFANITY DETECTED] CJK Match: "${{match}}"`);
-                                return {{ found: true, lang: detectedLang, match }};
-                            }} else {{
-                                console.log(`🛡️ But not isolated → PASS`);
-                            }}
-                        }}
-                    }}
-                }}
-
-                console.log('✅ [FINAL RESULT] Text is clean');
-                return {{ found: false, lang: detectedLang, match: null }};
-            }}
-
-            function censorProfanity(text) {{
-                if (!text) return text;
-
-                const result = containsProfanity(text);
-                if (!result.found || !result.match) return text;
-
-                let out = text;
-                let bad = result.match;
-
-                // 🔧 Tìm vị trí xuất hiện của từ tục (CHÍNH XÁC, KHÔNG BỎ DẤU)
-                // Tìm kiếm case-insensitive nhưng GIỮ NGUYÊN ký tự gốc
-                const lowerOut = out.toLowerCase();
-                const lowerBad = bad.toLowerCase();
-                let start = lowerOut.indexOf(lowerBad);
-                
-                if (start === -1) return out;
-
-                // Xác định điểm kết thúc: mở rộng tới khi gặp dấu cách hoặc dấu câu
-                let end = start + bad.length;
-                while (end < out.length && /[a-zA-ZÀ-ỹ0-9_]/.test(out[end])) {{
-                    end++;
-                }}
-
-                // 🔒 Tạo mask tương ứng
-                const mask = '*'.repeat(end - start);
-
-                // ✨ Ghép lại chuỗi sau khi che
-                out = out.slice(0, start) + mask + out.slice(end);
-
-                return out;
-            }}
+            }}           
 
             // ===== TÍNH NĂNG MỚI 3: HỌC SỞ THÍCH USER =====
             let userPreferences = {{
@@ -3264,9 +2631,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             // 🆕 THÊM BIẾN MỚI
             let isGenerating = false; // Đang tạo response
             let cancelGeneration = false; // Cờ để cancel
-            let countdownInterval = null; // Interval cho countdown
-            let generationStartTime = null; // Thời điểm bắt đầu generate
-            const GENERATION_TIMEOUT = 30000; // 30 giây timeout
             let abortController = null;
 
             async function fetchConversationList() {{
@@ -4403,41 +3767,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 console.log('📝 [SEND MESSAGE] Nội dung:', text.substring(0, 50) + '...');
                 console.log('📝 [SEND MESSAGE] Current conversation ID:', currentConversationID);
 
-                const lang = detectLanguage(text);
-                const result = containsProfanity(text, lang);
-
-                // --- TRƯỜNG HỢP 1: CÓ TỪ TỤC ---
-                if (result.found) {{
-                    console.log('🚫 [SEND MESSAGE] Phát hiện từ tục');
-                    console.log('   - Text gốc:', text);
-                    
-                    // ✅ CHE KÝ TỰ CHO HIỂN THỊ
-                    const censoredForDisplay = censorProfanity(text);
-                    console.log('   - Text che:', censoredForDisplay);
-                    
-                    // ✅ HIỂN THỊ: Text đã che (có ***)
-                    addMessage('user', censoredForDisplay);
-                    
-                    // ✅ LƯU DB: Text gốc (KHÔNG che)
-                    await sendMessageToAPI('user', text);  // ← GIỮ NGUYÊN TEXT GỐC
-
-                    const warningList = warningMessages[result.lang] || warningMessages['en'];
-                    const randomMsg = warningList[Math.floor(Math.random() * warningList.length)];
-
-                    console.warn("🚫 Profanity detected:", result.match);
-                    console.log("   → Displayed:", censoredForDisplay);
-                    console.log("   → Saved to DB:", text);
-
-                    setTimeout(async () => {{
-                        addMessage('bot', randomMsg);
-                        await sendMessageToAPI('ai', randomMsg); 
-                        renderSuggestions();
-                    }}, 400);
-
-                    messageInput.value = '';
-                    return;
-                }}
-
                 // --- TRƯỜNG HỢP 2: TIN NHẮN SẠCH ---
                 console.log('✅ [SEND MESSAGE] Tin nhắn hợp lệ - Tiến hành lưu');
 
@@ -4555,7 +3884,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 const time = new Date().toLocaleTimeString('vi-VN', {{ hour: '2-digit', minute: '2-digit' }});
                 const div = document.createElement('div');
                 div.className = 'message ' + type;
-
+    
                 // 👇 Xử lý format nội dung, có xuống dòng giữa các món
                 const normalized = text.replace(/\\r\\n/g, '\\n').replace(/\\n{2,}/g, '\\n').trim();
                 const lines = normalized.split('\\n');
@@ -4571,13 +3900,23 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             htmlParts.push('<ol>');
                             inOl = true;
                         }}
-                        const liContent = m[2] || '';
+                        let liContent = m[2] || '';
+                        
+                        // ✅ THÊM LOGIC HIGHLIGHT TÊN MÓN
+                        // Tìm tên món (từ đầu dòng đến dấu ":" hoặc hết dòng)
+                        const dishMatch = liContent.match(/^([^:]+)(.*)/);
+                        if (dishMatch) {{
+                            const dishName = dishMatch[1].trim();
+                            const description = dishMatch[2]; // Phần còn lại (có thể có ":")
+                            
+                            // Wrap tên món trong <span>
+                            liContent = `<span class="dish-name">${{dishName}}</span>${{description}}`;
+                        }}
 
                         // nếu trong nội dung món có xuống dòng, tách thành nhiều <p>
                         const subParts = liContent.split(/\\\\n|\\n/).map(s => s.trim()).filter(Boolean);
                         const formattedLi = subParts.map(p => `<p>${{p}}</p>`).join('');
 
-                        // 🔸 thêm <br> sau mỗi món để tách ra rõ ràng
                         htmlParts.push(`<li>${{formattedLi}}</li><br>`);
                     }} else {{
                         if (inOl) {{
@@ -4754,6 +4093,13 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 4. When in doubt → DON'T suggest, or suggest with STRONG warning
                 5. NEVER claim dishes are "completely safe" - always add "nên hỏi bác sĩ"
 
+                ⚠️ CRITICAL FORMAT RULE:
+                STILL USE NUMBERED LIST FORMAT even when suggesting only 2-3 dishes:
+
+                Example:
+                1. Cháo: Món này cực kỳ dễ tiêu hóa...
+                ⚠️ LƯU Ý: ...
+                DO NOT write dishes as plain text without numbers!
                 REMEMBER: You are NOT a doctor. User's health is PRIORITY #1.
                 `;
                 }}
@@ -5002,39 +4348,47 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                 ===ABSOLUTE RULES (NEVER BREAK)===
 
-                CRITICAL CHECKING PROTOCOL - MUST FOLLOW FOR EVERY RECOMMENDATION:
-                BEFORE suggesting ANY dish, you MUST:
+                BEFORE suggesting ANY dish:
 
-                0. ⚠️ CHECK MEDICAL CONDITIONS FIRST (HIGHEST PRIORITY!)
-                - For EACH dish you want to suggest:
-                * Review ALL user's medical conditions
-                * Check if dish contains ingredients HARMFUL for those conditions
-                * Examples:
-                    - Diabetes → Avoid: desserts, sweet drinks, high-carb dishes
-                    - Hypertension → Avoid: salty dishes, processed meats, fish sauce-heavy dishes
-                
-                * If dish is UNSAFE → DO NOT suggest it at all
-                * If dish is RISKY but can be modified → Add WARNING:
-                    ⚠️ LƯU Ý: Món này [lý do], người bị [bệnh] nên [khuyến cáo].
-                    
-                * Examples:     
-                    "1. Cơm tấm: Cơm dẻo, thịt nướng thơm.
-                    ⚠️ LƯU Ý: Món này có nhiều tinh bột, người tiểu đường nên ăn vừa phải!"
+                1. CHECK MEDICAL CONDITIONS FIRST
+                - If dish harmful for user's condition → DO NOT suggest
+                - If risky but can modify → Suggest + add warning
 
-                1.CHECK DISH NAME against DISLIKES list
-                - If dish name matches ANY item in user's DISLIKES → NEVER suggest it
-                - Example: User dislikes "Phở" → Don't suggest "Phở bò", "Phở gà", ANY Phở variation
+                2. CORE vs OPTIONAL INGREDIENTS - CRITICAL LOGIC
 
-                2.CHECK ALL INGREDIENTS against DISLIKES & ALLERGIES
-                - For EACH dish you want to suggest:
-                List ALL common ingredients of that dish (from INGREDIENT KNOWLEDGE BASE)
-                Compare with user's DISLIKES list
-                Compare with user's ALLERGIES list
-                
-                3.WARNING FORMAT - MANDATORY
-                - If dish contains ingredient from DISLIKES (removable) → Add warning like:
-                    1. [Dish Name]: [Description]
-                    ⚠️ Món này thường có [INGREDIENT]. Bạn nhớ dặn người bán ĐỪNG CHO [INGREDIENT] vào nhé!
+                CORE = Cannot remove (soul of the dish) → DO NOT suggest if user dislikes/allergic
+                OPTIONAL = Can be removed/added by vendor → Suggest + add warning
+
+                Examples:
+                - User dislikes "cay":
+                * Bún bò Huế (broth is spicy by default) → CORE → SKIP this dish
+                * Phở (ớt/tiêu served separately) → OPTIONAL → Suggest + warning
+                * Hủ tiếu (tiêu is topping) → OPTIONAL → Suggest + warning
+                * Bánh mì (ớt is topping) → OPTIONAL → Suggest + warning
+
+                - User allergic to "cua":
+                * Bún riêu (crab paste is main ingredient) → CORE → SKIP this dish
+                * Bánh can (crab isn't main topping) → OPTIONAL → Suggest + warning
+
+                3. FLAVOR TO INGREDIENT MAPPING
+
+                When user dislikes FLAVOR, think about ingredients:
+                - "cay/spicy" = ớt, tiêu, tương ớt, mù tạt
+                - "ngọt/sweet" = đường, mật ong, sữa đặc
+                - "chua/sour" = chanh, me, giấm
+                - "béo/fatty" = thịt mỡ, dầu nhiều, bơ
+
+                4. WARNING FORMAT
+
+                For main dishes (phở, bún, cơm, mì) - if dish can OPTIONALLY contain user's disliked/allergic ingredient:
+
+                DISLIKES:
+                "⚠️ Món này thường có [ingredient]. Bạn nhớ dặn người bán ĐỪNG CHO [ingredient] vào nhé!"
+
+                ALLERGIES:
+                "⚠️ Món này có thể chứa [ingredient]. Vì bạn bị dị ứng nên NHỚ HỎI quán và dặn TUYỆT ĐỐI ĐỪNG CHO [ingredient] vào!"
+
+                5. If dish NAME matches user's dislikes → NEVER suggest
 
                 EXAMPLE CHECKING FLOW:
                 User preferences:
@@ -5286,6 +4640,35 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
             const prompt = `You are UIAboss, a friendly and attentive customer service staff at a Vietnamese restaurant.
 
+            === PROFANITY DETECTION & HANDLING PROTOCOL ===
+
+            CRITICAL RULE:
+            You MUST professionally handle profanity in ANY language.
+
+            STEP 1: DETECT PROFANITY
+            Detect profanity, insults, or offensive language in any language.
+
+            STEP 2: RESPONSE REQUIREMENTS
+            When profanity is detected, your response MUST:
+            1. NOT repeat the profanity
+            2. Start with a polite apology if the user seems dissatisfied
+            3. Gently ask the user to communicate more respectfully
+            4. Respond in the SAME language as the user
+
+            STEP 3: EXAMPLE RESPONSE
+
+            User message contains profanity.
+
+            Assistant response example:
+            "I'm sorry if my previous reply caused any inconvenience or frustration.
+            I'd really appreciate it if we could keep the conversation respectful so I can assist you better."
+
+            STEP 4: TONE GUIDELINES
+            - Calm and polite
+            - Friendly and respectful
+            - No lecturing or shaming
+            - Never aggressive
+
             DISH RECOMMENDATIONS (when appropriate):
             - Suggest 5 different dishes when user wants recommendations
             - Provide variety: different types (soup, rice, noodles, snacks, drinks)
@@ -5408,6 +4791,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - "Trà đào" → "Peach Tea (Trà đào)"
             - "Phở bò" → "Beef Noodle Soup (Phở bò)"
             - "Pizza" → "Pizza" (no Vietnamese needed - already English)
+            - "Phở" → "Pho (Phở)" (Especially for Vietnamese dishes that are in dictionaries English, translation isn't necessary, for example, Pho and Banh Mi.)
 
             **If user speaks VIETNAMESE:**
             CORRECT FORMAT: Just Vietnamese name, NO parentheses
@@ -5415,11 +4799,14 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - "Trà đào" → "Trà đào" (NOT "Trà đào (Peach Tea)")
             - "Pizza" → "Pizza"
 
-            **If user speaks CHINESE:**
-            - "咖啡" → "咖啡 (Vietnamese Coffee)"
+            **If user speaks KOREA:**
+            CORRECT FORMAT: "English Name (Tên Việt)"
+            - "Lẩu Thái" → "태국식 훠궈 (Lẩu thái)"
+            - "Bún bò Huế" → "후에식 소고기 쌀국수 (Bún bò Huế)"
+            - "Lẩu nấm" → "버섯 훠궈 (Lẩu nấm)"
+            - "Phở" → "Pho (Phở)" (Especially for Vietnamese dishes that are in dictionaries English, translation isn't necessary, for example, Pho and Banh Mi.)
 
-            **If user speaks JAPANESE:**
-            - "コーヒー" → "コーヒー (Vietnamese Coffee)"
+            **The same applies to other languages.**
 
             IMPORTANT DETECTION:
             - Detect user's language from their message
@@ -5480,7 +4867,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         if (cancelGeneration) {{
                             console.log('❌ Generation cancelled by user');
                             isGenerating = false;
-                            stopCountdown();
                             updateSendButtonState('idle');
                             return;
                         }}
@@ -5544,7 +4930,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                         addMessage('bot', `Xin lỗi bạn! 😢\nAPI key không hợp lệ. Vui lòng liên hệ admin để kiểm tra lại!`);
                                         sendBtn.disabled = false;
                                         isGenerating = false;
-                                        stopCountdown();
                                         updateSendButtonState('idle');
                                         return;
                                     }}
@@ -5591,7 +4976,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                         addMessage('bot', 'Xin lỗi! Không thể đổi API key. Vui lòng thử lại sau!');
                                         sendBtn.disabled = false;
                                         isGenerating = false;
-                                        stopCountdown();
                                         updateSendButtonState('idle');
                                         return;
                                     }}
@@ -5605,7 +4989,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                                     addMessage('bot', `Xin lỗi bạn! 😢\nHệ thống đang quá tải, bạn vui lòng thử lại sau 5-10 phút nhé!`);
                                     sendBtn.disabled = false;
                                     isGenerating = false;
-                                    stopCountdown();
                                     updateSendButtonState('idle');
                                     return;
                                 }}
@@ -5632,7 +5015,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                             // ✅ THÊM DÒNG NÀY: BẮT TÍN HIỆU & XÓA MARKER
                             botReply = await detectAndRemovePreferences(botReply);
-
+                            botReply = botReply.replace(/\[CONTEXT_CHECK\]/g, '');
                             botReply = cleanMarkdown(botReply);
 
                             // ✅ THÊM: FORCE XUỐNG DÒNG GIỮA CÁC MÓN
@@ -5640,6 +5023,8 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             
                             // ✅ THÊM: Đảm bảo có xuống dòng trước warning
                             botReply = botReply.replace(/([.!?])\s*(⚠️)/g, '$1\n$2');
+
+                            botReply = botReply.replace(/(⚠️[^]*?[.!?])\s*(\d+\.)/g, '$1\n\n$2');
                             
                             console.log('💬 Bot reply (formatted):', botReply);
 
@@ -5685,7 +5070,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                             addMessage('bot', botReply);
                             isGenerating = false; // 👈 THÊM
-                            stopCountdown(); // 👈 THÊM
                             updateSendButtonState('idle'); // 👈 THÊM
                             abortController = null;
 
@@ -5723,7 +5107,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                         if (e.name === 'AbortError') {{
                             console.log('✅ Request cancelled successfully');
                             isGenerating = false;
-                            stopCountdown();
                             updateSendButtonState('idle');
                             return; // ← QUAN TRỌNG: Dừng hẳn, không retry
                         }}
@@ -6041,7 +5424,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 const loadingIcon = document.getElementById('loadingIcon');
                 const cancelIcon = document.getElementById('cancelIcon');
                 const countdownRing = document.getElementById('countdownRing');
-                const countdownProgress = document.getElementById('countdownProgress');
+                const loadingSquare = document.getElementById('loadingSquare'); 
                 
                 if (!sendBtn) return;
                 
@@ -6050,7 +5433,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 sendIcon.style.display = 'none';
                 loadingIcon.style.display = 'none';
                 cancelIcon.style.display = 'none';
-                countdownRing.style.display = 'none';
+                loadingSquare.style.display = 'none'; 
                 
                 if (state === 'idle') {{
                     // 🟢 Trạng thái bình thường
@@ -6058,53 +5441,11 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                     sendIcon.style.display = 'block';
                     
                 }} else if (state === 'loading') {{
-                    // 🟠 Đang generate
-                    sendBtn.disabled = false; // 👈 QUAN TRỌNG: Phải enable để click được
+                    sendBtn.disabled = false;
                     sendBtn.classList.add('loading');
-                    loadingIcon.style.display = 'block'; // 👈 Mặc định hiện loading icon
+                    loadingIcon.style.display = 'block';
                     loadingIcon.parentElement.classList.add('spinning');
-                    countdownRing.style.display = 'block';
-                    
-                    // Thiết lập countdown circle
-                    const radius = 18;
-                    const circumference = 2 * Math.PI * radius;
-                    countdownProgress.style.strokeDasharray = circumference;
-                    countdownProgress.style.strokeDashoffset = 0;
-                    
-                    // Bắt đầu countdown
-                    startCountdown(circumference);
-                }}
-            }}
-
-            // 🆕 HÀM MỚI: Countdown animation
-            function startCountdown(circumference) {{
-                if (countdownInterval) clearInterval(countdownInterval);
-                
-                generationStartTime = Date.now();
-                const countdownProgress = document.getElementById('countdownProgress');
-                
-                countdownInterval = setInterval(() => {{
-                    const elapsed = Date.now() - generationStartTime;
-                    const progress = Math.min(elapsed / GENERATION_TIMEOUT, 1);
-                    const offset = circumference * (1 - progress);
-                    
-                    if (countdownProgress) {{
-                        countdownProgress.style.strokeDashoffset = offset;
-                    }}
-                    
-                    // Timeout → tự động cancel
-                    if (progress >= 1) {{
-                        console.log('⏱️ Timeout → Auto cancel');
-                        cancelAIGeneration();
-                    }}
-                }}, 100);
-            }}
-
-            // 🆕 HÀM MỚI: Dừng countdown
-            function stopCountdown() {{
-                if (countdownInterval) {{
-                    clearInterval(countdownInterval);
-                    countdownInterval = null;
+                    loadingSquare.style.display = 'flex'; // ✅ HIỂN THỊ Ô VUÔNG
                 }}
             }}
 
@@ -6120,7 +5461,6 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                 cancelGeneration = true;
                 isGenerating = false;
                 
-                stopCountdown();
                 hideTyping();
                 updateSendButtonState('idle');
                 

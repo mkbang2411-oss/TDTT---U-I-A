@@ -299,7 +299,7 @@ THEME_CATEGORIES = {
             'healthy', 'organic', 'sạch',
             'salad', 'rau củ', 'rau sạch',
             'cơm chay', 'bún chay', 'phở chay',
-            'đậu hũ', 'tofu',
+            'đậu hũ',
             'nấm', 'mushroom',
             'chay thanh tịnh', 'an lạc',
             'chay tịnh', 'món chay',
@@ -573,6 +573,12 @@ def find_places_advanced(user_lat, user_lon, df, filters, excluded_ids=None, top
                                 match_found = True
                                 break
                         
+                        # 🔥 LOẠI TRỪ QUÁN CÓ "MẮM TÔM" KHỎI THEME HẢI SẢN
+                        if match_found and single_theme == 'seafood':
+                            name_check = normalize_text_with_accent(ten_quan).lower()
+                            if 'mắm tôm' in name_check or 'mam tom' in name_check:
+                                match_found = False
+                        
                         if match_found:
                             break
                         
@@ -714,9 +720,12 @@ MEAL_THEME_MAP = {
     }
 }
 
-def get_theme_for_meal(meal_key, user_selected_themes):
+def get_theme_for_meal(meal_key, user_selected_themes, for_card_suggestion=False):
     """
     Chọn theme phù hợp cho từng bữa ăn/uống
+    
+    Args:
+        for_card_suggestion: True nếu dùng cho card gợi ý, False nếu dùng cho lịch trình
     """
     # Nếu là bữa uống/tráng miệng (drink_*)
     if meal_key.startswith('drink_'):
@@ -729,17 +738,63 @@ def get_theme_for_meal(meal_key, user_selected_themes):
     
     # Nếu là bữa ăn (meal_*)
     if user_selected_themes:
-        # Lọc bỏ theme không phù hợp cho bữa ăn
+        # 🔥 CHỈ LẤY THEME ĂN THỰC SỰ (loại bỏ michelin và food_street)
         food_themes = ['street_food', 'asian_fusion', 'seafood', 'spicy_food', 
-                      'luxury_dining', 'vegetarian', 'food_street', 'michelin']
+                      'luxury_dining', 'vegetarian']
         
         suitable_themes = [t for t in user_selected_themes if t in food_themes]
         
+        # ✅ Ưu tiên theme ăn thực sự
         if suitable_themes:
             return suitable_themes[0]
+        
+        # 🔥🔥 PHẦN QUAN TRỌNG NHẤT - PHÂN BIỆT CARD GỢI Ý VS LỊCH TRÌNH 🔥🔥
+        if for_card_suggestion:
+            # CARD GỢI Ý → Return michelin/food_street
+            if 'michelin' in user_selected_themes:
+                return 'michelin'
+            if 'food_street' in user_selected_themes:
+                return 'food_street'
+        # LỊCH TRÌNH → Không return, để fallback xuống None (random)
     
-    # Fallback mặc định
-    return 'street_food'
+    # 🔥 Fallback - không có theme gì → return None để random quán
+    return None
+
+def get_theme_for_schedule_meal(meal_key, user_selected_themes):
+    """
+    🆕 Hàm MỚI - Chọn theme cho BỮA ĂN TRONG LỊCH TRÌNH
+    
+    Khác với get_theme_for_meal (dùng cho card gợi ý), hàm này sẽ:
+    - Nếu CHỈ có michelin/food_street → return None (random quán)
+    - Nếu có theme ăn thực sự → return theme ăn đó
+    """
+    # Nếu là bữa uống/tráng miệng (drink_*)
+    if meal_key.startswith('drink_'):
+        if 'coffee_chill' in user_selected_themes:
+            return 'coffee_chill'
+        elif 'dessert_bakery' in user_selected_themes:
+            return 'dessert_bakery'
+        else:
+            return 'coffee_chill'
+    
+    # Nếu là bữa ăn (meal_*)
+    if user_selected_themes:
+        # 🔥 CHỈ LẤY THEME ĂN THỰC SỰ (loại bỏ michelin và food_street)
+        food_themes = ['street_food', 'asian_fusion', 'seafood', 'spicy_food', 
+                      'luxury_dining', 'vegetarian']
+        
+        suitable_themes = [t for t in user_selected_themes if t in food_themes]
+        
+        # ✅ Nếu có theme ăn thực sự → dùng theme đó
+        if suitable_themes:
+            return suitable_themes[0]
+        
+        # 🔥 NẾU CHỈ CÓ MICHELIN/FOOD_STREET (không có theme ăn thực)
+        # → Return None để RANDOM quán (không theo theme)
+    
+    # 🔥 Fallback - Return None để random quán
+    return None
+
 
 def assign_drink_themes_to_plan(plan, user_selected_themes):
     """
@@ -1004,18 +1059,24 @@ def filter_meal_schedule_by_themes(plan, user_selected_themes, start_time='07:00
     if not user_selected_themes or len(user_selected_themes) == 0:
         return plan
     
-    # 🔥 ĐỊNH NGHĨA THEME "ĂN"
-    food_themes = {
+    # 🔥 THEME ĂN THỰC SỰ (không bao gồm michelin và food_street vì chỉ dùng cho card gợi ý)
+    real_food_themes = {
         'street_food', 'asian_fusion', 'seafood', 'spicy_food', 
-        'luxury_dining', 'vegetarian', 'michelin', 'food_street'
+        'luxury_dining', 'vegetarian'
     }
     
-    has_food_theme = any(theme in food_themes for theme in user_selected_themes)
+    has_real_food_theme = any(theme in real_food_themes for theme in user_selected_themes)
+    has_michelin = 'michelin' in user_selected_themes
+    has_food_street = 'food_street' in user_selected_themes
     has_coffee = 'coffee_chill' in user_selected_themes
     has_dessert = 'dessert_bakery' in user_selected_themes
     
-    # ✅ CÓ THEME ĂN → GIỮ NGUYÊN
-    if has_food_theme:
+    # ✅ CÓ THEME ĂN THỰC SỰ → GIỮ NGUYÊN
+    if has_real_food_theme:
+        return plan
+    
+    # ✅ CÓ MICHELIN/KHU ẨM THỰC (dù không có theme ăn khác) → GIỮ NGUYÊN để có bữa ăn random
+    if has_michelin or has_food_street:
         return plan
     
     # 🔥 CHỈ CÓ COFFEE/DESSERT → ÁP DỤNG LOGIC MỚI
@@ -1189,9 +1250,11 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
         if key == '_order':
             continue
             
-        # 🔥 CHỌN THEME PHÙ HỢP CHO TỪNG BỮA
-        meal_theme = meal.get('theme') or get_theme_for_meal(key, user_selected_themes)
-        
+        # # 🔥 CHỌN THEME PHÙ HỢP CHO TỪNG BỮA
+        # Phân biệt card gợi ý (start_time == end_time) vs lịch trình
+        is_card_suggestion = (start_time == end_time)
+        meal_theme = meal.get('theme') or get_theme_for_meal(key, user_selected_themes, for_card_suggestion=is_card_suggestion)
+
         print(f"🔍 Tìm quán cho {key} với theme {meal_theme}")
         
         filters = {
@@ -1206,6 +1269,16 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
             filters, excluded_ids=used_place_ids, top_n=20
         )
         
+        # 🔥🔥 LỌC THÊM: CHỈ LẤY QUÁN TRONG BÁN KÍNH USER BAN ĐẦU
+        if places:
+            filtered_by_user_radius = []
+            for p in places:
+                distance_from_user = calculate_distance(user_lat, user_lon, p['lat'], p['lon'])
+                if distance_from_user <= radius_km:
+                    filtered_by_user_radius.append(p)
+            places = filtered_by_user_radius
+            print(f"📍 Lọc theo bán kính user: còn {len(places)} quán trong {radius_km}km từ vị trí ban đầu")
+
         # 🔥 LỌC ĐẶC BIỆT: Loại bánh mì khỏi bữa tráng miệng
         if places and (key == 'dessert' or meal_theme == 'dessert_bakery'):
             filtered_places = []
@@ -1258,6 +1331,80 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
             else:
                 print(f"⚡ Giữ nguyên {len(places)} quán cho theme '{meal_theme}'")
         
+        # 🔥🔥 FALLBACK LOGIC: Nếu bật CẢ 2 theme coffee + dessert và không tìm được quán
+        if not places and key.startswith('drink_'):
+            has_coffee = 'coffee_chill' in user_selected_themes
+            has_dessert = 'dessert_bakery' in user_selected_themes
+            
+            # CHỈ KHI BẬT CẢ 2 THEME → thử theme còn lại
+            if has_coffee and has_dessert:
+                fallback_theme = 'coffee_chill' if meal_theme == 'dessert_bakery' else 'dessert_bakery'
+                print(f"🔄 Không tìm được quán cho theme '{meal_theme}', thử fallback sang '{fallback_theme}'")
+                
+                # Thử tìm với theme còn lại
+                filters['theme'] = fallback_theme
+                places = find_places_advanced(
+                    current_lat, current_lon, df, 
+                    filters, excluded_ids=used_place_ids, top_n=20
+                )
+                
+                # 🔥🔥 LỌC THÊM: CHỈ LẤY QUÁN TRONG BÁN KÍNH USER BAN ĐẦU
+                if places:
+                    filtered_by_user_radius = []
+                    for p in places:
+                        distance_from_user = calculate_distance(user_lat, user_lon, p['lat'], p['lon'])
+                        if distance_from_user <= radius_km:
+                            filtered_by_user_radius.append(p)
+                    places = filtered_by_user_radius
+                    print(f"📍 [FALLBACK] Lọc theo bán kính user: còn {len(places)} quán trong {radius_km}km")
+
+                # Lọc lại keyword cho theme mới
+                if places:
+                    meal_theme = fallback_theme  # Cập nhật theme hiện tại
+                    keyword_key = 'dessert' if fallback_theme == 'dessert_bakery' else 'drink'
+                    
+                    if fallback_theme == 'dessert_bakery':
+                        # Lọc bánh mì cho tráng miệng
+                        filtered_places = []
+                        for p in places:
+                            name_lower = normalize_text(p['ten_quan'])
+                            if ('banhmi' not in name_lower and 'banh mi' not in name_lower
+                                and 'banhxeo' not in name_lower and 'banh xeo' not in name_lower):
+                                filtered_places.append(p)
+                        places = filtered_places
+                    
+                    # Keyword filter cho theme mới
+                    if places and keyword_key:
+                        meal_keywords = MEAL_TYPE_KEYWORDS[keyword_key]
+                        filtered_places = []
+                        
+                        for place in places:
+                            name_normalized = normalize_text_with_accent(place['ten_quan'])
+                            
+                            for kw in meal_keywords:
+                                kw_normalized = normalize_text_with_accent(kw)
+                                search_text = ' ' + name_normalized + ' '
+                                search_keyword = ' ' + kw_normalized + ' '
+                                
+                                if search_keyword in search_text:
+                                    filtered_places.append(place)
+                                    break
+                        
+                        places = filtered_places
+                    
+                    if places:
+                        # Cập nhật lại theme và title cho slot này
+                        meal['theme'] = fallback_theme
+                        if fallback_theme == 'dessert_bakery':
+                            meal['title'] = meal['title'].replace('Giải khát', 'Tráng miệng')
+                            meal['icon'] = THEME_CATEGORIES['dessert_bakery']['icon']
+                        else:
+                            meal['title'] = meal['title'].replace('Tráng miệng', 'Giải khát')
+                            meal['icon'] = THEME_CATEGORIES['coffee_chill']['icon']
+                        print(f"✅ Fallback thành công! Tìm được {len(places)} quán cho theme '{fallback_theme}'")
+                    else:
+                        print(f"⚠️ Fallback thất bại! Theme '{fallback_theme}' cũng không có quán")
+
         if places:
             places_found += 1
             weights = [1.0 / (i + 1) for i in range(len(places))]
@@ -3365,6 +3512,7 @@ let lastTargetElement = null;
 window.currentPlanName = null;
 window.loadedFromSavedPlan = false;
 let cachedPendingSuggestionsCount = 0; // Lưu số lượng suggestions pending
+let hasValidPlan = false;
 
 // ========== CUSTOM SWEETALERT2 FUNCTIONS ==========
 // Màu sắc theme phù hợp với website
@@ -4109,6 +4257,23 @@ async function savePlan() {
 async function loadSavedPlans(planId, forceReload = false) {
     try {
 
+        // 🔥 CHECK AUTHENTICATION TRƯỚC KHI LOAD
+        const authCheck = await fetch('/api/accounts/check_auth_status/');
+        const authData = await authCheck.json();
+        
+        // ❌ CHƯA ĐĂNG NHẬP → SKIP, KHÔNG LOAD
+        if (!authData.is_logged_in) {
+            console.log('⚠️ User chưa đăng nhập, skip load saved plans');
+            
+            // Ẩn section saved plans
+            const section = document.getElementById('savedPlansSection');
+            if (section) {
+                section.style.display = 'none';
+            }
+            
+            return; // 🔥 DỪNG NGAY, KHÔNG GỌI API
+        }
+
         // 🧹 ĐÓNG LỊCH TRÌNH NẾU BẤM LẠI CÙNG 1 PLAN ĐANG MỞ
         if (
             !forceReload &&                      // không phải load lại bắt buộc
@@ -4252,6 +4417,7 @@ async function loadSavedPlans(planId, forceReload = false) {
                         isEditMode = false;
                         suggestedFoodStreet = null;
                         suggestedMichelin = null;
+                        hasValidPlan = true;
                         displayPlanVertical(currentPlan, false);
 
                         if (!plan.is_shared) {
@@ -4595,7 +4761,7 @@ function openFoodPlanner() {
     
     // 🔥 Nếu đã có currentPlan (và không ở edit mode) thì vẽ lại route + marker theo plan
     setTimeout(() => {
-        if (currentPlan && !isEditMode) {
+        if (currentPlan && !isEditMode && hasValidPlan) {
             const hasPlaces = Object.keys(currentPlan)
                 .filter(k => k !== '_order')
                 .some(k => currentPlan[k] && currentPlan[k].place);
@@ -5272,17 +5438,20 @@ isViewingSharedPlan = false;
         });
         
         if (data.error) {
+            hasValidPlan = false;
             resultDiv.innerHTML = `
                 <div class="error-message">
                     <h3>😔 ${data.message || 'Không tìm thấy quán'}</h3>
                     <p>Hãy thử tăng bán kính tìm kiếm hoặc thay đổi bộ lọc</p>
                 </div>
             `;
+            clearRoutes(); // 🔥 FIX: Xóa routes cũ khi lỗi
             return;
         }
         
         currentPlan = data;
         isEditMode = false;
+        hasValidPlan = true;
 
         console.log('🔍 [Generate] Selected themes:', selectedThemes);
         console.log('🔍 [Generate] BEFORE fetch - suggestedMichelin:', suggestedMichelin);
@@ -5312,6 +5481,7 @@ isViewingSharedPlan = false;
         
     } catch (error) {
         console.error('Error:', error);
+        hasValidPlan = false;
         resultDiv.innerHTML = `
             <div class="error-message">
                 <h3>⚠️ Không thể tạo kế hoạch</h3>
@@ -5320,6 +5490,7 @@ isViewingSharedPlan = false;
                     : 'Đã có lỗi xảy ra. Vui lòng thử lại sau.'}</p>
             </div>
         `;
+        clearRoutes();
     }
 }
 
@@ -6943,6 +7114,43 @@ function drawRouteOnMap(plan) {
     
     if (waypoints.length < 2) {
         console.log('Không đủ điểm để vẽ đường');
+        //Co 1 quan duy nhat thi van phai ve marker do
+        if (waypoints.length === 1 && !waypoints[0].isUser) {
+            const firstPlace = waypoints[0];
+            const color = getRouteColor(0, 1);
+            
+            const numberMarker = L.marker([firstPlace.lat, firstPlace.lon], {
+                icon: L.divIcon({
+                    className: 'route-number-marker',
+                    html: `<div style="
+                        background: ${color};
+                        color: white;
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        font-size: 18px;
+                        border: 4px solid white;
+                        box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                        z-index: 1000;
+                    ">1</div>`,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                }),
+                zIndexOffset: 1000
+            }).addTo(map);
+            
+            routeLayers.push(numberMarker);
+            
+            // 🔥 FIT MAP ĐẾN VỊ TRÍ QUÁN
+            map.setView([firstPlace.lat, firstPlace.lon], 15);
+            
+            console.log('✅ Đã vẽ marker số 1 cho quán duy nhất');
+        }
+        
         return;
     }
     

@@ -71,7 +71,6 @@ let routeControl = null;
 let isFavoriteMode = false;
 let lastSearchParams = {
   query: "",
-  flavors: [],
   budget: "",
   radius: ""
 };
@@ -1028,13 +1027,6 @@ if (placeId) {
         <i class="fa-solid fa-coins"></i>
         <span>${p.gia_trung_binh || '<span data-translate="none_data_co"></span>'}</span>
       </p>
-
-      <p>
-        <i class="fa-solid fa-utensils"></i>
-        <span>${p.khau_vi || '<span data-translate="none_data"></span>'}</span>
-      </p>
-
-
       <!-- 🔖 Nút lưu quán (ẩn) -->
       <div style="margin-top:10px;display:flex;justify-content:center;">
         <button id="saveBtn" class="action-btn" style="display:none;">
@@ -1780,7 +1772,7 @@ function clearAllMarkers() {
 // =======================================================
 // ✅ FETCH + LỌC DỮ LIỆU (FIXED VERSION)
 // =======================================================
-async function fetchPlaces(query = "", flavors = [], budget = "", radius = "", shouldZoom = true) {
+async function fetchPlaces(query = "", budget = "", radius = "", shouldZoom = true) {
   try {
     // 🔥 THÊM ĐOẠN NÀY Ở ĐẦU HÀM
     if (window.permanentMarker) {
@@ -1982,17 +1974,6 @@ function smartSearch(places, query) {
       filtered = smartSearch(data, query);
     }
 
-    // ========== 2️⃣ Lọc khẩu vị (AND logic - phải có TẤT CẢ khẩu vị được chọn) ==========
-if (flavors.length > 0) {
-  filtered = filtered.filter((p) => {
-    if (!p.khau_vi) return false;
-    const norm = normalizeRemoveAll(p.khau_vi);
-    
-    // ✅ Kiểm tra TẤT CẢ khẩu vị được chọn đều có trong khau_vi của quán
-    return flavors.every((f) => norm.includes(normalizeRemoveAll(f)));
-  });
-}
-
     // ========== 3️⃣ Lọc giá ==========
     if (budget !== "") {
       const [budgetMin, budgetMaxRaw] = budget.split("-").map((n) => n.trim());
@@ -2087,9 +2068,6 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   }
 
 
-   const selectedFlavors = Array.from(
-    document.querySelectorAll("#flavorDropdown input:checked")
-  ).map((c) => c.value);
 
   const budget = document.getElementById("budget").value;
 
@@ -2115,7 +2093,6 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
   // 💾 Lưu lại tham số tìm kiếm cuối cùng
   lastSearchParams = {
     query: query,
-    flavors: selectedFlavors,
     budget: budget,
     radius: radius,
   };
@@ -2151,7 +2128,7 @@ document.getElementById("btnSearch").addEventListener("click", async () => {
     // Có filter → mới tìm quán
    // ✅ LUÔN LUÔN gọi fetchPlaces khi có GPS
 // Nếu không có filter gì thì fetchPlaces sẽ hiện tất cả quán gần đó
-result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
+result = await fetchPlaces(query, budget, radius, false);
   }
 
   // =============================
@@ -2159,7 +2136,7 @@ result = await fetchPlaces(query, selectedFlavors, budget, radius, false);
   //      (hoặc "Vị trí hiện tại của tôi")
   // =============================
   else {
-    result = await fetchPlaces(query, selectedFlavors, budget, radius, true);
+    result = await fetchPlaces(query, budget, radius, true);
   }
 
   // =============================
@@ -2250,57 +2227,18 @@ if (favoriteModeBtnHeader) {
       // 🔥 RESET lastSearchParams VỀ RỖNG (QUAN TRỌNG!)
       lastSearchParams = {
         query: "",
-        flavors: [],
         budget: "",
         radius: ""
       };
       
       // 🔥 LOAD TẤT CẢ QUÁN MẶC ĐỊNH (KHÔNG CÓ FILTER)
       console.log('📍 Loading all default places without any filters');
-      await fetchPlaces("", [], "", "", false);
+      await fetchPlaces("", "", "", false);
       
       console.log('🟢 [FAVORITE BTN] Restored to normal view with all places');
     }
   });
 }
-
-// =======================================================
-// ✅ MULTI-SELECT KHẨU VỊ
-// =======================================================
-const flavorBtn = document.getElementById("flavorBtn");
-const flavorDropdown = document.getElementById("flavorDropdown");
-const selectedFlavorsEl = flavorBtn.querySelector(".selected-flavors");
-const flavorSelector = document.getElementById("flavorSelector"); // FIX BUG
-
-flavorBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  flavorDropdown.classList.toggle("show");
-});
-
-// Ẩn dropdown khi click ra ngoài
-document.addEventListener("click", (e) => {
-  if (!flavorSelector.contains(e.target)) {
-    flavorDropdown.classList.remove("show");
-  }
-});
-
-// Cập nhật text hiển thị
-const checkboxes = flavorDropdown.querySelectorAll("input[type='checkbox']");
-checkboxes.forEach((cb) => {
-  cb.addEventListener("change", () => {
-    const selected = Array.from(checkboxes)
-      .filter((c) => c.checked)
-      .map((c) => c.value);
-
-    if (selected.length === 0) {
-      selectedFlavorsEl.textContent = "Chọn khẩu vị";
-      selectedFlavorsEl.classList.add("empty");
-    } else {
-      selectedFlavorsEl.textContent = selected.join(", ");
-      selectedFlavorsEl.classList.remove("empty");
-    }
-  });
-});
 
 // =======================================================
 // ✅ TẢI LẦN ĐẦU
@@ -2310,7 +2248,7 @@ window.addEventListener('DOMContentLoaded', () => {
   
   // ✅ Chỉ load quán mặc định khi KHÔNG phải chế độ xem quán bạn bè
   if (urlParams.get('view') !== 'friend-favorites') {
-    fetchPlaces("", [], "", "", false);
+    fetchPlaces("", "", "", false);
   }
   // Nếu là chế độ bạn bè thì logic phía dưới sẽ xử lý
 });
@@ -2675,7 +2613,7 @@ async function geocodeAddress(address) {
     
   } catch (err) {
     console.error("Lỗi khi geocode:", err);
-    showCustomAlert("❌ Lỗi khi tìm địa điểm: " + err.message);
+    showCustomAlert("❌ Lỗi khi tìm địa điểm");
     return null;
   }
 }
@@ -3639,7 +3577,7 @@ function updatePlaceCounter() {
     counterEl.id = 'place-counter';
     counterEl.style.cssText = `
       position: fixed;
-      top: 90px; 
+      top: 200px; 
       left: 15px;
       background: linear-gradient(135deg, #FFB88C 0%, #FF9966 100%);
       color: white;
