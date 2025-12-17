@@ -360,11 +360,13 @@
                 </div>
             </div>
             
-            <div class="timer" id="timer" data-translate="otp_valid_time">Mã OTP có hiệu lực: <strong id="countdown">5:00</strong></div>
+            <div class="timer" id="timer">
+                <span data-translate="otp_valid_time">Mã OTP có hiệu lực:</span> <strong id="countdown">5:00</strong>
+            </div>
             
             <button type="button" class="btn-verify" id="btn-verify" data-translate="verify_button">Xác thực</button>
-            <button type="button" class="btn-resend" id="btn-resend" disabled data-translate="resend_otp">
-                Gửi lại mã OTP (<span id="resend-timer">60</span>s)
+            <button type="button" class="btn-resend" id="btn-resend" disabled>
+                <span data-translate="resend_otp">Gửi lại mã OTP</span> (<span id="resend-timer">60</span>s)
             </button>
             
             <div class="footer-text">
@@ -372,6 +374,188 @@
             </div>
         </div>
     </div>
+    
+    <script>
+    // ==================== LANGUAGE LOGIC V3 (NO UI - FIXED) ====================
+    (function() {
+        const STORAGE_KEY = 'user_language';
+        const COOKIE_NAME = 'user_lang';
+        const CHANNEL_NAME = 'language-sync-channel';
+        const DEFAULT_LANGUAGE = 'vi'; // ✅ MẶC ĐỊNH TIẾNG VIỆT
+        
+        let translations = {};
+        let broadcastChannel = null;
+        
+        // ==================== COOKIE HELPERS ====================
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1);
+                if (c.indexOf(nameEQ) === 0) {
+                    return c.substring(nameEQ.length);
+                }
+            }
+            return null;
+        }
+        
+        // ==================== BROADCAST CHANNEL ====================
+        if ('BroadcastChannel' in window) {
+            try {
+                broadcastChannel = new BroadcastChannel(CHANNEL_NAME);
+                console.log('✅ BroadcastChannel ready (no UI)');
+            } catch (e) {
+                console.warn('⚠️ BroadcastChannel failed:', e);
+            }
+        }
+        
+        // ==================== LOAD TRANSLATIONS ====================
+        async function loadTranslations() {
+            try {
+                const response = await fetch('/languages.json');
+                if (response.ok) {
+                    translations = await response.json();
+                    console.log('✅ Translations loaded (no UI)');
+                } else {
+                    translations = {
+                        vi: { title: "Tài khoản", greeting: "Xin chào!" },
+                        en: { title: "Account", greeting: "Hello!" }
+                    };
+                }
+            } catch (error) {
+                console.error('❌ Translation error:', error);
+                translations = {
+                    vi: { title: "Tài khoản", greeting: "Xin chào!" },
+                    en: { title: "Account", greeting: "Hello!" }
+                };
+            }
+        }
+        
+        // ==================== GET LANGUAGE (FIXED) ====================
+        function getCurrentLanguage() {
+            // Priority: localStorage > Cookie > Default
+            let lang = null;
+            
+            try {
+                lang = localStorage.getItem(STORAGE_KEY);
+                if (lang && (lang === 'vi' || lang === 'en')) {
+                    return lang;
+                }
+            } catch (e) {}
+            
+            lang = getCookie(COOKIE_NAME);
+            if (lang && (lang === 'vi' || lang === 'en')) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, lang);
+                } catch (e) {}
+                return lang;
+            }
+            
+            // ✅ LƯU DEFAULT NGAY
+            try {
+                localStorage.setItem(STORAGE_KEY, DEFAULT_LANGUAGE);
+            } catch (e) {}
+            
+            return DEFAULT_LANGUAGE;
+        }
+        
+        // ==================== APPLY TRANSLATIONS ====================
+        function applyTranslations(lang) {
+            if (!lang) lang = getCurrentLanguage();
+            if (!translations[lang]) return;
+            
+            const langData = translations[lang];
+            
+            document.querySelectorAll('[data-translate]').forEach(el => {
+                const key = el.getAttribute('data-translate');
+                if (langData[key]) {
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        el.placeholder = langData[key];
+                    } else if (el.tagName === 'SPAN' || el.children.length === 0) {
+                        // Chỉ thay textContent nếu là SPAN hoặc không có child elements
+                        el.textContent = langData[key];
+                    }
+                }
+            });
+            
+            document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-translate-placeholder');
+                if (langData[key]) el.placeholder = langData[key];
+            });
+            
+            document.querySelectorAll('[data-translate-title]').forEach(el => {
+                const key = el.getAttribute('data-translate-title');
+                if (langData[key]) el.title = langData[key];
+            });
+            
+            console.log(`🌍 Applied: ${lang} (no UI)`);
+        }
+        
+        // ==================== BROADCAST LISTENER ====================
+        if (broadcastChannel) {
+            broadcastChannel.onmessage = (event) => {
+                const { type, language } = event.data;
+                if (type === 'LANGUAGE_CHANGED') {
+                    console.log(`📩 Sync from main: ${language}`);
+                    localStorage.setItem(STORAGE_KEY, language);
+                    applyTranslations(language);
+                    
+                    window.dispatchEvent(new CustomEvent('languageChanged', { 
+                        detail: { language, isFromBroadcast: true } 
+                    }));
+                }
+            };
+            
+            window.addEventListener('beforeunload', () => {
+                if (broadcastChannel) broadcastChannel.close();
+            });
+        }
+        
+        // ==================== STORAGE EVENT ====================
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEY && e.newValue !== null) {
+                console.log(`📦 Storage sync: ${e.newValue}`);
+                applyTranslations(e.newValue);
+            }
+        });
+        
+        // ==================== INITIALIZE ====================
+        async function init() {
+            console.log('🚀 Language Script V3 (no UI) init...');
+            
+            await loadTranslations();
+            
+            const currentLang = getCurrentLanguage();
+            console.log(`🌍 Language: ${currentLang}`);
+            
+            applyTranslations(currentLang);
+            
+            console.log('✅ Ready');
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        // ==================== GLOBAL API ====================
+        window.LanguageToggle = {
+            getCurrentLanguage,
+            applyTranslations: () => applyTranslations(getCurrentLanguage()),
+            getTranslation: (key) => {
+                const lang = getCurrentLanguage();
+                return translations[lang]?.[key] || key;
+            },
+            // ✅ ALIAS CHO TƯƠNG THÍCH
+            translateByKey: (key) => {
+                const lang = getCurrentLanguage();
+                return translations[lang]?.[key] || key;
+            }
+        };
+    })();
+    </script>
     
     <script>
         const email = '{{ email }}';
