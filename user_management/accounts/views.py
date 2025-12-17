@@ -2171,7 +2171,8 @@ def verify_otp_api(request):
             otp_obj.delete() # Xóa luôn để user phải request mới
             return JsonResponse({
                 'status': 'error',
-                'message': get_message('otp_locked', lang)
+                'message': get_message('otp_locked', lang),
+                'locked': True
             }, status=400)
 
         # Kiểm tra OTP đã hết hạn chưa
@@ -2380,7 +2381,8 @@ def verify_password_reset_otp_api(request):
             otp_obj.delete()
             return JsonResponse({
                 'status': 'error',
-                'message': get_message('reset_locked', lang)
+                'message': get_message('reset_locked', lang),
+                'locked': True
             }, status=400)
 
         # Kiểm tra hết hạn
