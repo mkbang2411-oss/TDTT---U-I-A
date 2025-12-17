@@ -131,43 +131,6 @@
             </div>
         </div>
 
-        <!-- Multi-select khẩu vị -->
-        <div class="flavor-selector" id="flavorSelector">
-            <div class="flavor-selector-btn" id="flavorBtn">
-                <span class="selected-flavors empty" data-translate="flavor">Khẩu vị</span>
-                <span class="arrow">▼</span>
-            </div>
-            <div class="flavor-dropdown" id="flavorDropdown">
-                <div class="flavor-option">
-                    <input type="checkbox" value="cay" id="flavor-cay">
-                    <label for="flavor-cay" data-translate="flavor_spicy">Cay</label>
-                </div>
-                <div class="flavor-option">
-                    <input type="checkbox" value="man" id="flavor-man">
-                    <label for="flavor-man" data-translate="flavor_salty">Mặn</label>
-                </div>
-                <div class="flavor-option">
-                    <input type="checkbox" value="ngot" id="flavor-ngot">
-                    <label for="flavor-ngot" data-translate="flavor_sweet">Ngọt</label>
-                </div>
-                <div class="flavor-option">
-                    <input type="checkbox" value="chua" id="flavor-chua">
-                    <label for="flavor-chua" data-translate="flavor_sour">Chua</label>
-                </div>
-                <div class="flavor-option">
-                    <input type="checkbox" value="dang" id="flavor-dang">
-                    <label for="flavor-dang" data-translate="flavor_bitter">Đắng</label>
-                </div>
-                <div class="flavor-option">
-                    <input type="checkbox" value="tanh" id="flavor-tanh">
-                    <label for="flavor-tanh" data-translate="flavor_fishy">Tanh</label>
-                </div>
-                <div class="flavor-option">
-                    <input type="checkbox" value="thanh" id="flavor-thanh">
-                    <label for="flavor-thanh" data-translate="flavor_plain">Thanh</label>
-                </div>
-            </div>
-        </div>
 
         <!-- 💰 NGÂN SÁCH -->
         <div class="budget-selector flavor-selector" id="budgetSelector">
@@ -1309,7 +1272,7 @@
     console.log(currentLang); // 'vi' hoặc 'en'
 
     // Đổi ngôn ngữ bằng code
-    window.LanguageToggle.setLanguage('en');
+   // window.LanguageToggle.setLanguage('en');
 
     // Lấy bản dịch của một key
     const greeting = window.LanguageToggle.getTranslation('greeting');
