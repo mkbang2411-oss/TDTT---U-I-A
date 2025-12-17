@@ -2650,7 +2650,7 @@ input.time-input[type="number"] {
     font-size: 14px;
     font-weight: 600;
     outline: none;
-    width: 60px;
+    width: 170px;
     text-align: center;
 }
 
@@ -2880,6 +2880,7 @@ input.time-input[type="number"] {
     font-size: 14px; /* 🔥 SỬA: Tăng font */
     font-weight: 600;
     outline: none;
+    width: 170px;
     text-align: center;
     background: white;
     line-height: 1.5; /* 🔥 THÊM */
