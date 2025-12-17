@@ -1269,6 +1269,16 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
             filters, excluded_ids=used_place_ids, top_n=20
         )
         
+        # 🔥🔥 LỌC THÊM: CHỈ LẤY QUÁN TRONG BÁN KÍNH USER BAN ĐẦU
+        if places:
+            filtered_by_user_radius = []
+            for p in places:
+                distance_from_user = calculate_distance(user_lat, user_lon, p['lat'], p['lon'])
+                if distance_from_user <= radius_km:
+                    filtered_by_user_radius.append(p)
+            places = filtered_by_user_radius
+            print(f"📍 Lọc theo bán kính user: còn {len(places)} quán trong {radius_km}km từ vị trí ban đầu")
+
         # 🔥 LỌC ĐẶC BIỆT: Loại bánh mì khỏi bữa tráng miệng
         if places and (key == 'dessert' or meal_theme == 'dessert_bakery'):
             filtered_places = []
@@ -1321,6 +1331,80 @@ def generate_food_plan(user_lat, user_lon, csv_file='Data_with_flavor.csv', them
             else:
                 print(f"⚡ Giữ nguyên {len(places)} quán cho theme '{meal_theme}'")
         
+        # 🔥🔥 FALLBACK LOGIC: Nếu bật CẢ 2 theme coffee + dessert và không tìm được quán
+        if not places and key.startswith('drink_'):
+            has_coffee = 'coffee_chill' in user_selected_themes
+            has_dessert = 'dessert_bakery' in user_selected_themes
+            
+            # CHỈ KHI BẬT CẢ 2 THEME → thử theme còn lại
+            if has_coffee and has_dessert:
+                fallback_theme = 'coffee_chill' if meal_theme == 'dessert_bakery' else 'dessert_bakery'
+                print(f"🔄 Không tìm được quán cho theme '{meal_theme}', thử fallback sang '{fallback_theme}'")
+                
+                # Thử tìm với theme còn lại
+                filters['theme'] = fallback_theme
+                places = find_places_advanced(
+                    current_lat, current_lon, df, 
+                    filters, excluded_ids=used_place_ids, top_n=20
+                )
+                
+                # 🔥🔥 LỌC THÊM: CHỈ LẤY QUÁN TRONG BÁN KÍNH USER BAN ĐẦU
+                if places:
+                    filtered_by_user_radius = []
+                    for p in places:
+                        distance_from_user = calculate_distance(user_lat, user_lon, p['lat'], p['lon'])
+                        if distance_from_user <= radius_km:
+                            filtered_by_user_radius.append(p)
+                    places = filtered_by_user_radius
+                    print(f"📍 [FALLBACK] Lọc theo bán kính user: còn {len(places)} quán trong {radius_km}km")
+
+                # Lọc lại keyword cho theme mới
+                if places:
+                    meal_theme = fallback_theme  # Cập nhật theme hiện tại
+                    keyword_key = 'dessert' if fallback_theme == 'dessert_bakery' else 'drink'
+                    
+                    if fallback_theme == 'dessert_bakery':
+                        # Lọc bánh mì cho tráng miệng
+                        filtered_places = []
+                        for p in places:
+                            name_lower = normalize_text(p['ten_quan'])
+                            if ('banhmi' not in name_lower and 'banh mi' not in name_lower
+                                and 'banhxeo' not in name_lower and 'banh xeo' not in name_lower):
+                                filtered_places.append(p)
+                        places = filtered_places
+                    
+                    # Keyword filter cho theme mới
+                    if places and keyword_key:
+                        meal_keywords = MEAL_TYPE_KEYWORDS[keyword_key]
+                        filtered_places = []
+                        
+                        for place in places:
+                            name_normalized = normalize_text_with_accent(place['ten_quan'])
+                            
+                            for kw in meal_keywords:
+                                kw_normalized = normalize_text_with_accent(kw)
+                                search_text = ' ' + name_normalized + ' '
+                                search_keyword = ' ' + kw_normalized + ' '
+                                
+                                if search_keyword in search_text:
+                                    filtered_places.append(place)
+                                    break
+                        
+                        places = filtered_places
+                    
+                    if places:
+                        # Cập nhật lại theme và title cho slot này
+                        meal['theme'] = fallback_theme
+                        if fallback_theme == 'dessert_bakery':
+                            meal['title'] = meal['title'].replace('Giải khát', 'Tráng miệng')
+                            meal['icon'] = THEME_CATEGORIES['dessert_bakery']['icon']
+                        else:
+                            meal['title'] = meal['title'].replace('Tráng miệng', 'Giải khát')
+                            meal['icon'] = THEME_CATEGORIES['coffee_chill']['icon']
+                        print(f"✅ Fallback thành công! Tìm được {len(places)} quán cho theme '{fallback_theme}'")
+                    else:
+                        print(f"⚠️ Fallback thất bại! Theme '{fallback_theme}' cũng không có quán")
+
         if places:
             places_found += 1
             weights = [1.0 / (i + 1) for i in range(len(places))]
