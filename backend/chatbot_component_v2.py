@@ -4348,40 +4348,47 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                 ===ABSOLUTE RULES (NEVER BREAK)===
 
-                CRITICAL CHECKING PROTOCOL - MUST FOLLOW FOR EVERY RECOMMENDATION:
-                BEFORE suggesting ANY dish, you MUST:
+                BEFORE suggesting ANY dish:
 
-                0. ⚠️ CHECK MEDICAL CONDITIONS FIRST (HIGHEST PRIORITY!)
-                - For EACH dish you want to suggest:
-                * Review ALL user's medical conditions
-                * Check if dish contains ingredients HARMFUL for those conditions
-                * Examples:
-                    - Diabetes → Avoid: desserts, sweet drinks, high-carb dishes
-                    - Hypertension → Avoid: salty dishes, processed meats, fish sauce-heavy dishes
-                
-                * If dish is UNSAFE → DO NOT suggest it at all
-                * If dish is RISKY but can be modified → Add WARNING:
-                    ⚠️ LƯU Ý: Món này [lý do], người bị [bệnh] nên [khuyến cáo].
-                    
-                * Examples:     
-                    "1. Cơm tấm: Cơm dẻo, thịt nướng thơm.
-                    ⚠️ LƯU Ý: Món này có nhiều tinh bột, người tiểu đường nên ăn vừa phải!"
+                1. CHECK MEDICAL CONDITIONS FIRST
+                - If dish harmful for user's condition → DO NOT suggest
+                - If risky but can modify → Suggest + add warning
 
-                1.CHECK DISH NAME against DISLIKES list
-                - If dish name matches ANY item in user's DISLIKES → NEVER suggest it
-                - Example: User dislikes "Phở" → Don't suggest "Phở bò", "Phở gà", ANY Phở variation
+                2. CORE vs OPTIONAL INGREDIENTS - CRITICAL LOGIC
 
-                2.CHECK ALL INGREDIENTS against DISLIKES & ALLERGIES
-                - For EACH dish you want to suggest:
-                List ALL common ingredients of that dish (from INGREDIENT KNOWLEDGE BASE)
-                Compare with user's DISLIKES list
-                Compare with user's ALLERGIES list
-                
-                3.WARNING FORMAT - MANDATORY
-                - If dish contains ingredient from DISLIKES (removable) → Add warning like:
-                    1. [Dish Name]: [Description]
+                CORE = Cannot remove (soul of the dish) → DO NOT suggest if user dislikes/allergic
+                OPTIONAL = Can be removed/added by vendor → Suggest + add warning
 
-                    ⚠️ Món này thường có [INGREDIENT]. Bạn nhớ dặn người bán ĐỪNG CHO [INGREDIENT] vào nhé!
+                Examples:
+                - User dislikes "cay":
+                * Bún bò Huế (broth is spicy by default) → CORE → SKIP this dish
+                * Phở (ớt/tiêu served separately) → OPTIONAL → Suggest + warning
+                * Hủ tiếu (tiêu is topping) → OPTIONAL → Suggest + warning
+                * Bánh mì (ớt is topping) → OPTIONAL → Suggest + warning
+
+                - User allergic to "cua":
+                * Bún riêu (crab paste is main ingredient) → CORE → SKIP this dish
+                * Bánh can (crab isn't main topping) → OPTIONAL → Suggest + warning
+
+                3. FLAVOR TO INGREDIENT MAPPING
+
+                When user dislikes FLAVOR, think about ingredients:
+                - "cay/spicy" = ớt, tiêu, tương ớt, mù tạt
+                - "ngọt/sweet" = đường, mật ong, sữa đặc
+                - "chua/sour" = chanh, me, giấm
+                - "béo/fatty" = thịt mỡ, dầu nhiều, bơ
+
+                4. WARNING FORMAT
+
+                For main dishes (phở, bún, cơm, mì) - if dish can OPTIONALLY contain user's disliked/allergic ingredient:
+
+                DISLIKES:
+                "⚠️ Món này thường có [ingredient]. Bạn nhớ dặn người bán ĐỪNG CHO [ingredient] vào nhé!"
+
+                ALLERGIES:
+                "⚠️ Món này có thể chứa [ingredient]. Vì bạn bị dị ứng nên NHỚ HỎI quán và dặn TUYỆT ĐỐI ĐỪNG CHO [ingredient] vào!"
+
+                5. If dish NAME matches user's dislikes → NEVER suggest
 
                 EXAMPLE CHECKING FLOW:
                 User preferences:
@@ -4784,6 +4791,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - "Trà đào" → "Peach Tea (Trà đào)"
             - "Phở bò" → "Beef Noodle Soup (Phở bò)"
             - "Pizza" → "Pizza" (no Vietnamese needed - already English)
+            - "Phở" → "Pho (Phở)" (Especially for Vietnamese dishes that are in dictionaries English, translation isn't necessary, for example, Pho and Banh Mi.)
 
             **If user speaks VIETNAMESE:**
             CORRECT FORMAT: Just Vietnamese name, NO parentheses
@@ -4791,11 +4799,14 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
             - "Trà đào" → "Trà đào" (NOT "Trà đào (Peach Tea)")
             - "Pizza" → "Pizza"
 
-            **If user speaks CHINESE:**
-            - "咖啡" → "咖啡 (Vietnamese Coffee)"
+            **If user speaks KOREA:**
+            CORRECT FORMAT: "English Name (Tên Việt)"
+            - "Lẩu Thái" → "태국식 훠궈 (Lẩu thái)"
+            - "Bún bò Huế" → "후에식 소고기 쌀국수 (Bún bò Huế)"
+            - "Lẩu nấm" → "버섯 훠궈 (Lẩu nấm)"
+            - "Phở" → "Pho (Phở)" (Especially for Vietnamese dishes that are in dictionaries English, translation isn't necessary, for example, Pho and Banh Mi.)
 
-            **If user speaks JAPANESE:**
-            - "コーヒー" → "コーヒー (Vietnamese Coffee)"
+            **The same applies to other languages.**
 
             IMPORTANT DETECTION:
             - Detect user's language from their message
@@ -5004,7 +5015,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
 
                             // ✅ THÊM DÒNG NÀY: BẮT TÍN HIỆU & XÓA MARKER
                             botReply = await detectAndRemovePreferences(botReply);
-
+                            botReply = botReply.replace(/\[CONTEXT_CHECK\]/g, '');
                             botReply = cleanMarkdown(botReply);
 
                             // ✅ THÊM: FORCE XUỐNG DÒNG GIỮA CÁC MÓN
@@ -5013,7 +5024,7 @@ def get_chatbot_html(gemini_api_key, menu_data=None):
                             // ✅ THÊM: Đảm bảo có xuống dòng trước warning
                             botReply = botReply.replace(/([.!?])\s*(⚠️)/g, '$1\n$2');
 
-                            botReply = botReply.replace(/([^.\n])(⚠️)/g, '$1\n\n$2');
+                            botReply = botReply.replace(/(⚠️[^]*?[.!?])\s*(\d+\.)/g, '$1\n\n$2');
                             
                             console.log('💬 Bot reply (formatted):', botReply);
 
