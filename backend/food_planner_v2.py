@@ -4208,7 +4208,8 @@ async function savePlan() {
             },
             body: JSON.stringify({
                 name: currentDisplayName,
-                plan_data: planArray
+                plan_data: planArray,
+                plan_id: currentPlanId 
             })
         });
 
