@@ -2806,6 +2806,7 @@ def share_food_plan_api(request, plan_id):
         
         shared_count = 0
         already_shared = []
+        reactivated_count = 0  # 🔥 THÊM: Đếm số plan được kích hoạt lại
         
         for friend_id in friend_ids:
             try:
@@ -2821,32 +2822,54 @@ def share_food_plan_api(request, plan_id):
                 if not is_friend:
                     continue
                 
-                # Tạo share (hoặc cập nhật nếu đã share trước đó)
-                share, created = SharedFoodPlan.objects.get_or_create(
-                    food_plan=plan,
-                    owner=request.user,
-                    shared_with=friend,
-                    defaults={'permission': permission}
-                )
-                
-                if created:
+                # 🔥 FIX: Xử lý cả trường hợp đã xóa (is_active=False)
+                try:
+                    share = SharedFoodPlan.objects.get(
+                        food_plan=plan,
+                        owner=request.user,
+                        shared_with=friend
+                    )
+                    
+                    # Nếu đã tồn tại record
+                    if share.is_active:
+                        # Đang active -> chỉ cập nhật permission
+                        share.permission = permission
+                        share.save()
+                        already_shared.append(friend.username)
+                    else:
+                        # Đã xóa trước đó (is_active=False) -> kích hoạt lại
+                        share.is_active = True
+                        share.permission = permission
+                        share.save()
+                        shared_count += 1
+                        reactivated_count += 1
+                        create_shared_plan_notification(friend, request.user, plan.id, plan.name)
+                        
+                except SharedFoodPlan.DoesNotExist:
+                    # Chưa từng share -> tạo mới
+                    SharedFoodPlan.objects.create(
+                        food_plan=plan,
+                        owner=request.user,
+                        shared_with=friend,
+                        permission=permission,
+                        is_active=True
+                    )
                     shared_count += 1
                     create_shared_plan_notification(friend, request.user, plan.id, plan.name)
-                else:
-                    # Nếu đã share rồi thì cập nhật permission
-                    share.permission = permission
-                    share.is_active = True
-                    share.save()
-                    already_shared.append(friend.username)
                     
             except User.DoesNotExist:
                 continue
         
-        # Tạo message
+        # 🔥 CẬP NHẬT: Tạo message chi tiết hơn
         if shared_count > 0 and already_shared:
-            message = f"Đã chia sẻ cho {shared_count} người ({', '.join(already_shared)} đã được chia sẻ trước đó)"
+            message = f"Đã chia sẻ cho {shared_count} người"
+            if reactivated_count > 0:
+                message += f" (có {reactivated_count} người được chia sẻ lại)"
+            message += f" - {', '.join(already_shared)} đã được chia sẻ trước đó"
         elif shared_count > 0:
             message = f"Đã chia sẻ cho {shared_count} người"
+            if reactivated_count > 0:
+                message += f" (có {reactivated_count} người được chia sẻ lại)"
         elif already_shared:
             message = f"{', '.join(already_shared)} đã được chia sẻ trước đó"
         else:
@@ -2855,7 +2878,8 @@ def share_food_plan_api(request, plan_id):
         return JsonResponse({
             'status': 'success',
             'message': message,
-            'shared_count': shared_count
+            'shared_count': shared_count,
+            'reactivated_count': reactivated_count  # 🔥 THÊM: Trả về số plan được kích hoạt lại
         })
         
     except FoodPlan.DoesNotExist:
