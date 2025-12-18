@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="frontend/images/header.png" alt="Header" width="800"/>
+  <img src="https://drive.google.com/uc?export=view&id=1ntZlsr9E4f3jc56B20muTQDw_T14db3Q" alt="UIA SmartTour Header" width="100%"/>
 </div>
 
 # UIA SmartTour - Intelligent Food Recommendation Web Application
