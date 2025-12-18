@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Delay Monitor - SSE & Friend Request</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+        
+        /* TABS */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab {
+            padding: 12px 24px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-card h3 {
+            font-size: 0.8em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .controls {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .control-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .download-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            background: #4CAF50;
+        }
+        .download-btn:hover {
+            background: #45a049;
+        }
+        #logContainer {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        .log-success { color: #00ff00; }
+        .log-error { color: #ff0000; }
+        .log-info { color: #00bfff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Delay Monitor - SSE & Friend Request</h1>
+        
+        <!-- TABS -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('sse')">📡 SSE Notification</button>
+            <button class="tab" onclick="switchTab('friend')">👥 Friend Request</button>
+        </div>
+
+        <!-- TAB 1: SSE NOTIFICATION -->
+        <div id="sseTab" class="tab-content active">
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Tổng Test</h3>
+                    <div class="value" id="sseTotal">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Delay TB (ms)</h3>
+                    <div class="value" id="sseAvg">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Min Delay (ms)</h3>
+                    <div class="value" id="sseMin">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Max Delay (ms)</h3>
+                    <div class="value" id="sseMax">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Median (ms)</h3>
+                    <div class="value" id="sseMedian">0</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="control-row">
+                    <div class="input-group">
+                        <label>Target User ID (người nhận)</label>
+                        <input type="number" id="sseTargetUserId" placeholder="Nhập User ID">
+                    </div>
+                    <div class="input-group">
+                        <label>Số lượng notifications</label>
+                        <input type="number" id="sseNotifCount" value="10" min="1" max="50">
+                    </div>
+                    <div class="input-group">
+                        <label>Khoảng cách (ms)</label>
+                        <input type="number" id="sseIntervalMs" value="500" min="100" max="5000">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <button onclick="startSSETest()" id="sseStartBtn">▶️ Bắt đầu Test</button>
+                    <button onclick="connectSSE()" id="sseConnectBtn">🔌 Kết nối SSE</button>
+                    <button onclick="loadSSEStats()" id="sseLoadBtn">📊 Load Statistics</button>
+                    <button onclick="clearLog()">🗑️ Clear Log</button>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>📈 Biểu đồ Delay theo thời gian (SSE)</h3>
+                    <button class="download-btn" onclick="downloadChart('sseDelayChart', 'SSE_Delay_Chart.png')">💾 Download</button>
+                </div>
+                <canvas id="sseDelayChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>📊 Phân bố Delay (SSE)</h3>
+                    <button class="download-btn" onclick="downloadChart('sseDistChart', 'SSE_Distribution.png')">💾 Download</button>
+                </div>
+                <canvas id="sseDistChart"></canvas>
+            </div>
+        </div>
+
+        <!-- TAB 2: FRIEND REQUEST -->
+        <div id="friendTab" class="tab-content">
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Tổng Test</h3>
+                    <div class="value" id="friendTotal">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Delay TB (ms)</h3>
+                    <div class="value" id="friendAvg">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Min Delay (ms)</h3>
+                    <div class="value" id="friendMin">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Max Delay (ms)</h3>
+                    <div class="value" id="friendMax">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Median (ms)</h3>
+                    <div class="value" id="friendMedian">0</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="control-row">
+                    <div class="input-group">
+                        <label>Target User ID</label>
+                        <input type="number" id="friendTargetUserId" placeholder="Nhập User ID">
+                    </div>
+                    <div class="input-group">
+                        <label>Action</label>
+                        <select id="friendAction">
+                            <option value="send">Send Friend Request</option>
+                            <option value="cancel">Cancel Request</option>
+                            <option value="accept">Accept Request</option>
+                            <option value="reject">Reject Request</option>
+                            <option value="unfriend">Unfriend</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Số lượng test</label>
+                        <input type="number" id="friendCount" value="10" min="1" max="50">
+                    </div>
+                    <div class="input-group">
+                        <label>Khoảng cách (ms)</label>
+                        <input type="number" id="friendIntervalMs" value="500" min="100" max="5000">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <button onclick="startFriendTest()" id="friendStartBtn">▶️ Bắt đầu Test</button>
+                    <button onclick="loadFriendStats()" id="friendLoadBtn">📊 Load Statistics</button>
+                    <button onclick="clearLog()">🗑️ Clear Log</button>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>📈 Biểu đồ Delay theo thời gian (Friend Request)</h3>
+                    <button class="download-btn" onclick="downloadChart('friendDelayChart', 'Friend_Delay_Chart.png')">💾 Download</button>
+                </div>
+                <canvas id="friendDelayChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>🥧 Phân bố theo Action</h3>
+                    <button class="download-btn" onclick="downloadChart('friendPieChart', 'Friend_Action_Distribution.png')">💾 Download</button>
+                </div>
+                <canvas id="friendPieChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>📊 Phân bố Delay</h3>
+                    <button class="download-btn" onclick="downloadChart('friendDistChart', 'Friend_Delay_Distribution.png')">💾 Download</button>
+                </div>
+                <canvas id="friendDistChart"></canvas>
+            </div>
+        </div>
+
+        <div>
+            <h3>📝 Console Log</h3>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let sseTestSession = null;
+        let friendTestSession = null;
+        
+        let sseDelayChart = null;
+        let sseDistChart = null;
+        let friendDelayChart = null;
+        let friendPieChart = null;
+        let friendDistChart = null;
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'sse') {
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+                document.getElementById('sseTab').classList.add('active');
+            } else {
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                document.getElementById('friendTab').classList.add('active');
+            }
+        }
+
+        // ============ SSE FUNCTIONS ============
+
+        function connectSSE() {
+            if (eventSource) {
+                log('SSE đã kết nối rồi!', 'info');
+                return;
+            }
+
+            log('Đang kết nối SSE...', 'info');
+            
+            eventSource = new EventSource('/api/accounts/notifications/stream/');
+            
+            eventSource.onopen = () => {
+                log('✅ SSE Connected!', 'success');
+                document.getElementById('sseConnectBtn').disabled = true;
+            };
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'new_notifications') {
+                        data.notifications.forEach(notif => {
+                            const receivedAt = new Date().toISOString();
+                            log(`📩 Nhận: ${notif.title} (ID: ${notif.id})`, 'success');
+                        });
+                    }
+                } catch (e) {
+                    console.error('Parse error:', e);
+                }
+            };
+            
+            eventSource.onerror = () => {
+                log('❌ SSE Error!', 'error');
+                eventSource.close();
+                eventSource = null;
+                document.getElementById('sseConnectBtn').disabled = false;
+            };
+        }
+
+        async function startSSETest() {
+            const targetUserId = document.getElementById('sseTargetUserId').value;
+            const count = parseInt(document.getElementById('sseNotifCount').value);
+            const interval = parseInt(document.getElementById('sseIntervalMs').value);
+            
+            if (!targetUserId) {
+                alert('Vui lòng nhập Target User ID!');
+                return;
+            }
+            
+            if (!eventSource) {
+                alert('Vui lòng kết nối SSE trước!');
+                return;
+            }
+            
+            log(`🚀 Bắt đầu test: ${count} notifications cho User ID ${targetUserId}`, 'info');
+            document.getElementById('sseStartBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/api/accounts/notifications/start-delay-test/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        target_user_id: parseInt(targetUserId),
+                        count: count,
+                        interval_ms: interval
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    sseTestSession = data.test_session;
+                    log(`✅ Đã gửi ${count} notifications! Session: ${sseTestSession}`, 'success');
+                    setTimeout(() => loadSSEStats(sseTestSession), 2000);
+                } else {
+                    log(`❌ Lỗi: ${data.message}`, 'error');
+                }
+            } catch (e) {
+                log(`❌ Lỗi: ${e.message}`, 'error');
+            } finally {
+                document.getElementById('sseStartBtn').disabled = false;
+            }
+        }
+
+        async function loadSSEStats(testSession = null) {
+            const session = testSession || sseTestSession;
+            log('📊 Đang load statistics...', 'info');
+            
+            try {
+                const url = session 
+                    ? `/api/accounts/notifications/delay-stats/?test_session=${session}`
+                    : '/api/accounts/notifications/delay-stats/';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    updateSSEStats(data.statistics);
+                    updateSSECharts(data.chart_data);
+                    log(`✅ Load stats thành công: ${data.statistics.count} records`, 'success');
+                }
+            } catch (e) {
+                log(`❌ Lỗi load stats: ${e.message}`, 'error');
+            }
+        }
+
+        function updateSSEStats(stats) {
+            document.getElementById('sseTotal').textContent = stats.count;
+            document.getElementById('sseAvg').textContent = Math.round(stats.avg_delay);
+            document.getElementById('sseMin').textContent = stats.min_delay;
+            document.getElementById('sseMax').textContent = stats.max_delay;
+            document.getElementById('sseMedian').textContent = stats.median_delay;
+        }
+
+        function updateSSECharts(chartData) {
+            // Line Chart
+            const ctx1 = document.getElementById('sseDelayChart').getContext('2d');
+            if (sseDelayChart) sseDelayChart.destroy();
+            
+            sseDelayChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: chartData.map(d => `#${d.index}`),
+                    datasets: [{
+                        label: 'Delay (ms)',
+                        data: chartData.map(d => d.delay_ms),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Delay (ms)' } },
+                        x: { title: { display: true, text: 'Notification #' } }
+                    }
+                }
+            });
+
+            // Distribution Chart
+            const delays = chartData.map(d => d.delay_ms);
+            const bins = createHistogramBins(delays, 10);
+            
+            const ctx2 = document.getElementById('sseDistChart').getContext('2d');
+            if (sseDistChart) sseDistChart.destroy();
+            
+            sseDistChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: bins.map(b => `${b.min}-${b.max}ms`),
+                    datasets: [{
+                        label: 'Số lượng',
+                        data: bins.map(b => b.count),
+                        backgroundColor: 'rgba(118, 75, 162, 0.7)',
+                        borderColor: '#764ba2',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Số lượng' } },
+                        x: { title: { display: true, text: 'Delay Range (ms)' } }
+                    }
+                }
+            });
+        }
+
+        // ============ FRIEND REQUEST FUNCTIONS ============
+
+        async function startFriendTest() {
+            const targetUserId = document.getElementById('friendTargetUserId').value;
+            const action = document.getElementById('friendAction').value;
+            const count = parseInt(document.getElementById('friendCount').value);
+            const interval = parseInt(document.getElementById('friendIntervalMs').value);
+            
+            if (!targetUserId) {
+                alert('Vui lòng nhập Target User ID!');
+                return;
+            }
+            
+            log(`🚀 Bắt đầu Friend Request test: ${action} x${count}`, 'info');
+            document.getElementById('friendStartBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/api/accounts/friend-request-test/start/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        target_user_id: parseInt(targetUserId),
+                        action: action,
+                        count: count,
+                        interval_ms: interval
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    friendTestSession = data.test_session;
+                    log(`✅ ${data.message}. Session: ${friendTestSession}`, 'success');
+                    setTimeout(() => loadFriendStats(friendTestSession), 1000);
+                } else {
+                    log(`❌ Lỗi: ${data.message}`, 'error');
+                }
+            } catch (e) {
+                log(`❌ Lỗi: ${e.message}`, 'error');
+            } finally {
+                document.getElementById('friendStartBtn').disabled = false;
+            }
+        }
+
+        async function loadFriendStats(testSession = null) {
+            const session = testSession || friendTestSession;
+            log('📊 Đang load Friend Request statistics...', 'info');
+            
+            try {
+                const url = session 
+                    ? `/api/accounts/friend-request-test/stats/?test_session=${session}`
+                    : '/api/accounts/friend-request-test/stats/';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    updateFriendStats(data.statistics);
+                    updateFriendCharts(data.chart_data, data.action_breakdown);
+                    log(`✅ Load stats thành công: ${data.statistics.count} records`, 'success');
+                }
+            } catch (e) {
+                log(`❌ Lỗi load stats: ${e.message}`, 'error');
+            }
+        }
+
+        function updateFriendStats(stats) {
+            document.getElementById('friendTotal').textContent = stats.count;
+            document.getElementById('friendAvg').textContent = Math.round(stats.avg_delay);
+            document.getElementById('friendMin').textContent = stats.min_delay;
+            document.getElementById('friendMax').textContent = stats.max_delay;
+            document.getElementById('friendMedian').textContent = stats.median_delay;
+        }
+
+        function updateFriendCharts(chartData, actionBreakdown) {
+            // Line Chart
+            const ctx1 = document.getElementById('friendDelayChart').getContext('2d');
+            if (friendDelayChart) friendDelayChart.destroy();
+            
+            friendDelayChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: chartData.map(d => `#${d.index}`),
+                    datasets: [{
+                        label: 'Delay (ms)',
+                        data: chartData.map(d => d.delay_ms),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: (context) => {
+                                    const data = chartData[context.dataIndex];
+                                    return `Action: ${data.action}\nTarget: ${data.target_username}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Delay (ms)' } },
+                        x: { title: { display: true, text: 'Test #' } }
+                    }
+                }
+            });
+
+            // Pie Chart - Action Breakdown
+            const ctx2 = document.getElementById('friendPieChart').getContext('2d');
+            if (friendPieChart) friendPieChart.destroy();
+            
+            const actionLabels = Object.keys(actionBreakdown);
+            const actionCounts = Object.values(actionBreakdown);
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'];
+            
+            friendPieChart = new Chart(ctx2, {
+                type: 'pie',
+                data: {
+                    labels: actionLabels,
+                    datasets: [{
+                        data: actionCounts,
+                        backgroundColor: colors.slice(0, actionLabels.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Distribution Chart
+            const delays = chartData.map(d => d.delay_ms);
+            const bins = createHistogramBins(delays, 10);
+            
+            const ctx3 = document.getElementById('friendDistChart').getContext('2d');
+            if (friendDistChart) friendDistChart.destroy();
+            
+            friendDistChart = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: bins.map(b => `${b.min}-${b.max}ms`),
+                    datasets: [{
+                        label: 'Số lượng',
+                        data: bins.map(b => b.count),
+                        backgroundColor: 'rgba(118, 75, 162, 0.7)',
+                        borderColor: '#764ba2',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Số lượng' } },
+                        x: { title: { display: true, text: 'Delay Range (ms)' } }
+                    }
+                }
+            });
+        }
+
+        // ============ HELPER FUNCTIONS ============
+
+        function createHistogramBins(data, numBins) {
+            if (data.length === 0) return [];
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const binSize = (max - min) / numBins;
+            
+            const bins = [];
+            for (let i = 0; i < numBins; i++) {
+                const binMin = Math.round(min + i * binSize);
+                const binMax = Math.round(min + (i + 1) * binSize);
+                bins.push({
+                    min: binMin,
+                    max: binMax,
+                    count: data.filter(d => d >= binMin && d < binMax).length
+                });
+            }
+            return bins;
+        }
+
+        function downloadChart(chartId, filename) {
+            const canvas = document.getElementById(chartId);
+            const url = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = url;
+            link.click();
+            log(`💾 Downloaded: ${filename}`, 'success');
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        window.onload = () => {
+            log('🎯 Page loaded! Sẵn sàng test delay.', 'info');
+            log('📡 SSE Tab: Kết nối SSE → Nhập User ID → Bắt đầu Test', 'info');
+            log('👥 Friend Tab: Nhập User ID → Chọn Action → Bắt đầu Test', 'info');
+        };
+    </script>
+</body>
+</html>
