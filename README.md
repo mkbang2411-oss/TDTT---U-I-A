@@ -49,14 +49,49 @@ UIA SmartTour provides AI-powered restaurant recommendations using a six-step fi
 
 ## Team Members
 
-**Group: U I A**<br/>
-Mai Khánh Băng      - 24127147 - Project Manager, Frontend Developer<br/>
-Nguyễn Ngọc Minh    - 24127204 - Frontend Developer<br/>
-Trần Minh Hiển      - 24127037 - Tech Lead, Backend Developer, Tester Engineer<br/>
-Đoàn Võ Ngọc Lâm    - 24127435 - Frontend, Backend Developer<br/>
-Trần Thuận Khang    - 24127054 - Backend Developer<br/>
-Võ Tấn An           - 24127318 - Backend Developer, Frontend Developer, Tester Engineer<br/>
-Nguyễn Thanh Nguyên - 24127468 - Backend Developer, Tester Engineer<br/>
+**Group: U I A**
+<table>
+  <tr>
+    <th>Name</th>
+    <th>Student ID</th>
+    <th>Role</th>
+  </tr>
+  <tr>
+    <td>Mai Khánh Băng</td>
+    <td>24127147</td>
+    <td>Project Manager, Frontend Developer</td>
+  </tr>
+  <tr>
+    <td>Nguyễn Ngọc Minh</td>
+    <td>24127204</td>
+    <td>Frontend Developer</td>
+  </tr>
+  <tr>
+    <td>Trần Minh Hiển</td>
+    <td>24127037</td>
+    <td>Tech Lead, Backend Developer, Tester Engineer</td>
+  </tr>
+  <tr>
+    <td>Đoàn Võ Ngọc Lâm</td>
+    <td>24127435</td>
+    <td>Frontend, Backend Developer</td>
+  </tr>
+  <tr>
+    <td>Trần Thuận Khang</td>
+    <td>24127054</td>
+    <td>Backend Developer</td>
+  </tr>
+  <tr>
+    <td>Võ Tấn An</td>
+    <td>24127318</td>
+    <td>Backend Developer, Frontend Developer, Tester Engineer</td>
+  </tr>
+  <tr>
+    <td>Nguyễn Thanh Nguyên</td>
+    <td>24127468</td>
+    <td>Backend Developer, Tester Engineer</td>
+  </tr>
+</table>
 
 **Instructors:**
 - TS. Trương Phước Hưng
