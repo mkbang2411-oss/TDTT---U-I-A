@@ -43,7 +43,7 @@ Travelers visiting new destinations often struggle to:
 
 ### Our Solution
 
-UIA SmartTour provides AI-powered restaurant recommendations using a six-step filtering algorithm that considers: Open/Closed status → Budget → Taste preferences → User ratings → Location proximity → Weather conditions. The system combines computational thinking principles (Decomposition, Abstraction, Pattern Recognition, and Algorithmic Design) to deliver accurate, context-aware dining suggestions.
+UIA SmartTour provides AI-powered restaurant recommendations using a six-step filtering algorithm that considers: Open/Closed status → Budget → User ratings → Location proximity. The system combines computational thinking principles (Decomposition, Abstraction, Pattern Recognition, and Algorithmic Design) to deliver accurate, context-aware dining suggestions.
 
 ---
 
