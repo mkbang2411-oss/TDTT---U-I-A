@@ -2650,7 +2650,7 @@ input.time-input[type="number"] {
     font-size: 14px;
     font-weight: 600;
     outline: none;
-    width: 60px;
+    width: 170px;
     text-align: center;
 }
 
@@ -2880,6 +2880,7 @@ input.time-input[type="number"] {
     font-size: 14px; /* 🔥 SỬA: Tăng font */
     font-weight: 600;
     outline: none;
+    width: 170px;
     text-align: center;
     background: white;
     line-height: 1.5; /* 🔥 THÊM */
@@ -4208,7 +4209,8 @@ async function savePlan() {
             },
             body: JSON.stringify({
                 name: currentDisplayName,
-                plan_data: planArray
+                plan_data: planArray,
+                plan_id: currentPlanId 
             })
         });
 
@@ -7784,76 +7786,56 @@ function handleDrop(e) {
         e.stopPropagation();
     }
     
-    if (!draggedElement || !lastTargetElement) return;
-    
-    if (draggedElement === lastTargetElement) return;
+    if (!draggedElement) return;
     
     const draggedKey = draggedElement.dataset.mealKey;
-    const targetKey = lastTargetElement.dataset.mealKey;
     
-    // ✅ Cập nhật dữ liệu TRƯỚC khi đổi
-    const draggedTitleInput = draggedElement.querySelector('.meal-title-input, input[onchange*="updateMealTitle"]');
-    const draggedHourInput = draggedElement.querySelector('.time-input-hour[data-meal-key="' + draggedKey + '"]');
-    const draggedMinuteInput = draggedElement.querySelector('.time-input-minute[data-meal-key="' + draggedKey + '"]');
-    
-    if (draggedTitleInput && draggedKey && currentPlan[draggedKey]) {
-        currentPlan[draggedKey].title = draggedTitleInput.value;
-    }
-    if (draggedHourInput && draggedMinuteInput && draggedKey && currentPlan[draggedKey]) {
-        const hour = draggedHourInput.value.padStart(2, '0');
-        const minute = draggedMinuteInput.value.padStart(2, '0');
-        currentPlan[draggedKey].time = `${hour}:${minute}`;
-    }
-    
-    const targetTitleInput = lastTargetElement.querySelector('.meal-title-input, input[onchange*="updateMealTitle"]');
-    const targetHourInput = lastTargetElement.querySelector('.time-input-hour[data-meal-key="' + targetKey + '"]');
-    const targetMinuteInput = lastTargetElement.querySelector('.time-input-minute[data-meal-key="' + targetKey + '"]');
-    
-    if (targetTitleInput && targetKey && currentPlan[targetKey]) {
-        currentPlan[targetKey].title = targetTitleInput.value;
-    }
-    if (targetHourInput && targetMinuteInput && targetKey && currentPlan[targetKey]) {
-        const hour = targetHourInput.value.padStart(2, '0');
-        const minute = targetMinuteInput.value.padStart(2, '0');
-        currentPlan[targetKey].time = `${hour}:${minute}`;
-    }
-    
-    // ✅ SWAP dữ liệu
-    if (currentPlan && draggedKey && targetKey) {
-        const temp = currentPlan[draggedKey];
-        currentPlan[draggedKey] = currentPlan[targetKey];
-        currentPlan[targetKey] = temp;
-    }
-    
-    // 🔥 CẬP NHẬT _order THEO VỊ TRÍ MỚI (KHÔNG SORT THEO TIME)
+    // ✅ Cập nhật title/time từ input TRƯỚC khi reorder
     const allMealItems = document.querySelectorAll('.meal-item[data-meal-key]');
+    allMealItems.forEach(item => {
+        const key = item.dataset.mealKey;
+        if (!key || !currentPlan[key]) return;
+        
+        // Cập nhật title
+        const titleInput = item.querySelector('input[onchange*="updateMealTitle"]');
+        if (titleInput && titleInput.value) {
+            currentPlan[key].title = titleInput.value;
+        }
+        
+        // Cập nhật time
+        const hourInput = item.querySelector('.time-input-hour[data-meal-key="' + key + '"]');
+        const minuteInput = item.querySelector('.time-input-minute[data-meal-key="' + key + '"]');
+        if (hourInput && minuteInput) {
+            const hour = hourInput.value.padStart(2, '0');
+            const minute = minuteInput.value.padStart(2, '0');
+            currentPlan[key].time = `${hour}:${minute}`;
+        }
+    });
+    
+    // 🔥 CẬP NHẬT _order THEO VỊ TRÍ MỚI TRONG DOM (handleDragOver đã sắp xếp đúng rồi)
     const newOrder = Array.from(allMealItems).map(item => item.dataset.mealKey);
     
     if (!currentPlan._order) {
         currentPlan._order = [];
     }
+    
+    // Lưu old index để hiệu ứng
+    const oldOrder = [...currentPlan._order];
+    const draggedOldIndex = oldOrder.indexOf(draggedKey);
+    
+    // Cập nhật order mới
     currentPlan._order = newOrder;
     
-    // ✅ RENDER lại
+    // ✅ RENDER lại với order mới
     displayPlanVertical(currentPlan, isEditMode);
     
-    // 🔥 THÊM HIỆU ỨNG CHO CẢ 2 QUÁN BỊ HOÁN ĐỔI
+    // 🔥 HIỆU ỨNG CHO CARD VỪA KÉO
     setTimeout(() => {
-        // Quán được kéo
         const draggedCard = document.querySelector(`[data-meal-key="${draggedKey}"] .meal-card-vertical`);
         if (draggedCard) {
             draggedCard.classList.add('just-dropped');
             
-            // Thêm icon mũi tên
-            const draggedNewIndex = newOrder.indexOf(draggedKey);
-            const direction = draggedNewIndex < draggedOldIndex ? '⬆️' : '⬇️';
-            const indicator1 = document.createElement('div');
-            indicator1.className = 'reposition-indicator';
-            indicator1.textContent = direction;
-            draggedCard.style.position = 'relative';
-            draggedCard.appendChild(indicator1);
-            
-            // Scroll đến quán được kéo
+            // Scroll đến card
             const draggedItem = document.querySelector(`[data-meal-key="${draggedKey}"]`);
             if (draggedItem) {
                 draggedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -7862,32 +7844,6 @@ function handleDrop(e) {
             // Xóa sau 1.5s
             setTimeout(() => {
                 draggedCard.classList.remove('just-dropped');
-                if (indicator1.parentNode) {
-                    indicator1.remove();
-                }
-            }, 1500);
-        }
-        
-        // Quán đích (bị đẩy)
-        const targetCard = document.querySelector(`[data-meal-key="${targetKey}"] .meal-card-vertical`);
-        if (targetCard) {
-            targetCard.classList.add('just-dropped');
-            
-            // Thêm icon mũi tên (ngược hướng với quán kéo)
-            const targetNewIndex = newOrder.indexOf(targetKey);
-            const direction = targetNewIndex < targetOldIndex ? '⬆️' : '⬇️';
-            const indicator2 = document.createElement('div');
-            indicator2.className = 'reposition-indicator';
-            indicator2.textContent = direction;
-            targetCard.style.position = 'relative';
-            targetCard.appendChild(indicator2);
-            
-            // Xóa sau 1.5s
-            setTimeout(() => {
-                targetCard.classList.remove('just-dropped');
-                if (indicator2.parentNode) {
-                    indicator2.remove();
-                }
             }, 1500);
         }
     }, 100);

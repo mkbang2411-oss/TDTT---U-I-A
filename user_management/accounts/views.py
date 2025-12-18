@@ -2590,13 +2590,15 @@ def save_food_plan_api(request):
     POST /api/food-plan/save/
     Body: {
         "name": "Lịch trình ngày 15/12",
-        "plan_data": {...}  // Toàn bộ dữ liệu plan
+        "plan_data": {...},  // Toàn bộ dữ liệu plan
+        "plan_id": 123       // OPTIONAL: Nếu có thì update, không có thì tạo mới
     }
     """
     try:
         data = json.loads(request.body)
         name = data.get('name', 'Lịch trình ăn uống')
         plan_data = data.get('plan_data')
+        plan_id = data.get('plan_id')  # 🔥 THÊM: Lấy plan_id nếu có
         
         if not plan_data:
             return JsonResponse({
@@ -2604,18 +2606,41 @@ def save_food_plan_api(request):
                 'message': 'Thiếu dữ liệu plan'
             }, status=400)
         
-        # Tạo plan mới
-        food_plan = FoodPlan.objects.create(
-            user=request.user,
-            name=name,
-            plan_data=plan_data
-        )
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Đã lưu lịch trình',
-            'plan_id': food_plan.id
-        })
+        # 🔥🔥 LOGIC MỚI: Phân biệt CREATE vs UPDATE
+        if plan_id:
+            # ✅ CÓ plan_id → UPDATE (lưu đè)
+            try:
+                food_plan = FoodPlan.objects.get(id=plan_id, user=request.user)
+                food_plan.name = name
+                food_plan.plan_data = plan_data
+                food_plan.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Đã cập nhật lịch trình',
+                    'plan_id': food_plan.id,
+                    'action': 'update'  # 🔥 Thêm để frontend biết
+                })
+                
+            except FoodPlan.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Không tìm thấy lịch trình hoặc bạn không có quyền'
+                }, status=404)
+        else:
+            # ✅ KHÔNG có plan_id → CREATE (tạo mới)
+            food_plan = FoodPlan.objects.create(
+                user=request.user,
+                name=name,
+                plan_data=plan_data
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Đã lưu lịch trình mới',
+                'plan_id': food_plan.id,
+                'action': 'create'  # 🔥 Thêm để frontend biết
+            })
         
     except Exception as e:
         return JsonResponse({
@@ -4031,8 +4056,7 @@ def clear_all_notifications_api(request):
     """
     try:
         deleted_count, _ = Notification.objects.filter(
-            user=request.user,
-            is_read=True
+            user=request.user
         ).delete()
         
         return JsonResponse({
