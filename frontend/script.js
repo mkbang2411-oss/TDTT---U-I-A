@@ -457,25 +457,6 @@ async function checkReviewStatus(placeId) {
   }
 }
 
-// Hiển thị credits trong form
-function showReviewForm(placeId) {
-  checkReviewStatus(placeId).then(status => {
-    if (!status.canReview) {
-      alert(status.reason);
-      return;
-    }
-    
-    // Hiển thị form với thông báo credits
-    const form = document.getElementById('review-form');
-    const creditsInfo = document.createElement('div');
-    creditsInfo.className = 'credits-info';
-    creditsInfo.innerHTML = `
-      <i class="fa-solid fa-circle-info"></i> 
-      Bạn còn <strong>${status.creditsLeft}</strong> lượt đánh giá trong tháng này
-    `;
-    form.prepend(creditsInfo);
-  });
-}
 
 // =========================
 // 🤖 HÀM MỞ CHATBOX TỰ ĐỘNG
@@ -1238,15 +1219,9 @@ if (submitBtn) {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // ✅ THÀNH CÔNG - HIỂN THỊ CREDITS CÒN LẠI
-        let successMsg = result.message || "✅ Cảm ơn bạn đã gửi đánh giá!";
-        
-        // 🔥 THÊM THÔNG BÁO CREDITS
-        if (result.credits_left !== undefined) {
-          successMsg += `\n\n💳 Bạn còn ${result.credits_left} lượt đánh giá trong tháng này`;
-        }
-        
-        showCustomAlert(successMsg);
+    // ✅ THÀNH CÔNG
+    let successMsg = result.message || "✅ Cảm ơn bạn đã gửi đánh giá!";
+    showCustomAlert(successMsg);
         
         // Reload lại reviews
         setTimeout(() => {
