@@ -31,7 +31,6 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     
     path('api/accounts/', include('accounts.urls')),
-    path('api/review-status/', account_views.review_status_api, name='review_status'),
     path('api/reviews/<str:place_id>/', account_views.reviews_api, name='reviews_api'),
     path('api/reviews/<str:place_id>/<int:review_index>/', account_views.delete_review_api,  name='delete_review'),
     path('api/streak/', account_views.streak_handler, name='streak_handler_direct'),

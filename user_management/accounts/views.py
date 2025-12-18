@@ -185,6 +185,9 @@ def save_user_reviews(data):
 def check_review_cooldown(user, place_id):
     """
     Kiểm tra cooldown cho review
+    CHỈ KIỂM TRA: 1 quán chỉ được đánh giá 1 lần/30 ngày
+    KHÔNG GIỚI HẠN: Tổng số lượt đánh giá
+    
     Returns: {
         'can_review': bool,
         'reason': str,
@@ -194,7 +197,7 @@ def check_review_cooldown(user, place_id):
     now = timezone.now()
     thirty_days_ago = now - timedelta(days=30)
     
-    # ✅ KIỂM TRA 1: Đã review quán này trong 30 ngày chưa?
+    # ✅ CHỈ KIỂM TRA: Đã review quán này trong 30 ngày chưa?
     last_review_this_place = ReviewHistory.objects.filter(
         user=user,
         place_id=place_id,
@@ -211,32 +214,9 @@ def check_review_cooldown(user, place_id):
             'wait_until': wait_until
         }
     
-    # ✅ KIỂM TRA 2: Đã dùng hết 15 credits trong 30 ngày chưa?
-    total_reviews_30days = ReviewHistory.objects.filter(
-        user=user,
-        review_date__gte=thirty_days_ago
-    ).count()
-    
-    if total_reviews_30days >= 15:
-        oldest_review = ReviewHistory.objects.filter(
-            user=user,
-            review_date__gte=thirty_days_ago
-        ).order_by('review_date').first()
-        
-        wait_until = oldest_review.review_date + timedelta(days=30)
-        days_left = (wait_until - now).days + 1
-        
-        return {
-            'can_review': False,
-            'reason': f'Bạn đã dùng hết 15 lượt đánh giá trong tháng. Chờ {days_left} ngày nữa.',
-            'wait_until': wait_until,
-            'credits_used': total_reviews_30days
-        }
-    
-    # ✅ CÓ THỂ REVIEW
+    # ✅ CÓ THỂ REVIEW (không giới hạn tổng số lượt)
     return {
-        'can_review': True,
-        'credits_left': 15 - total_reviews_30days
+        'can_review': True
     }
 
 @csrf_exempt
@@ -289,9 +269,9 @@ def reviews_api(request, place_id):
                 "message": "Bạn cần đăng nhập"
             }, status=403)
         
-        # 🔥 KIỂM TRA COOLDOWN NGAY ĐẦU
+        # 🔥 KIỂM TRA COOLDOWN (CHỈ CHECK 1 QUÁN/30 NGÀY)
         cooldown_check = check_review_cooldown(request.user, place_id)
-        
+
         if not cooldown_check['can_review']:
             print(f"🚫 [COOLDOWN] {request.user.username} bị chặn: {cooldown_check['reason']}")
             
@@ -300,9 +280,9 @@ def reviews_api(request, place_id):
                 "message": cooldown_check['reason'],
                 "blocked": True,
                 "wait_until": cooldown_check.get('wait_until').isoformat() if cooldown_check.get('wait_until') else None
-            }, status=429)  # 429 = Too Many Requests
-        
-        print(f"✅ [COOLDOWN] {request.user.username} có {cooldown_check.get('credits_left', '?')} credits còn lại")
+            }, status=429)
+
+        print(f"✅ [COOLDOWN] {request.user.username} có thể đánh giá quán này")
         
         avatar_nguoi_dung = get_user_avatar(request.user)
 
@@ -423,7 +403,6 @@ def reviews_api(request, place_id):
             return JsonResponse({
                 "success": True, 
                 "message": "✅ Đánh giá thành công!",
-                "credits_left": cooldown_check.get('credits_left', 0) - 1
             })
         
         except Exception as save_error:
@@ -442,28 +421,28 @@ def reviews_api(request, place_id):
         "success": False, 
         "message": "Method not allowed"
     }, status=405)
-@csrf_exempt
-def review_status_api(request):
-    """
-    GET /api/review-status/<place_id>/
-    Trả về thông tin cooldown và credits còn lại
-    """
-    if not request.user.is_authenticated:
-        return JsonResponse({
-            'is_logged_in': False
-        })
+# @csrf_exempt
+# def review_status_api(request):
+#     """
+#     GET /api/review-status/<place_id>/
+#     Trả về thông tin cooldown và credits còn lại
+#     """
+#     if not request.user.is_authenticated:
+#         return JsonResponse({
+#             'is_logged_in': False
+#         })
     
-    place_id = request.GET.get('place_id')
+#     place_id = request.GET.get('place_id')
     
-    cooldown = check_review_cooldown(request.user, place_id)
+#     cooldown = check_review_cooldown(request.user, place_id)
     
-    return JsonResponse({
-        'is_logged_in': True,
-        'can_review': cooldown['can_review'],
-        'reason': cooldown.get('reason', ''),
-        'credits_left': cooldown.get('credits_left', 0),
-        'wait_until': cooldown.get('wait_until').isoformat() if cooldown.get('wait_until') else None
-    })
+#     return JsonResponse({
+#         'is_logged_in': True,
+#         'can_review': cooldown['can_review'],
+#         'reason': cooldown.get('reason', ''),
+#         'credits_left': cooldown.get('credits_left', 0),
+#         'wait_until': cooldown.get('wait_until').isoformat() if cooldown.get('wait_until') else None
+#     })
 
 # ==========================================================
 # 🗑️ API XÓA ĐÁNH GIÁ CỦA USER
