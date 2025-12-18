@@ -477,3 +477,46 @@ class ReviewHistory(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.place_id} - {self.review_date}"    
+    
+class NotificationDelayMetric(models.Model):
+    """Lưu thời gian delay của notifications"""
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='delay_metrics')
+    sent_at = models.DateTimeField()
+    received_at = models.DateTimeField()
+    delay_ms = models.IntegerField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    test_session = models.CharField(max_length=100, null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-sent_at']
+
+class FriendRequestDelayMetric(models.Model):
+    """Lưu metrics delay cho các thao tác kết bạn"""
+    ACTION_CHOICES = [
+        ('send', 'Send Friend Request'),
+        ('cancel', 'Cancel Request'),
+        ('accept', 'Accept Request'),
+        ('reject', 'Reject Request'),
+        ('unfriend', 'Unfriend'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend_request_metrics')
+    action_type = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    target_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend_request_targets')
+    
+    sent_at = models.DateTimeField()
+    received_at = models.DateTimeField()
+    delay_ms = models.IntegerField()
+    
+    test_session = models.CharField(max_length=100, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'test_session']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.action_type} - {self.delay_ms}ms"

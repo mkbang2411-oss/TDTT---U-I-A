@@ -29,7 +29,9 @@ from .models import ReviewHistory
 from .models import (
     FoodPlan, 
     SharedFoodPlan,
-    PlanEditSuggestion
+    PlanEditSuggestion,
+    NotificationDelayMetric,
+    FriendRequestDelayMetric
 )
 from .models import Notification
 from .utils import (
@@ -3929,7 +3931,8 @@ def get_notifications_api(request):
                 'created_at': notif.created_at.isoformat(),
                 'read_at': notif.read_at.isoformat() if notif.read_at else None,
                 'related_id': notif.related_id,
-                'metadata': notif.metadata
+                'metadata': notif.metadata,
+                'sent_at': timezone.now().isoformat()
             })
         
         # Đếm số thông báo chưa đọc
@@ -4142,7 +4145,8 @@ def notification_stream(request):
                                 'is_read': notif.is_read,
                                 'created_at': notif.created_at.isoformat(),
                                 'related_id': notif.related_id,
-                                'metadata': notif.metadata
+                                'metadata': notif.metadata,
+                                'sent_at': timezone.now().isoformat()
                             })
                         
                         unread_count = Notification.objects.filter(
@@ -4453,3 +4457,425 @@ def switch_api_key(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+    
+@csrf_exempt
+@require_POST
+@login_required
+def record_notification_delay(request):
+    """Client gọi khi nhận notification để record delay"""
+    try:
+        data = json.loads(request.body)
+        notification_id = data.get('notification_id')
+        sent_at_str = data.get('sent_at')
+        received_at_str = data.get('received_at')
+        test_session = data.get('test_session', '')
+        
+        from dateutil import parser
+        sent_at = parser.isoparse(sent_at_str)
+        received_at = parser.isoparse(received_at_str)
+        
+        delay = (received_at - sent_at).total_seconds() * 1000
+        
+        notification = Notification.objects.get(id=notification_id)
+        
+        NotificationDelayMetric.objects.create(
+            notification=notification,
+            sent_at=sent_at,
+            received_at=received_at,
+            delay_ms=int(delay),
+            user=request.user,
+            test_session=test_session
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'delay_ms': int(delay)
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_delay_statistics(request):
+    """Lấy thống kê delay"""
+    try:
+        test_session = request.GET.get('test_session', '')
+        limit = int(request.GET.get('limit', 50))
+        
+        metrics = NotificationDelayMetric.objects.filter(user=request.user)
+        
+        if test_session:
+            metrics = metrics.filter(test_session=test_session)
+        
+        metrics = metrics[:limit]
+        
+        if not metrics.exists():
+            return JsonResponse({
+                'status': 'success',
+                'statistics': {'count': 0, 'avg_delay': 0, 'min_delay': 0, 'max_delay': 0, 'median_delay': 0},
+                'chart_data': []
+            })
+        
+        delays = [m.delay_ms for m in metrics]
+        
+        statistics = {
+            'count': len(delays),
+            'avg_delay': sum(delays) / len(delays),
+            'min_delay': min(delays),
+            'max_delay': max(delays),
+            'median_delay': sorted(delays)[len(delays)//2]
+        }
+        
+        chart_data = []
+        for i, metric in enumerate(reversed(list(metrics))):
+            chart_data.append({
+                'index': i + 1,
+                'delay_ms': metric.delay_ms,
+                'sent_at': metric.sent_at.isoformat(),
+                'received_at': metric.received_at.isoformat(),
+                'notification_type': metric.notification.notification_type,
+                'notification_title': metric.notification.title
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'statistics': statistics,
+            'chart_data': chart_data
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def start_delay_test(request):
+    """Gửi nhiều notifications để test delay"""
+    try:
+        data = json.loads(request.body)
+        target_user_id = data.get('target_user_id')
+        count = data.get('count', 10)
+        interval_ms = data.get('interval_ms', 500)
+        
+        target_user = User.objects.get(id=target_user_id)
+        
+        import uuid
+        test_session = f"test_{uuid.uuid4().hex[:8]}"
+        
+        import time
+        
+        for i in range(count):
+            sent_at = timezone.now()
+            
+            notification = Notification.objects.create(
+                user=target_user,
+                notification_type='test',
+                title=f'Test #{i+1}/{count}',
+                message=f'Testing SSE delay - notification {i+1}',
+                related_id=i,
+                metadata={'test_number': i+1, 'test_session': test_session, 'sent_at': sent_at.isoformat()}
+            )
+            
+            if target_user_id in sse_connections:
+                notification_data = {
+                    'id': notification.id,
+                    'type': notification.notification_type,
+                    'title': notification.title,
+                    'message': notification.message,
+                    'is_read': notification.is_read,
+                    'created_at': notification.created_at.isoformat(),
+                    'read_at': notification.read_at.isoformat() if notification.read_at else None,
+                    'related_id': notification.related_id,
+                    'metadata': notification.metadata,
+                    'sent_at': sent_at.isoformat(),
+                    'test_session': test_session
+                }
+                sse_connections[target_user_id].put(notification_data)
+            
+            if i < count - 1:
+                time.sleep(interval_ms / 1000.0)
+        
+        return JsonResponse({'status': 'success', 'message': f'Sent {count} notifications', 'test_session': test_session})
+        
+    except User.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+# ==========================================================
+# 🧪 FRIEND REQUEST DELAY TEST APIs
+# ==========================================================
+
+@csrf_exempt
+@require_POST
+@login_required
+def start_friend_request_test(request):
+    """
+    Test delay của friend request APIs
+    POST /api/accounts/friend-request-test/start/
+    Body: {
+        "target_user_id": 123,
+        "action": "send",  // send/cancel/accept/reject/unfriend
+        "count": 10,
+        "interval_ms": 500
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        target_user_id = data.get('target_user_id')
+        action = data.get('action', 'send')
+        count = data.get('count', 10)
+        interval_ms = data.get('interval_ms', 500)
+        
+        target_user = User.objects.get(id=target_user_id)
+        
+        # Tạo test session ID
+        import uuid
+        test_session = f"friend_test_{uuid.uuid4().hex[:8]}"
+        
+        print(f"\n🧪 [FRIEND TEST START] Action: {action}, Count: {count}")
+        
+        success_count = 0
+        
+        for i in range(count):
+            sent_at = timezone.now()
+            
+            try:
+                if action == 'send':
+                    # Gửi lời mời kết bạn
+                    friend_request, created = FriendRequest.objects.get_or_create(
+                        sender=request.user,
+                        receiver=target_user,
+                        defaults={'status': 'pending'}
+                    )
+                    if created:
+                        create_friend_request_notification(target_user, request.user, friend_request.id)
+                        success_count += 1
+                    # Xóa để test lại
+                    friend_request.delete()
+                    
+                elif action == 'cancel':
+                    # Tạo request rồi cancel
+                    friend_request = FriendRequest.objects.create(
+                        sender=request.user,
+                        receiver=target_user,
+                        status='pending'
+                    )
+                    friend_request.delete()
+                    success_count += 1
+                    
+                elif action == 'accept':
+                    # Tạo request rồi accept
+                    friend_request = FriendRequest.objects.create(
+                        sender=target_user,
+                        receiver=request.user,
+                        status='pending'
+                    )
+                    friend_request.status = 'accepted'
+                    friend_request.save()
+                    Friendship.objects.create(user1=target_user, user2=request.user)
+                    # Cleanup
+                    Friendship.objects.filter(user1=target_user, user2=request.user).delete()
+                    friend_request.delete()
+                    success_count += 1
+                    
+                elif action == 'reject':
+                    # Tạo request rồi reject
+                    friend_request = FriendRequest.objects.create(
+                        sender=target_user,
+                        receiver=request.user,
+                        status='pending'
+                    )
+                    friend_request.status = 'rejected'
+                    friend_request.save()
+                    friend_request.delete()
+                    success_count += 1
+                    
+                elif action == 'unfriend':
+                    # Tạo friendship rồi unfriend
+                    friendship = Friendship.objects.create(user1=request.user, user2=target_user)
+                    friendship.delete()
+                    success_count += 1
+                
+                received_at = timezone.now()
+                delay = (received_at - sent_at).total_seconds() * 1000
+                
+                # Lưu metric
+                FriendRequestDelayMetric.objects.create(
+                    user=request.user,
+                    action_type=action,
+                    target_user=target_user,
+                    sent_at=sent_at,
+                    received_at=received_at,
+                    delay_ms=int(delay),
+                    test_session=test_session
+                )
+                
+            except Exception as e:
+                print(f"❌ Test {i+1} failed: {e}")
+            
+            if i < count - 1:
+                time.sleep(interval_ms / 1000.0)
+        
+        print(f"✅ [FRIEND TEST DONE] Success: {success_count}/{count}\n")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Completed {success_count}/{count} tests',
+            'test_session': test_session,
+            'success_count': success_count
+        })
+        
+    except User.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def record_friend_request_delay(request):
+    """
+    Client gửi để record delay
+    POST /api/accounts/friend-request-test/record-delay/
+    Body: {
+        "action": "send",
+        "target_user_id": 123,
+        "sent_at": "2025-01-01T00:00:00Z",
+        "received_at": "2025-01-01T00:00:01Z",
+        "test_session": "friend_test_abc123"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        action = data.get('action')
+        target_user_id = data.get('target_user_id')
+        sent_at_str = data.get('sent_at')
+        received_at_str = data.get('received_at')
+        test_session = data.get('test_session', '')
+        
+        target_user = User.objects.get(id=target_user_id)
+        
+        from dateutil import parser
+        sent_at = parser.isoparse(sent_at_str)
+        received_at = parser.isoparse(received_at_str)
+        
+        delay = (received_at - sent_at).total_seconds() * 1000
+        
+        FriendRequestDelayMetric.objects.create(
+            user=request.user,
+            action_type=action,
+            target_user=target_user,
+            sent_at=sent_at,
+            received_at=received_at,
+            delay_ms=int(delay),
+            test_session=test_session
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'delay_ms': int(delay)
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_friend_request_delay_stats(request):
+    """
+    Lấy thống kê delay cho friend request test
+    GET /api/accounts/friend-request-test/stats/
+    Query params:
+        - test_session: optional
+        - action: optional (send/cancel/accept/reject/unfriend)
+        - limit: default 50
+    """
+    try:
+        test_session = request.GET.get('test_session', '')
+        action = request.GET.get('action', '')
+        limit = int(request.GET.get('limit', 50))
+        
+        metrics = FriendRequestDelayMetric.objects.filter(user=request.user)
+        
+        if test_session:
+            metrics = metrics.filter(test_session=test_session)
+        
+        if action:
+            metrics = metrics.filter(action_type=action)
+        
+        metrics = metrics.order_by('-created_at')[:limit]
+        
+        if not metrics.exists():
+            return JsonResponse({
+                'status': 'success',
+                'statistics': {
+                    'count': 0,
+                    'avg_delay': 0,
+                    'min_delay': 0,
+                    'max_delay': 0,
+                    'median_delay': 0
+                },
+                'chart_data': [],
+                'action_breakdown': {}
+            })
+        
+        delays = [m.delay_ms for m in metrics]
+        
+        statistics = {
+            'count': len(delays),
+            'avg_delay': sum(delays) / len(delays),
+            'min_delay': min(delays),
+            'max_delay': max(delays),
+            'median_delay': sorted(delays)[len(delays)//2]
+        }
+        
+        # Chart data
+        chart_data = []
+        for i, metric in enumerate(reversed(list(metrics))):
+            chart_data.append({
+                'index': i + 1,
+                'delay_ms': metric.delay_ms,
+                'action': metric.action_type,
+                'target_username': metric.target_user.username,
+                'sent_at': metric.sent_at.isoformat(),
+                'received_at': metric.received_at.isoformat()
+            })
+        
+        # Action breakdown (cho pie chart)
+        action_breakdown = {}
+        all_metrics = FriendRequestDelayMetric.objects.filter(user=request.user)
+        if test_session:
+            all_metrics = all_metrics.filter(test_session=test_session)
+        
+        for action_choice, _ in FriendRequestDelayMetric.ACTION_CHOICES:
+            count = all_metrics.filter(action_type=action_choice).count()
+            if count > 0:
+                action_breakdown[action_choice] = count
+        
+        return JsonResponse({
+            'status': 'success',
+            'statistics': statistics,
+            'chart_data': chart_data,
+            'action_breakdown': action_breakdown
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

@@ -53,7 +53,16 @@ urlpatterns = [
     path('notifications/<int:notification_id>/read/', views.mark_notification_read_api, name='mark_notification_read'),
     path('notifications/read-all/', views.mark_all_notifications_read_api, name='mark_all_notifications_read'),
     path('notifications/clear-all/', views.clear_all_notifications_api, name='clear_all_notifications'),
+
+    path('notifications/record-delay/', views.record_notification_delay, name='record_notification_delay'),
+    path('notifications/delay-stats/', views.get_delay_statistics, name='get_delay_statistics'),
+    path('notifications/start-delay-test/', views.start_delay_test, name='start_delay_test'),
+
     path('friend/<int:user_id>/favorites/view/', views.record_favorite_view, name='record_favorite_view'),
+    # Friend Request Delay Test APIs
+    path('friend-request-test/start/', views.start_friend_request_test, name='start_friend_request_test'),
+    path('friend-request-test/record-delay/', views.record_friend_request_delay, name='record_friend_request_delay'),
+    path('friend-request-test/stats/', views.get_friend_request_delay_stats, name='get_friend_request_delay_stats'),
 
     path('api/reviews/<str:place_id>/<int:review_index>/', views.delete_review_api, name='delete_review'),
 
