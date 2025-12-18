@@ -74,7 +74,7 @@ UIA SmartTour provides AI-powered restaurant recommendations using a six-step fi
   <tr>
     <td>Đoàn Võ Ngọc Lâm</td>
     <td>24127435</td>
-    <td>Frontend, Backend Developer</td>
+    <td>Backend Developer</td>
   </tr>
   <tr>
     <td>Trần Thuận Khang</td>
