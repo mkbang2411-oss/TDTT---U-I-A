@@ -3987,8 +3987,7 @@ def clear_all_notifications_api(request):
     """
     try:
         deleted_count, _ = Notification.objects.filter(
-            user=request.user,
-            is_read=True
+            user=request.user
         ).delete()
         
         return JsonResponse({
