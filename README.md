@@ -730,8 +730,6 @@ ls -l user_management/db.sqlite3
 
 ## Future Improvements
 
-Based on the midterm report, planned enhancements include:
-
 ### Short-term (Week 7)
 - Expand restaurant database to multiple cities
 - Complete remaining UI screens and error notifications
