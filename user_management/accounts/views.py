@@ -2094,6 +2094,46 @@ def send_otp_api(request):
         }, status=500)
 
 
+def get_user_language(request):
+    """
+    Lấy ngôn ngữ người dùng từ cookie
+    """
+    lang = request.COOKIES.get('user_lang', 'vi')
+    return lang if lang in ['vi', 'en'] else 'vi'
+
+def get_message(key, lang='vi', **kwargs):
+    """
+    Trả về thông báo theo ngôn ngữ
+    """
+    messages = {
+        'vi': {
+            'missing_info': 'Thiếu thông tin email hoặc OTP',
+            'otp_not_found': 'Không tìm thấy yêu cầu OTP cho email này. Vui lòng gửi lại mã.',
+            'otp_locked': 'Bạn đã nhập sai quá 5 lần. Mã OTP đã bị hủy. Vui lòng gửi lại mã mới.',
+            'otp_expired': 'Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.',
+            'otp_incorrect': 'Mã OTP không chính xác. Bạn còn {remaining} lần thử.',
+            'otp_success': 'Xác thực thành công! Vui lòng hoàn tất đăng ký.',
+            'reset_not_found': 'Không tìm thấy yêu cầu reset mật khẩu. Vui lòng thử lại.',
+            'reset_locked': 'Bạn đã nhập sai quá 5 lần. Yêu cầu đã bị hủy.',
+            'reset_success': 'Xác thực thành công',
+            'generic_error': 'Có lỗi xảy ra'
+        },
+        'en': {
+            'missing_info': 'Missing email or OTP',
+            'otp_not_found': 'OTP request not found for this email. Please resend the code.',
+            'otp_locked': 'You have entered incorrectly 5 times. OTP has been canceled. Please resend a new code.',
+            'otp_expired': 'OTP has expired. Please resend a new code.',
+            'otp_incorrect': 'Incorrect OTP. You have {remaining} attempts left.',
+            'otp_success': 'Verification successful! Please complete registration.',
+            'reset_not_found': 'Password reset request not found. Please try again.',
+            'reset_locked': 'You have entered incorrectly 5 times. Request has been canceled.',
+            'reset_success': 'Verification successful',
+            'generic_error': 'An error occurred'
+        }
+    }
+    msg = messages.get(lang, messages['vi']).get(key, key)
+    return msg.format(**kwargs) if kwargs else msg
+
 @csrf_exempt
 @require_POST
 def verify_otp_api(request):
@@ -2102,6 +2142,7 @@ def verify_otp_api(request):
     POST /api/verify-otp/
     Body: {"email": "example@email.com", "otp": "123456"}
     """
+    lang = get_user_language(request)
     try:
         data = json.loads(request.body)
         email = data.get('email', '').strip()
@@ -2110,39 +2151,49 @@ def verify_otp_api(request):
         if not email or not otp_code:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Thiếu thông tin email hoặc OTP'
+                'message': get_message('missing_info', lang)
             }, status=400)
         
-        # Tìm OTP
+        # Tìm OTP theo email (để check attempts trước)
         try:
-            otp_obj = EmailOTP.objects.get(email=email, otp_code=otp_code)
+            # Lấy OTP mới nhất của email này
+            otp_obj = EmailOTP.objects.filter(email=email).first()
+            if not otp_obj:
+                raise EmailOTP.DoesNotExist
         except EmailOTP.DoesNotExist:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Mã OTP không chính xác'
+                'message': get_message('otp_not_found', lang)
             }, status=400)
         
+        # Kiểm tra số lần thử TRƯỚC KHI check code
+        if otp_obj.attempts >= 5 or otp_obj.is_locked:
+            otp_obj.delete() # Xóa luôn để user phải request mới
+            return JsonResponse({
+                'status': 'error',
+                'message': get_message('otp_locked', lang),
+                'locked': True
+            }, status=400)
+
         # Kiểm tra OTP đã hết hạn chưa
         if not otp_obj.is_valid():
             otp_obj.delete()
             return JsonResponse({
                 'status': 'error',
-                'message': 'Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.'
+                'message': get_message('otp_expired', lang)
             }, status=400)
         
-        # Kiểm tra số lần thử
-        if otp_obj.attempts >= 5:
-            otp_obj.delete()
+        # Kiểm tra mã OTP có khớp không
+        if otp_obj.otp_code != otp_code:
+            # Tăng số lần sai
+            otp_obj.increment_attempts()
+            remaining = 5 - otp_obj.attempts
             return JsonResponse({
                 'status': 'error',
-                'message': 'Bạn đã nhập sai quá nhiều lần. Vui lòng gửi lại mã mới.'
+                'message': get_message('otp_incorrect', lang, remaining=remaining)
             }, status=400)
         
-        # Tăng số lần thử (dù đúng hay sai)
-        otp_obj.attempts += 1
-        otp_obj.save()
-        
-        # Xác thực thành công
+        # Nếu khớp -> Xác thực thành công
         otp_obj.delete()
         
         # Lưu vào session để biết email đã được verify
@@ -2154,7 +2205,7 @@ def verify_otp_api(request):
         
         return JsonResponse({
             'status': 'success',
-            'message': 'Xác thực thành công! Vui lòng hoàn tất đăng ký.'
+            'message': get_message('otp_success', lang)
         })
         
     except Exception as e:
@@ -2302,6 +2353,7 @@ def verify_password_reset_otp_api(request):
     POST /api/password-reset/verify-otp/
     Body: {"email": "example@email.com", "otp": "123456"}
     """
+    lang = get_user_language(request)
     try:
         data = json.loads(request.body)
         email = data.get('email', '').strip()
@@ -2310,31 +2362,44 @@ def verify_password_reset_otp_api(request):
         if not email or not otp_code:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Thiếu thông tin email hoặc OTP'
+                'message': get_message('missing_info', lang)
             }, status=400)
         
-        # Tìm OTP
+        # Tìm OTP theo email
         try:
-            otp_obj = PasswordResetOTP.objects.get(email=email, otp_code=otp_code)
+            otp_obj = PasswordResetOTP.objects.filter(email=email).first()
+            if not otp_obj:
+                raise PasswordResetOTP.DoesNotExist
         except PasswordResetOTP.DoesNotExist:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Mã OTP không chính xác'
+                'message': get_message('reset_not_found', lang)
             }, status=400)
         
+        # Kiểm tra đã bị khóa (quá số lần thử)
+        if otp_obj.attempts >= 5 or otp_obj.is_locked:
+            otp_obj.delete()
+            return JsonResponse({
+                'status': 'error',
+                'message': get_message('reset_locked', lang),
+                'locked': True
+            }, status=400)
+
         # Kiểm tra hết hạn
         if not otp_obj.is_valid():
             otp_obj.delete()
             return JsonResponse({
                 'status': 'error',
-                'message': 'Mã OTP đã hết hạn'
+                'message': get_message('otp_expired', lang)
             }, status=400)
         
-        # Kiểm tra đã bị khóa
-        if otp_obj.is_locked:
+        # Kiểm tra mã OTP
+        if otp_obj.otp_code != otp_code:
+            otp_obj.increment_attempts()
+            remaining = 5 - otp_obj.attempts
             return JsonResponse({
                 'status': 'error',
-                'message': 'Bạn đã nhập sai quá nhiều lần'
+                'message': get_message('otp_incorrect', lang, remaining=remaining)
             }, status=400)
         
         # Xác thực thành công - đánh dấu và xóa
@@ -2347,7 +2412,7 @@ def verify_password_reset_otp_api(request):
         
         return JsonResponse({
             'status': 'success',
-            'message': 'Xác thực thành công'
+            'message': get_message('reset_success', lang)
         })
         
     except Exception as e:
@@ -2546,13 +2611,15 @@ def save_food_plan_api(request):
     POST /api/food-plan/save/
     Body: {
         "name": "Lịch trình ngày 15/12",
-        "plan_data": {...}  // Toàn bộ dữ liệu plan
+        "plan_data": {...},  // Toàn bộ dữ liệu plan
+        "plan_id": 123       // OPTIONAL: Nếu có thì update, không có thì tạo mới
     }
     """
     try:
         data = json.loads(request.body)
         name = data.get('name', 'Lịch trình ăn uống')
         plan_data = data.get('plan_data')
+        plan_id = data.get('plan_id')  # 🔥 THÊM: Lấy plan_id nếu có
         
         if not plan_data:
             return JsonResponse({
@@ -2560,18 +2627,41 @@ def save_food_plan_api(request):
                 'message': 'Thiếu dữ liệu plan'
             }, status=400)
         
-        # Tạo plan mới
-        food_plan = FoodPlan.objects.create(
-            user=request.user,
-            name=name,
-            plan_data=plan_data
-        )
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Đã lưu lịch trình',
-            'plan_id': food_plan.id
-        })
+        # 🔥🔥 LOGIC MỚI: Phân biệt CREATE vs UPDATE
+        if plan_id:
+            # ✅ CÓ plan_id → UPDATE (lưu đè)
+            try:
+                food_plan = FoodPlan.objects.get(id=plan_id, user=request.user)
+                food_plan.name = name
+                food_plan.plan_data = plan_data
+                food_plan.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Đã cập nhật lịch trình',
+                    'plan_id': food_plan.id,
+                    'action': 'update'  # 🔥 Thêm để frontend biết
+                })
+                
+            except FoodPlan.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Không tìm thấy lịch trình hoặc bạn không có quyền'
+                }, status=404)
+        else:
+            # ✅ KHÔNG có plan_id → CREATE (tạo mới)
+            food_plan = FoodPlan.objects.create(
+                user=request.user,
+                name=name,
+                plan_data=plan_data
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Đã lưu lịch trình mới',
+                'plan_id': food_plan.id,
+                'action': 'create'  # 🔥 Thêm để frontend biết
+            })
         
     except Exception as e:
         return JsonResponse({
