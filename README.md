@@ -49,14 +49,14 @@ UIA SmartTour provides AI-powered restaurant recommendations using a six-step fi
 
 ## Team Members
 
-**Group: U I A**
-Mai Khánh Băng      - 24127147 - Project Manager, Frontend Developer
-Nguyễn Ngọc Minh    - 24127204 - Frontend Developer
-Trần Minh Hiển      - 24127037 - Tech Lead, Backend Developer, Tester Engineer
-Đoàn Võ Ngọc Lâm    - 24127435 - Frontend, Backend Developer
-Trần Thuận Khang    - 24127054 - Backend Developer
-Võ Tấn An           - 24127318 - Backend Developer, Frontend Developer, Tester Engineer
-Nguyễn Thanh Nguyên - 24127468 - Backend Developer, Tester Engineer
+**Group: U I A**<br/>
+Mai Khánh Băng      - 24127147 - Project Manager, Frontend Developer<br/>
+Nguyễn Ngọc Minh    - 24127204 - Frontend Developer<br/>
+Trần Minh Hiển      - 24127037 - Tech Lead, Backend Developer, Tester Engineer<br/>
+Đoàn Võ Ngọc Lâm    - 24127435 - Frontend, Backend Developer<br/>
+Trần Thuận Khang    - 24127054 - Backend Developer<br/>
+Võ Tấn An           - 24127318 - Backend Developer, Frontend Developer, Tester Engineer<br/>
+Nguyễn Thanh Nguyên - 24127468 - Backend Developer, Tester Engineer<br/>
 
 **Instructors:**
 - TS. Trương Phước Hưng
