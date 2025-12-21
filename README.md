@@ -623,6 +623,68 @@ python manage.py createsuperuser
 python manage.py collectstatic
 ```
 
+### Google OAuth Setup (Required for Social Login)
+
+After creating your superuser account, follow these steps to configure Google OAuth authentication:
+
+#### Step 1: Create Google OAuth Credentials
+
+1. Navigate to [Google Cloud Console](https://console.cloud.google.com/)
+2. Sign in with your Google account
+3. Go to **APIs & Services** → **Credentials**
+4. Click **+ CREATE CREDENTIALS** at the top
+5. Select **OAuth client ID**
+6. Choose **Web application** as the application type
+7. Under **Authorized redirect URIs**, add the following three URLs:
+   ```
+   http://127.0.0.1:8000/accounts/google/login/callback/
+   https://console.cloud.google.com/welcome?project=after-all-476114-e5
+   http://localhost/accounts/google/login/callback/
+   ```
+8. Click **CREATE**
+9. Copy the **Client ID** and **Client Secret** that appear - you'll need these in the next step
+
+**Important:** Keep your Client Secret confidential and never commit it to version control.
+
+#### Step 2: Configure Django Social Application
+
+1. **Start the Django development server** (outside Docker for admin access):
+   ```bash
+   cd TDTT---U-I-A/user_management
+   python manage.py runserver
+   ```
+
+2. **Access the Django admin panel**:
+   - Open your browser and navigate to: `http://127.0.0.1:8000/admin/`
+   - Log in using the superuser credentials you created earlier
+
+3. **Add Social Application**:
+   - In the admin panel, find **SOCIAL ACCOUNTS** section in the left sidebar
+   - Click on **Social applications**
+   - Click **ADD SOCIAL APPLICATION** button (top right)
+
+4. **Configure the application**:
+   - **Provider**: Select `Google` from the dropdown
+   - **Name**: Enter `Google OAuth` (or any descriptive name)
+   - **Client id**: Paste the Client ID from Step 1
+   - **Secret key**: Paste the Client Secret from Step 1
+   - **Sites**: 
+     - In the "Available sites" box, you should see `example.com`
+     - Select it and click the arrow (→) to move it to "Chosen sites"
+   - Click **SAVE**
+
+5. **Verify the setup**:
+   - Navigate to `http://localhost/` (with Docker running)
+   - Try logging in with Google - you should be redirected to Google's authentication page
+   - After authorizing, you'll be redirected back to your application
+
+**Troubleshooting:**
+- If you get a "redirect_uri_mismatch" error, verify that the redirect URIs in Google Cloud Console exactly match the ones listed in Step 1
+- If `example.com` doesn't appear in Sites, you may need to add it via **Sites** in the Django admin panel first
+- Make sure both Flask and Django containers are running (`docker-compose up`)
+
+**Note:** For production deployment, replace `http://127.0.0.1:8000/` and `http://localhost/` with your actual domain URLs in both Google Cloud Console and Django settings.
+
 ---
 
 ## Troubleshooting
