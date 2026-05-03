@@ -866,6 +866,8 @@ For questions or feedback, please contact:
 
 **Project Repository:** [\[GitHub Repository Link\]](https://github.com/mkbang2411-oss/TDTT---U-I-A.git)
 
+**Demo:** [\[Video\]](https://youtu.be/Vti93d876eU)
+
 ---
 
 **Last Updated:** 18 December 2025
